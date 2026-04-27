@@ -1,0 +1,105 @@
+{
+  "theme": "LIGHT",
+  "archetype": "Archetype 4 (Swiss & High-Contrast) + Archetype 2 (Performance Pro) Hybrid",
+  "design_philosophy": "High-impact athletic aesthetic focused on clarity, bold typography, and energetic brand colors (Royal Blue & Red). The UI must feel like a premium youth tournament—professional enough for booking/admin, but highly energetic for players and fans.",
+  "colors": {
+    "primary": "#1d4ed8",
+    "primary_hover": "#2563eb",
+    "secondary": "#dc2626",
+    "secondary_hover": "#ef4444",
+    "background": "#ffffff",
+    "surface": "#f8f9fa",
+    "surface_alt": "#f1f5f9",
+    "text_primary": "#0f172a",
+    "text_secondary": "#475569",
+    "border": "#e2e8f0",
+    "success": "#16a34a",
+    "warning": "#eab308",
+    "error": "#dc2626"
+  },
+  "typography": {
+    "headings": {
+      "family": "Barlow Condensed",
+      "weights": ["600", "700", "800", "900"],
+      "strategy": "Uppercase, tight tracking (tracking-tighter), massive scales for impact. Do not center everything—use bold left alignment for tension."
+    },
+    "body": {
+      "family": "Manrope",
+      "weights": ["400", "500", "600"],
+      "strategy": "Clean, highly readable geometric sans for data density (tables, rosters, bookings)."
+    },
+    "scales": {
+      "h1": "text-5xl md:text-6xl+ uppercase tracking-tighter font-black",
+      "h2": "text-4xl md:text-5xl uppercase tracking-tight font-bold",
+      "h3": "text-2xl md:text-3xl uppercase tracking-tight font-bold",
+      "h4": "text-xl font-bold",
+      "body": "text-base leading-relaxed",
+      "small": "text-sm text-slate-500",
+      "overline": "text-xs tracking-[0.2em] uppercase font-bold text-blue-700"
+    }
+  },
+  "layout_spacing": {
+    "philosophy": "Generous spacing (p-8, p-12) for marketing sections; compact, dense grids for Admin and Fixture modules.",
+    "marketing_grid": "Tetris Mode: grid-cols-1 md:grid-cols-12 gap-8. Asymmetrical overlapping items.",
+    "dashboard_grid": "Control Room Grid: grid-cols-1 md:grid-cols-4 gap-4 or gap-6 for admin panels and family dashboards.",
+    "borders": "Expose the skeleton for fixtures/tables using border-collapse or 1px solid borders (border-slate-200). Use 'The Tracing Beam' for premium bookable packages."
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-blue-700 hover:bg-blue-600 text-white font-bold uppercase tracking-wide rounded-none or max rounded-md shadow-[4px_4px_0px_#0f172a] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_#0f172a] transition-all",
+      "secondary": "bg-transparent border-2 border-slate-900 text-slate-900 hover:bg-slate-900 hover:text-white font-bold uppercase tracking-wide"
+    },
+    "cards": {
+      "default": "bg-white border border-slate-200 rounded-lg shadow-sm hover:shadow-md transition-shadow",
+      "carnet": "bg-slate-900 relative overflow-hidden rounded-xl border border-blue-500/30 text-white shadow-xl. Use abstract CSS geometric patterns (polygons/grids) in background. Add the FSC logo prominently at top, large bold Barlow Condensed text for player name, and sharp energetic diagonal cuts for the photo container."
+    },
+    "navigation": {
+      "strategy": "Solid white header with bottom border (border-slate-200) for high contrast and readability. Keep logo prominently on left, links in center, primary CTA (Book/Login) on right."
+    },
+    "tables": {
+      "strategy": "Cardless, dense data presentation. Use Shadcn tables with tight padding for Standings and Fixtures. Header row should have a subtle blue tint (bg-blue-50) to distinguish from data rows."
+    }
+  },
+  "surfaces_and_effects": {
+    "glassmorphism": "Avoid in data-heavy areas. Can use 'Optical Clarity' (bg-white/80 backdrop-blur-xl border-white/40) exclusively for floating booking widgets on the landing page.",
+    "overlays": "Hero images must use a gradient overlay (bg-gradient-to-r from-slate-900/80 to-slate-900/20) so the white and red text pops perfectly.",
+    "decorations": "Use SVG diagonal stripes or subtle repeating linear gradients (angle -45deg) as background textures behind hero areas and CTA sections."
+  },
+  "motion": {
+    "hover": "Slight lift (-translate-y-1) and shadow increase for interactive cards.",
+    "transitions": "transition-transform 0.2s ease, opacity 0.2s ease",
+    "stagger": "List items (fixtures, players) should stagger in on entry."
+  },
+  "assets": {
+    "icons": "lucide-react (thick stroke width, e.g., 2.5 for a sportier look)",
+    "images": {
+      "logo": "https://customer-assets.emergentagent.com/job_dd2523b3-e20b-4cc5-9d6d-534c6d02a185/artifacts/y4ulg6l9_FUTRE%20SOCCER%20CUP%202025_Mesa%20de%20trabajo%201.png",
+      "hero_backgrounds": [
+        "https://images.pexels.com/photos/32694240/pexels-photo-32694240.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "https://images.unsplash.com/photo-1773062122596-419ae7084347?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Njd8MHwxfHNlYXJjaHwyfHx5b3V0aCUyMHNvY2NlciUyMG1hdGNofGVufDB8fHx8MTc3NzMzMjEyMHww&ixlib=rb-4.1.0&q=85"
+      ],
+      "players_action": [
+        "https://images.pexels.com/photos/10475538/pexels-photo-10475538.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "https://images.unsplash.com/photo-1695049408845-739fc8117fa6?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Njd8MHwxfHNlYXJjaHw0fHx5b3V0aCUyMHNvY2NlciUyMG1hdGNofGVufDB8fHx8MTc3NzMzMjEyMHww&ixlib=rb-4.1.0&q=85"
+      ],
+      "hotels": [
+        "https://images.unsplash.com/photo-1747561088583-b8b849045895?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Njd8MHwxfHNlYXJjaHwyfHxtb2Rlcm4lMjBmYW1pbHklMjByZXNvcnQlMjBob3RlbHxlbnwwfHx8fDE3NzczMzIxMjB8MA&ixlib=rb-4.1.0&q=85",
+        "https://images.unsplash.com/photo-1640677118257-8e13fa9ebc1a?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Njd8MHwxfHNlYXJjaHwzfHxtb2Rlcm4lMjBmYW1pbHklMjByZXNvcnQlMjBob3RlbHxlbnwwfHx8fDE3NzczMzIxMjB8MA&ixlib=rb-4.1.0&q=85"
+      ],
+      "transport": [
+        "https://images.pexels.com/photos/29586609/pexels-photo-29586609.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940"
+      ]
+    }
+  },
+  "specific_page_instructions": {
+    "landing_page": "High impact hero with overlapping stats. Use massive Barlow Condensed text. Create an asymmetrical 'Tetris Grid' for news and sponsors.",
+    "carnet_generator": "Player ID cards must be printable and visually striking. Use a dark mode design for the card itself (dark slate blue background with red accents and CSS mesh texture) to make the white logo and player photo pop. Include QR code placeholder.",
+    "fixtures_standings": "Grid-based tables. Must be fully responsive. Use strong typography for scores (e.g., text-3xl font-black) compared to smaller team names.",
+    "booking_module": "Focus on trustworthiness. Clean cards with high-quality images. Simple forms for selection using Shadcn components.",
+    "admin_dashboard": "Dense, utilitarian. Use 'Control Room Grid'. High-contrast data points."
+  },
+  "accessibility": {
+    "contrast": "Ensure all text on brand blue/red meets WCAG AA standards. Use white text over primary buttons.",
+    "testing": "All interactive elements MUST include data-testid (e.g., data-testid='submit-booking-btn', data-testid='team-filter')."
+  }
+}
