@@ -1,0 +1,211 @@
+import { useEffect, useState } from "react";
+import api, { formatApiError } from "../../lib/api";
+import { Plus, Trash2, Edit3 } from "lucide-react";
+import { toast } from "sonner";
+import { Modal, Field } from "./AdminTeams";
+
+const EMPTY = { tournament_id: "", home_team_id: "", away_team_id: "", match_date: "", venue: "", group_name: "", stage: "grupos", status: "programado", home_score: null, away_score: null };
+
+export default function AdminMatches() {
+  const [matches, setMatches] = useState([]);
+  const [teams, setTeams] = useState([]);
+  const [tournaments, setTournaments] = useState([]);
+  const [editing, setEditing] = useState(null);
+  const [scoring, setScoring] = useState(null);
+
+  const load = () => Promise.all([
+    api.get("/matches"), api.get("/teams"), api.get("/tournaments")
+  ]).then(([m, t, tr]) => { setMatches(m.data); setTeams(t.data); setTournaments(tr.data); });
+  useEffect(() => { load(); }, []);
+
+  const save = async (e) => {
+    e.preventDefault();
+    try {
+      const payload = { ...editing };
+      // Ensure tournament exists - create default if none
+      if (!payload.tournament_id) {
+        if (tournaments.length === 0) {
+          const tr = await api.post("/tournaments", { name: "FSC 2025", season: "2025", category: "General", start_date: "2025-01-01", end_date: "2025-12-31" });
+          payload.tournament_id = tr.data.id;
+          setTournaments([tr.data]);
+        } else {
+          payload.tournament_id = tournaments[0].id;
+        }
+      }
+      await api.post("/matches", payload);
+      toast.success("Partido programado");
+      setEditing(null);
+      load();
+    } catch (err) {
+      toast.error(formatApiError(err.response?.data?.detail));
+    }
+  };
+
+  const submitResult = async (e) => {
+    e.preventDefault();
+    try {
+      await api.put(`/matches/${scoring.id}/result`, {
+        home_score: Number(scoring.home_score),
+        away_score: Number(scoring.away_score),
+        scorers: scoring.scorers || [],
+      });
+      toast.success("Resultado registrado");
+      setScoring(null);
+      load();
+    } catch (err) {
+      toast.error(formatApiError(err.response?.data?.detail));
+    }
+  };
+
+  const remove = async (id) => {
+    if (!window.confirm("¿Eliminar partido?")) return;
+    await api.delete(`/matches/${id}`);
+    load();
+  };
+
+  return (
+    <div data-testid="admin-matches">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="font-display text-4xl font-black uppercase tracking-tighter">Partidos</h1>
+        <button onClick={() => setEditing({ ...EMPTY })} className="fsc-btn-primary px-4 py-2 rounded-md text-sm flex items-center gap-2" data-testid="add-match-btn"><Plus size={16}/> Programar</button>
+      </div>
+
+      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-blue-50 text-xs uppercase tracking-wider">
+            <tr>
+              <th className="text-left px-4 py-2">Fecha</th>
+              <th className="text-left px-4 py-2">Local</th>
+              <th className="text-center px-4 py-2">Score</th>
+              <th className="text-left px-4 py-2">Visitante</th>
+              <th className="text-left px-4 py-2">Estado</th>
+              <th className="text-left px-4 py-2">Sede</th>
+              <th className="text-right px-4 py-2">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {matches.map((m) => (
+              <tr key={m.id} className="border-t border-slate-100" data-testid={`match-row-${m.id}`}>
+                <td className="px-4 py-2">{m.match_date ? new Date(m.match_date).toLocaleString("es") : "—"}</td>
+                <td className="px-4 py-2 font-semibold">{m.home_team_name}</td>
+                <td className="px-4 py-2 text-center font-display font-black tabular-nums">
+                  {m.status === "finalizado" ? `${m.home_score} - ${m.away_score}` : "vs"}
+                </td>
+                <td className="px-4 py-2 font-semibold">{m.away_team_name}</td>
+                <td className="px-4 py-2"><span className="text-xs uppercase tracking-wider font-bold">{m.status}</span></td>
+                <td className="px-4 py-2 text-slate-500">{m.venue || "—"}</td>
+                <td className="px-4 py-2 text-right space-x-2">
+                  <button onClick={() => setScoring({ ...m, scorers: m.scorers || [] })} className="text-blue-700" data-testid={`score-match-${m.id}`}><Edit3 size={16}/></button>
+                  <button onClick={() => remove(m.id)} className="text-red-600"><Trash2 size={16}/></button>
+                </td>
+              </tr>
+            ))}
+            {matches.length === 0 && <tr><td colSpan="7" className="text-center py-12 text-slate-400">Sin partidos</td></tr>}
+          </tbody>
+        </table>
+      </div>
+
+      {editing && (
+        <Modal onClose={() => setEditing(null)} title="Programar partido">
+          <form onSubmit={save} className="space-y-3">
+            <label className="block">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Local</span>
+              <select required value={editing.home_team_id} onChange={(e) => setEditing({ ...editing, home_team_id: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md">
+                <option value="">Seleccionar...</option>
+                {teams.map((t) => <option key={t.id} value={t.id}>{t.name} ({t.category})</option>)}
+              </select>
+            </label>
+            <label className="block">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Visitante</span>
+              <select required value={editing.away_team_id} onChange={(e) => setEditing({ ...editing, away_team_id: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md">
+                <option value="">Seleccionar...</option>
+                {teams.map((t) => <option key={t.id} value={t.id}>{t.name} ({t.category})</option>)}
+              </select>
+            </label>
+            <Field label="Fecha y hora" type="datetime-local" required value={editing.match_date} onChange={(v) => setEditing({ ...editing, match_date: v })} />
+            <Field label="Sede" value={editing.venue} onChange={(v) => setEditing({ ...editing, venue: v })} />
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Grupo" value={editing.group_name} onChange={(v) => setEditing({ ...editing, group_name: v })} />
+              <label className="block">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Fase</span>
+                <select value={editing.stage} onChange={(e) => setEditing({ ...editing, stage: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md">
+                  <option value="grupos">Grupos</option><option value="octavos">Octavos</option><option value="cuartos">Cuartos</option><option value="semis">Semifinal</option><option value="final">Final</option>
+                </select>
+              </label>
+            </div>
+            <button className="fsc-btn-primary w-full py-2 rounded-md">Guardar</button>
+          </form>
+        </Modal>
+      )}
+
+      {scoring && (
+        <Modal onClose={() => setScoring(null)} title="Cargar resultado">
+          <form onSubmit={submitResult} className="space-y-4">
+            <div className="grid grid-cols-3 gap-3 items-end">
+              <div>
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{scoring.home_team_name}</span>
+                <input required type="number" min="0" value={scoring.home_score ?? 0} onChange={(e) => setScoring({ ...scoring, home_score: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md text-2xl font-display font-black" data-testid="home-score-input" />
+              </div>
+              <div className="text-center font-display text-3xl font-black text-slate-300">vs</div>
+              <div>
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{scoring.away_team_name}</span>
+                <input required type="number" min="0" value={scoring.away_score ?? 0} onChange={(e) => setScoring({ ...scoring, away_score: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md text-2xl font-display font-black" data-testid="away-score-input" />
+              </div>
+            </div>
+            <ScorersEditor scoring={scoring} setScoring={setScoring} teams={teams} />
+            <button className="fsc-btn-red w-full py-2 rounded-md" data-testid="save-result-btn">Guardar resultado</button>
+          </form>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+function ScorersEditor({ scoring, setScoring, teams }) {
+  const [players, setPlayers] = useState([]);
+  useEffect(() => {
+    const ids = [scoring.home_team_id, scoring.away_team_id];
+    Promise.all(ids.map((id) => api.get(`/players?team_id=${id}`))).then((rs) => {
+      setPlayers([...rs[0].data, ...rs[1].data]);
+    });
+  }, [scoring.home_team_id, scoring.away_team_id]);
+
+  const addScorer = () => {
+    setScoring({ ...scoring, scorers: [...(scoring.scorers || []), { player_id: "", team_id: "", minute: 0 }] });
+  };
+
+  const updateScorer = (i, field, val) => {
+    const next = [...(scoring.scorers || [])];
+    next[i] = { ...next[i], [field]: val };
+    if (field === "player_id") {
+      const p = players.find((x) => x.id === val);
+      if (p) next[i].team_id = p.team_id;
+    }
+    setScoring({ ...scoring, scorers: next });
+  };
+
+  const removeScorer = (i) => {
+    const next = [...(scoring.scorers || [])];
+    next.splice(i, 1);
+    setScoring({ ...scoring, scorers: next });
+  };
+
+  return (
+    <div className="border border-slate-200 rounded-md p-3">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Goleadores</span>
+        <button type="button" onClick={addScorer} className="text-xs font-bold text-blue-700">+ Agregar</button>
+      </div>
+      {(scoring.scorers || []).map((s, i) => (
+        <div key={i} className="grid grid-cols-12 gap-2 mb-2">
+          <select value={s.player_id} onChange={(e) => updateScorer(i, "player_id", e.target.value)} className="col-span-8 px-2 py-1 border border-slate-200 rounded text-sm">
+            <option value="">Jugador...</option>
+            {players.map((p) => <option key={p.id} value={p.id}>{p.name} (#{p.jersey_number})</option>)}
+          </select>
+          <input type="number" placeholder="Min" value={s.minute || ""} onChange={(e) => updateScorer(i, "minute", Number(e.target.value))} className="col-span-3 px-2 py-1 border border-slate-200 rounded text-sm" />
+          <button type="button" onClick={() => removeScorer(i)} className="col-span-1 text-red-600">✕</button>
+        </div>
+      ))}
+    </div>
+  );
+}

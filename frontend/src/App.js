@@ -1,53 +1,85 @@
-import { useEffect } from "react";
-import "@/App.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import axios from "axios";
+import "@/index.css";
+import { BrowserRouter, Routes, Route, Outlet, useLocation } from "react-router-dom";
+import { AuthProvider } from "./context/AuthContext";
+import { Toaster } from "sonner";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+import Navbar from "./components/Navbar";
+import Footer from "./components/Footer";
+import ProtectedRoute from "./components/ProtectedRoute";
 
-const Home = () => {
-  const helloWorldApi = async () => {
-    try {
-      const response = await axios.get(`${API}/`);
-      console.log(response.data.message);
-    } catch (e) {
-      console.error(e, `errored out requesting / api`);
-    }
-  };
+import Home from "./pages/Home";
+import Fixture from "./pages/Fixture";
+import Standings from "./pages/Standings";
+import Teams from "./pages/Teams";
+import TeamDetail from "./pages/TeamDetail";
+import Players from "./pages/Players";
+import PlayerDetail from "./pages/PlayerDetail";
+import Bookings from "./pages/Bookings";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import MyBookings from "./pages/MyBookings";
 
-  useEffect(() => {
-    helloWorldApi();
-  }, []);
+import AdminLayout from "./pages/admin/AdminLayout";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminTeams from "./pages/admin/AdminTeams";
+import AdminPlayers from "./pages/admin/AdminPlayers";
+import AdminMatches from "./pages/admin/AdminMatches";
+import AdminInventory from "./pages/admin/AdminInventory";
+import AdminBookings from "./pages/admin/AdminBookings";
+import AdminCarnets from "./pages/admin/AdminCarnets";
 
+function PublicLayout() {
+  const loc = useLocation();
+  const hideChrome = loc.pathname.startsWith("/login") || loc.pathname.startsWith("/registro");
   return (
-    <div>
-      <header className="App-header">
-        <a
-          className="App-link"
-          href="https://emergent.sh"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" />
-        </a>
-        <p className="mt-5">Building something incredible ~!</p>
-      </header>
+    <div className="min-h-screen flex flex-col bg-white">
+      <Navbar />
+      <Toaster position="top-right" />
+      <main className="flex-1">
+        <Outlet />
+      </main>
+      {!hideChrome && <Footer />}
     </div>
   );
-};
+}
 
 function App() {
   return (
-    <div className="App">
+    <AuthProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Home />}>
-            <Route index element={<Home />} />
+          <Route element={<PublicLayout />}>
+            <Route path="/" element={<Home />} />
+            <Route path="/fixture" element={<Fixture />} />
+            <Route path="/posiciones" element={<Standings />} />
+            <Route path="/equipos" element={<Teams />} />
+            <Route path="/equipos/:id" element={<TeamDetail />} />
+            <Route path="/jugadores" element={<Players />} />
+            <Route path="/jugadores/:id" element={<PlayerDetail />} />
+            <Route path="/reservas" element={<Bookings />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/registro" element={<Register />} />
+            <Route
+              path="/mis-reservas"
+              element={<ProtectedRoute><MyBookings /></ProtectedRoute>}
+            />
+          </Route>
+
+          <Route
+            path="/admin"
+            element={<ProtectedRoute role="admin"><AdminLayout /></ProtectedRoute>}
+          >
+            <Route index element={<AdminDashboard />} />
+            <Route path="equipos" element={<AdminTeams />} />
+            <Route path="jugadores" element={<AdminPlayers />} />
+            <Route path="partidos" element={<AdminMatches />} />
+            <Route path="inventario" element={<AdminInventory />} />
+            <Route path="reservas" element={<AdminBookings />} />
+            <Route path="carnets" element={<AdminCarnets />} />
           </Route>
         </Routes>
       </BrowserRouter>
-    </div>
+    </AuthProvider>
   );
 }
 
