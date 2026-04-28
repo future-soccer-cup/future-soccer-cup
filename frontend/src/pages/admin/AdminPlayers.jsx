@@ -3,6 +3,7 @@ import api, { formatApiError } from "../../lib/api";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Modal, Field } from "./AdminTeams";
+import ImageUpload from "../../components/ImageUpload";
 
 const EMPTY = { name: "", team_id: "", jersey_number: 1, position: "Mediocampista", birth_date: "", photo_url: "", document_id: "" };
 
@@ -98,7 +99,7 @@ export default function AdminPlayers() {
               </label>
             </div>
             <Field label="Fecha nacimiento" type="date" value={editing.birth_date} onChange={(v) => setEditing({ ...editing, birth_date: v })} />
-            <Field label="Foto URL" value={editing.photo_url} onChange={(v) => setEditing({ ...editing, photo_url: v })} />
+            <ImageUpload value={editing.photo_url} onChange={(v) => setEditing({ ...editing, photo_url: v })} label="Foto del jugador" testId="admin-player-photo" />
             <Field label="Documento" value={editing.document_id} onChange={(v) => setEditing({ ...editing, document_id: v })} />
             <button className="fsc-btn-primary w-full py-2 rounded-md" data-testid="save-player-btn">Guardar</button>
           </form>

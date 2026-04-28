@@ -17,7 +17,9 @@ export default function Login() {
     try {
       const u = await login(email, password);
       toast.success(`Bienvenido, ${u.name}`);
-      nav(u.role === "admin" ? "/admin" : "/mis-reservas");
+      if (u.role === "admin") nav("/admin");
+      else if (u.role === "team") nav("/mi-equipo");
+      else nav("/mis-reservas");
     } catch (err) {
       toast.error(formatApiError(err.response?.data?.detail) || "Error de autenticación");
     } finally {
@@ -57,7 +59,8 @@ export default function Login() {
             </button>
           </form>
 
-          <p className="mt-6 text-sm text-slate-500">¿No tienes cuenta? <Link to="/registro" className="text-blue-700 font-bold">Crear cuenta</Link></p>
+          <p className="mt-6 text-sm text-slate-500">¿No tienes cuenta? <Link to="/registro" className="text-blue-700 font-bold">Crear cuenta familiar</Link></p>
+          <p className="mt-1 text-sm text-slate-500">¿Eres club o coach? <Link to="/registro-equipo" className="text-red-600 font-bold">Registrar equipo</Link></p>
         </div>
       </div>
     </div>

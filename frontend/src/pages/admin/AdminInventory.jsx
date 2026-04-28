@@ -3,6 +3,7 @@ import api, { formatApiError } from "../../lib/api";
 import { Plus, Trash2, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { Modal, Field } from "./AdminTeams";
+import ImageUpload from "../../components/ImageUpload";
 
 const TABS = [
   { key: "hotels", label: "Hoteles", priceField: "price_per_night", priceLabel: "Precio por noche" },
@@ -103,7 +104,7 @@ export default function AdminInventory() {
             {tab === "tours" && <Field label="Duración" value={editing.duration} onChange={(v) => setEditing({ ...editing, duration: v })} />}
             <Field label={t.priceLabel} type="number" required value={editing[t.priceField]} onChange={(v) => setEditing({ ...editing, [t.priceField]: v })} />
             {(tab === "hotels" || tab === "transports") && <Field label="Capacidad" type="number" value={editing.capacity} onChange={(v) => setEditing({ ...editing, capacity: v })} />}
-            <Field label="Imagen URL" value={editing.image_url} onChange={(v) => setEditing({ ...editing, image_url: v })} />
+            <ImageUpload value={editing.image_url} onChange={(v) => setEditing({ ...editing, image_url: v })} label="Imagen" testId="inventory-image-upload" />
             <button className="fsc-btn-primary w-full py-2 rounded-md">Guardar</button>
           </form>
         </Modal>

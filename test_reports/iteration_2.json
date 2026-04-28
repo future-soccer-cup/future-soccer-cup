@@ -1,0 +1,51 @@
+{
+  "summary": "Iteration 2 testing of new features (team self-registration, image upload via Emergent Object Storage, age categories, role-scoped permissions). Backend: 44/44 pytest tests pass = 24 regression (auth, teams, players, matches, standings, scorers, inventory, bookings) + 20 new (categories endpoint, register-team, /auth/me team_id, team-vs-team RBAC on teams & players, inventory still admin-only, /upload auth+mime+size, /api/files public serving). Image upload to Emergent Object Storage works end-to-end (uploaded 1x1 PNG, retrieved via public /api/files/... URL with correct content-type, byte-for-byte identical). Frontend: /registro-equipo loads, categories dropdown populated correctly with [Sub-8, Sub-10, Sub-12, Sub-14, Sub-16, Sub-18], team registration redirects to /mi-equipo, MyTeam page renders team info, Edit Team modal includes CategorySelect + ImageUpload, AdminTeams/AdminPlayers/AdminInventario all use CategorySelect & ImageUpload widgets, admin login redirects to /admin, anonymous /mi-equipo redirects to /login (ProtectedRoute working), no page-level JS errors.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "PUT /api/players/{id}", "issue": "When team manager edits their own player, the body still requires team_id in payload (PlayerIn). If a malicious team passes their own team_id but tries to move another team's player, the check at line 515 catches it (existing.team_id != user.team_id), but the same endpoint will 403 if a team manager tries to *change* team_id for their own player to something else. Acceptable by design but worth documenting."},
+      {"endpoint": "/api/files/{path:path}", "issue": "Every request hits Mongo for record lookup AND a remote GET to the object-storage endpoint - no caching or Cache-Control headers. On a public images page this could be slow / costly."},
+      {"endpoint": "/api/upload", "issue": "5MB limit applied AFTER reading entire body into memory. Large files still consume memory before being rejected. Consider streaming or reading chunked."},
+      {"endpoint": "/api/auth/register-team", "issue": "If db.users insert fails after db.teams insert succeeds (e.g., duplicate index race), the team document is orphaned with no rollback."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "ImageUpload preview", "issue": "When value starts with /api/, preview src is built using API_BASE.replace(/\\/api$/, '') from lib/api. If REACT_APP_BACKEND_URL ends with /api the slice works; otherwise prefix may be doubled. Currently same-origin so /api/files/... resolves through ingress and works.", "affected_selectors": ["[data-testid$='-image-upload'] img"]}
+    ],
+    "design_issues": [
+      {"screen": "/registro-equipo", "issues": ["Helper text below logo upload says 'Para subir imagen necesitas iniciar sesión primero' which is correct (upload requires auth) but somewhat confusing on a registration page - users can only attach a logo AFTER registering. Consider hiding the ImageUpload until after registration or making it optional with clearer copy."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/backend/tests/test_new_features.py",
+    "/app/test_reports/pytest/iteration_2_regression.xml",
+    "/app/test_reports/pytest/iteration_2_new_features.xml"
+  ],
+  "action_items": [
+    "Optional: add Cache-Control headers to /api/files/{path} responses for public images.",
+    "Optional: clarify or hide logo upload on /registro-equipo (upload requires existing auth; users can add logo after first login from /mi-equipo).",
+    "Optional: roll back team insert if user insert fails in /auth/register-team.",
+    "Carry-over from iter1 (still relevant): server.py is now 875 lines (>700 threshold) - split into routers (auth/teams/players/matches/inventory/bookings/uploads)."
+  ],
+  "critical_code_review_comments": [
+    "server.py grew from 691 to 875 lines after adding storage + new endpoints. Past the 700-line threshold; modularize into routers/services.",
+    "Object storage init keeps a module-level _storage_key cache; first request after server start triggers init lazily AND startup also calls init_storage(). On 403 the code refreshes once but propagates raise_for_status() - missing storage will surface as 5xx to the user.",
+    "MIME whitelist hard-codes only 5 extensions but /api/upload accepts file.content_type from client. Consider validating content_type independently.",
+    "/api/files/{path:path} is intentionally unauthenticated. Path is whitelisted by the db.files lookup so direct enumeration of arbitrary storage paths is blocked - good. However, anyone with the URL can fetch it forever; consider TTL signed URLs for sensitive uploads later.",
+    "register-team does NOT check/enforce that manager_user_id is unique; a single user can manage one team because the unique index is on email, but team.manager_user_id has no index/uniqueness."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_new_features.py"
+  ],
+  "success_rate": {"backend": "100% (44/44 - 24 regression + 20 new)", "frontend": "100% on flows tested (registration redirect, MyTeam render, CategorySelect & ImageUpload presence on all admin pages, RBAC redirects)"},
+  "test_credentials": "admin@futuresoccercup.com / FSCAdmin2025! (verified). Team accounts: created on-demand via /api/auth/register-team (test_team_<rand>@test.com / Team2025!). Family accounts: test_family_<rand>@test.com / Familia2025!.",
+  "seed_data_creation": "Multiple TEST_-prefixed teams + players auto-created and auto-cleaned by pytest cleanup fixture. One image was uploaded to Emergent Object Storage during test_upload_and_serve_image and persists (1x1 PNG, harmless).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend test suite split into 2 files: /app/backend/tests/backend_test.py (regression, 24 tests) and /app/backend/tests/test_new_features.py (iteration 2, 20 tests). Run both: `pytest /app/backend/tests/ -v --junitxml=/app/test_reports/pytest/results.xml`. Both pass with admin creds from /app/memory/test_credentials.md. New routes: /registro-equipo (TeamRegister), /mi-equipo (MyTeam protected by role=team). Key data-testids: tr-manager, tr-email, tr-password, tr-team-name, tr-category, tr-coach, tr-city, tr-submit, my-team-page, edit-team-btn, save-team-btn, add-player-btn, save-player-btn, player-name-input, player-jersey-input, category-select, *-image-upload, *-image-upload-btn, *-image-upload-input. ImageUpload posts multipart to /api/upload (auth required), returns {url: '/api/files/...'} which can drop into <img src> via same-origin ingress proxy. Object storage uses EMERGENT_LLM_KEY from backend/.env.",
+  "rca of the issue": "N/A - all features working as specified. No blockers."
+}

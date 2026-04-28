@@ -10,13 +10,82 @@ import uuid
 import bcrypt
 import jwt
 import secrets
+import requests
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional, Literal
 
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Response, Query
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Response, Query, UploadFile, File
+from fastapi.responses import Response as FastAPIResponse
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field, EmailStr
+
+# -------------------- Categories --------------------
+CATEGORIES = ["Sub-8", "Sub-10", "Sub-12", "Sub-14", "Sub-16", "Sub-18"]
+
+# -------------------- Object Storage --------------------
+STORAGE_URL = "https://integrations.emergentagent.com/objstore/api/v1/storage"
+APP_NAME = os.environ.get("APP_NAME", "future-soccer-cup")
+_storage_key: Optional[str] = None
+
+def init_storage() -> Optional[str]:
+    global _storage_key
+    if _storage_key:
+        return _storage_key
+    key = os.environ.get("EMERGENT_LLM_KEY")
+    if not key:
+        return None
+    try:
+        resp = requests.post(f"{STORAGE_URL}/init", json={"emergent_key": key}, timeout=30)
+        resp.raise_for_status()
+        _storage_key = resp.json()["storage_key"]
+        return _storage_key
+    except Exception as e:
+        logging.error(f"Storage init failed: {e}")
+        return None
+
+def put_object(path: str, data: bytes, content_type: str) -> dict:
+    key = init_storage()
+    if not key:
+        raise HTTPException(status_code=503, detail="Almacenamiento no disponible")
+    resp = requests.put(
+        f"{STORAGE_URL}/objects/{path}",
+        headers={"X-Storage-Key": key, "Content-Type": content_type},
+        data=data, timeout=120,
+    )
+    if resp.status_code == 403:
+        # refresh key
+        global _storage_key
+        _storage_key = None
+        key = init_storage()
+        resp = requests.put(
+            f"{STORAGE_URL}/objects/{path}",
+            headers={"X-Storage-Key": key, "Content-Type": content_type},
+            data=data, timeout=120,
+        )
+    resp.raise_for_status()
+    return resp.json()
+
+def get_object(path: str):
+    key = init_storage()
+    if not key:
+        raise HTTPException(status_code=503, detail="Almacenamiento no disponible")
+    resp = requests.get(
+        f"{STORAGE_URL}/objects/{path}",
+        headers={"X-Storage-Key": key}, timeout=60,
+    )
+    if resp.status_code == 403:
+        global _storage_key
+        _storage_key = None
+        key = init_storage()
+        resp = requests.get(
+            f"{STORAGE_URL}/objects/{path}",
+            headers={"X-Storage-Key": key}, timeout=60,
+        )
+    resp.raise_for_status()
+    return resp.content, resp.headers.get("Content-Type", "application/octet-stream")
+
+MIME = {"jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "gif": "image/gif", "webp": "image/webp"}
 
 # -------------------- Setup --------------------
 mongo_url = os.environ['MONGO_URL']
@@ -59,8 +128,8 @@ def create_refresh_token(user_id: str) -> str:
     return jwt.encode(payload, get_jwt_secret(), algorithm=JWT_ALGORITHM)
 
 def set_auth_cookies(response: Response, access: str, refresh: str):
-    response.set_cookie("access_token", access, httponly=True, secure=False, samesite="lax", max_age=3600, path="/")
-    response.set_cookie("refresh_token", refresh, httponly=True, secure=False, samesite="lax", max_age=604800, path="/")
+    response.set_cookie("access_token", access, httponly=True, secure=True, samesite="none", max_age=3600, path="/")
+    response.set_cookie("refresh_token", refresh, httponly=True, secure=True, samesite="none", max_age=604800, path="/")
 
 async def get_current_user(request: Request) -> dict:
     token = request.cookies.get("access_token")
@@ -88,11 +157,28 @@ async def require_admin(user: dict = Depends(get_current_user)) -> dict:
         raise HTTPException(status_code=403, detail="Solo administradores")
     return user
 
+async def require_admin_or_team(user: dict = Depends(get_current_user)) -> dict:
+    if user.get("role") not in ("admin", "team"):
+        raise HTTPException(status_code=403, detail="Solo administradores o equipos")
+    return user
+
 # -------------------- Models --------------------
 class RegisterIn(BaseModel):
     email: EmailStr
     password: str = Field(min_length=6)
     name: str = Field(min_length=1)
+
+class TeamRegisterIn(BaseModel):
+    # Team manager + team info, all in one payload
+    email: EmailStr
+    password: str = Field(min_length=6)
+    manager_name: str = Field(min_length=1)
+    team_name: str = Field(min_length=1)
+    category: str
+    coach: Optional[str] = ""
+    city: Optional[str] = ""
+    logo_url: Optional[str] = ""
+    color: Optional[str] = "#1d4ed8"
 
 class LoginIn(BaseModel):
     email: EmailStr
@@ -238,6 +324,46 @@ async def register(payload: RegisterIn, response: Response):
     set_auth_cookies(response, access, refresh)
     return {"id": user["id"], "email": user["email"], "name": user["name"], "role": user["role"]}
 
+@api.post("/auth/register-team")
+async def register_team(payload: TeamRegisterIn, response: Response):
+    email = payload.email.lower()
+    if payload.category not in CATEGORIES:
+        raise HTTPException(status_code=400, detail=f"Categoría inválida. Use: {', '.join(CATEGORIES)}")
+    if await db.users.find_one({"email": email}):
+        raise HTTPException(status_code=400, detail="El correo ya está registrado")
+
+    user_id = str(uuid.uuid4())
+    team_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+
+    team_doc = {
+        "id": team_id,
+        "name": payload.team_name,
+        "category": payload.category,
+        "coach": payload.coach or "",
+        "city": payload.city or "",
+        "logo_url": payload.logo_url or "",
+        "color": payload.color or "#1d4ed8",
+        "manager_user_id": user_id,
+        "created_at": now,
+    }
+    user_doc = {
+        "id": user_id,
+        "email": email,
+        "name": payload.manager_name,
+        "role": "team",
+        "team_id": team_id,
+        "password_hash": hash_password(payload.password),
+        "created_at": now,
+    }
+    await db.teams.insert_one(team_doc)
+    await db.users.insert_one(user_doc)
+
+    access = create_access_token(user_id, email, "team")
+    refresh = create_refresh_token(user_id)
+    set_auth_cookies(response, access, refresh)
+    return {"id": user_id, "email": email, "name": payload.manager_name, "role": "team", "team_id": team_id}
+
 @api.post("/auth/login")
 async def login(payload: LoginIn, request: Request, response: Response):
     email = payload.email.lower()
@@ -268,7 +394,7 @@ async def login(payload: LoginIn, request: Request, response: Response):
     access = create_access_token(user["id"], user["email"], user["role"])
     refresh = create_refresh_token(user["id"])
     set_auth_cookies(response, access, refresh)
-    return {"id": user["id"], "email": user["email"], "name": user["name"], "role": user["role"]}
+    return {"id": user["id"], "email": user["email"], "name": user["name"], "role": user["role"], "team_id": user.get("team_id")}
 
 @api.post("/auth/logout")
 async def logout(response: Response):
@@ -278,7 +404,7 @@ async def logout(response: Response):
 
 @api.get("/auth/me")
 async def me(user: dict = Depends(get_current_user)):
-    return {"id": user["id"], "email": user["email"], "name": user["name"], "role": user["role"]}
+    return {"id": user["id"], "email": user["email"], "name": user["name"], "role": user["role"], "team_id": user.get("team_id")}
 
 @api.post("/auth/refresh")
 async def refresh_token(request: Request, response: Response):
@@ -293,7 +419,7 @@ async def refresh_token(request: Request, response: Response):
         if not user:
             raise HTTPException(status_code=401, detail="Usuario no encontrado")
         access = create_access_token(user["id"], user["email"], user["role"])
-        response.set_cookie("access_token", access, httponly=True, secure=False, samesite="lax", max_age=3600, path="/")
+        response.set_cookie("access_token", access, httponly=True, secure=True, samesite="none", max_age=3600, path="/")
         return {"ok": True}
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Refresh expirado")
@@ -318,6 +444,8 @@ async def get_team(team_id: str):
 
 @api.post("/teams", response_model=TeamOut)
 async def create_team(payload: TeamIn, _: dict = Depends(require_admin)):
+    if payload.category not in CATEGORIES:
+        raise HTTPException(status_code=400, detail=f"Categoría inválida. Use: {', '.join(CATEGORIES)}")
     doc = payload.model_dump()
     doc["id"] = str(uuid.uuid4())
     doc["created_at"] = datetime.now(timezone.utc).isoformat()
@@ -326,7 +454,14 @@ async def create_team(payload: TeamIn, _: dict = Depends(require_admin)):
     return doc
 
 @api.put("/teams/{team_id}", response_model=TeamOut)
-async def update_team(team_id: str, payload: TeamIn, _: dict = Depends(require_admin)):
+async def update_team(team_id: str, payload: TeamIn, user: dict = Depends(get_current_user)):
+    if user.get("role") == "team":
+        if user.get("team_id") != team_id:
+            raise HTTPException(status_code=403, detail="Solo puedes editar tu propio equipo")
+    elif user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="No autorizado")
+    if payload.category not in CATEGORIES:
+        raise HTTPException(status_code=400, detail=f"Categoría inválida. Use: {', '.join(CATEGORIES)}")
     res = await db.teams.update_one({"id": team_id}, {"$set": payload.model_dump()})
     if res.matched_count == 0:
         raise HTTPException(status_code=404, detail="Equipo no encontrado")
@@ -358,10 +493,12 @@ async def get_player(player_id: str):
     return p
 
 @api.post("/players", response_model=PlayerOut)
-async def create_player(payload: PlayerIn, _: dict = Depends(require_admin)):
+async def create_player(payload: PlayerIn, user: dict = Depends(require_admin_or_team)):
     team = await db.teams.find_one({"id": payload.team_id})
     if not team:
         raise HTTPException(status_code=400, detail="Equipo inválido")
+    if user["role"] == "team" and user.get("team_id") != payload.team_id:
+        raise HTTPException(status_code=403, detail="Solo puedes agregar jugadores a tu propio equipo")
     doc = payload.model_dump()
     doc["id"] = str(uuid.uuid4())
     doc["created_at"] = datetime.now(timezone.utc).isoformat()
@@ -370,18 +507,25 @@ async def create_player(payload: PlayerIn, _: dict = Depends(require_admin)):
     return doc
 
 @api.put("/players/{player_id}", response_model=PlayerOut)
-async def update_player(player_id: str, payload: PlayerIn, _: dict = Depends(require_admin)):
-    res = await db.players.update_one({"id": player_id}, {"$set": payload.model_dump()})
-    if res.matched_count == 0:
+async def update_player(player_id: str, payload: PlayerIn, user: dict = Depends(require_admin_or_team)):
+    existing = await db.players.find_one({"id": player_id}, {"_id": 0})
+    if not existing:
         raise HTTPException(status_code=404, detail="Jugador no encontrado")
+    if user["role"] == "team":
+        if user.get("team_id") != existing["team_id"] or payload.team_id != existing["team_id"]:
+            raise HTTPException(status_code=403, detail="Solo puedes editar jugadores de tu propio equipo")
+    await db.players.update_one({"id": player_id}, {"$set": payload.model_dump()})
     p = await db.players.find_one({"id": player_id}, {"_id": 0})
     return p
 
 @api.delete("/players/{player_id}")
-async def delete_player(player_id: str, _: dict = Depends(require_admin)):
-    res = await db.players.delete_one({"id": player_id})
-    if res.deleted_count == 0:
+async def delete_player(player_id: str, user: dict = Depends(require_admin_or_team)):
+    existing = await db.players.find_one({"id": player_id}, {"_id": 0})
+    if not existing:
         raise HTTPException(status_code=404, detail="Jugador no encontrado")
+    if user["role"] == "team" and user.get("team_id") != existing["team_id"]:
+        raise HTTPException(status_code=403, detail="Solo puedes eliminar jugadores de tu propio equipo")
+    await db.players.delete_one({"id": player_id})
     return {"ok": True}
 
 # -------------------- Tournaments --------------------
@@ -622,6 +766,44 @@ async def update_booking_status(bid: str, status: str, _: dict = Depends(require
 async def root():
     return {"app": "Future Soccer Cup", "ok": True}
 
+@api.get("/categories")
+async def list_categories():
+    return CATEGORIES
+
+# -------------------- Uploads --------------------
+@api.post("/upload")
+async def upload_file(file: UploadFile = File(...), user: dict = Depends(get_current_user)):
+    ext = (file.filename.rsplit(".", 1)[-1] if "." in (file.filename or "") else "bin").lower()
+    if ext not in MIME:
+        raise HTTPException(status_code=400, detail="Solo se aceptan imágenes (jpg, jpeg, png, gif, webp)")
+    data = await file.read()
+    if len(data) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Imagen mayor a 5MB")
+    storage_path = f"{APP_NAME}/uploads/{user['id']}/{uuid.uuid4()}.{ext}"
+    content_type = file.content_type or MIME[ext]
+    result = put_object(storage_path, data, content_type)
+    file_id = str(uuid.uuid4())
+    await db.files.insert_one({
+        "id": file_id,
+        "storage_path": result["path"],
+        "original_filename": file.filename,
+        "content_type": content_type,
+        "size": result.get("size", len(data)),
+        "user_id": user["id"],
+        "is_deleted": False,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+    # Return a URL the frontend can drop directly into <img src>
+    return {"id": file_id, "url": f"/api/files/{result['path']}", "path": result["path"]}
+
+@api.get("/files/{path:path}")
+async def serve_file(path: str):
+    record = await db.files.find_one({"storage_path": path, "is_deleted": False}, {"_id": 0})
+    if not record:
+        raise HTTPException(status_code=404, detail="Archivo no encontrado")
+    data, ct = get_object(path)
+    return FastAPIResponse(content=data, media_type=record.get("content_type", ct))
+
 # -------------------- Startup --------------------
 async def seed_admin():
     admin_email = os.environ.get("ADMIN_EMAIL", "admin@example.com")
@@ -667,9 +849,11 @@ async def on_startup():
     await db.players.create_index("id", unique=True)
     await db.matches.create_index("id", unique=True)
     await db.bookings.create_index("id", unique=True)
+    await db.files.create_index("storage_path")
     await db.login_attempts.create_index("identifier")
     await seed_admin()
     await seed_demo_inventory()
+    init_storage()
 
 @app.on_event("shutdown")
 async def shutdown():

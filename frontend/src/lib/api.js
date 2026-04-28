@@ -24,3 +24,11 @@ export function formatApiError(detail) {
   if (detail && typeof detail.msg === "string") return detail.msg;
   return String(detail);
 }
+
+/** Resolve any URL: pass-through full URLs, prefix relative /api/files paths with backend host. */
+export function imgSrc(url) {
+  if (!url) return "";
+  if (url.startsWith("http")) return url;
+  if (url.startsWith("/api/")) return `${BACKEND_URL}${url}`;
+  return url;
+}

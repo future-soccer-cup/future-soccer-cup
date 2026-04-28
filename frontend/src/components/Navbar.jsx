@@ -22,6 +22,9 @@ export default function Navbar() {
     navigate("/");
   };
 
+  const myAreaLink =
+    user?.role === "team" ? { to: "/mi-equipo", label: "Mi equipo" } : { to: "/mis-reservas", label: user?.name || "Cuenta" };
+
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-slate-200" data-testid="main-navbar">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -59,11 +62,11 @@ export default function Navbar() {
                 </Link>
               )}
               <Link
-                to="/mis-reservas"
-                data-testid="my-bookings-link"
+                to={myAreaLink.to}
+                data-testid="my-area-link"
                 className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-700 hover:text-blue-700"
               >
-                <UserCircle2 size={16} /> {user.name}
+                <UserCircle2 size={16} /> {myAreaLink.label}
               </Link>
               <button
                 onClick={handleLogout}
@@ -122,7 +125,7 @@ export default function Navbar() {
                 {user.role === "admin" && (
                   <Link to="/admin" onClick={() => setOpen(false)} className="px-3 py-2 text-sm font-bold uppercase tracking-wide text-red-600">Admin</Link>
                 )}
-                <Link to="/mis-reservas" onClick={() => setOpen(false)} className="px-3 py-2 text-sm font-bold uppercase tracking-wide text-slate-700">Mis reservas</Link>
+                <Link to={myAreaLink.to} onClick={() => setOpen(false)} className="px-3 py-2 text-sm font-bold uppercase tracking-wide text-slate-700">{myAreaLink.label}</Link>
                 <button onClick={handleLogout} className="text-left px-3 py-2 text-sm font-bold uppercase tracking-wide text-slate-500">Salir</button>
               </>
             ) : (

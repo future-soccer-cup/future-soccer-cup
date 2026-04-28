@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import api, { formatApiError } from "../../lib/api";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import ImageUpload from "../../components/ImageUpload";
+import CategorySelect from "../../components/CategorySelect";
 
 const EMPTY = { name: "", category: "Sub-12", coach: "", city: "", logo_url: "", color: "#1d4ed8" };
 
@@ -79,10 +81,10 @@ export default function AdminTeams() {
         <Modal onClose={() => setEditing(null)} title={editing.id ? "Editar equipo" : "Nuevo equipo"}>
           <form onSubmit={save} className="space-y-3">
             <Field label="Nombre" required value={editing.name} onChange={(v) => setEditing({ ...editing, name: v })} />
-            <Field label="Categoría" value={editing.category} onChange={(v) => setEditing({ ...editing, category: v })} />
+            <CategorySelect required value={editing.category} onChange={(v) => setEditing({ ...editing, category: v })} />
             <Field label="Ciudad" value={editing.city} onChange={(v) => setEditing({ ...editing, city: v })} />
             <Field label="DT" value={editing.coach} onChange={(v) => setEditing({ ...editing, coach: v })} />
-            <Field label="Logo URL" value={editing.logo_url} onChange={(v) => setEditing({ ...editing, logo_url: v })} />
+            <ImageUpload value={editing.logo_url} onChange={(v) => setEditing({ ...editing, logo_url: v })} label="Escudo" testId="team-logo-upload" />
             <Field label="Color (hex)" value={editing.color} onChange={(v) => setEditing({ ...editing, color: v })} />
             <button className="fsc-btn-primary w-full py-2 rounded-md" data-testid="save-team-btn">Guardar</button>
           </form>

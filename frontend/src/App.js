@@ -18,6 +18,8 @@ import Bookings from "./pages/Bookings";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import MyBookings from "./pages/MyBookings";
+import TeamRegister from "./pages/TeamRegister";
+import MyTeam from "./pages/MyTeam";
 
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -59,6 +61,11 @@ function App() {
             <Route path="/reservas" element={<Bookings />} />
             <Route path="/login" element={<Login />} />
             <Route path="/registro" element={<Register />} />
+            <Route path="/registro-equipo" element={<TeamRegister />} />
+            <Route
+              path="/mi-equipo"
+              element={<ProtectedRoute role="team"><MyTeam /></ProtectedRoute>}
+            />
             <Route
               path="/mis-reservas"
               element={<ProtectedRoute><MyBookings /></ProtectedRoute>}

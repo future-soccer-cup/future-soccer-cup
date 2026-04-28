@@ -30,7 +30,8 @@ export default function Footer() {
             <li><a href="/reservas" className="hover:text-white">Hoteles</a></li>
             <li><a href="/reservas" className="hover:text-white">Transporte</a></li>
             <li><a href="/reservas" className="hover:text-white">Tours</a></li>
-            <li><a href="/registro" className="hover:text-white">Crear cuenta</a></li>
+            <li><a href="/registro" className="hover:text-white">Cuenta familiar</a></li>
+            <li><a href="/registro-equipo" className="hover:text-white">Registrar equipo</a></li>
           </ul>
         </div>
 

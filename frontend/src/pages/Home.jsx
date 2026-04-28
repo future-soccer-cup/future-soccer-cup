@@ -121,7 +121,10 @@ export default function Home() {
               Reserva hoteles cercanos a las sedes, transporte directo a los partidos y tours por la ciudad. Todo desde un solo lugar.
             </p>
             <Link to="/registro" className="mt-6 inline-block fsc-btn-red px-6 py-3 rounded-md text-sm" data-testid="cta-register-btn">
-              Crear cuenta gratis
+              Crear cuenta familiar
+            </Link>
+            <Link to="/registro-equipo" className="mt-3 ml-3 inline-block fsc-btn-primary px-6 py-3 rounded-md text-sm" data-testid="cta-register-team-btn">
+              Registrar equipo
             </Link>
           </div>
           <div className="grid grid-cols-2 gap-4">
