@@ -30,17 +30,20 @@ Aplicación versátil para una empresa que organiza eventos de fútbol infantil 
 - Carnets oficiales: tarjeta dark-mode con logo FSC, foto, dorsal, equipo, categoría, doc, fecha nac. y QR enlazando al perfil; vista individual e impresión masiva en `/admin/carnets`.
 - Páginas públicas con diseño Swiss + Performance Pro (hero alto contraste, tablas densas, chips de filtros).
 
+## Iteration 2 (2026-02-28)
+- **Registro de equipos**: nuevo rol `team` con endpoint `/api/auth/register-team` que crea usuario + equipo en una sola llamada. Página `/registro-equipo`.
+- **Dashboard de equipos** `/mi-equipo`: el responsable edita los datos de su club y administra (CRUD) sus jugadores. RBAC en backend (un team solo puede tocar su propio team_id y sus jugadores).
+- **Categorías por edad** enforced: enum `[Sub-8, Sub-10, Sub-12, Sub-14, Sub-16, Sub-18]` con endpoint `/api/categories` y dropdown reutilizable `CategorySelect` en todos los formularios.
+- **Subida de imágenes**: integración con Emergent Object Storage. Endpoint `/api/upload` (auth) + `/api/files/{path}` público para servir; componente `ImageUpload` reemplaza los inputs de URL en admin (equipos, jugadores, hoteles, transportes, tours) y en `/mi-equipo`. Foto de jugador, escudos y portadas de hoteles/transportes/tours ahora se cargan desde el dispositivo.
+- **CORS**: ajustado a orígenes explícitos + cookies SameSite=None/Secure para soportar cross-origin con credenciales.
+
 ## Backlog (P0/P1/P2)
-- **P1**: Subida de imágenes (logos de equipos, fotos de jugadores) vía object storage en lugar de URLs externas.
-- **P1**: Registrar tarjetas (amarillas/rojas) y asistencias en partidos para enriquecer estadísticas.
 - **P1**: Recuperación de contraseña (forgot/reset).
-- **P2**: Notificaciones por email a familias cuando una reserva cambia de estado.
+- **P1**: Tarjetas (amarillas/rojas) y asistencias en partidos.
+- **P2**: Notificaciones por email a familias y a equipos cuando cambia estado/fixture.
 - **P2**: Pagos en línea (Stripe) para confirmar reservas automáticamente.
 - **P2**: Vista de bracket (eliminación) automatizada para fases finales.
-- **P2**: Multi-torneo simultáneo con landing dedicada por torneo.
-
-## Test Credentials
-Ver `/app/memory/test_credentials.md`.
+- **P2**: Cache-Control en `/api/files` para imágenes públicas.
 
 ## Last Test Run
-- iteration_1: 24/24 backend pytest passing; frontend smoke OK. Sin issues bloqueantes.
+- iteration_2: 44/44 backend pytest passing (24 regression + 20 nuevos). Frontend: 100% en flujos verificados (registro de equipo, mi equipo, ImageUpload + CategorySelect en admin). Sin issues bloqueantes.

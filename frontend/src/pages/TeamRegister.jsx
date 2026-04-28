@@ -4,7 +4,6 @@ import { useAuth } from "../context/AuthContext";
 import api, { formatApiError, FSC_LOGO } from "../lib/api";
 import { toast, Toaster } from "sonner";
 import CategorySelect from "../components/CategorySelect";
-import ImageUpload from "../components/ImageUpload";
 
 const EMPTY = {
   email: "", password: "", manager_name: "",
@@ -75,8 +74,7 @@ export default function TeamRegister() {
               </label>
             </div>
             <div className="mt-3">
-              <ImageUpload value={form.logo_url} onChange={(v) => upd("logo_url", v)} label="Escudo del equipo" testId="tr-logo-upload" />
-              <p className="text-[11px] text-slate-400 mt-1">Para subir imagen necesitas iniciar sesión primero. También puedes editar luego desde "Mi equipo".</p>
+              <p className="text-[11px] text-slate-400">Podrás subir el escudo del equipo después de iniciar sesión, desde "Mi equipo".</p>
             </div>
           </div>
 
