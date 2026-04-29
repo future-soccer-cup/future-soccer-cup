@@ -45,5 +45,12 @@ Aplicación versátil para una empresa que organiza eventos de fútbol infantil 
 - **P2**: Vista de bracket (eliminación) automatizada para fases finales.
 - **P2**: Cache-Control en `/api/files` para imágenes públicas.
 
+## Iteration 3 (2026-04-29) — Fixture engine
+- **Modelo extendido**: `Team.birth_year` (opcional, ej. 2014) y `Team.group_name` (Grupo A / Unigrupo); `Match.matchday` (jornada).
+- **Juego Limpio (J.L)**: nuevo campo `home_fair_play` / `away_fair_play` en resultados; columna J.L en tabla pública con desempate Pts → DG → GF → J.L.
+- **Generador automático de fixture** (`POST /api/fixtures/generate`): round-robin con método circle, alternancia local/visitante por jornada, soporte de número impar de equipos (DESCANSA por ronda), distribución cíclica de canchas y horarios. Modos preview / save.
+- **UI nueva** (`/admin/generador-fixture`): elige categoría → filtra equipos → marca participantes → define inicio, días entre jornadas, lista de canchas y de horarios → vista previa con tabla de partidos + descansos por ronda → botón Guardar.
+- **Filtro por jornada** en `/fixture` público (chips F1, F2, F3...).
+
 ## Last Test Run
-- iteration_2: 44/44 backend pytest passing (24 regression + 20 nuevos). Frontend: 100% en flujos verificados (registro de equipo, mi equipo, ImageUpload + CategorySelect en admin). Sin issues bloqueantes.
+- iteration_3: 55/55 pytest backend pass (44 regresión + 11 nuevos generator). Frontend retesteado tras corregir 2 wirings menores (route + chips); todas las pantallas y flujos críticos verificados.

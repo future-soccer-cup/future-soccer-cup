@@ -45,7 +45,7 @@ export default function Fixture() {
         <h1 className="font-display text-5xl md:text-6xl font-black uppercase tracking-tighter">Fixture</h1>
       </div>
 
-      <div className="flex flex-wrap gap-2 mb-8">
+      <div className="flex flex-wrap gap-2 mb-4">
         <button
           onClick={() => setFilter("")}
           data-testid="filter-all"
@@ -64,6 +64,18 @@ export default function Fixture() {
           </button>
         ))}
       </div>
+
+      {matchdays.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-8 items-center">
+          <span className="text-[10px] uppercase tracking-[0.25em] font-bold text-slate-500">Jornada:</span>
+          <button onClick={() => setMatchdayFilter("")} data-testid="matchday-all" className={`px-3 py-1 text-xs font-bold uppercase tracking-wide rounded border ${!matchdayFilter ? "bg-red-600 text-white border-red-600" : "bg-white text-slate-600 border-slate-200"}`}>Todas</button>
+          {matchdays.map((md) => (
+            <button key={md} onClick={() => setMatchdayFilter(String(md))} data-testid={`matchday-${md}`} className={`px-3 py-1 text-xs font-bold uppercase tracking-wide rounded border ${matchdayFilter === String(md) ? "bg-red-600 text-white border-red-600" : "bg-white text-slate-600 border-slate-200"}`}>
+              F{md}
+            </button>
+          ))}
+        </div>
+      )}
 
       {loading && <div className="text-center text-slate-500 py-16">Cargando partidos...</div>}
 

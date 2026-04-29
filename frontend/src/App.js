@@ -81,6 +81,7 @@ function App() {
             <Route path="equipos" element={<AdminTeams />} />
             <Route path="jugadores" element={<AdminPlayers />} />
             <Route path="partidos" element={<AdminMatches />} />
+            <Route path="generador-fixture" element={<AdminFixtureGenerator />} />
             <Route path="inventario" element={<AdminInventory />} />
             <Route path="reservas" element={<AdminBookings />} />
             <Route path="carnets" element={<AdminCarnets />} />
