@@ -59,19 +59,23 @@ export default function Standings() {
                   <th className="px-2 py-2">GF</th>
                   <th className="px-2 py-2">GC</th>
                   <th className="px-2 py-2">DG</th>
+                  <th className="px-2 py-2 text-emerald-700" title="Juego Limpio">J.L</th>
                   <th className="px-2 py-2 text-blue-700">Pts</th>
                 </tr>
               </thead>
               <tbody>
-                {loading && <tr><td colSpan="10" className="text-center py-12 text-slate-400">Cargando...</td></tr>}
-                {!loading && rows.length === 0 && <tr><td colSpan="10" className="text-center py-12 text-slate-400">Sin datos aún</td></tr>}
+                {loading && <tr><td colSpan="11" className="text-center py-12 text-slate-400">Cargando...</td></tr>}
+                {!loading && rows.length === 0 && <tr><td colSpan="11" className="text-center py-12 text-slate-400">Sin datos aún</td></tr>}
                 {rows.map((r, i) => (
                   <tr key={r.team_id} className="border-t border-slate-100 hover:bg-slate-50">
                     <td className="px-3 py-2 font-display font-black text-slate-400">{i + 1}</td>
                     <td className="px-3 py-2">
                       <div className="flex items-center gap-2">
                         {r.team_logo ? <img src={r.team_logo} alt="" className="h-6 w-6 object-contain" /> : <div className="h-6 w-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-[10px] font-bold">{r.team_name[0]}</div>}
-                        <span className="font-semibold">{r.team_name}</span>
+                        <div>
+                          <span className="font-semibold">{r.team_name}</span>
+                          {r.group_name && <span className="ml-2 text-[10px] uppercase tracking-wider text-slate-400">{r.group_name}</span>}
+                        </div>
                       </div>
                     </td>
                     <td className="text-center tabular-nums">{r.played}</td>
@@ -81,12 +85,14 @@ export default function Standings() {
                     <td className="text-center tabular-nums">{r.gf}</td>
                     <td className="text-center tabular-nums">{r.ga}</td>
                     <td className="text-center tabular-nums">{r.gd > 0 ? `+${r.gd}` : r.gd}</td>
+                    <td className="text-center tabular-nums text-emerald-700 font-semibold">{r.fair_play || 0}</td>
                     <td className="text-center tabular-nums font-display text-lg font-black text-blue-700">{r.points}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+          <p className="mt-2 text-[11px] text-slate-400">Desempate: Puntos → Diferencia de gol → Goles a favor → Juego Limpio (J.L)</p>
         </div>
 
         <div>

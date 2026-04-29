@@ -192,11 +192,13 @@ class UserOut(BaseModel):
 
 class TeamIn(BaseModel):
     name: str
-    category: str  # e.g., Sub-10, Sub-12
+    category: str  # Sub-8, Sub-10, etc.
+    birth_year: Optional[int] = None  # Año de nacimiento (ej. 2014)
     coach: Optional[str] = ""
     city: Optional[str] = ""
     logo_url: Optional[str] = ""
     color: Optional[str] = "#1d4ed8"
+    group_name: Optional[str] = ""  # Grupo A, Grupo B, Unigrupo
 
 class TeamOut(TeamIn):
     id: str
@@ -232,6 +234,7 @@ class MatchIn(BaseModel):
     match_date: str  # ISO datetime
     venue: Optional[str] = ""
     group_name: Optional[str] = ""
+    matchday: Optional[int] = None  # Jornada (Fecha 1, Fecha 2, ...)
     stage: Optional[str] = "grupos"  # grupos, octavos, cuartos, semis, final
     home_score: Optional[int] = None
     away_score: Optional[int] = None
@@ -244,6 +247,19 @@ class MatchResultIn(BaseModel):
     home_score: int
     away_score: int
     scorers: Optional[List[dict]] = []  # [{player_id, team_id, minute}]
+    home_fair_play: Optional[int] = 0  # puntos juego limpio
+    away_fair_play: Optional[int] = 0
+
+class FixtureGenerateIn(BaseModel):
+    tournament_id: Optional[str] = None
+    category: str
+    group_name: str
+    team_ids: List[str]
+    start_date: str  # YYYY-MM-DD
+    days_between_rounds: int = 7
+    venues: List[str] = []
+    time_slots: List[str] = []  # ["08:00", "09:30"]
+    preview: bool = False  # If true, do not save
 
 class HotelIn(BaseModel):
     name: str
@@ -586,6 +602,8 @@ async def update_match_result(mid: str, payload: MatchResultIn, _: dict = Depend
             "away_score": payload.away_score,
             "status": "finalizado",
             "scorers": payload.scorers or [],
+            "home_fair_play": payload.home_fair_play or 0,
+            "away_fair_play": payload.away_fair_play or 0,
         }}
     )
     if res.matched_count == 0:
@@ -598,12 +616,158 @@ async def delete_match(mid: str, _: dict = Depends(require_admin)):
     await db.matches.delete_one({"id": mid})
     return {"ok": True}
 
+# -------------------- Fixture Generator (Round Robin) --------------------
+def _round_robin_pairs(team_ids: List[str]) -> List[List[tuple]]:
+    """Return list of rounds, each round is list of (home, away) pairs.
+    Uses 'circle method'. Adds None for byes if odd count."""
+    teams = list(team_ids)
+    if len(teams) < 2:
+        return []
+    if len(teams) % 2 == 1:
+        teams.append(None)  # BYE marker
+    n = len(teams)
+    rounds = []
+    arr = teams[:]
+    for r in range(n - 1):
+        round_matches = []
+        for i in range(n // 2):
+            home = arr[i]
+            away = arr[n - 1 - i]
+            # Alternate home/away by round to balance
+            if r % 2 == 1:
+                home, away = away, home
+            if home is not None and away is not None:
+                round_matches.append((home, away))
+        rounds.append(round_matches)
+        # rotate keeping arr[0] fixed
+        arr = [arr[0]] + [arr[-1]] + arr[1:-1]
+    return rounds
+
+def _byes_per_round(team_ids: List[str]) -> dict:
+    teams = list(team_ids)
+    if len(teams) % 2 == 0:
+        return {}
+    teams.append(None)
+    n = len(teams)
+    arr = teams[:]
+    out = {}
+    for r in range(n - 1):
+        for i in range(n // 2):
+            home = arr[i]
+            away = arr[n - 1 - i]
+            if home is None:
+                out[r + 1] = away
+                break
+            if away is None:
+                out[r + 1] = home
+                break
+        arr = [arr[0]] + [arr[-1]] + arr[1:-1]
+    return out
+
+@api.post("/fixtures/generate")
+async def generate_fixture(payload: FixtureGenerateIn, _: dict = Depends(require_admin)):
+    if payload.category not in CATEGORIES:
+        raise HTTPException(status_code=400, detail=f"Categoría inválida. Use: {', '.join(CATEGORIES)}")
+    if len(payload.team_ids) < 2:
+        raise HTTPException(status_code=400, detail="Se requieren al menos 2 equipos")
+    teams = await db.teams.find({"id": {"$in": payload.team_ids}}, {"_id": 0}).to_list(500)
+    if len(teams) != len(payload.team_ids):
+        raise HTTPException(status_code=400, detail="Algunos equipos no existen")
+
+    # Ensure tournament
+    tournament_id = payload.tournament_id
+    if not tournament_id:
+        existing = await db.tournaments.find_one({"name": "FSC", "season": str(datetime.now().year)}, {"_id": 0})
+        if existing:
+            tournament_id = existing["id"]
+        else:
+            new_t = {
+                "id": str(uuid.uuid4()),
+                "name": "FSC",
+                "season": str(datetime.now().year),
+                "category": payload.category,
+                "start_date": payload.start_date,
+                "end_date": payload.start_date,
+            }
+            await db.tournaments.insert_one(new_t)
+            tournament_id = new_t["id"]
+
+    rounds = _round_robin_pairs(payload.team_ids)
+    byes = _byes_per_round(payload.team_ids)
+    tmap = {t["id"]: t for t in teams}
+
+    try:
+        start = datetime.strptime(payload.start_date, "%Y-%m-%d")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Formato de fecha inválido (YYYY-MM-DD)")
+
+    venues = payload.venues or [""]
+    slots = payload.time_slots or ["10:00"]
+
+    generated = []
+    for r_idx, pairs in enumerate(rounds):
+        round_date = start + timedelta(days=r_idx * payload.days_between_rounds)
+        for i, (home_id, away_id) in enumerate(pairs):
+            slot = slots[i % len(slots)]
+            venue = venues[i % len(venues)]
+            try:
+                hh, mm = slot.split(":")
+                match_dt = round_date.replace(hour=int(hh), minute=int(mm), second=0, microsecond=0)
+            except Exception:
+                match_dt = round_date
+            doc = {
+                "id": str(uuid.uuid4()),
+                "tournament_id": tournament_id,
+                "home_team_id": home_id,
+                "away_team_id": away_id,
+                "match_date": match_dt.isoformat(),
+                "venue": venue,
+                "group_name": payload.group_name,
+                "matchday": r_idx + 1,
+                "stage": "grupos",
+                "status": "programado",
+                "home_score": None,
+                "away_score": None,
+            }
+            generated.append(doc)
+
+    if not payload.preview:
+        if generated:
+            await db.matches.insert_many(generated)
+        # Update teams to assign group_name + category
+        await db.teams.update_many(
+            {"id": {"$in": payload.team_ids}},
+            {"$set": {"group_name": payload.group_name, "category": payload.category}}
+        )
+
+    # Strip _id and enrich with team names for preview
+    enriched = []
+    for d in generated:
+        d.pop("_id", None)
+        ht = tmap.get(d["home_team_id"], {})
+        at = tmap.get(d["away_team_id"], {})
+        enriched.append({
+            **d,
+            "home_team_name": ht.get("name", ""),
+            "away_team_name": at.get("name", ""),
+        })
+
+    return {
+        "tournament_id": tournament_id,
+        "rounds": len(rounds),
+        "matches": enriched,
+        "byes_per_round": [{"round": k, "team_id": v, "team_name": tmap.get(v, {}).get("name", "")} for k, v in byes.items()],
+        "saved": not payload.preview,
+    }
+
 # -------------------- Stats --------------------
 @api.get("/stats/standings")
-async def standings(category: Optional[str] = None, tournament_id: Optional[str] = None):
+async def standings(category: Optional[str] = None, group_name: Optional[str] = None, tournament_id: Optional[str] = None):
     q_team = {}
     if category:
         q_team["category"] = category
+    if group_name:
+        q_team["group_name"] = group_name
     teams = await db.teams.find(q_team, {"_id": 0}).to_list(500)
     team_ids = [t["id"] for t in teams]
 
@@ -614,9 +778,9 @@ async def standings(category: Optional[str] = None, tournament_id: Optional[str]
 
     table = {t["id"]: {
         "team_id": t["id"], "team_name": t["name"], "team_logo": t.get("logo_url", ""),
-        "category": t["category"],
+        "category": t["category"], "group_name": t.get("group_name", ""),
         "played": 0, "won": 0, "drawn": 0, "lost": 0,
-        "gf": 0, "ga": 0, "gd": 0, "points": 0
+        "gf": 0, "ga": 0, "gd": 0, "points": 0, "fair_play": 0,
     } for t in teams}
 
     for m in matches:
@@ -628,6 +792,8 @@ async def standings(category: Optional[str] = None, tournament_id: Optional[str]
         table[a]["played"] += 1
         table[h]["gf"] += hs; table[h]["ga"] += as_
         table[a]["gf"] += as_; table[a]["ga"] += hs
+        table[h]["fair_play"] += int(m.get("home_fair_play") or 0)
+        table[a]["fair_play"] += int(m.get("away_fair_play") or 0)
         if hs > as_:
             table[h]["won"] += 1; table[h]["points"] += 3
             table[a]["lost"] += 1
@@ -641,7 +807,8 @@ async def standings(category: Optional[str] = None, tournament_id: Optional[str]
     rows = list(table.values())
     for r in rows:
         r["gd"] = r["gf"] - r["ga"]
-    rows.sort(key=lambda r: (-r["points"], -r["gd"], -r["gf"]))
+    # Tiebreakers: points -> gd -> gf -> fair_play
+    rows.sort(key=lambda r: (-r["points"], -r["gd"], -r["gf"], -r["fair_play"]))
     return rows
 
 @api.get("/stats/top-scorers")

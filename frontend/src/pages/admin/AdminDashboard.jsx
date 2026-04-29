@@ -45,7 +45,7 @@ export default function AdminDashboard() {
           <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
             <Link to="/admin/equipos" className="px-4 py-3 bg-blue-50 rounded-md font-bold uppercase tracking-wide text-blue-700 hover:bg-blue-100">+ Nuevo equipo</Link>
             <Link to="/admin/jugadores" className="px-4 py-3 bg-red-50 rounded-md font-bold uppercase tracking-wide text-red-700 hover:bg-red-100">+ Nuevo jugador</Link>
-            <Link to="/admin/partidos" className="px-4 py-3 bg-slate-100 rounded-md font-bold uppercase tracking-wide text-slate-900 hover:bg-slate-200">+ Programar partido</Link>
+            <Link to="/admin/generador-fixture" className="px-4 py-3 bg-slate-900 text-white rounded-md font-bold uppercase tracking-wide hover:bg-slate-800">⚡ Generar fixture</Link>
             <Link to="/admin/inventario" className="px-4 py-3 bg-emerald-50 rounded-md font-bold uppercase tracking-wide text-emerald-700 hover:bg-emerald-100">+ Hotel/Tour</Link>
           </div>
         </div>

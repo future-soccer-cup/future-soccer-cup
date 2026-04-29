@@ -29,6 +29,7 @@ import AdminMatches from "./pages/admin/AdminMatches";
 import AdminInventory from "./pages/admin/AdminInventory";
 import AdminBookings from "./pages/admin/AdminBookings";
 import AdminCarnets from "./pages/admin/AdminCarnets";
+import AdminFixtureGenerator from "./pages/admin/AdminFixtureGenerator";
 
 function PublicLayout() {
   const loc = useLocation();

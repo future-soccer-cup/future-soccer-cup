@@ -6,6 +6,7 @@ export default function Fixture() {
   const [matches, setMatches] = useState([]);
   const [teams, setTeams] = useState([]);
   const [filter, setFilter] = useState("");
+  const [matchdayFilter, setMatchdayFilter] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -18,13 +19,16 @@ export default function Fixture() {
   }, []);
 
   const categories = Array.from(new Set(teams.map((t) => t.category))).sort();
+  const matchdays = Array.from(new Set(matches.map((m) => m.matchday).filter(Boolean))).sort((a, b) => a - b);
 
-  const filtered = filter
-    ? matches.filter((m) => {
-        const ht = teams.find((t) => t.id === m.home_team_id);
-        return ht?.category === filter;
-      })
-    : matches;
+  const filtered = matches.filter((m) => {
+    if (filter) {
+      const ht = teams.find((t) => t.id === m.home_team_id);
+      if (ht?.category !== filter) return false;
+    }
+    if (matchdayFilter && String(m.matchday) !== matchdayFilter) return false;
+    return true;
+  });
 
   // group by date
   const groups = filtered.reduce((acc, m) => {

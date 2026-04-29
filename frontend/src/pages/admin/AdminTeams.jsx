@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import ImageUpload from "../../components/ImageUpload";
 import CategorySelect from "../../components/CategorySelect";
 
-const EMPTY = { name: "", category: "Sub-12", coach: "", city: "", logo_url: "", color: "#1d4ed8" };
+const EMPTY = { name: "", category: "Sub-12", birth_year: null, coach: "", city: "", logo_url: "", color: "#1d4ed8", group_name: "" };
 
 export default function AdminTeams() {
   const [teams, setTeams] = useState([]);
@@ -82,6 +82,10 @@ export default function AdminTeams() {
           <form onSubmit={save} className="space-y-3">
             <Field label="Nombre" required value={editing.name} onChange={(v) => setEditing({ ...editing, name: v })} />
             <CategorySelect required value={editing.category} onChange={(v) => setEditing({ ...editing, category: v })} />
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Año de nacimiento" type="number" value={editing.birth_year || ""} onChange={(v) => setEditing({ ...editing, birth_year: v ? Number(v) : null })} />
+              <Field label="Grupo" value={editing.group_name} onChange={(v) => setEditing({ ...editing, group_name: v })} />
+            </div>
             <Field label="Ciudad" value={editing.city} onChange={(v) => setEditing({ ...editing, city: v })} />
             <Field label="DT" value={editing.coach} onChange={(v) => setEditing({ ...editing, coach: v })} />
             <ImageUpload value={editing.logo_url} onChange={(v) => setEditing({ ...editing, logo_url: v })} label="Escudo" testId="team-logo-upload" />

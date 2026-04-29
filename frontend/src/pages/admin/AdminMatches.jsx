@@ -48,6 +48,8 @@ export default function AdminMatches() {
         home_score: Number(scoring.home_score),
         away_score: Number(scoring.away_score),
         scorers: scoring.scorers || [],
+        home_fair_play: Number(scoring.home_fair_play || 0),
+        away_fair_play: Number(scoring.away_fair_play || 0),
       });
       toast.success("Resultado registrado");
       setScoring(null);
@@ -153,6 +155,16 @@ export default function AdminMatches() {
               </div>
             </div>
             <ScorersEditor scoring={scoring} setScoring={setScoring} teams={teams} />
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block">
+                <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">Juego Limpio Local</span>
+                <input type="number" min="0" max="10" value={scoring.home_fair_play ?? 0} onChange={(e) => setScoring({ ...scoring, home_fair_play: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="home-fairplay-input" />
+              </label>
+              <label className="block">
+                <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">Juego Limpio Visitante</span>
+                <input type="number" min="0" max="10" value={scoring.away_fair_play ?? 0} onChange={(e) => setScoring({ ...scoring, away_fair_play: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="away-fairplay-input" />
+              </label>
+            </div>
             <button className="fsc-btn-red w-full py-2 rounded-md" data-testid="save-result-btn">Guardar resultado</button>
           </form>
         </Modal>
