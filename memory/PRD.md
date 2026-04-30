@@ -70,5 +70,23 @@ Aplicación versátil para una empresa que organiza eventos de fútbol infantil 
 - **UI**: `/admin/carga-masiva` con tabs Equipos/Jugadores, descarga de plantilla, picker de archivo, vista previa con stats (filas/OK/errores) y botón Confirmar.
 - `requirements.txt`: agregados `openpyxl==3.1.5` y `xlrd==1.2.0`.
 
+## Iteration 6 (2026-04-30) — Logo en registro + Cotización de evento
+- **Logo durante registro de equipo**: `/registro-equipo` ahora tiene file picker con preview del escudo; al enviar, registra el equipo (auto-login) → sube la imagen a object storage → asocia logo_url al equipo → redirige a `/mi-equipo`.
+- **Tipos de evento (3)**: `festival`, `premier_par`, `premier_impar`. Cada uno con sus categorías permitidas y fee de inscripción ($250 / $450 / $450). Endpoint `GET /api/event-types`.
+- **Niveles de hospedaje**: Diamante / Gold / Silver / Bronce, con tarifas por tipo de habitación (single/double/triple/quadruple). Configurados en `LODGING_TIERS`.
+- **Cotización**:
+  - `POST /api/quotes/calculate` — estimación pública en vivo (sin guardar).
+  - `POST /api/quotes` — crear cotización (auth requerida) con `status="pendiente"`.
+  - `GET /api/quotes/mine` — historial del usuario.
+  - `GET /api/quotes` — admin ve todas.
+  - `PUT /api/quotes/{id}/status` — admin: pendiente/aprobada/rechazada/pagada.
+  - `PUT /api/quotes/{id}/payment-proof` — adjuntar comprobante (owner o admin).
+- **UI**:
+  - `/cotizar` (público): wizard de pasos (Evento → Categoría → Hospedaje → PAX/Noches → Adicionales) con resumen lateral en vivo del total.
+  - `/mis-cotizaciones`: historial del usuario con badges de estado.
+  - `/admin/cotizaciones`: tabla con filtros y dropdown de estado.
+  - `/mi-equipo` ahora tiene 2 CTAs: "Cotizar evento" y "Mis cotizaciones".
+  - Navbar público: link "Cotizar".
+
 ## Last Test Run
-- iteration_5: **84/84 pytest backend en verde** (13 nuevos para iter5). Frontend verificado end-to-end (descarga plantilla → preview con errores → confirmar → equipos persistidos visibles en `/admin/equipos`).
+- iteration_6: **102/102 pytest backend en verde** (18 nuevos para iter6 cubriendo event-types schema, math de calculate, validaciones, RBAC de /quotes, payment-proof). Frontend: `/cotizar` wizard completo verificado con total en vivo correcto ($1450 para festival/Sub-12/gold/double/4pax/3nights); registro de equipo con logo verificado.
