@@ -19,7 +19,7 @@ export default function Login() {
       toast.success(`Bienvenido, ${u.name}`);
       if (u.role === "admin") nav("/admin");
       else if (u.role === "team") nav("/mi-equipo");
-      else nav("/mis-reservas");
+      else nav("/mis-cotizaciones");
     } catch (err) {
       toast.error(formatApiError(err.response?.data?.detail) || "Error de autenticación");
     } finally {

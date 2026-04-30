@@ -1,0 +1,57 @@
+{
+  "summary": "Iter7 testing for FSC COP migration + Stripe flows + team registration event_type + club grouping + posts + bookings cleanup. Backend: 17/20 pytest pass on test_iter7_cop_stripe.py. Verified /api/event-types returns COP pricing (festival 1.000.000, premier 1.800.000, gold-double 400.000, addons 100k/140k/110k), /api/auth/register-team enforces event_type Literal + category-per-event (422 missing, 422 invalid, 400 category-mismatch), persists event_type/registration_fee/registration_payment_status='pending'. /api/quotes/calculate Premier+Sub12+gold+double+4pax+3nights+transport = 7.000.000 COP exact. POST /api/payments/registration/session works for owner, 404 unknown team, 403 cross-owner, 401 unauth. POST /api/payments/checkout/session 400 if quote not aprobada, 200 after admin approval. Posts CRUD (admin) and GET /api/posts public OK; /api/social/instagram OK. FRONTEND: /registro-equipo renders 3 event-option-* cards with COP prices; /equipos groups by club (card link /clubes/:slug works) and /clubes/leones-fc shows club-category-Sub-12 section; admin sidebar has Noticias, no Inventario ni Reservas; public navbar has /noticias, no /reservas. 2 CRITICAL/HIGH issues found.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "GET /api/payments/checkout/status/{session_id}",
+        "issue": "Returns 500 (CheckoutError) when Stripe session_id cannot be retrieved from the emergent Stripe test proxy (e.g., session expired or cs_test_* not found). Backend logs show: 'Failed to retrieve session status: No such checkout.session: cs_test_...'. Should be wrapped in try/except and return 404 or 502 gracefully. Reproduce: POST /api/payments/registration/session → immediately GET /api/payments/checkout/status/{returned_sid} → 500.",
+        "priority": "HIGH"
+      },
+      {
+        "endpoint": "/api/bookings /api/bookings/mine /api/bookings/{id}/status",
+        "issue": "Bookings/Reservas module was supposed to be eliminated (req #5) but the backend endpoints still exist in server.py lines 1079-1120 plus db.bookings index at line 1704. Frontend cleanup done, but backend router still exposes them (auth-gated so returns 401/403 to public). Remove the Booking model, endpoints, and index.",
+        "priority": "HIGH"
+      }
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/clubes/:slug", "issues": ["Club logo fallback uses initial letter 'L' on a plain blue square. OK but a default shield would match brand better."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter7_cop_stripe.py",
+    "/app/test_reports/pytest/iteration_7_iter7.xml"
+  ],
+  "action_items": [
+    "HIGH: Wrap stripe.get_checkout_status call in /api/payments/checkout/status/{sid} with try/except CheckoutError → return 404 'Sesión no encontrada o expirada' or 502 instead of uncaught 500. Frontend PaymentSuccess.jsx polling will otherwise hang on 500.",
+    "HIGH: Remove Bookings backend module for real cleanup: delete BookingIn/BookingOut models, POST/GET/PUT /api/bookings* endpoints, and db.bookings index in server.py (lines ~1079-1120 and 1704). Also consider dropping the 'bookings' collection.",
+    "MINOR: Review-request mentioned testid 'club-card-fixture-stats-pro' - implementation actually uses per-slug testids 'club-card-{slug}' (e.g. club-card-leones-fc). More useful in practice; align the PRD note or keep current dynamic testid.",
+    "MINOR: Register.jsx still has stale marketing copy 'Reservas, fixture y novedades en un solo lugar.' — update to remove 'Reservas' after Bookings cleanup."
+  ],
+  "critical_code_review_comments": [
+    "server.py still 1730 lines and now mixes Stripe, Quotes, Teams, Players, Bookings, Posts, Import, Carnets in one module. Split into routers/ asap (repeat comment from iter5/6).",
+    "payments/checkout/status lacks error handling — a downstream Stripe 404 leaks as 500. Standard defensive pattern missing.",
+    "Bookings module not fully removed despite PRD requirement #5. This is an incomplete-cleanup bug, not just tech debt; the endpoints still write to db.bookings.",
+    "CORS_ORIGINS in backend/.env hardcodes two preview hostnames; brittle across deploy.",
+    "_apply_paid_transaction uses fallback to metadata but all new sessions set 'kind' at top-level — good idempotent path. However quote.payment_status check at line 1256 is never set initially (quote doc has no payment_status field), so the '400 ya fue pagada' branch is effectively dead code. Consider checking status=='pagada' instead.",
+    "POST /api/payments/registration/session does not check team['status'] (pendiente/aprobado/rechazado). A rejected team could still initiate payment for registration — may be intentional but worth confirming with product."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter7_cop_stripe.py (NEW - 20 tests for COP pricing + Stripe flows + posts + bookings cleanup check)"
+  ],
+  "success_rate": {
+    "backend": "85% (17/20 pass in iter7 suite). Previous iter 1-6 suites were not re-run this round but schema-level COP migration is covered here. 2 of the 3 failures reveal real HIGH bugs (status-500, bookings-not-removed); the 3rd is a diagnostic variant of the same bookings issue.",
+    "frontend": "~95% visually verified for registro-equipo event cards, teams club grouping, club detail category sections, navbar/sidebar cleanup, admin/noticias route."
+  },
+  "test_credentials": "admin@futuresoccercup.com / FSCAdmin2025! (verified). Team managers auto-created per run as TEST_iter7_*@test.com.",
+  "seed_data_creation": "Module fixture creates 2 team managers (TEST_iter7_team_* and TEST_iter7_other_*) + one additional persist-check team; all TEST_ITER7_* teams cleaned up via admin DELETE /api/teams/{id} in teardown. Users created during register-team remain in db.users (no user cleanup endpoint).",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "main_agent_can_self_test": false,
+  "context_for_next_testing_agent": "Run: pytest /app/backend/tests/test_iter7_cop_stripe.py -v. 3 expected failures correspond to action items above. After main agent (a) adds try/except to /payments/checkout/status/{sid} and (b) removes /api/bookings* routes + model + index, the iter7 suite should run 20/20. Frontend ClubDetail works but no Leones FC has players yet — seed at least 1 aprobado player to visually verify club-player-{id} testid on /clubes/leones-fc. Stripe e2e: session creation works end-to-end, but retrieval against the emergent Stripe test proxy returns resource_missing — avoid assuming payment completion in automated tests.",
+  "rca of the issue": "ISSUE 1 (checkout status 500): /app/backend/server.py line 1366 calls `await stripe.get_checkout_status(session_id)` unprotected. The emergentintegrations library raises CheckoutError which isn't a HTTPException, so FastAPI returns 500. Fix: wrap in try/except CheckoutError → raise HTTPException(status_code=404, detail='Sesión no encontrada o expirada'). ISSUE 2 (bookings not removed): grep shows server.py lines 1079, 1106, 1111, 1116, 1704 still reference bookings collection. Frontend files Bookings.jsx/MyBookings.jsx/AdminBookings.jsx deleted but backend router intact — cleanup stopped halfway. Fix: remove BookingIn/BookingOut Pydantic models (if exist), remove 4 routes and db.bookings.create_index, drop collection if desired."
+}

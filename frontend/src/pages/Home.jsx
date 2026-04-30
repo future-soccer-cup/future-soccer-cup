@@ -34,8 +34,8 @@ export default function Home() {
               <Link to="/fixture" data-testid="hero-fixture-btn" className="fsc-btn-red px-6 py-3 rounded-md text-sm">
                 Ver Fixture <ArrowRight className="inline ml-1" size={16} />
               </Link>
-              <Link to="/reservas" data-testid="hero-bookings-btn" className="fsc-btn-primary px-6 py-3 rounded-md text-sm">
-                Reservar Estadía
+              <Link to="/cotizar" data-testid="hero-quote-btn" className="fsc-btn-primary px-6 py-3 rounded-md text-sm">
+                Cotizar Evento
               </Link>
             </div>
           </div>
@@ -103,10 +103,10 @@ export default function Home() {
             <p className="mt-2 text-slate-600 text-sm">Plantillas, posiciones y estadísticas individuales.</p>
           </Link>
 
-          <Link to="/reservas" className="md:col-span-4 bg-red-600 text-white rounded-2xl p-8 fsc-card-shadow" data-testid="card-bookings">
+          <Link to="/cotizar" className="md:col-span-4 bg-red-600 text-white rounded-2xl p-8 fsc-card-shadow" data-testid="card-cotizar">
             <Hotel size={28} className="text-white" />
-            <h3 className="mt-3 font-display text-2xl md:text-3xl font-black uppercase">Reservas</h3>
-            <p className="mt-2 text-red-50 text-sm">Hoteles, transporte y tours para acompañar a tu equipo.</p>
+            <h3 className="mt-3 font-display text-2xl md:text-3xl font-black uppercase">Cotiza tu viaje</h3>
+            <p className="mt-2 text-red-50 text-sm">Hospedaje, transporte y tours para acompañar a tu equipo.</p>
           </Link>
         </div>
       </section>

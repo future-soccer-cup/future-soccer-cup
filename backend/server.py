@@ -28,43 +28,46 @@ from emergentintegrations.payments.stripe.checkout import StripeCheckout, Checko
 CATEGORIES = ["Sub-8", "Sub-10", "Sub-12", "Sub-14", "Sub-16", "Sub-18"]
 
 # -------------------- Event Types & Lodging Tiers --------------------
+# Precios en COP (Pesos Colombianos)
 EVENT_TYPES = {
     "festival": {
         "id": "festival",
         "name": "Festival",
         "description": "Evento temático para todas las edades. Ideal como primera experiencia.",
         "categories": ["Sub-8", "Sub-10", "Sub-12"],
-        "registration_fee_per_team": 250.0,
+        "registration_fee_per_team": 1000000.0,
     },
     "premier_par": {
         "id": "premier_par",
         "name": "Premier Par",
         "description": "Premier para categorías de años pares (2014, 2012, 2010).",
         "categories": ["Sub-12", "Sub-14", "Sub-16"],
-        "registration_fee_per_team": 450.0,
+        "registration_fee_per_team": 1800000.0,
     },
     "premier_impar": {
         "id": "premier_impar",
         "name": "Premier Impar",
         "description": "Premier para categorías de años impares (2015, 2013, 2011).",
         "categories": ["Sub-10", "Sub-12", "Sub-14", "Sub-16"],
-        "registration_fee_per_team": 450.0,
+        "registration_fee_per_team": 1800000.0,
     },
 }
 
-# Lodging tiers with per-person/night base price by room type
+# Lodging tiers: tarifas en COP por persona por noche
 LODGING_TIERS = {
-    "diamond":  {"id": "diamond",  "name": "Diamante", "description": "Hotel 5★ con todas las comodidades.", "rates": {"single": 180, "double": 140, "triple": 120, "quadruple": 100}},
-    "gold":     {"id": "gold",     "name": "Gold",     "description": "Hotel 4★ confortable y bien ubicado.",  "rates": {"single": 130, "double": 100, "triple": 85,  "quadruple": 70}},
-    "silver":   {"id": "silver",   "name": "Silver",   "description": "Hotel 3★ limpio y acogedor.",            "rates": {"single": 95,  "double": 75,  "triple": 60,  "quadruple": 50}},
-    "bronze":   {"id": "bronze",   "name": "Bronce",   "description": "Hospedaje básico y económico.",          "rates": {"single": 60,  "double": 45,  "triple": 38,  "quadruple": 32}},
+    "diamond":  {"id": "diamond",  "name": "Diamante", "description": "Hotel 5★ con todas las comodidades.", "rates": {"single": 720000, "double": 560000, "triple": 480000, "quadruple": 400000}},
+    "gold":     {"id": "gold",     "name": "Gold",     "description": "Hotel 4★ confortable y bien ubicado.",  "rates": {"single": 520000, "double": 400000, "triple": 340000, "quadruple": 280000}},
+    "silver":   {"id": "silver",   "name": "Silver",   "description": "Hotel 3★ limpio y acogedor.",            "rates": {"single": 380000, "double": 300000, "triple": 240000, "quadruple": 200000}},
+    "bronze":   {"id": "bronze",   "name": "Bronce",   "description": "Hospedaje básico y económico.",          "rates": {"single": 240000, "double": 180000, "triple": 150000, "quadruple": 130000}},
 }
 
 ADDON_PRICES = {
-    "transport": 25.0,   # per person, flat
-    "parque":    35.0,   # per person, flat
-    "tour":      28.0,   # per person, flat
+    "transport": 100000.0,  # COP por persona
+    "parque":    140000.0,
+    "tour":      110000.0,
 }
+
+CURRENCY = "cop"
 
 # -------------------- Object Storage --------------------
 STORAGE_URL = "https://integrations.emergentagent.com/objstore/api/v1/storage"
@@ -218,6 +221,7 @@ class TeamRegisterIn(BaseModel):
     manager_name: str = Field(min_length=1)
     team_name: str = Field(min_length=1)
     category: str
+    event_type: Literal["festival", "premier_par", "premier_impar"]
     coach: Optional[str] = ""
     city: Optional[str] = ""
     logo_url: Optional[str] = ""
@@ -246,6 +250,9 @@ class TeamIn(BaseModel):
     color: Optional[str] = "#1d4ed8"
     group_name: Optional[str] = ""  # Grupo A, Grupo B, Unigrupo
     cuerpo_tecnico: Optional[List[dict]] = []  # [{name, document, role}]
+    event_type: Optional[str] = ""  # festival | premier_par | premier_impar
+    registration_fee: Optional[float] = 0.0
+    registration_payment_status: Optional[str] = "pending"  # pending | paid | waived
 
 class TeamOut(TeamIn):
     id: str
@@ -425,6 +432,11 @@ async def register_team(payload: TeamRegisterIn, response: Response):
     email = payload.email.lower()
     if payload.category not in CATEGORIES:
         raise HTTPException(status_code=400, detail=f"Categoría inválida. Use: {', '.join(CATEGORIES)}")
+    event = EVENT_TYPES.get(payload.event_type)
+    if not event:
+        raise HTTPException(status_code=400, detail="Tipo de evento inválido")
+    if payload.category not in event["categories"]:
+        raise HTTPException(status_code=400, detail=f"La categoría {payload.category} no aplica al {event['name']}")
     if await db.users.find_one({"email": email}):
         raise HTTPException(status_code=400, detail="El correo ya está registrado")
 
@@ -442,6 +454,10 @@ async def register_team(payload: TeamRegisterIn, response: Response):
         "color": payload.color or "#1d4ed8",
         "manager_user_id": user_id,
         "status": "pendiente",  # Self-registered, awaits admin approval
+        "event_type": payload.event_type,
+        "registration_fee": event["registration_fee_per_team"],
+        "registration_payment_status": "pending",
+        "cuerpo_tecnico": [],
         "created_at": now,
     }
     user_doc = {
@@ -1214,6 +1230,20 @@ class CheckoutSessionIn(BaseModel):
     quote_id: str
     origin_url: str
 
+class RegistrationCheckoutIn(BaseModel):
+    team_id: str
+    origin_url: str
+
+
+def _get_stripe(http_request: Request):
+    api_key = os.environ.get("STRIPE_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=503, detail="Stripe no configurado")
+    host_url = str(http_request.base_url)
+    webhook_url = f"{host_url}api/webhook/stripe"
+    return StripeCheckout(api_key=api_key, webhook_url=webhook_url)
+
+
 @api.post("/payments/checkout/session")
 async def create_checkout(payload: CheckoutSessionIn, http_request: Request, user: dict = Depends(get_current_user)):
     quote = await db.quotes.find_one({"id": payload.quote_id}, {"_id": 0})
@@ -1226,24 +1256,18 @@ async def create_checkout(payload: CheckoutSessionIn, http_request: Request, use
     if quote.get("payment_status") == "paid":
         raise HTTPException(status_code=400, detail="Esta cotización ya fue pagada")
 
-    api_key = os.environ.get("STRIPE_API_KEY")
-    if not api_key:
-        raise HTTPException(status_code=503, detail="Stripe no configurado")
-
-    host_url = str(http_request.base_url)
-    webhook_url = f"{host_url}api/webhook/stripe"
-    stripe = StripeCheckout(api_key=api_key, webhook_url=webhook_url)
-
-    success_url = f"{payload.origin_url}/pago-exitoso?session_id={{CHECKOUT_SESSION_ID}}"
+    stripe = _get_stripe(http_request)
+    success_url = f"{payload.origin_url}/pago-exitoso?session_id={{CHECKOUT_SESSION_ID}}&kind=quote"
     cancel_url = f"{payload.origin_url}/mis-cotizaciones"
     amount = float(quote["total_amount"])
 
     req = CheckoutSessionRequest(
         amount=amount,
-        currency="usd",
+        currency=CURRENCY,
         success_url=success_url,
         cancel_url=cancel_url,
         metadata={
+            "kind": "quote",
             "quote_id": payload.quote_id,
             "user_id": user["id"],
             "user_email": user["email"],
@@ -1254,16 +1278,84 @@ async def create_checkout(payload: CheckoutSessionIn, http_request: Request, use
     await db.payment_transactions.insert_one({
         "id": str(uuid.uuid4()),
         "session_id": session.session_id,
+        "kind": "quote",
         "quote_id": payload.quote_id,
         "user_id": user["id"],
         "user_email": user["email"],
         "amount": amount,
-        "currency": "usd",
+        "currency": CURRENCY,
         "payment_status": "initiated",
-        "metadata": {"quote_id": payload.quote_id},
+        "metadata": {"kind": "quote", "quote_id": payload.quote_id},
         "created_at": datetime.now(timezone.utc).isoformat(),
     })
     return {"url": session.url, "session_id": session.session_id}
+
+
+@api.post("/payments/registration/session")
+async def create_registration_checkout(payload: RegistrationCheckoutIn, http_request: Request, user: dict = Depends(get_current_user)):
+    team = await db.teams.find_one({"id": payload.team_id}, {"_id": 0})
+    if not team:
+        raise HTTPException(status_code=404, detail="Equipo no encontrado")
+    if team.get("manager_user_id") != user["id"] and user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="No autorizado")
+    if team.get("registration_payment_status") == "paid":
+        raise HTTPException(status_code=400, detail="La inscripción ya fue pagada")
+    event = EVENT_TYPES.get(team.get("event_type") or "")
+    if not event:
+        raise HTTPException(status_code=400, detail="El equipo no tiene un evento asociado")
+
+    stripe = _get_stripe(http_request)
+    success_url = f"{payload.origin_url}/pago-exitoso?session_id={{CHECKOUT_SESSION_ID}}&kind=registration"
+    cancel_url = f"{payload.origin_url}/mi-equipo"
+    amount = float(event["registration_fee_per_team"])
+
+    req = CheckoutSessionRequest(
+        amount=amount,
+        currency=CURRENCY,
+        success_url=success_url,
+        cancel_url=cancel_url,
+        metadata={
+            "kind": "registration",
+            "team_id": payload.team_id,
+            "event_type": team["event_type"],
+            "user_id": user["id"],
+            "user_email": user["email"],
+        },
+    )
+    session = await stripe.create_checkout_session(req)
+
+    await db.payment_transactions.insert_one({
+        "id": str(uuid.uuid4()),
+        "session_id": session.session_id,
+        "kind": "registration",
+        "team_id": payload.team_id,
+        "event_type": team["event_type"],
+        "user_id": user["id"],
+        "user_email": user["email"],
+        "amount": amount,
+        "currency": CURRENCY,
+        "payment_status": "initiated",
+        "metadata": {"kind": "registration", "team_id": payload.team_id},
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+    return {"url": session.url, "session_id": session.session_id}
+
+
+async def _apply_paid_transaction(tx: dict):
+    """Idempotently mark the owning resource (quote or team) as paid."""
+    kind = tx.get("kind") or (tx.get("metadata") or {}).get("kind") or "quote"
+    if kind == "registration":
+        tid = tx.get("team_id") or (tx.get("metadata") or {}).get("team_id")
+        if tid:
+            await db.teams.update_one(
+                {"id": tid},
+                {"$set": {"registration_payment_status": "paid", "registration_paid_at": datetime.now(timezone.utc).isoformat()}}
+            )
+    else:
+        qid = tx.get("quote_id") or (tx.get("metadata") or {}).get("quote_id")
+        if qid:
+            await db.quotes.update_one({"id": qid}, {"$set": {"status": "pagada", "payment_status": "paid"}})
+
 
 @api.get("/payments/checkout/status/{session_id}")
 async def get_checkout_status(session_id: str, user: dict = Depends(get_current_user)):
@@ -1279,17 +1371,16 @@ async def get_checkout_status(session_id: str, user: dict = Depends(get_current_
             {"session_id": session_id},
             {"$set": {"payment_status": "paid", "stripe_status": status.status, "paid_at": datetime.now(timezone.utc).isoformat()}}
         )
-        # Mark quote as pagada (idempotent)
-        qid = (tx.get("metadata") or {}).get("quote_id") or tx.get("quote_id")
-        if qid:
-            await db.quotes.update_one({"id": qid}, {"$set": {"status": "pagada", "payment_status": "paid"}})
+        await _apply_paid_transaction(tx)
     return {
         "status": status.status,
         "payment_status": status.payment_status,
         "amount_total": status.amount_total,
         "currency": status.currency,
         "metadata": status.metadata,
+        "kind": (tx or {}).get("kind") or (status.metadata or {}).get("kind") or "quote",
     }
+
 
 @api.post("/webhook/stripe")
 async def stripe_webhook(request: Request):
@@ -1313,9 +1404,7 @@ async def stripe_webhook(request: Request):
                 {"session_id": sid},
                 {"$set": {"payment_status": "paid", "paid_at": datetime.now(timezone.utc).isoformat()}}
             )
-            qid = (tx.get("metadata") or {}).get("quote_id") or tx.get("quote_id")
-            if qid:
-                await db.quotes.update_one({"id": qid}, {"$set": {"status": "pagada", "payment_status": "paid"}})
+            await _apply_paid_transaction(tx)
     return {"ok": True}
 
 # -------------------- Posts (Noticias / Eventos) --------------------

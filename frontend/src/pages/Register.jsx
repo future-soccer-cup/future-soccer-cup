@@ -18,7 +18,7 @@ export default function Register() {
     try {
       await register(name, email, password);
       toast.success("Cuenta creada");
-      nav("/mis-reservas");
+      nav("/mis-cotizaciones");
     } catch (err) {
       toast.error(formatApiError(err.response?.data?.detail) || "Error al registrarse");
     } finally {

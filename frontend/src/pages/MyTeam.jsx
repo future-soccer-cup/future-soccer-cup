@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
-import api, { formatApiError } from "../lib/api";
+import api, { formatApiError, imgSrc } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import { toast, Toaster } from "sonner";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Users2, CreditCard, CheckCircle2, AlertCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 import ImageUpload from "../components/ImageUpload";
 import CategorySelect from "../components/CategorySelect";
 
 const EMPTY_PLAYER = { name: "", team_id: "", jersey_number: 1, position: "Mediocampista", birth_date: "", photo_url: "", document_id: "", nickname: "", gender: "", eps: "", guardian_name: "", guardian_doc: "", guardian_relation: "", guardian_phone: "" };
+const EMPTY_STAFF = { name: "", document: "", role: "Director técnico", phone: "" };
+const fmtCOP = (n) => `$${Number(n || 0).toLocaleString("es-CO")} COP`;
 
 export default function MyTeam() {
   const { user } = useAuth();
@@ -16,6 +18,8 @@ export default function MyTeam() {
   const [editingTeam, setEditingTeam] = useState(false);
   const [teamForm, setTeamForm] = useState(null);
   const [editingPlayer, setEditingPlayer] = useState(null);
+  const [editingStaff, setEditingStaff] = useState(null); // {idx?, data}
+  const [payingReg, setPayingReg] = useState(false);
 
   const teamId = user?.team_id;
 
@@ -74,20 +78,116 @@ export default function MyTeam() {
     loadTeam();
   };
 
+  const payRegistration = async () => {
+    setPayingReg(true);
+    try {
+      const r = await api.post("/payments/registration/session", {
+        team_id: teamId,
+        origin_url: window.location.origin,
+      });
+      window.location.href = r.data.url;
+    } catch (err) {
+      toast.error(formatApiError(err.response?.data?.detail) || "No se pudo iniciar el pago");
+      setPayingReg(false);
+    }
+  };
+
+  const saveStaff = async (e) => {
+    e.preventDefault();
+    try {
+      const list = Array.isArray(team.cuerpo_tecnico) ? [...team.cuerpo_tecnico] : [];
+      if (editingStaff.idx != null) list[editingStaff.idx] = editingStaff.data;
+      else list.push(editingStaff.data);
+      await api.put(`/teams/${teamId}`, { ...team, cuerpo_tecnico: list });
+      toast.success("Guardado");
+      setEditingStaff(null);
+      loadTeam();
+    } catch (err) {
+      toast.error(formatApiError(err.response?.data?.detail));
+    }
+  };
+
+  const removeStaff = async (idx) => {
+    if (!window.confirm("¿Eliminar miembro del cuerpo técnico?")) return;
+    const list = (team.cuerpo_tecnico || []).filter((_, i) => i !== idx);
+    await api.put(`/teams/${teamId}`, { ...team, cuerpo_tecnico: list });
+    loadTeam();
+  };
+
+  const regPaid = team.registration_payment_status === "paid";
+  const eventLabel = { festival: "Festival", premier_par: "Premier Par", premier_impar: "Premier Impar" }[team.event_type] || "—";
+  const staff = Array.isArray(team.cuerpo_tecnico) ? team.cuerpo_tecnico : [];
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12" data-testid="my-team-page">
       <Toaster position="top-right" />
 
       <div className="bg-white border border-slate-200 rounded-2xl p-6 flex items-center gap-6">
         <div className="h-24 w-24 rounded-2xl flex items-center justify-center text-4xl font-display font-black overflow-hidden" style={{ background: team.color || "#1d4ed8", color: "#fff" }}>
-          {team.logo_url ? <img src={team.logo_url.startsWith("/api/") ? `${process.env.REACT_APP_BACKEND_URL}${team.logo_url}` : team.logo_url} alt={team.name} className="h-full w-full object-contain p-1" /> : team.name[0]}
+          {team.logo_url ? <img src={imgSrc(team.logo_url)} alt={team.name} className="h-full w-full object-contain p-1" /> : team.name[0]}
         </div>
         <div className="flex-1">
-          <div className="text-xs uppercase tracking-[0.2em] font-bold text-slate-500">{team.category}</div>
+          <div className="text-xs uppercase tracking-[0.2em] font-bold text-slate-500">{team.category} · {eventLabel}</div>
           <h1 className="font-display text-4xl md:text-5xl font-black uppercase tracking-tighter">{team.name}</h1>
           <div className="text-sm text-slate-600">{team.city || "—"} {team.coach && `· DT: ${team.coach}`}</div>
         </div>
         <button onClick={() => setEditingTeam(true)} className="fsc-btn-primary px-4 py-2 rounded-md text-sm" data-testid="edit-team-btn">Editar equipo</button>
+      </div>
+
+      {/* Banner inscripción al evento */}
+      <div className={`mt-4 rounded-2xl p-5 border-2 flex flex-col md:flex-row md:items-center gap-4 ${regPaid ? "bg-green-50 border-green-200" : "bg-amber-50 border-amber-200"}`} data-testid="registration-banner">
+        {regPaid ? <CheckCircle2 className="text-green-600 shrink-0" size={32}/> : <AlertCircle className="text-amber-600 shrink-0" size={32}/>}
+        <div className="flex-1">
+          <div className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Inscripción al evento</div>
+          <div className="font-display text-2xl font-black uppercase tracking-tight">
+            {regPaid ? "Pagada" : "Pendiente de pago"}
+          </div>
+          <div className="text-sm text-slate-600 mt-1">
+            {eventLabel} · {fmtCOP(team.registration_fee)}
+            {!regPaid && <span className="ml-2">— El equipo será activado al confirmar el pago.</span>}
+          </div>
+        </div>
+        {!regPaid && (
+          <button onClick={payRegistration} disabled={payingReg} className="fsc-btn-red px-5 py-3 rounded-md text-sm flex items-center gap-2 shrink-0 disabled:opacity-50" data-testid="pay-registration-btn">
+            <CreditCard size={16}/> {payingReg ? "Redirigiendo..." : "Pagar inscripción"}
+          </button>
+        )}
+      </div>
+
+      {/* CTAs Cotización */}
+      <div className="mt-4 grid sm:grid-cols-2 gap-3">
+        <Link to="/cotizar" className="bg-white border-2 border-slate-900 text-slate-900 rounded-xl p-4 hover:bg-slate-900 hover:text-white transition-colors" data-testid="cta-cotizar">
+          <div className="text-xs font-bold uppercase tracking-[0.2em]">Armar paquete</div>
+          <div className="font-display text-2xl font-black uppercase tracking-tight">Cotizar evento →</div>
+        </Link>
+        <Link to="/mis-cotizaciones" className="bg-slate-900 text-white rounded-xl p-4 hover:bg-slate-800 transition-colors" data-testid="cta-mis-cotizaciones">
+          <div className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Historial</div>
+          <div className="font-display text-2xl font-black uppercase tracking-tight">Mis cotizaciones →</div>
+        </Link>
+      </div>
+
+      {/* Cuerpo técnico */}
+      <div className="mt-10">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-display text-3xl font-black uppercase tracking-tight flex items-center gap-3"><Users2 size={28}/> Cuerpo técnico ({staff.length})</h2>
+          <button onClick={() => setEditingStaff({ idx: null, data: { ...EMPTY_STAFF } })} className="fsc-btn-primary px-4 py-2 rounded-md text-sm flex items-center gap-2" data-testid="add-staff-btn">
+            <Plus size={16}/> Agregar
+          </button>
+        </div>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {staff.length === 0 && <p className="col-span-full text-center text-slate-400 py-6">Aún no has agregado al cuerpo técnico.</p>}
+          {staff.map((s, idx) => (
+            <div key={idx} className="bg-white border border-slate-200 rounded-lg p-4 flex items-center gap-3" data-testid={`staff-${idx}`}>
+              <div className="h-12 w-12 rounded-full bg-red-100 text-red-700 flex items-center justify-center font-bold uppercase">{(s.name || "?")[0]}</div>
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold truncate">{s.name}</div>
+                <div className="text-xs text-slate-500 truncate">{s.role}{s.document ? ` · Doc ${s.document}` : ""}{s.phone ? ` · ${s.phone}` : ""}</div>
+              </div>
+              <button onClick={() => setEditingStaff({ idx, data: { ...s } })} className="text-blue-700"><Pencil size={16}/></button>
+              <button onClick={() => removeStaff(idx)} className="text-red-600"><Trash2 size={16}/></button>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="mt-10">
@@ -102,7 +202,7 @@ export default function MyTeam() {
           {players.length === 0 && <p className="col-span-full text-center text-slate-400 py-10">Aún no has agregado jugadores.</p>}
           {players.map((p) => (
             <div key={p.id} className="bg-white border border-slate-200 rounded-lg p-4 flex items-center gap-3" data-testid={`my-team-player-${p.id}`}>
-              {p.photo_url ? <img src={p.photo_url.startsWith("/api/") ? `${process.env.REACT_APP_BACKEND_URL}${p.photo_url}` : p.photo_url} alt="" className="h-14 w-14 rounded-full object-cover" /> : <div className="h-14 w-14 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold">{p.name[0]}</div>}
+              {p.photo_url ? <img src={imgSrc(p.photo_url)} alt="" className="h-14 w-14 rounded-full object-cover" /> : <div className="h-14 w-14 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold">{p.name[0]}</div>}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="font-display text-xl font-black text-blue-700">#{p.jersey_number}</span>
@@ -175,6 +275,31 @@ export default function MyTeam() {
             </div>
 
             <button className="fsc-btn-red w-full py-2 rounded-md" data-testid="save-player-btn">Guardar</button>
+          </form>
+        </Modal>
+      )}
+
+      {editingStaff && (
+        <Modal title={editingStaff.idx != null ? "Editar miembro" : "Nuevo miembro del cuerpo técnico"} onClose={() => setEditingStaff(null)}>
+          <form onSubmit={saveStaff} className="space-y-3">
+            <Field label="Nombre completo" required value={editingStaff.data.name} onChange={(v) => setEditingStaff({ ...editingStaff, data: { ...editingStaff.data, name: v } })} testId="staff-name-input" />
+            <label className="block">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Rol</span>
+              <select value={editingStaff.data.role} onChange={(e) => setEditingStaff({ ...editingStaff, data: { ...editingStaff.data, role: e.target.value } })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="staff-role-select">
+                <option>Director técnico</option>
+                <option>Asistente técnico</option>
+                <option>Preparador físico</option>
+                <option>Médico</option>
+                <option>Fisioterapeuta</option>
+                <option>Delegado</option>
+                <option>Utilero</option>
+              </select>
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Documento" value={editingStaff.data.document} onChange={(v) => setEditingStaff({ ...editingStaff, data: { ...editingStaff.data, document: v } })} />
+              <Field label="Teléfono" value={editingStaff.data.phone} onChange={(v) => setEditingStaff({ ...editingStaff, data: { ...editingStaff.data, phone: v } })} />
+            </div>
+            <button className="fsc-btn-primary w-full py-2 rounded-md" data-testid="save-staff-btn">Guardar</button>
           </form>
         </Modal>
       )}

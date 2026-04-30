@@ -88,5 +88,27 @@ Aplicación versátil para una empresa que organiza eventos de fútbol infantil 
   - `/mi-equipo` ahora tiene 2 CTAs: "Cotizar evento" y "Mis cotizaciones".
   - Navbar público: link "Cotizar".
 
-## Last Test Run
-- iteration_6: **102/102 pytest backend en verde** (18 nuevos para iter6 cubriendo event-types schema, math de calculate, validaciones, RBAC de /quotes, payment-proof). Frontend: `/cotizar` wizard completo verificado con total en vivo correcto ($1450 para festival/Sub-12/gold/double/4pax/3nights); registro de equipo con logo verificado.
+## Iteration 7 (2026-04-30) — Stripe (COP) + Clubes + Limpieza
+- **Moneda: COP (Pesos Colombianos)**. Tarifas del backend actualizadas:
+  - Inscripción equipos: Festival $1.000.000, Premier Par/Impar $1.800.000.
+  - Hospedaje per pax/noche: Diamante $720k-$400k; Gold $520k-$280k; Silver $380k-$200k; Bronce $240k-$130k.
+  - Adicionales por pax: Transporte $100k, Parque $140k, Tour $110k.
+- **Evento en registro del equipo**: `TeamRegisterIn.event_type` requerido. Al crear el equipo se guardan `event_type`, `registration_fee` y `registration_payment_status="pending"`. El registro **no se bloquea** por falta de pago — el responsable puede pagar después desde `/mi-equipo`.
+- **Stripe Checkout (emergentintegrations)**:
+  - `POST /api/payments/registration/session` — crea checkout para pagar la inscripción del equipo (COP).
+  - `POST /api/payments/checkout/session` — crea checkout para pagar una cotización aprobada (COP).
+  - `GET /api/payments/checkout/status/{sid}` — polling idempotente. Al `payment_status=="paid"`:
+    - `kind=="registration"` → `teams.registration_payment_status="paid"`.
+    - `kind=="quote"` → `quotes.status="pagada"`.
+  - `POST /api/webhook/stripe` — también aplica la transición idempotente.
+  - Colección `payment_transactions` guarda `kind`, `session_id`, `amount`, `currency`, `payment_status`.
+- **Frontend**:
+  - `/registro-equipo`: bloque "Evento" con 3 cards (pricing COP) y filtro de categorías por evento.
+  - `/mi-equipo`: banner de inscripción (Pagada/Pendiente) con CTA "Pagar inscripción", sección de **Cuerpo técnico** CRUD (nombre, rol, documento, teléfono) y CTAs a Cotizar / Mis cotizaciones.
+  - `/mis-cotizaciones`: botón "Pagar" visible solo si `status=="aprobada"` y `payment_status!="paid"`; redirige a Stripe.
+  - `/pago-exitoso`: polling con kind (registration/quote) y mensaje contextual.
+  - `/equipos` → `/clubes`: agrupación Club → Categorías; card de club muestra chips de categorías y cuenta de equipos.
+  - `/clubes/:slug` (nuevo): detalle del club con secciones por categoría y plantillas.
+  - Navbar y rutas limpias: eliminados Bookings, MyBookings, AdminBookings, AdminInventory.
+  - Rutas admin: agregada `/admin/noticias` (AdminPosts ya existente).
+  - Formato numérico es-CO en Cotizar, MyQuotes, MyTeam y AdminQuotes.

@@ -11,30 +11,30 @@ import Home from "./pages/Home";
 import Fixture from "./pages/Fixture";
 import Standings from "./pages/Standings";
 import Teams from "./pages/Teams";
+import ClubDetail from "./pages/ClubDetail";
 import TeamDetail from "./pages/TeamDetail";
 import Players from "./pages/Players";
 import PlayerDetail from "./pages/PlayerDetail";
-import Bookings from "./pages/Bookings";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import MyBookings from "./pages/MyBookings";
 import TeamRegister from "./pages/TeamRegister";
 import MyTeam from "./pages/MyTeam";
+import Cotizar from "./pages/Cotizar";
+import MyQuotes from "./pages/MyQuotes";
+import PaymentSuccess from "./pages/PaymentSuccess";
+import Noticias from "./pages/Noticias";
 
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminTeams from "./pages/admin/AdminTeams";
 import AdminPlayers from "./pages/admin/AdminPlayers";
 import AdminMatches from "./pages/admin/AdminMatches";
-import AdminInventory from "./pages/admin/AdminInventory";
-import AdminBookings from "./pages/admin/AdminBookings";
 import AdminCarnets from "./pages/admin/AdminCarnets";
 import AdminFixtureGenerator from "./pages/admin/AdminFixtureGenerator";
 import AdminApprovals from "./pages/admin/AdminApprovals";
 import AdminBulkUpload from "./pages/admin/AdminBulkUpload";
 import AdminQuotes from "./pages/admin/AdminQuotes";
-import Cotizar from "./pages/Cotizar";
-import MyQuotes from "./pages/MyQuotes";
+import AdminPosts from "./pages/admin/AdminPosts";
 
 function PublicLayout() {
   const loc = useLocation();
@@ -61,14 +61,16 @@ function App() {
             <Route path="/fixture" element={<Fixture />} />
             <Route path="/posiciones" element={<Standings />} />
             <Route path="/equipos" element={<Teams />} />
+            <Route path="/clubes/:slug" element={<ClubDetail />} />
             <Route path="/equipos/:id" element={<TeamDetail />} />
             <Route path="/jugadores" element={<Players />} />
             <Route path="/jugadores/:id" element={<PlayerDetail />} />
-            <Route path="/reservas" element={<Bookings />} />
+            <Route path="/noticias" element={<Noticias />} />
             <Route path="/cotizar" element={<Cotizar />} />
             <Route path="/login" element={<Login />} />
             <Route path="/registro" element={<Register />} />
             <Route path="/registro-equipo" element={<TeamRegister />} />
+            <Route path="/pago-exitoso" element={<PaymentSuccess />} />
             <Route
               path="/mi-equipo"
               element={<ProtectedRoute role="team"><MyTeam /></ProtectedRoute>}
@@ -76,10 +78,6 @@ function App() {
             <Route
               path="/mis-cotizaciones"
               element={<ProtectedRoute><MyQuotes /></ProtectedRoute>}
-            />
-            <Route
-              path="/mis-reservas"
-              element={<ProtectedRoute><MyBookings /></ProtectedRoute>}
             />
           </Route>
 
@@ -95,8 +93,7 @@ function App() {
             <Route path="aprobaciones" element={<AdminApprovals />} />
             <Route path="carga-masiva" element={<AdminBulkUpload />} />
             <Route path="cotizaciones" element={<AdminQuotes />} />
-            <Route path="inventario" element={<AdminInventory />} />
-            <Route path="reservas" element={<AdminBookings />} />
+            <Route path="noticias" element={<AdminPosts />} />
             <Route path="carnets" element={<AdminCarnets />} />
           </Route>
         </Routes>

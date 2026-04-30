@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import api, { formatApiError } from "../../lib/api";
+import api, { formatApiError, imgSrc } from "../../lib/api";
 import { toast, Toaster } from "sonner";
 import { Plus, Pencil, Trash2, Instagram } from "lucide-react";
 import ImageUpload from "../../components/ImageUpload";
@@ -90,7 +90,7 @@ export default function AdminPosts() {
             {posts.map((p) => (
               <tr key={p.id} className="border-t border-slate-100" data-testid={`post-row-${p.id}`}>
                 <td className="px-4 py-2">
-                  {p.image_url ? <img src={p.image_url} alt="" className="h-10 w-10 rounded object-cover" /> : <div className="h-10 w-10 rounded bg-slate-200" />}
+                  {p.image_url ? <img src={imgSrc(p.image_url)} alt="" className="h-10 w-10 rounded object-cover" /> : <div className="h-10 w-10 rounded bg-slate-200" />}
                 </td>
                 <td className="px-4 py-2 font-semibold">{p.title}</td>
                 <td className="px-4 py-2 text-xs uppercase tracking-wider">{p.category}</td>

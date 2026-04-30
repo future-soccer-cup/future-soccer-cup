@@ -63,7 +63,7 @@ export default function AdminQuotes() {
                 <td className="px-4 py-2">{q.category}</td>
                 <td className="px-4 py-2">{q.lodging_name} · {q.room_type}</td>
                 <td className="px-4 py-2">{q.pax} × {q.nights}</td>
-                <td className="px-4 py-2 text-right font-display font-black text-blue-700 tabular-nums">${q.total_amount}</td>
+                <td className="px-4 py-2 text-right font-display font-black text-blue-700 tabular-nums">${Number(q.total_amount || 0).toLocaleString("es-CO")}<span className="text-[9px] text-slate-400 font-bold ml-1">COP</span></td>
                 <td className="px-4 py-2 text-xs text-slate-500">{new Date(q.created_at).toLocaleDateString("es")}</td>
                 <td className="px-4 py-2">
                   <span className="text-xs font-bold uppercase tracking-wider">{q.status}</span>

@@ -1,19 +1,19 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../../lib/api";
-import { Users, Shirt, Calendar, ClipboardList } from "lucide-react";
+import { Users, Shirt, Calendar, Receipt } from "lucide-react";
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState({ teams: 0, players: 0, matches: 0, bookings: 0 });
+  const [stats, setStats] = useState({ teams: 0, players: 0, matches: 0, quotes: 0 });
 
   useEffect(() => {
     Promise.all([
       api.get("/teams"),
       api.get("/players"),
       api.get("/matches"),
-      api.get("/bookings"),
-    ]).then(([t, p, m, b]) => {
-      setStats({ teams: t.data.length, players: p.data.length, matches: m.data.length, bookings: b.data.length });
+      api.get("/quotes").catch(() => ({ data: [] })),
+    ]).then(([t, p, m, q]) => {
+      setStats({ teams: t.data.length, players: p.data.length, matches: m.data.length, quotes: q.data.length });
     });
   }, []);
 
@@ -21,7 +21,7 @@ export default function AdminDashboard() {
     { label: "Equipos", value: stats.teams, icon: Shirt, color: "bg-blue-700", to: "/admin/equipos" },
     { label: "Jugadores", value: stats.players, icon: Users, color: "bg-red-600", to: "/admin/jugadores" },
     { label: "Partidos", value: stats.matches, icon: Calendar, color: "bg-slate-900", to: "/admin/partidos" },
-    { label: "Reservas", value: stats.bookings, icon: ClipboardList, color: "bg-emerald-600", to: "/admin/reservas" },
+    { label: "Cotizaciones", value: stats.quotes, icon: Receipt, color: "bg-emerald-600", to: "/admin/cotizaciones" },
   ];
 
   return (
@@ -46,7 +46,7 @@ export default function AdminDashboard() {
             <Link to="/admin/equipos" className="px-4 py-3 bg-blue-50 rounded-md font-bold uppercase tracking-wide text-blue-700 hover:bg-blue-100">+ Nuevo equipo</Link>
             <Link to="/admin/jugadores" className="px-4 py-3 bg-red-50 rounded-md font-bold uppercase tracking-wide text-red-700 hover:bg-red-100">+ Nuevo jugador</Link>
             <Link to="/admin/generador-fixture" className="px-4 py-3 bg-slate-900 text-white rounded-md font-bold uppercase tracking-wide hover:bg-slate-800">⚡ Generar fixture</Link>
-            <Link to="/admin/inventario" className="px-4 py-3 bg-emerald-50 rounded-md font-bold uppercase tracking-wide text-emerald-700 hover:bg-emerald-100">+ Hotel/Tour</Link>
+            <Link to="/admin/noticias" className="px-4 py-3 bg-emerald-50 rounded-md font-bold uppercase tracking-wide text-emerald-700 hover:bg-emerald-100">+ Noticia</Link>
           </div>
         </div>
         <div className="bg-slate-900 text-white rounded-xl p-6 fsc-stripe-blue">

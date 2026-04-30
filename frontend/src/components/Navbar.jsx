@@ -24,7 +24,7 @@ export default function Navbar() {
   };
 
   const myAreaLink =
-    user?.role === "team" ? { to: "/mi-equipo", label: "Mi equipo" } : { to: "/mis-reservas", label: user?.name || "Cuenta" };
+    user?.role === "team" ? { to: "/mi-equipo", label: "Mi equipo" } : { to: "/mis-cotizaciones", label: user?.name || "Cuenta" };
 
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-slate-200" data-testid="main-navbar">

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import api, { formatApiError, FSC_LOGO } from "../lib/api";
@@ -9,21 +9,35 @@ import { Upload } from "lucide-react";
 const EMPTY = {
   email: "", password: "", manager_name: "",
   team_name: "", category: "", coach: "", city: "",
-  color: "#1d4ed8",
+  color: "#1d4ed8", event_type: "",
 };
+
+const fmtCOP = (n) => `$${Number(n || 0).toLocaleString("es-CO")}`;
 
 export default function TeamRegister() {
   const [form, setForm] = useState(EMPTY);
   const [loading, setLoading] = useState(false);
   const [logoFile, setLogoFile] = useState(null);
+  const [events, setEvents] = useState([]);
   const fileRef = useRef(null);
   const { setUser } = useAuth();
   const nav = useNavigate();
 
+  useEffect(() => {
+    api.get("/event-types").then((r) => setEvents(r.data.events || [])).catch(() => {});
+  }, []);
+
   const upd = (k, v) => setForm({ ...form, [k]: v });
+
+  const selectedEvent = events.find((e) => e.id === form.event_type);
+  const eventCategories = selectedEvent?.categories || [];
 
   const submit = async (e) => {
     e.preventDefault();
+    if (!form.event_type) {
+      toast.error("Selecciona el evento");
+      return;
+    }
     setLoading(true);
     try {
       // Step 1: Create the team and login
@@ -49,7 +63,7 @@ export default function TeamRegister() {
         }
       }
 
-      toast.success("Equipo registrado. En revisión por el admin.");
+      toast.success("Equipo registrado. Paga la inscripción para completar tu participación.");
       nav("/mi-equipo");
     } catch (err) {
       toast.error(formatApiError(err.response?.data?.detail) || "Error al registrar");
@@ -88,10 +102,27 @@ export default function TeamRegister() {
           </div>
 
           <div className="border-t border-slate-200 pt-4">
+            <h2 className="font-display text-2xl font-black uppercase tracking-tight">Evento</h2>
+            <p className="text-xs text-slate-500 mt-1">Elige el evento en el que participará tu equipo. El fee de inscripción se cobrará al finalizar el registro.</p>
+            <div className="grid sm:grid-cols-3 gap-3 mt-3">
+              {events.map((ev) => (
+                <label key={ev.id} className={`cursor-pointer border-2 rounded-xl p-4 transition-colors ${form.event_type === ev.id ? "border-red-600 bg-red-50" : "border-slate-200 hover:border-slate-400"}`} data-testid={`event-option-${ev.id}`}>
+                  <input type="radio" name="event_type" className="hidden" value={ev.id} checked={form.event_type === ev.id} onChange={() => setForm({ ...form, event_type: ev.id, category: eventCategories.includes(form.category) ? form.category : "" })} />
+                  <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Evento</div>
+                  <div className="font-display text-xl font-black uppercase tracking-tight">{ev.name}</div>
+                  <div className="text-[11px] text-slate-500 mt-1 line-clamp-2">{ev.description}</div>
+                  <div className="mt-3 font-display text-2xl font-black text-red-600 tabular-nums">{fmtCOP(ev.registration_fee_per_team)}<span className="text-xs text-slate-400 font-bold ml-1">COP</span></div>
+                  <div className="text-[10px] text-slate-400 mt-1">Categorías: {ev.categories.join(", ")}</div>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="border-t border-slate-200 pt-4">
             <h2 className="font-display text-2xl font-black uppercase tracking-tight">Datos del equipo</h2>
             <div className="grid sm:grid-cols-2 gap-3 mt-3">
               <Field label="Nombre del equipo" required value={form.team_name} onChange={(v) => upd("team_name", v)} testId="tr-team-name" />
-              <CategorySelect required value={form.category} onChange={(v) => upd("category", v)} testId="tr-category" />
+              <CategorySelect required value={form.category} onChange={(v) => upd("category", v)} testId="tr-category" allowed={selectedEvent ? eventCategories : null} />
               <Field label="Director técnico" value={form.coach} onChange={(v) => upd("coach", v)} testId="tr-coach" />
               <Field label="Ciudad" value={form.city} onChange={(v) => upd("city", v)} testId="tr-city" />
               <label className="block">

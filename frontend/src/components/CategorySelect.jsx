@@ -14,8 +14,9 @@ export function useCategories() {
   return cats;
 }
 
-export default function CategorySelect({ value, onChange, required, testId = "category-select" }) {
+export default function CategorySelect({ value, onChange, required, testId = "category-select", allowed = null }) {
   const cats = useCategories();
+  const list = allowed && allowed.length ? cats.filter((c) => allowed.includes(c)) : cats;
   return (
     <label className="block">
       <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Categoría (por edad)</span>
@@ -27,7 +28,7 @@ export default function CategorySelect({ value, onChange, required, testId = "ca
         data-testid={testId}
       >
         <option value="">Seleccionar...</option>
-        {cats.map((c) => (
+        {list.map((c) => (
           <option key={c} value={c}>{c}</option>
         ))}
       </select>

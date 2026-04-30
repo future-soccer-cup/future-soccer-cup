@@ -12,6 +12,8 @@ const ROOM_TYPES = [
   { id: "quadruple", label: "Cuádruple (4 pax)" },
 ];
 
+const fmt = (n) => `$${Number(n || 0).toLocaleString("es-CO")}`;
+
 export default function Cotizar() {
   const { user } = useAuth();
   const nav = useNavigate();
@@ -88,7 +90,7 @@ export default function Cotizar() {
                   <Trophy className={form.event_type === e.id ? "text-blue-700" : "text-slate-400"} size={20} />
                   <div className="font-display text-xl font-black uppercase tracking-tight mt-2">{e.name}</div>
                   <div className="text-xs text-slate-500 mt-1">{e.description}</div>
-                  <div className="mt-2 text-xs font-bold text-blue-700">Inscripción ${e.registration_fee_per_team}</div>
+                  <div className="mt-2 text-xs font-bold text-blue-700">Inscripción {fmt(e.registration_fee_per_team)} <span className="text-[10px] text-slate-400">COP</span></div>
                 </button>
               ))}
             </div>
@@ -122,7 +124,7 @@ export default function Cotizar() {
                 >
                   <Hotel size={18} />
                   <div className="font-display text-lg font-black uppercase tracking-tight mt-1">{t.name}</div>
-                  <div className={`text-[10px] mt-1 ${form.lodging_tier === t.id ? "text-slate-300" : "text-slate-500"}`}>desde ${t.rates.quadruple}/pax/noche</div>
+                  <div className={`text-[10px] mt-1 ${form.lodging_tier === t.id ? "text-slate-300" : "text-slate-500"}`}>desde {fmt(t.rates.quadruple)}/pax/noche</div>
                 </button>
               ))}
             </div>
@@ -151,9 +153,9 @@ export default function Cotizar() {
 
           <Section title="Servicios adicionales" testId="step-addons">
             <div className="grid sm:grid-cols-3 gap-3">
-              <Toggle label="Transporte" subtitle={`+$${config.addons.transport}/pax`} checked={form.includes_transport} onChange={(v) => setForm({ ...form, includes_transport: v })} testId="toggle-transport" />
-              <Toggle label="Parque" subtitle={`+$${config.addons.parque}/pax`} checked={form.includes_parque} onChange={(v) => setForm({ ...form, includes_parque: v })} testId="toggle-parque" />
-              <Toggle label="Tour ciudad" subtitle={`+$${config.addons.tour}/pax`} checked={form.includes_tour} onChange={(v) => setForm({ ...form, includes_tour: v })} testId="toggle-tour" />
+              <Toggle label="Transporte" subtitle={`+${fmt(config.addons.transport)}/pax`} checked={form.includes_transport} onChange={(v) => setForm({ ...form, includes_transport: v })} testId="toggle-transport" />
+              <Toggle label="Parque" subtitle={`+${fmt(config.addons.parque)}/pax`} checked={form.includes_parque} onChange={(v) => setForm({ ...form, includes_parque: v })} testId="toggle-parque" />
+              <Toggle label="Tour ciudad" subtitle={`+${fmt(config.addons.tour)}/pax`} checked={form.includes_tour} onChange={(v) => setForm({ ...form, includes_tour: v })} testId="toggle-tour" />
             </div>
             <label className="block mt-4">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Teléfono de contacto</span>
@@ -175,16 +177,16 @@ export default function Cotizar() {
               <Row label="Evento" value={estimate.event_name} />
               <Row label="Categoría" value={form.category} />
               <Row label="Hospedaje" value={`${estimate.lodging_name} · ${form.room_type}`} />
-              <Row label="Tarifa/pax/noche" value={`$${estimate.rate_per_person_night}`} />
-              <Row label={`Hospedaje (${form.pax} pax × ${form.nights} noches)`} value={`$${estimate.lodging_subtotal}`} />
-              {estimate.transport_subtotal > 0 && <Row label="Transporte" value={`$${estimate.transport_subtotal}`} />}
-              {estimate.parque_subtotal > 0 && <Row label="Parque" value={`$${estimate.parque_subtotal}`} />}
-              {estimate.tour_subtotal > 0 && <Row label="Tour" value={`$${estimate.tour_subtotal}`} />}
-              <Row label="Inscripción equipo" value={`$${estimate.registration_fee}`} />
+              <Row label="Tarifa/pax/noche" value={fmt(estimate.rate_per_person_night)} />
+              <Row label={`Hospedaje (${form.pax} pax × ${form.nights} noches)`} value={fmt(estimate.lodging_subtotal)} />
+              {estimate.transport_subtotal > 0 && <Row label="Transporte" value={fmt(estimate.transport_subtotal)} />}
+              {estimate.parque_subtotal > 0 && <Row label="Parque" value={fmt(estimate.parque_subtotal)} />}
+              {estimate.tour_subtotal > 0 && <Row label="Tour" value={fmt(estimate.tour_subtotal)} />}
+              <Row label="Inscripción equipo" value={fmt(estimate.registration_fee)} />
               <div className="border-t border-white/10 pt-3 mt-3">
                 <div className="flex items-baseline justify-between">
                   <span className="text-xs uppercase tracking-widest text-slate-300">Total</span>
-                  <span className="font-display text-4xl font-black text-red-400 tabular-nums">${estimate.total_amount}</span>
+                  <span className="font-display text-4xl font-black text-red-400 tabular-nums">{fmt(estimate.total_amount)}<span className="text-xs text-slate-400 font-bold ml-1">COP</span></span>
                 </div>
               </div>
               <button
