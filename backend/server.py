@@ -388,28 +388,11 @@ class TourOut(TourIn):
 # -------------------- Auth --------------------
 @api.post("/auth/register")
 async def register(payload: RegisterIn, response: Response):
-    email = payload.email.lower()
-    if not payload.data_consent:
-        raise HTTPException(status_code=400, detail="Debes aceptar el tratamiento de datos personales para continuar.")
-    existing = await db.users.find_one({"email": email})
-    if existing:
-        raise HTTPException(status_code=400, detail="El correo ya está registrado")
-    now = datetime.now(timezone.utc).isoformat()
-    user = {
-        "id": str(uuid.uuid4()),
-        "email": email,
-        "name": payload.name,
-        "role": "family",
-        "password_hash": hash_password(payload.password),
-        "data_consent": True,
-        "consent_at": now,
-        "created_at": now,
-    }
-    await db.users.insert_one(user)
-    access = create_access_token(user["id"], user["email"], user["role"])
-    refresh = create_refresh_token(user["id"])
-    set_auth_cookies(response, access, refresh)
-    return {"id": user["id"], "email": user["email"], "name": user["name"], "role": user["role"]}
+    """⛔ Endpoint deshabilitado: solo se permiten cuentas de Director Técnico (POST /auth/register-team)."""
+    raise HTTPException(
+        status_code=403,
+        detail="El registro de cuentas familiares fue deshabilitado. Solo los directores técnicos pueden registrarse.",
+    )
 
 @api.post("/auth/register-team")
 async def register_team(payload: TeamRegisterIn, response: Response):
@@ -1119,6 +1102,8 @@ async def calculate_quote(payload: QuoteIn):
 
 @api.post("/quotes")
 async def create_quote(payload: QuoteIn, user: dict = Depends(get_current_user)):
+    if user.get("role") not in ("team", "admin"):
+        raise HTTPException(status_code=403, detail="Solo los directores técnicos pueden enviar cotizaciones")
     breakdown = _calculate_quote(payload)
     doc = {
         "id": str(uuid.uuid4()),

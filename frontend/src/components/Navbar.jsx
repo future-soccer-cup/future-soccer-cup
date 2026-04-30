@@ -87,11 +87,11 @@ export default function Navbar() {
                 Ingresar
               </Link>
               <Link
-                to="/registro"
+                to="/registro-equipo"
                 data-testid="register-link"
                 className="fsc-btn-primary px-4 py-2 text-sm rounded-md"
               >
-                Crear cuenta
+                Registrar equipo
               </Link>
             </>
           )}

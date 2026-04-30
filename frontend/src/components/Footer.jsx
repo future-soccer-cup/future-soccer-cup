@@ -25,12 +25,11 @@ export default function Footer() {
         </div>
 
         <div>
-          <h4 className="font-display font-bold uppercase tracking-wider text-white mb-3 text-sm">Familias</h4>
+          <h4 className="font-display font-bold uppercase tracking-wider text-white mb-3 text-sm">Para Clubes</h4>
           <ul className="space-y-2 text-sm">
             <li><a href="/cotizar" className="hover:text-white">Hospedaje</a></li>
             <li><a href="/cotizar" className="hover:text-white">Transporte</a></li>
             <li><a href="/cotizar" className="hover:text-white">Tours</a></li>
-            <li><a href="/registro" className="hover:text-white">Cuenta familiar</a></li>
             <li><a href="/registro-equipo" className="hover:text-white">Registrar equipo</a></li>
           </ul>
         </div>

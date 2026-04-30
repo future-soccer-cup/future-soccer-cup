@@ -59,8 +59,8 @@ export default function Login() {
             </button>
           </form>
 
-          <p className="mt-6 text-sm text-slate-500">¿No tienes cuenta? <Link to="/registro" className="text-blue-700 font-bold">Crear cuenta familiar</Link></p>
-          <p className="mt-1 text-sm text-slate-500">¿Eres club o coach? <Link to="/registro-equipo" className="text-red-600 font-bold">Registrar equipo</Link></p>
+          <p className="mt-6 text-sm text-slate-500">¿Aún no tienes cuenta? <Link to="/registro-equipo" className="text-red-600 font-bold">Registrar equipo</Link></p>
+          <p className="mt-1 text-xs text-slate-400">El registro está reservado para directores técnicos y gerentes de club.</p>
         </div>
       </div>
     </div>

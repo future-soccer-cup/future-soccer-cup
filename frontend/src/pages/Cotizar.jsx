@@ -72,7 +72,11 @@ export default function Cotizar() {
   const event = config.events.find((e) => e.id === form.event_type);
 
   const submit = async () => {
-    if (!user) { toast.error("Inicia sesión para cotizar"); nav("/login"); return; }
+    if (!user) { toast.error("Inicia sesión como director técnico"); nav("/login"); return; }
+    if (user.role !== "team" && user.role !== "admin") {
+      toast.error("Solo los directores técnicos pueden enviar cotizaciones");
+      return;
+    }
     setSubmitting(true);
     try {
       const extras = [];
