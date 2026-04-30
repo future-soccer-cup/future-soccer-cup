@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import api, { formatApiError, imgSrc } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import { toast, Toaster } from "sonner";
-import { Plus, Pencil, Trash2, Users2, CreditCard, CheckCircle2, AlertCircle } from "lucide-react";
+import { Plus, Pencil, Trash2, Users2, CreditCard, CheckCircle2, AlertCircle, FileUp, Download } from "lucide-react";
 import { Link } from "react-router-dom";
 import ImageUpload from "../components/ImageUpload";
 import CategorySelect from "../components/CategorySelect";
@@ -20,6 +20,10 @@ export default function MyTeam() {
   const [editingPlayer, setEditingPlayer] = useState(null);
   const [editingStaff, setEditingStaff] = useState(null); // {idx?, data}
   const [payingReg, setPayingReg] = useState(false);
+  const [bulkPreview, setBulkPreview] = useState(null);
+  const [bulkFile, setBulkFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef(null);
 
   const teamId = user?.team_id;
 
@@ -114,6 +118,41 @@ export default function MyTeam() {
     loadTeam();
   };
 
+  const downloadTemplate = async () => {
+    try {
+      const r = await api.get("/team-roster/template", { responseType: "blob" });
+      const url = URL.createObjectURL(r.data);
+      const a = document.createElement("a");
+      a.href = url; a.download = "fsc-equipo-plantilla.xlsx"; a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      toast.error("No se pudo descargar la plantilla");
+    }
+  };
+
+  const uploadBulk = async (runPreview) => {
+    if (!bulkFile) { toast.error("Selecciona un archivo .xlsx"); return; }
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", bulkFile);
+      const r = await api.post(`/team-roster/import?preview=${runPreview}`, fd, { headers: { "Content-Type": "multipart/form-data" } });
+      if (runPreview) {
+        setBulkPreview(r.data);
+      } else {
+        toast.success(`Importados: ${r.data.players.ok} jugadores, ${r.data.staff.ok} del cuerpo técnico`);
+        setBulkPreview(null);
+        setBulkFile(null);
+        if (fileRef.current) fileRef.current.value = "";
+        loadTeam();
+      }
+    } catch (err) {
+      toast.error(formatApiError(err.response?.data?.detail) || "Error en la importación");
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const regPaid = team.registration_payment_status === "paid";
   const eventLabel = { festival: "Festival", premier_par: "Premier Par", premier_impar: "Premier Impar" }[team.event_type] || "—";
   const staff = Array.isArray(team.cuerpo_tecnico) ? team.cuerpo_tecnico : [];
@@ -193,10 +232,54 @@ export default function MyTeam() {
       <div className="mt-10">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-display text-3xl font-black uppercase tracking-tight">Plantilla ({players.length})</h2>
-          <button onClick={() => setEditingPlayer({ ...EMPTY_PLAYER, team_id: teamId })} className="fsc-btn-red px-4 py-2 rounded-md text-sm flex items-center gap-2" data-testid="add-player-btn">
-            <Plus size={16}/> Agregar jugador
-          </button>
+          <div className="flex gap-2">
+            <button onClick={() => fileRef.current?.click()} className="px-3 py-2 border-2 border-slate-900 text-slate-900 hover:bg-slate-900 hover:text-white rounded-md text-xs font-bold uppercase tracking-wide flex items-center gap-2" data-testid="bulk-upload-btn">
+              <FileUp size={14}/> Carga masiva
+            </button>
+            <input ref={fileRef} type="file" accept=".xlsx" hidden onChange={(e) => { setBulkFile(e.target.files?.[0] || null); if (e.target.files?.[0]) uploadBulk(true); }} data-testid="bulk-upload-input" />
+            <button onClick={() => setEditingPlayer({ ...EMPTY_PLAYER, team_id: teamId })} className="fsc-btn-red px-4 py-2 rounded-md text-sm flex items-center gap-2" data-testid="add-player-btn">
+              <Plus size={16}/> Agregar jugador
+            </button>
+          </div>
         </div>
+
+        {!bulkPreview && (
+          <div className="mb-4 bg-blue-50 border border-blue-200 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <div className="flex-1">
+              <div className="text-xs font-bold uppercase tracking-wider text-blue-700">Importa cuerpo técnico + jugadores en lote</div>
+              <p className="text-xs text-slate-600 mt-1">Descarga la plantilla Excel, complétala con 2 hojas (Jugadores + Cuerpo Técnico) y súbela para cargar todo de una vez.</p>
+            </div>
+            <button onClick={downloadTemplate} className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide px-4 py-2 bg-white border-2 border-blue-700 text-blue-700 rounded-md hover:bg-blue-700 hover:text-white" data-testid="download-template-btn">
+              <Download size={14}/> Plantilla .xlsx
+            </button>
+          </div>
+        )}
+
+        {bulkPreview && (
+          <div className="mb-4 bg-white border-2 border-blue-700 rounded-xl p-5" data-testid="bulk-preview">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <div className="text-xs font-bold uppercase tracking-wider text-blue-700">Vista previa de importación</div>
+                <div className="font-display text-xl font-black uppercase tracking-tight">{bulkFile?.name}</div>
+              </div>
+              <button onClick={() => { setBulkPreview(null); setBulkFile(null); if (fileRef.current) fileRef.current.value = ""; }} className="text-slate-400 hover:text-slate-700 text-sm">✕ Cancelar</button>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-4 text-sm">
+              <div className="border border-slate-200 rounded-lg p-3">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Jugadores</div>
+                <div className="font-display text-3xl font-black text-green-600">{bulkPreview.players.ok}<span className="text-sm text-slate-400 font-bold ml-1">/ {bulkPreview.players.total}</span></div>
+                {bulkPreview.players.errors?.length > 0 && <div className="text-xs text-red-600 mt-1">{bulkPreview.players.errors.length} errores</div>}
+              </div>
+              <div className="border border-slate-200 rounded-lg p-3">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Cuerpo técnico</div>
+                <div className="font-display text-3xl font-black text-green-600">{bulkPreview.staff.ok}<span className="text-sm text-slate-400 font-bold ml-1">/ {bulkPreview.staff.total}</span></div>
+              </div>
+            </div>
+            <button onClick={() => uploadBulk(false)} disabled={uploading} className="mt-4 fsc-btn-red w-full py-2 rounded-md text-sm disabled:opacity-50" data-testid="bulk-confirm-btn">
+              {uploading ? "Importando..." : "Confirmar y guardar"}
+            </button>
+          </div>
+        )}
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {players.length === 0 && <p className="col-span-full text-center text-slate-400 py-10">Aún no has agregado jugadores.</p>}

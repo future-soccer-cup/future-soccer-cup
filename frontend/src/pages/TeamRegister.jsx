@@ -5,11 +5,12 @@ import api, { formatApiError, FSC_LOGO } from "../lib/api";
 import { toast, Toaster } from "sonner";
 import CategorySelect from "../components/CategorySelect";
 import { Upload } from "lucide-react";
+import { ConsentBlock } from "./Register";
 
 const EMPTY = {
   email: "", password: "", manager_name: "",
   team_name: "", category: "", coach: "", city: "",
-  color: "#1d4ed8", event_type: "",
+  color: "#1d4ed8", event_type: "", data_consent: false,
 };
 
 const fmtCOP = (n) => `$${Number(n || 0).toLocaleString("es-CO")}`;
@@ -36,6 +37,10 @@ export default function TeamRegister() {
     e.preventDefault();
     if (!form.event_type) {
       toast.error("Selecciona el evento");
+      return;
+    }
+    if (!form.data_consent) {
+      toast.error("Debes aceptar la política de datos");
       return;
     }
     setLoading(true);
@@ -150,7 +155,9 @@ export default function TeamRegister() {
             </div>
           </div>
 
-          <button type="submit" disabled={loading} className="fsc-btn-red w-full py-3 rounded-md disabled:opacity-50" data-testid="tr-submit">
+          <ConsentBlock checked={form.data_consent} onChange={(v) => upd("data_consent", v)} testId="tr-consent" />
+
+          <button type="submit" disabled={loading || !form.data_consent} className="fsc-btn-red w-full py-3 rounded-md disabled:opacity-50" data-testid="tr-submit">
             {loading ? "Registrando..." : "Registrar equipo"}
           </button>
           <p className="text-sm text-slate-500 text-center">¿Ya tienes equipo? <Link to="/login" className="text-blue-700 font-bold">Ingresar</Link></p>

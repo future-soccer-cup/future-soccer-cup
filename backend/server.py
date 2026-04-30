@@ -21,7 +21,7 @@ from fastapi.responses import Response as FastAPIResponse, StreamingResponse
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field, EmailStr
-from openpyxl import load_workbook
+from openpyxl import load_workbook, Workbook
 from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionRequest
 
 # -------------------- Categories --------------------
@@ -213,6 +213,7 @@ class RegisterIn(BaseModel):
     email: EmailStr
     password: str = Field(min_length=6)
     name: str = Field(min_length=1)
+    data_consent: bool = False
 
 class TeamRegisterIn(BaseModel):
     # Team manager + team info, all in one payload
@@ -226,6 +227,7 @@ class TeamRegisterIn(BaseModel):
     city: Optional[str] = ""
     logo_url: Optional[str] = ""
     color: Optional[str] = "#1d4ed8"
+    data_consent: bool = False
 
 class LoginIn(BaseModel):
     email: EmailStr
@@ -356,6 +358,8 @@ class HotelIn(BaseModel):
     image_url: Optional[str] = ""
     amenities: Optional[List[str]] = []
     capacity: Optional[int] = 4
+    tier: Optional[str] = ""  # diamond | gold | silver | bronze (opcional)
+    stars: Optional[int] = 0
 
 class HotelOut(HotelIn):
     id: str
@@ -385,16 +389,21 @@ class TourOut(TourIn):
 @api.post("/auth/register")
 async def register(payload: RegisterIn, response: Response):
     email = payload.email.lower()
+    if not payload.data_consent:
+        raise HTTPException(status_code=400, detail="Debes aceptar el tratamiento de datos personales para continuar.")
     existing = await db.users.find_one({"email": email})
     if existing:
         raise HTTPException(status_code=400, detail="El correo ya está registrado")
+    now = datetime.now(timezone.utc).isoformat()
     user = {
         "id": str(uuid.uuid4()),
         "email": email,
         "name": payload.name,
         "role": "family",
         "password_hash": hash_password(payload.password),
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "data_consent": True,
+        "consent_at": now,
+        "created_at": now,
     }
     await db.users.insert_one(user)
     access = create_access_token(user["id"], user["email"], user["role"])
@@ -405,6 +414,8 @@ async def register(payload: RegisterIn, response: Response):
 @api.post("/auth/register-team")
 async def register_team(payload: TeamRegisterIn, response: Response):
     email = payload.email.lower()
+    if not payload.data_consent:
+        raise HTTPException(status_code=400, detail="Debes aceptar el tratamiento de datos personales para continuar.")
     if payload.category not in CATEGORIES:
         raise HTTPException(status_code=400, detail=f"Categoría inválida. Use: {', '.join(CATEGORIES)}")
     event = EVENT_TYPES.get(payload.event_type)
@@ -442,6 +453,8 @@ async def register_team(payload: TeamRegisterIn, response: Response):
         "role": "team",
         "team_id": team_id,
         "password_hash": hash_password(payload.password),
+        "data_consent": True,
+        "consent_at": now,
         "created_at": now,
     }
     await db.teams.insert_one(team_doc)
@@ -1588,6 +1601,138 @@ async def import_players(file: UploadFile = File(...), preview: bool = False, _:
             d.pop("_id", None)
 
     return {"total_rows": len(rows), "ok": len(created), "errors": errors, "saved": not preview, "created": [{"id": d["id"], "name": d["name"], "team_id": d["team_id"]} for d in created]}
+
+# -------------------- Bulk Import (Team Manager - Multi-sheet XLSX) --------------------
+STAFF_HEADERS = ["name", "role", "document", "phone"]
+
+def _parse_xlsx_sheets(raw: bytes) -> dict:
+    """Parse all sheets in an XLSX as lowercase-keyed dicts. Returns {sheet_name_lower: [rows]}."""
+    wb = load_workbook(io.BytesIO(raw), data_only=True)
+    out = {}
+    for sh in wb.sheetnames:
+        ws = wb[sh]
+        try:
+            headers = [str(c.value or "").strip().lower() for c in next(ws.iter_rows(max_row=1))]
+        except StopIteration:
+            headers = []
+        rows = []
+        for r in ws.iter_rows(min_row=2, values_only=True):
+            if not any(r):
+                continue
+            rows.append({h: ("" if v is None else str(v).strip()) for h, v in zip(headers, r)})
+        out[sh.lower()] = rows
+    return out
+
+@api.get("/team-roster/template")
+async def download_team_roster_template(user: dict = Depends(get_current_user)):
+    """Multi-sheet XLSX template for team managers: Jugadores + Cuerpo Técnico."""
+    if user.get("role") not in ("team", "admin"):
+        raise HTTPException(status_code=403, detail="Solo directores técnicos")
+    wb = Workbook()
+    ws1 = wb.active
+    ws1.title = "Jugadores"
+    ws1.append(PLAYER_TEMPLATE_HEADERS[1:])  # skip team_name (implied from current team)
+    ws1.append(["Carlos Pérez", "10", "Delantero", "2014-03-15", "1750000000", "Pipo", "M", "Sanitas", "Maria Pérez", "0701234567", "Madre", "+593987654321"])
+    ws2 = wb.create_sheet("Cuerpo Tecnico")
+    ws2.append(STAFF_HEADERS)
+    ws2.append(["Pedro Coach", "Director técnico", "1700000000", "+593987654321"])
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return FastAPIResponse(
+        content=buf.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": "attachment; filename=fsc-equipo-plantilla.xlsx"},
+    )
+
+@api.post("/team-roster/import")
+async def import_team_roster(file: UploadFile = File(...), preview: bool = False, user: dict = Depends(get_current_user)):
+    """Team manager uploads multi-sheet XLSX for their own team: Jugadores + Cuerpo Técnico."""
+    if user.get("role") not in ("team", "admin"):
+        raise HTTPException(status_code=403, detail="Solo directores técnicos")
+    team_id = user.get("team_id")
+    if not team_id:
+        raise HTTPException(status_code=400, detail="No tienes un equipo asignado")
+    fname = (file.filename or "").lower()
+    if not fname.endswith(".xlsx"):
+        raise HTTPException(status_code=400, detail="Usa el formato .xlsx de la plantilla oficial")
+    raw = await file.read()
+    if len(raw) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Archivo > 5MB")
+
+    sheets = _parse_xlsx_sheets(raw)
+    # Normalize sheet names (accepting common variants)
+    players_sheet = None
+    staff_sheet = None
+    for sn in sheets.keys():
+        if "jugador" in sn:
+            players_sheet = sn
+        elif "tecnic" in sn or "cuerpo" in sn or "staff" in sn:
+            staff_sheet = sn
+    if not players_sheet:
+        raise HTTPException(status_code=400, detail="No se encontró la hoja 'Jugadores' en el archivo")
+
+    players_created, player_errors = [], []
+    for idx, r in enumerate(sheets[players_sheet], start=2):
+        name = r.get("name") or r.get("nombre") or ""
+        if not name:
+            player_errors.append({"row": idx, "error": "Falta nombre"})
+            continue
+        try:
+            jersey = int(r.get("jersey_number") or r.get("dorsal") or 0)
+        except ValueError:
+            player_errors.append({"row": idx, "error": "Dorsal inválido"})
+            continue
+        players_created.append({
+            "id": str(uuid.uuid4()),
+            "team_id": team_id,
+            "name": name,
+            "jersey_number": jersey,
+            "position": r.get("position") or "Mediocampista",
+            "birth_date": r.get("birth_date") or "",
+            "document_id": r.get("document_id") or "",
+            "nickname": r.get("nickname") or "",
+            "gender": r.get("gender") or "",
+            "eps": r.get("eps") or "",
+            "guardian_name": r.get("guardian_name") or "",
+            "guardian_doc": r.get("guardian_doc") or "",
+            "guardian_relation": r.get("guardian_relation") or "",
+            "guardian_phone": r.get("guardian_phone") or "",
+            "photo_url": "",
+            "status": "pendiente",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        })
+
+    staff_created, staff_errors = [], []
+    if staff_sheet:
+        for idx, r in enumerate(sheets[staff_sheet], start=2):
+            nm = r.get("name") or r.get("nombre") or ""
+            if not nm:
+                staff_errors.append({"row": idx, "error": "Falta nombre"})
+                continue
+            staff_created.append({
+                "name": nm,
+                "role": r.get("role") or r.get("rol") or "Director técnico",
+                "document": r.get("document") or r.get("documento") or "",
+                "phone": r.get("phone") or r.get("telefono") or r.get("teléfono") or "",
+            })
+
+    if not preview:
+        if players_created:
+            await db.players.insert_many([dict(d) for d in players_created])
+            for d in players_created:
+                d.pop("_id", None)
+        if staff_created:
+            # Merge with existing cuerpo_tecnico
+            team = await db.teams.find_one({"id": team_id}, {"_id": 0})
+            current = list(team.get("cuerpo_tecnico", []) or []) if team else []
+            await db.teams.update_one({"id": team_id}, {"$set": {"cuerpo_tecnico": current + staff_created}})
+
+    return {
+        "players": {"total": len(sheets[players_sheet]), "ok": len(players_created), "errors": player_errors},
+        "staff": {"total": len(sheets.get(staff_sheet, [])) if staff_sheet else 0, "ok": len(staff_created), "errors": staff_errors},
+        "saved": not preview,
+    }
 
 # -------------------- Startup --------------------
 async def seed_admin():

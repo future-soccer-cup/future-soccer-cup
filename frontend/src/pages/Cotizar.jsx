@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import api, { formatApiError } from "../lib/api";
+import api, { formatApiError, imgSrc } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import { toast, Toaster } from "sonner";
 import { Trophy, Hotel, CheckCircle2 } from "lucide-react";
@@ -28,8 +28,30 @@ export default function Cotizar() {
   });
   const [estimate, setEstimate] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [hotels, setHotels] = useState([]);
+  const [transports, setTransports] = useState([]);
+  const [tours, setTours] = useState([]);
+  const [pickedHotel, setPickedHotel] = useState(null);
+  const [pickedTransport, setPickedTransport] = useState(null);
+  const [pickedTour, setPickedTour] = useState(null);
 
   useEffect(() => { api.get("/event-types").then((r) => setConfig(r.data)); }, []);
+  useEffect(() => {
+    Promise.all([
+      api.get("/hotels").catch(() => ({ data: [] })),
+      api.get("/transports").catch(() => ({ data: [] })),
+      api.get("/tours").catch(() => ({ data: [] })),
+    ]).then(([h, tr, to]) => {
+      setHotels(h.data || []);
+      setTransports(tr.data || []);
+      setTours(to.data || []);
+    });
+  }, []);
+
+  const hotelsInTier = useMemo(
+    () => hotels.filter((h) => !form.lodging_tier || !h.tier || h.tier === form.lodging_tier),
+    [hotels, form.lodging_tier]
+  );
 
   // Recalculate estimate whenever form changes (and we have all required fields)
   useEffect(() => {
@@ -53,7 +75,12 @@ export default function Cotizar() {
     if (!user) { toast.error("Inicia sesión para cotizar"); nav("/login"); return; }
     setSubmitting(true);
     try {
-      await api.post("/quotes", form);
+      const extras = [];
+      if (pickedHotel) extras.push(`Hotel solicitado: ${pickedHotel.name}`);
+      if (pickedTransport) extras.push(`Transporte: ${pickedTransport.name}`);
+      if (pickedTour) extras.push(`Tour: ${pickedTour.name}`);
+      const notes = [form.notes, ...extras].filter(Boolean).join(" | ");
+      await api.post("/quotes", { ...form, notes });
       toast.success("Cotización enviada. El admin la revisará.");
       nav("/mis-cotizaciones");
     } catch (err) {
@@ -136,6 +163,33 @@ export default function Cotizar() {
                 </select>
               </label>
             </div>
+
+            {hotelsInTier.length > 0 && (
+              <div className="mt-6">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Hoteles disponibles ({hotelsInTier.length})</span>
+                  {pickedHotel && <button type="button" onClick={() => setPickedHotel(null)} className="text-[10px] text-slate-400 hover:text-slate-900 underline">Quitar selección</button>}
+                </div>
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {hotelsInTier.map((h) => (
+                    <button
+                      key={h.id}
+                      type="button"
+                      onClick={() => setPickedHotel(pickedHotel?.id === h.id ? null : h)}
+                      className={`text-left border-2 rounded-xl overflow-hidden transition-colors ${pickedHotel?.id === h.id ? "border-blue-700 ring-2 ring-blue-200" : "border-slate-200 hover:border-slate-400"}`}
+                      data-testid={`hotel-pick-${h.id}`}
+                    >
+                      {h.image_url && <img src={imgSrc(h.image_url)} alt={h.name} className="w-full h-24 object-cover" />}
+                      <div className="p-3">
+                        <div className="font-display text-sm font-black uppercase tracking-tight truncate">{h.name}</div>
+                        <div className="text-[10px] text-slate-500 line-clamp-2">{h.description}</div>
+                        <div className="mt-1 text-xs font-bold text-blue-700 tabular-nums">{fmt(h.price_per_night)}<span className="text-[9px] text-slate-400 font-bold ml-1">/noche</span></div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </Section>
 
           <Section title="Personas y noches" testId="step-pax">
@@ -157,6 +211,37 @@ export default function Cotizar() {
               <Toggle label="Parque" subtitle={`+${fmt(config.addons.parque)}/pax`} checked={form.includes_parque} onChange={(v) => setForm({ ...form, includes_parque: v })} testId="toggle-parque" />
               <Toggle label="Tour ciudad" subtitle={`+${fmt(config.addons.tour)}/pax`} checked={form.includes_tour} onChange={(v) => setForm({ ...form, includes_tour: v })} testId="toggle-tour" />
             </div>
+
+            {form.includes_transport && transports.length > 0 && (
+              <div className="mt-4">
+                <div className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Transportes disponibles</div>
+                <div className="grid sm:grid-cols-3 gap-3">
+                  {transports.map((t) => (
+                    <button key={t.id} type="button" onClick={() => setPickedTransport(pickedTransport?.id === t.id ? null : t)} className={`text-left border-2 rounded-lg p-3 ${pickedTransport?.id === t.id ? "border-blue-700 ring-2 ring-blue-200" : "border-slate-200 hover:border-slate-400"}`} data-testid={`transport-pick-${t.id}`}>
+                      <div className="font-bold text-sm">{t.name}</div>
+                      <div className="text-[10px] text-slate-500">{t.type} · {t.capacity} pax</div>
+                      <div className="text-xs font-bold text-blue-700 mt-1">{fmt(t.price)} COP</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {form.includes_tour && tours.length > 0 && (
+              <div className="mt-4">
+                <div className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Tours disponibles</div>
+                <div className="grid sm:grid-cols-3 gap-3">
+                  {tours.map((to) => (
+                    <button key={to.id} type="button" onClick={() => setPickedTour(pickedTour?.id === to.id ? null : to)} className={`text-left border-2 rounded-lg p-3 ${pickedTour?.id === to.id ? "border-blue-700 ring-2 ring-blue-200" : "border-slate-200 hover:border-slate-400"}`} data-testid={`tour-pick-${to.id}`}>
+                      <div className="font-bold text-sm">{to.name}</div>
+                      <div className="text-[10px] text-slate-500">{to.duration}</div>
+                      <div className="text-xs font-bold text-blue-700 mt-1">{fmt(to.price)} COP</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <label className="block mt-4">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Teléfono de contacto</span>
               <input value={form.contact_phone} onChange={(e) => setForm({ ...form, contact_phone: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="phone-input" />
@@ -177,6 +262,7 @@ export default function Cotizar() {
               <Row label="Evento" value={estimate.event_name} />
               <Row label="Categoría" value={form.category} />
               <Row label="Hospedaje" value={`${estimate.lodging_name} · ${form.room_type}`} />
+              {pickedHotel && <Row label="Hotel elegido" value={pickedHotel.name} />}
               <Row label="Tarifa/pax/noche" value={fmt(estimate.rate_per_person_night)} />
               <Row label={`Hospedaje (${form.pax} pax × ${form.nights} noches)`} value={fmt(estimate.lodging_subtotal)} />
               {estimate.transport_subtotal > 0 && <Row label="Transporte" value={fmt(estimate.transport_subtotal)} />}

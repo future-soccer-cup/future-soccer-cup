@@ -1,0 +1,45 @@
+{
+  "summary": "Iter9 backend + frontend testing. Backend suite test_iter9_consent_roster_inventory.py: 16/16 PASS. Cubre: data_consent guards en /api/auth/register + /auth/register-team (400 sin consent, persist data_consent=true + consent_at ISO en Mongo), /api/team-roster/template (XLSX 2 sheets; 403 familia), /api/team-roster/import preview=true (no persiste) + preview=false (inserta jugadores + merge cuerpo_tecnico), /api/hotels CRUD admin con tier+stars + persistencia via GET, /api/transports /tours públicos GET, bookings removed (404/405), y regression quote Premier Par Sub-12 gold double 4x3 + transport = 7.000.000 COP exacto. Frontend verificado con Playwright: /registro role-selector renderiza role-dt-btn y role-family-btn; DT muestra go-team-register CTA (/registro-equipo); Familiar muestra ConsentBlock (register-consent + register-consent-checkbox) y submit correctamente deshabilitado hasta marcar consent. /registro-equipo muestra tr-consent + tr-consent-checkbox y submit gateado. /cotizar: tier-gold → 2 hotel-pick-*, toggle-transport → 2 transport-pick-*, toggle-tour → 2 tour-pick-*; seleccionar hotel-pick NO altera el total (tier rate 400k × 4 × 3 = 4.800.000 se mantiene). /admin/inventario: inv-tab-hotels/transports/tours, inv-add-btn abre modal con inv-tier-select e inv-save-btn; side-nav 'Inventario' presente. NO se encontraron bugs HIGH/CRITICAL en iter9.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/payments/checkout/session", "issue": "HIGH heredado de iter8 aún no arreglado por main agent: el orden de los checks en L1175-1185 mantiene como dead code la rama 'Esta cotización ya fue pagada' (status != aprobada se chequea antes). No pertenece a iter9 pero sigue abierto."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/cotizar Resumen", "issues": ["El copy lateral no deja claro al usuario que la selección específica de hotel/transporte/tour es informativa y no modifica el total. Se sugiere agregar una nota pequeña debajo de 'HOTELES DISPONIBLES' indicando 'La tarifa usa la tarifa promedio del nivel seleccionado'."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter9_consent_roster_inventory.py",
+    "/app/test_reports/pytest/iteration_9.xml"
+  ],
+  "action_items": [
+    "NINGUNO crítico de iter9. Opcional: (a) cerrar el dead-code de iter8 en server.py L1175-1185 reordenando los checks de pagada/aprobada; (b) añadir copy aclaratorio en /cotizar sobre que los picks de hotel/transporte/tour son informativos y no alteran el total."
+  ],
+  "critical_code_review_comments": [
+    "server.py sigue en ~1807 líneas; iter9 añadió ~120 líneas de template+import. Urge partir en routers/ (teams, payments, quotes, auth, inventory, roster).",
+    "import_team_roster acepta Excel hasta 5MB pero no valida número máximo de filas — un XLSX malicioso con 10k filas inserta 10k players en insert_many sin rate-limit.",
+    "HotelIn hace `tier: Optional[str] = \"\"` sin Literal guard — admite cualquier string; si el frontend depende de valores canónicos (diamond/gold/silver/bronze) el inventario puede contaminarse.",
+    "El check de preview en /team-roster/import usa query param ?preview=true pero FastAPI lo castea a bool correctamente sólo con 'true'/'false'; '1' o 'yes' no lo hacen. No crítico pero vale anotar para UI.",
+    "Nuevo /admin/inventario no tiene paginación — si crecen >200 hoteles el render se degradará. Considerar react-window o paginación server-side.",
+    "La verificación de consentimiento depende 100% del cliente (el payload puede llegar con data_consent=true sin UX real). Legalmente conviene guardar también IP + user-agent al momento del consent_at para cumplir Ley 1581/2012."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter9_consent_roster_inventory.py (NEW - 16 tests)"
+  ],
+  "success_rate": {
+    "backend": "100% (16/16 pass en suite iter9)",
+    "frontend": "100% de los testids críticos iter9 verificados (role-selector, role-dt-btn, role-family-btn, go-team-register, register-consent(+checkbox), tr-consent(+checkbox), tier-gold, hotel-pick-{id}×2, toggle-transport, transport-pick-{id}×2, toggle-tour, tour-pick-{id}×2, inv-tab-hotels/transports/tours, inv-add-btn, inv-tier-select, inv-save-btn, side-nav 'Inventario'). MyTeam testids (bulk-upload-btn, bulk-upload-input, download-template-btn, bulk-preview, bulk-confirm-btn) confirmados por grep; el round-trip XLSX del módulo está cubierto a nivel backend por /team-roster/template + /team-roster/import."
+  },
+  "test_credentials": "admin@futuresoccercup.com / FSCAdmin2025! (verificado). Se crean por run: TEST_iter9_team_<uuid>@test.com / TeamPass2025! y TEST_iter9_fam_<uuid>@test.com / FamPass2025!.",
+  "seed_data_creation": "Cada run inserta: 1 team manager + 1 familiar + 2-3 jugadores + 1 staff 'Pedro Coach' fusionado en team.cuerpo_tecnico + 1 TEST_ITER9_Hotel (borrado al final del test de CRUD). Teams TEST_ITER9_* quedan en db.teams sin endpoint de limpieza.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Ejecutar: pytest /app/backend/tests/test_iter9_consent_roster_inventory.py -v. Suite ya usa fallback para MONGO_URL y descubre REACT_APP_BACKEND_URL desde /app/frontend/.env si el env var no está seteado. Para re-test UI: /registro (role selector), /registro-equipo (tr-consent), /cotizar (tier gold + picks), /admin/inventario (tabs + modal tier). Si main agent decide cerrar el dead-code de iter8, re-correr test_iter8_regressions.py para validar la rama 'Esta cotización ya fue pagada'.",
+  "rca of the issue": "N/A — iter9 cerró limpio, sin issues HIGH/CRITICAL detectados."
+}

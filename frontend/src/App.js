@@ -35,6 +35,7 @@ import AdminApprovals from "./pages/admin/AdminApprovals";
 import AdminBulkUpload from "./pages/admin/AdminBulkUpload";
 import AdminQuotes from "./pages/admin/AdminQuotes";
 import AdminPosts from "./pages/admin/AdminPosts";
+import AdminInventory from "./pages/admin/AdminInventory";
 
 function PublicLayout() {
   const loc = useLocation();
@@ -94,6 +95,7 @@ function App() {
             <Route path="carga-masiva" element={<AdminBulkUpload />} />
             <Route path="cotizaciones" element={<AdminQuotes />} />
             <Route path="noticias" element={<AdminPosts />} />
+            <Route path="inventario" element={<AdminInventory />} />
             <Route path="carnets" element={<AdminCarnets />} />
           </Route>
         </Routes>

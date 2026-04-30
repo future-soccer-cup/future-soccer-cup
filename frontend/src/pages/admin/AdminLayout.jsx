@@ -5,6 +5,7 @@ import {
   Users,
   Shirt,
   Calendar,
+  Hotel,
   IdCard,
   Wand2,
   CheckSquare,
@@ -24,6 +25,7 @@ const NAV = [
   { to: "/admin/partidos", label: "Partidos", icon: Calendar },
   { to: "/admin/generador-fixture", label: "Generar Fixture", icon: Wand2 },
   { to: "/admin/cotizaciones", label: "Cotizaciones", icon: Receipt },
+  { to: "/admin/inventario", label: "Inventario", icon: Hotel },
   { to: "/admin/noticias", label: "Noticias", icon: Newspaper },
   { to: "/admin/carnets", label: "Carnets", icon: IdCard },
 ];

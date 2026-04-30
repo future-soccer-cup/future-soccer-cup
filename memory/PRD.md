@@ -115,6 +115,14 @@ Aplicación versátil para una empresa que organiza eventos de fútbol infantil 
 - **Cotización ya pagada**: Reordenado el guard en `POST /api/payments/checkout/session` para que el check `status=='pagada' or payment_status=='paid'` corra ANTES del check de `aprobada`, garantizando el mensaje correcto.
 - **UI copy**: `Login.jsx` actualizado "gestionar reservas" → "gestionar cotizaciones".
 
+## Iteration 9 (2026-04-30) — Roles + Consent + Carga masiva DT + Inventario
+
+- **Consent de datos**: nuevo campo obligatorio `data_consent` + `consent_at` en `users`. `/api/auth/register` y `/api/auth/register-team` devuelven 400 si no se acepta. UI con bloque `ConsentBlock` en ambos formularios.
+- **Registro diferenciado por rol**: `/registro` ahora muestra selector "¿Cómo te registras?" (Director Técnico / Familiar). DT → redirige a `/registro-equipo`; Familiar → formulario inline con checkbox.
+- **Carga masiva del DT (multi-hoja XLSX)**: endpoints `GET /api/team-roster/template` (descarga plantilla con hojas Jugadores + Cuerpo Técnico) y `POST /api/team-roster/import?preview=…` (auth team/admin). UI en `/mi-equipo` con preview (counts OK/errors) y botón confirmar.
+- **Inventario admin recuperado**: `AdminInventory.jsx` re-creado con tabs Hoteles/Transportes/Tours, CRUD completo + `tier` + stars para hoteles. Ruta `/admin/inventario` y enlace en side-nav.
+- **Integración inventario en Cotizar**: tiers genéricos mantenidos para estimación rápida; dentro del tier elegido aparecen los hoteles reales del inventario (filtrados por tier) para selección específica. Transportes y tours pickeables al activar el toggle correspondiente. Los picks se registran en `notes` de la cotización.
+
 ## Last Test Run
 - iteration_8: 13 regresiones (11 PASS + 1 skip + 1 fail re-fijado). HIGH #1 (500→404) ✅; HIGH #2 (bookings eliminados) ✅; HIGH #3 (dead-code rama "ya pagada") ✅ tras reordenar los checks (validado con curl).
 - **Moneda: COP (Pesos Colombianos)**. Tarifas del backend actualizadas:
