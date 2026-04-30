@@ -123,6 +123,12 @@ Aplicación versátil para una empresa que organiza eventos de fútbol infantil 
 - **Inventario admin recuperado**: `AdminInventory.jsx` re-creado con tabs Hoteles/Transportes/Tours, CRUD completo + `tier` + stars para hoteles. Ruta `/admin/inventario` y enlace en side-nav.
 - **Integración inventario en Cotizar**: tiers genéricos mantenidos para estimación rápida; dentro del tier elegido aparecen los hoteles reales del inventario (filtrados por tier) para selección específica. Transportes y tours pickeables al activar el toggle correspondiente. Los picks se registran en `notes` de la cotización.
 
+## Iteration 10 (2026-04-30) — Bugfix lote: Plantilla CSV + Carnets PDF
+
+- **Plantilla CSV** disponible en `/mi-equipo` (botón "CSV" además de "XLSX"). Backend `POST /api/team-roster/import` ahora acepta `.xlsx` (multi-hoja) o `.csv` (jugadores). Generación de CSV en frontend (sin call al backend) → descarga inmediata.
+- **Carnets PDF descargable** en `/admin/carnets` con `jspdf` + `html2canvas`. Botón "Descargar PDF" genera A4 con 8 carnets/página (2 columnas × 4 filas), respetando proporción y con QR de cada jugador. Incluye logo del club en el carnet (si está cargado). Backend ya filtraba a `status="aprobado"`.
+- **Crear equipo**: validado E2E con Playwright — campos mínimos (manager, email, password, evento, nombre, categoría, consent) → redirige a `/mi-equipo` y muestra banner de inscripción pendiente con CTA Stripe.
+
 ## Last Test Run
 - iteration_8: 13 regresiones (11 PASS + 1 skip + 1 fail re-fijado). HIGH #1 (500→404) ✅; HIGH #2 (bookings eliminados) ✅; HIGH #3 (dead-code rama "ya pagada") ✅ tras reordenar los checks (validado con curl).
 - **Moneda: COP (Pesos Colombianos)**. Tarifas del backend actualizadas:

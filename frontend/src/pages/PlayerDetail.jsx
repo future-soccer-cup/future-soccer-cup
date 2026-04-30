@@ -83,16 +83,21 @@ export function Carnet({ player, team, qrValue }) {
       }} />
       <div className="relative px-5 pt-5 pb-4 flex items-center justify-between border-b border-white/10">
         <img src={FSC_LOGO} alt="FSC" className="h-12 w-12 bg-white/5 rounded p-0.5" />
-        <div className="text-right">
-          <div className="font-display text-xs tracking-[0.25em] font-bold text-red-400">FUTURE SOCCER CUP</div>
-          <div className="font-display text-[10px] tracking-[0.3em] text-slate-400">CARNET OFICIAL · 2025</div>
+        <div className="text-right flex items-center gap-3">
+          <div>
+            <div className="font-display text-xs tracking-[0.25em] font-bold text-red-400">FUTURE SOCCER CUP</div>
+            <div className="font-display text-[10px] tracking-[0.3em] text-slate-400">CARNET OFICIAL · 2025</div>
+          </div>
+          {team?.logo_url && (
+            <img src={team.logo_url} alt={team.name} crossOrigin="anonymous" className="h-12 w-12 bg-white rounded object-contain p-0.5" />
+          )}
         </div>
       </div>
 
       <div className="relative px-5 py-5 grid grid-cols-3 gap-4">
         <div className="col-span-1">
           {player.photo_url ? (
-            <img src={player.photo_url} alt={player.name} className="w-full aspect-[3/4] object-cover rounded-md border-2 border-red-500" />
+            <img src={player.photo_url} alt={player.name} crossOrigin="anonymous" className="w-full aspect-[3/4] object-cover rounded-md border-2 border-red-500" />
           ) : (
             <div className="w-full aspect-[3/4] bg-slate-800 rounded-md border-2 border-red-500 flex items-center justify-center font-display text-5xl font-black">{player.name[0]}</div>
           )}

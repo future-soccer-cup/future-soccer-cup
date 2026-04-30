@@ -1654,13 +1654,20 @@ async def import_team_roster(file: UploadFile = File(...), preview: bool = False
     if not team_id:
         raise HTTPException(status_code=400, detail="No tienes un equipo asignado")
     fname = (file.filename or "").lower()
-    if not fname.endswith(".xlsx"):
-        raise HTTPException(status_code=400, detail="Usa el formato .xlsx de la plantilla oficial")
+    if not (fname.endswith(".xlsx") or fname.endswith(".csv")):
+        raise HTTPException(status_code=400, detail="Usa formato .xlsx (con 2 hojas) o .csv (solo jugadores)")
     raw = await file.read()
     if len(raw) > 5 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="Archivo > 5MB")
 
-    sheets = _parse_xlsx_sheets(raw)
+    sheets: dict
+    if fname.endswith(".csv"):
+        text = raw.decode("utf-8-sig", errors="replace")
+        reader = csv.DictReader(io.StringIO(text))
+        rows = [{(k or "").strip().lower(): (v or "").strip() for k, v in row.items()} for row in reader]
+        sheets = {"jugadores": rows}
+    else:
+        sheets = _parse_xlsx_sheets(raw)
     # Normalize sheet names (accepting common variants)
     players_sheet = None
     staff_sheet = None
