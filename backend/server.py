@@ -22,6 +22,7 @@ from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field, EmailStr
 from openpyxl import load_workbook
+from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionRequest
 
 # -------------------- Categories --------------------
 CATEGORIES = ["Sub-8", "Sub-10", "Sub-12", "Sub-14", "Sub-16", "Sub-18"]
@@ -327,6 +328,18 @@ class QuoteIn(BaseModel):
     includes_tour: bool = False
     notes: Optional[str] = ""
     contact_phone: Optional[str] = ""
+
+class PostIn(BaseModel):
+    title: str
+    content: str
+    image_url: Optional[str] = ""
+    instagram_url: Optional[str] = ""
+    category: Optional[str] = "evento"  # evento, resultado, anuncio, foto
+
+class PostOut(PostIn):
+    id: str
+    published_at: str
+    created_at: str
 
 class HotelIn(BaseModel):
     name: str
@@ -1196,6 +1209,189 @@ async def attach_payment_proof(qid: str, payload: dict, user: dict = Depends(get
     await db.quotes.update_one({"id": qid}, {"$set": {"payment_proof_url": url}})
     return {"ok": True}
 
+# -------------------- Stripe Payments --------------------
+class CheckoutSessionIn(BaseModel):
+    quote_id: str
+    origin_url: str
+
+@api.post("/payments/checkout/session")
+async def create_checkout(payload: CheckoutSessionIn, http_request: Request, user: dict = Depends(get_current_user)):
+    quote = await db.quotes.find_one({"id": payload.quote_id}, {"_id": 0})
+    if not quote:
+        raise HTTPException(status_code=404, detail="Cotización no encontrada")
+    if quote["user_id"] != user["id"] and user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="No autorizado")
+    if quote["status"] != "aprobada":
+        raise HTTPException(status_code=400, detail="Solo cotizaciones aprobadas pueden pagarse")
+    if quote.get("payment_status") == "paid":
+        raise HTTPException(status_code=400, detail="Esta cotización ya fue pagada")
+
+    api_key = os.environ.get("STRIPE_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=503, detail="Stripe no configurado")
+
+    host_url = str(http_request.base_url)
+    webhook_url = f"{host_url}api/webhook/stripe"
+    stripe = StripeCheckout(api_key=api_key, webhook_url=webhook_url)
+
+    success_url = f"{payload.origin_url}/pago-exitoso?session_id={{CHECKOUT_SESSION_ID}}"
+    cancel_url = f"{payload.origin_url}/mis-cotizaciones"
+    amount = float(quote["total_amount"])
+
+    req = CheckoutSessionRequest(
+        amount=amount,
+        currency="usd",
+        success_url=success_url,
+        cancel_url=cancel_url,
+        metadata={
+            "quote_id": payload.quote_id,
+            "user_id": user["id"],
+            "user_email": user["email"],
+        },
+    )
+    session = await stripe.create_checkout_session(req)
+
+    await db.payment_transactions.insert_one({
+        "id": str(uuid.uuid4()),
+        "session_id": session.session_id,
+        "quote_id": payload.quote_id,
+        "user_id": user["id"],
+        "user_email": user["email"],
+        "amount": amount,
+        "currency": "usd",
+        "payment_status": "initiated",
+        "metadata": {"quote_id": payload.quote_id},
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+    return {"url": session.url, "session_id": session.session_id}
+
+@api.get("/payments/checkout/status/{session_id}")
+async def get_checkout_status(session_id: str, user: dict = Depends(get_current_user)):
+    api_key = os.environ.get("STRIPE_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=503, detail="Stripe no configurado")
+    stripe = StripeCheckout(api_key=api_key, webhook_url="")
+    status = await stripe.get_checkout_status(session_id)
+
+    tx = await db.payment_transactions.find_one({"session_id": session_id}, {"_id": 0})
+    if tx and tx.get("payment_status") != "paid" and status.payment_status == "paid":
+        await db.payment_transactions.update_one(
+            {"session_id": session_id},
+            {"$set": {"payment_status": "paid", "stripe_status": status.status, "paid_at": datetime.now(timezone.utc).isoformat()}}
+        )
+        # Mark quote as pagada (idempotent)
+        qid = (tx.get("metadata") or {}).get("quote_id") or tx.get("quote_id")
+        if qid:
+            await db.quotes.update_one({"id": qid}, {"$set": {"status": "pagada", "payment_status": "paid"}})
+    return {
+        "status": status.status,
+        "payment_status": status.payment_status,
+        "amount_total": status.amount_total,
+        "currency": status.currency,
+        "metadata": status.metadata,
+    }
+
+@api.post("/webhook/stripe")
+async def stripe_webhook(request: Request):
+    api_key = os.environ.get("STRIPE_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=503, detail="Stripe no configurado")
+    body = await request.body()
+    sig = request.headers.get("Stripe-Signature", "")
+    stripe = StripeCheckout(api_key=api_key, webhook_url="")
+    try:
+        evt = await stripe.handle_webhook(body, sig)
+    except Exception as e:
+        logging.error(f"Stripe webhook error: {e}")
+        raise HTTPException(status_code=400, detail="Webhook inválido")
+
+    if evt.payment_status == "paid":
+        sid = evt.session_id
+        tx = await db.payment_transactions.find_one({"session_id": sid}, {"_id": 0})
+        if tx and tx.get("payment_status") != "paid":
+            await db.payment_transactions.update_one(
+                {"session_id": sid},
+                {"$set": {"payment_status": "paid", "paid_at": datetime.now(timezone.utc).isoformat()}}
+            )
+            qid = (tx.get("metadata") or {}).get("quote_id") or tx.get("quote_id")
+            if qid:
+                await db.quotes.update_one({"id": qid}, {"$set": {"status": "pagada", "payment_status": "paid"}})
+    return {"ok": True}
+
+# -------------------- Posts (Noticias / Eventos) --------------------
+@api.get("/posts", response_model=List[PostOut])
+async def list_posts(limit: int = 50):
+    items = await db.posts.find({}, {"_id": 0}).sort("published_at", -1).to_list(limit)
+    return items
+
+@api.get("/posts/{pid}", response_model=PostOut)
+async def get_post(pid: str):
+    p = await db.posts.find_one({"id": pid}, {"_id": 0})
+    if not p:
+        raise HTTPException(status_code=404, detail="Publicación no encontrada")
+    return p
+
+@api.post("/posts", response_model=PostOut)
+async def create_post(payload: PostIn, _: dict = Depends(require_admin)):
+    now = datetime.now(timezone.utc).isoformat()
+    doc = payload.model_dump()
+    doc["id"] = str(uuid.uuid4())
+    doc["published_at"] = now
+    doc["created_at"] = now
+    await db.posts.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+@api.put("/posts/{pid}", response_model=PostOut)
+async def update_post(pid: str, payload: PostIn, _: dict = Depends(require_admin)):
+    res = await db.posts.update_one({"id": pid}, {"$set": payload.model_dump()})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Publicación no encontrada")
+    return await db.posts.find_one({"id": pid}, {"_id": 0})
+
+@api.delete("/posts/{pid}")
+async def delete_post(pid: str, _: dict = Depends(require_admin)):
+    await db.posts.delete_one({"id": pid})
+    return {"ok": True}
+
+@api.post("/posts/import-from-url")
+async def import_post_from_url(payload: dict, _: dict = Depends(require_admin)):
+    """Fetches Open Graph metadata from a URL (Instagram public post or any link).
+    Returns prefilled post data the admin can review and save."""
+    url = payload.get("url", "").strip()
+    if not url.startswith("http"):
+        raise HTTPException(status_code=400, detail="URL inválida")
+    try:
+        r = requests.get(url, headers={"User-Agent": "Mozilla/5.0 FSC-Bot"}, timeout=15)
+        html = r.text
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"No se pudo cargar la URL: {e}")
+
+    import re
+    def og(prop: str) -> str:
+        m = re.search(rf'<meta\s+property=["\']og:{prop}["\']\s+content=["\']([^"\']+)["\']', html, re.IGNORECASE)
+        if m:
+            return m.group(1)
+        m = re.search(rf'<meta\s+name=["\']og:{prop}["\']\s+content=["\']([^"\']+)["\']', html, re.IGNORECASE)
+        return m.group(1) if m else ""
+
+    title = og("title") or ""
+    description = og("description") or ""
+    image = og("image") or ""
+    return {
+        "title": title[:200],
+        "content": description[:1000],
+        "image_url": image,
+        "instagram_url": url if "instagram.com" in url else "",
+    }
+
+@api.get("/social/instagram")
+async def social_instagram():
+    return {
+        "handle": os.environ.get("INSTAGRAM_HANDLE", "futuresoccercup"),
+        "url": os.environ.get("INSTAGRAM_URL", "https://www.instagram.com/futuresoccercup"),
+    }
+
 # -------------------- Uploads --------------------
 @api.post("/upload")
 async def upload_file(file: UploadFile = File(...), user: dict = Depends(get_current_user)):
@@ -1418,6 +1614,8 @@ async def on_startup():
     await db.matches.create_index("id", unique=True)
     await db.bookings.create_index("id", unique=True)
     await db.quotes.create_index("id", unique=True)
+    await db.posts.create_index("id", unique=True)
+    await db.payment_transactions.create_index("session_id", unique=True)
     await db.files.create_index("storage_path")
     await db.login_attempts.create_index("identifier")
     await seed_admin()

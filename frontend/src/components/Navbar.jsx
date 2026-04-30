@@ -9,8 +9,8 @@ const NAV = [
   { to: "/posiciones", label: "Posiciones" },
   { to: "/equipos", label: "Equipos" },
   { to: "/jugadores", label: "Jugadores" },
+  { to: "/noticias", label: "Noticias" },
   { to: "/cotizar", label: "Cotizar" },
-  { to: "/reservas", label: "Reservas" },
 ];
 
 export default function Navbar() {
