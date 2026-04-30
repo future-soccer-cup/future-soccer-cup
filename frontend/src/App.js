@@ -32,6 +32,9 @@ import AdminCarnets from "./pages/admin/AdminCarnets";
 import AdminFixtureGenerator from "./pages/admin/AdminFixtureGenerator";
 import AdminApprovals from "./pages/admin/AdminApprovals";
 import AdminBulkUpload from "./pages/admin/AdminBulkUpload";
+import AdminQuotes from "./pages/admin/AdminQuotes";
+import Cotizar from "./pages/Cotizar";
+import MyQuotes from "./pages/MyQuotes";
 
 function PublicLayout() {
   const loc = useLocation();
@@ -62,12 +65,17 @@ function App() {
             <Route path="/jugadores" element={<Players />} />
             <Route path="/jugadores/:id" element={<PlayerDetail />} />
             <Route path="/reservas" element={<Bookings />} />
+            <Route path="/cotizar" element={<Cotizar />} />
             <Route path="/login" element={<Login />} />
             <Route path="/registro" element={<Register />} />
             <Route path="/registro-equipo" element={<TeamRegister />} />
             <Route
               path="/mi-equipo"
               element={<ProtectedRoute role="team"><MyTeam /></ProtectedRoute>}
+            />
+            <Route
+              path="/mis-cotizaciones"
+              element={<ProtectedRoute><MyQuotes /></ProtectedRoute>}
             />
             <Route
               path="/mis-reservas"
@@ -86,6 +94,7 @@ function App() {
             <Route path="generador-fixture" element={<AdminFixtureGenerator />} />
             <Route path="aprobaciones" element={<AdminApprovals />} />
             <Route path="carga-masiva" element={<AdminBulkUpload />} />
+            <Route path="cotizaciones" element={<AdminQuotes />} />
             <Route path="inventario" element={<AdminInventory />} />
             <Route path="reservas" element={<AdminBookings />} />
             <Route path="carnets" element={<AdminCarnets />} />

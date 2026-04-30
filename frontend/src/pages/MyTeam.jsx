@@ -3,6 +3,7 @@ import api, { formatApiError } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import { toast, Toaster } from "sonner";
 import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Link } from "react-router-dom";
 import ImageUpload from "../components/ImageUpload";
 import CategorySelect from "../components/CategorySelect";
 

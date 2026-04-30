@@ -1,19 +1,22 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import api, { formatApiError, FSC_LOGO } from "../lib/api";
 import { toast, Toaster } from "sonner";
 import CategorySelect from "../components/CategorySelect";
+import { Upload } from "lucide-react";
 
 const EMPTY = {
   email: "", password: "", manager_name: "",
   team_name: "", category: "", coach: "", city: "",
-  logo_url: "", color: "#1d4ed8",
+  color: "#1d4ed8",
 };
 
 export default function TeamRegister() {
   const [form, setForm] = useState(EMPTY);
   const [loading, setLoading] = useState(false);
+  const [logoFile, setLogoFile] = useState(null);
+  const fileRef = useRef(null);
   const { setUser } = useAuth();
   const nav = useNavigate();
 
@@ -23,9 +26,30 @@ export default function TeamRegister() {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await api.post("/auth/register-team", form);
-      setUser(res.data);
-      toast.success("Equipo registrado");
+      // Step 1: Create the team and login
+      const reg = await api.post("/auth/register-team", form);
+      setUser(reg.data);
+
+      // Step 2: If logo selected, upload it and update the team
+      if (logoFile) {
+        try {
+          const fd = new FormData();
+          fd.append("file", logoFile);
+          const up = await api.post("/upload", fd, { headers: { "Content-Type": "multipart/form-data" } });
+          await api.put(`/teams/${reg.data.team_id}`, {
+            name: form.team_name,
+            category: form.category,
+            coach: form.coach || "",
+            city: form.city || "",
+            logo_url: up.data.url,
+            color: form.color,
+          });
+        } catch (uploadErr) {
+          toast.warning("Equipo creado. El logo se podrá subir desde Mi equipo.");
+        }
+      }
+
+      toast.success("Equipo registrado. En revisión por el admin.");
       nav("/mi-equipo");
     } catch (err) {
       toast.error(formatApiError(err.response?.data?.detail) || "Error al registrar");
@@ -33,6 +57,8 @@ export default function TeamRegister() {
       setLoading(false);
     }
   };
+
+  const previewUrl = logoFile ? URL.createObjectURL(logoFile) : null;
 
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-white" data-testid="team-register-page">
@@ -42,13 +68,13 @@ export default function TeamRegister() {
           <span className="text-xs tracking-[0.25em] uppercase font-bold text-red-600">Para clubes / coaches</span>
           <h1 className="font-display text-5xl font-black uppercase tracking-tighter">Registra<br/>tu equipo.</h1>
           <p className="mt-4 text-slate-600">
-            Crea tu club en FSC, gestiona tu plantilla, sube tu escudo, programa categorías por edad y mantén actualizado el roster de jugadores.
+            Crea tu club en FSC, sube el escudo, gestiona tu plantilla por categoría y luego cotiza el evento (Festival, Premier Par o Premier Impar).
           </p>
           <div className="mt-6 space-y-3 text-sm text-slate-600">
-            <p className="flex items-start gap-2"><span className="font-display text-2xl text-blue-700 leading-none">1</span> Registra el club y el responsable.</p>
-            <p className="flex items-start gap-2"><span className="font-display text-2xl text-blue-700 leading-none">2</span> Carga el escudo y los datos del equipo.</p>
-            <p className="flex items-start gap-2"><span className="font-display text-2xl text-blue-700 leading-none">3</span> Agrega cada jugador con foto y dorsal.</p>
-            <p className="flex items-start gap-2"><span className="font-display text-2xl text-blue-700 leading-none">4</span> El admin del torneo programa los partidos.</p>
+            <p className="flex items-start gap-2"><span className="font-display text-2xl text-blue-700 leading-none">1</span> Registra el club + responsable + escudo.</p>
+            <p className="flex items-start gap-2"><span className="font-display text-2xl text-blue-700 leading-none">2</span> Carga la plantilla con foto del jugador.</p>
+            <p className="flex items-start gap-2"><span className="font-display text-2xl text-blue-700 leading-none">3</span> Cotiza el evento que vas a jugar.</p>
+            <p className="flex items-start gap-2"><span className="font-display text-2xl text-blue-700 leading-none">4</span> El admin aprueba y se activa tu participación.</p>
           </div>
           <img src={FSC_LOGO} alt="FSC" className="mt-8 h-24 opacity-90" />
         </div>
@@ -73,8 +99,23 @@ export default function TeamRegister() {
                 <input type="color" value={form.color} onChange={(e) => upd("color", e.target.value)} className="mt-1 w-full h-10 px-1 border border-slate-200 rounded-md" />
               </label>
             </div>
-            <div className="mt-3">
-              <p className="text-[11px] text-slate-400">Podrás subir el escudo del equipo después de iniciar sesión, desde "Mi equipo".</p>
+
+            <div className="mt-4">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Escudo del club</span>
+              <div className="mt-2 flex items-center gap-4">
+                {previewUrl ? (
+                  <img src={previewUrl} alt="Logo" className="h-20 w-20 rounded-md object-cover border-2 border-slate-200" />
+                ) : (
+                  <div className="h-20 w-20 rounded-md border-2 border-dashed border-slate-300 flex items-center justify-center text-slate-400 text-xs text-center px-2">
+                    Sin logo
+                  </div>
+                )}
+                <button type="button" onClick={() => fileRef.current?.click()} className="px-4 py-2 border-2 border-slate-900 text-slate-900 hover:bg-slate-900 hover:text-white text-xs font-bold uppercase tracking-wide rounded-md flex items-center gap-2" data-testid="tr-logo-pick">
+                  <Upload size={14}/> {logoFile ? "Cambiar" : "Elegir archivo"}
+                </button>
+                <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => setLogoFile(e.target.files?.[0] || null)} data-testid="tr-logo-input" />
+              </div>
+              <p className="text-[11px] text-slate-400 mt-2">PNG/JPG hasta 5MB. Se subirá automáticamente al crear el equipo.</p>
             </div>
           </div>
 

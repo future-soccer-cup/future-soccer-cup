@@ -26,6 +26,45 @@ from openpyxl import load_workbook
 # -------------------- Categories --------------------
 CATEGORIES = ["Sub-8", "Sub-10", "Sub-12", "Sub-14", "Sub-16", "Sub-18"]
 
+# -------------------- Event Types & Lodging Tiers --------------------
+EVENT_TYPES = {
+    "festival": {
+        "id": "festival",
+        "name": "Festival",
+        "description": "Evento temático para todas las edades. Ideal como primera experiencia.",
+        "categories": ["Sub-8", "Sub-10", "Sub-12"],
+        "registration_fee_per_team": 250.0,
+    },
+    "premier_par": {
+        "id": "premier_par",
+        "name": "Premier Par",
+        "description": "Premier para categorías de años pares (2014, 2012, 2010).",
+        "categories": ["Sub-12", "Sub-14", "Sub-16"],
+        "registration_fee_per_team": 450.0,
+    },
+    "premier_impar": {
+        "id": "premier_impar",
+        "name": "Premier Impar",
+        "description": "Premier para categorías de años impares (2015, 2013, 2011).",
+        "categories": ["Sub-10", "Sub-12", "Sub-14", "Sub-16"],
+        "registration_fee_per_team": 450.0,
+    },
+}
+
+# Lodging tiers with per-person/night base price by room type
+LODGING_TIERS = {
+    "diamond":  {"id": "diamond",  "name": "Diamante", "description": "Hotel 5★ con todas las comodidades.", "rates": {"single": 180, "double": 140, "triple": 120, "quadruple": 100}},
+    "gold":     {"id": "gold",     "name": "Gold",     "description": "Hotel 4★ confortable y bien ubicado.",  "rates": {"single": 130, "double": 100, "triple": 85,  "quadruple": 70}},
+    "silver":   {"id": "silver",   "name": "Silver",   "description": "Hotel 3★ limpio y acogedor.",            "rates": {"single": 95,  "double": 75,  "triple": 60,  "quadruple": 50}},
+    "bronze":   {"id": "bronze",   "name": "Bronce",   "description": "Hospedaje básico y económico.",          "rates": {"single": 60,  "double": 45,  "triple": 38,  "quadruple": 32}},
+}
+
+ADDON_PRICES = {
+    "transport": 25.0,   # per person, flat
+    "parque":    35.0,   # per person, flat
+    "tour":      28.0,   # per person, flat
+}
+
 # -------------------- Object Storage --------------------
 STORAGE_URL = "https://integrations.emergentagent.com/objstore/api/v1/storage"
 APP_NAME = os.environ.get("APP_NAME", "future-soccer-cup")
@@ -275,6 +314,19 @@ class FixtureGenerateIn(BaseModel):
     venues: List[str] = []
     time_slots: List[str] = []  # ["08:00", "09:30"]
     preview: bool = False  # If true, do not save
+
+class QuoteIn(BaseModel):
+    event_type: Literal["festival", "premier_par", "premier_impar"]
+    category: str
+    lodging_tier: Literal["diamond", "gold", "silver", "bronze"]
+    room_type: Literal["single", "double", "triple", "quadruple"]
+    pax: int = Field(ge=1)
+    nights: int = Field(ge=1)
+    includes_transport: bool = False
+    includes_parque: bool = False
+    includes_tour: bool = False
+    notes: Optional[str] = ""
+    contact_phone: Optional[str] = ""
 
 class HotelIn(BaseModel):
     name: str
@@ -1050,6 +1102,100 @@ async def root():
 async def list_categories():
     return CATEGORIES
 
+@api.get("/event-types")
+async def list_event_types():
+    """Return all event types with their categories and lodging tiers."""
+    return {
+        "events": list(EVENT_TYPES.values()),
+        "lodging_tiers": list(LODGING_TIERS.values()),
+        "addons": ADDON_PRICES,
+    }
+
+# -------------------- Quotes (Cotizaciones) --------------------
+def _calculate_quote(payload: QuoteIn) -> dict:
+    event = EVENT_TYPES.get(payload.event_type)
+    tier = LODGING_TIERS.get(payload.lodging_tier)
+    if not event or not tier:
+        raise HTTPException(status_code=400, detail="Evento o nivel de hospedaje inválido")
+    if payload.category not in event["categories"]:
+        raise HTTPException(status_code=400, detail=f"Categoría {payload.category} no aplica para {event['name']}")
+    rate = tier["rates"].get(payload.room_type)
+    if rate is None:
+        raise HTTPException(status_code=400, detail="Tipo de habitación inválido")
+
+    lodging_total = rate * payload.pax * payload.nights
+    transport_total = ADDON_PRICES["transport"] * payload.pax if payload.includes_transport else 0
+    parque_total = ADDON_PRICES["parque"] * payload.pax if payload.includes_parque else 0
+    tour_total = ADDON_PRICES["tour"] * payload.pax if payload.includes_tour else 0
+    registration = event["registration_fee_per_team"]
+    total = lodging_total + transport_total + parque_total + tour_total + registration
+
+    return {
+        "lodging_subtotal": lodging_total,
+        "transport_subtotal": transport_total,
+        "parque_subtotal": parque_total,
+        "tour_subtotal": tour_total,
+        "registration_fee": registration,
+        "total_amount": total,
+        "rate_per_person_night": rate,
+        "event_name": event["name"],
+        "lodging_name": tier["name"],
+    }
+
+@api.post("/quotes/calculate")
+async def calculate_quote(payload: QuoteIn):
+    """Public estimate without saving."""
+    return _calculate_quote(payload)
+
+@api.post("/quotes")
+async def create_quote(payload: QuoteIn, user: dict = Depends(get_current_user)):
+    breakdown = _calculate_quote(payload)
+    doc = {
+        "id": str(uuid.uuid4()),
+        "user_id": user["id"],
+        "user_name": user["name"],
+        "user_email": user["email"],
+        "team_id": user.get("team_id"),
+        **payload.model_dump(),
+        **breakdown,
+        "status": "pendiente",  # pendiente, aprobada, rechazada, pagada
+        "payment_proof_url": "",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.quotes.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+@api.get("/quotes/mine")
+async def my_quotes(user: dict = Depends(get_current_user)):
+    items = await db.quotes.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    return items
+
+@api.get("/quotes")
+async def all_quotes(_: dict = Depends(require_admin)):
+    items = await db.quotes.find({}, {"_id": 0}).sort("created_at", -1).to_list(2000)
+    return items
+
+@api.put("/quotes/{qid}/status")
+async def update_quote_status(qid: str, status: str, _: dict = Depends(require_admin)):
+    if status not in {"pendiente", "aprobada", "rechazada", "pagada"}:
+        raise HTTPException(status_code=400, detail="Estado inválido")
+    res = await db.quotes.update_one({"id": qid}, {"$set": {"status": status}})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Cotización no encontrada")
+    return {"ok": True}
+
+@api.put("/quotes/{qid}/payment-proof")
+async def attach_payment_proof(qid: str, payload: dict, user: dict = Depends(get_current_user)):
+    quote = await db.quotes.find_one({"id": qid}, {"_id": 0})
+    if not quote:
+        raise HTTPException(status_code=404, detail="Cotización no encontrada")
+    if quote["user_id"] != user["id"] and user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="No autorizado")
+    url = payload.get("url", "")
+    await db.quotes.update_one({"id": qid}, {"$set": {"payment_proof_url": url}})
+    return {"ok": True}
+
 # -------------------- Uploads --------------------
 @api.post("/upload")
 async def upload_file(file: UploadFile = File(...), user: dict = Depends(get_current_user)):
@@ -1271,6 +1417,7 @@ async def on_startup():
     await db.players.create_index("id", unique=True)
     await db.matches.create_index("id", unique=True)
     await db.bookings.create_index("id", unique=True)
+    await db.quotes.create_index("id", unique=True)
     await db.files.create_index("storage_path")
     await db.login_attempts.create_index("identifier")
     await seed_admin()

@@ -1,0 +1,42 @@
+{
+  "summary": "Iter6 testing of Quote Builder (Cotizaciones) + team-registration logo upload. Backend: 102/102 pytest pass (84 regression from iter5 + 18 new iter6 tests covering /api/event-types schema, /api/quotes/calculate math [festival/Sub-12/gold/double/4pax/3nights=1450; all-addons scenario], validation errors for invalid category-for-event/event_type/tier/room_type [400 & 422], POST /api/quotes auth-required creates pendiente quote matching calculate, /api/quotes/mine scoping, admin-only /api/quotes [403 for team], PUT status admin-only with invalid-status 400, payment-proof owner+admin allowed / stranger 403). Frontend: /cotizar renders step-by-step (Evento/Categoría/Hospedaje/PAX/Adicionales), selecting Festival+Sub-12+Gold+Doble+4pax+3nights shows correct live total $1450 in right Resumen panel via /api/quotes/calculate; navbar has Cotizar link; /registro-equipo has 'Escudo del club' file input with live blob preview after picking a small PNG.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/cotizar", "issues": ["'Tipo de habitación' uses a native <select> element rather than the project's shadcn Select. It works but breaks visual consistency (different font, no custom caret, no testid)."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter6_quotes.py",
+    "/app/test_reports/pytest/iteration_6_quotes.xml",
+    "/app/test_reports/pytest/iteration_6_full.xml"
+  ],
+  "action_items": [
+    "(Optional) Replace native <select> 'Tipo de habitación' in Cotizar.jsx with shadcn Select + data-testid for consistency.",
+    "Continue the server.py split backlog from iter5 (file now ~1444 lines with 11 new quote-related lines + QuoteIn model).",
+    "Consider adding data-testid on Cotizar event cards, category pills, lodging cards, and Resumen total for robust UI regression tests (none were missing-blocker for this iter though)."
+  ],
+  "critical_code_review_comments": [
+    "server.py now 1444 lines - far above the 700-line threshold flagged since iter3. Quote endpoints add ~90 lines to the monolith. Split into routers/quotes.py.",
+    "POST /api/quotes does not validate that the authenticated user is a team-manager (or admin). Currently any authenticated user (including 'family' role) can create a quote. If quote creation is intended only for team managers, add require_admin_or_team or similar. If intentionally open, confirm in PRD.",
+    "PUT /api/quotes/{qid}/payment-proof accepts payload: dict without Pydantic validation - no shape/type check on 'url'. Create a PaymentProofIn(BaseModel){ url: HttpUrl | str } so malformed requests return 422 instead of silently writing '' to payment_proof_url.",
+    "update_quote_status uses ?status=... query param with a 4-value allow-list but no Pydantic enum. Same pattern as team/player status. Low risk but consider making an Enum.",
+    "_calculate_quote is synchronous and re-runs on every POST /quotes. For race-condition safety prefer await + server-side idempotency key (low-prio).",
+    "Quote doc persists snapshot of lodging_subtotal/total_amount/rate_per_person_night at creation time. If LODGING_TIERS/ADDON_PRICES are later changed, old quotes still carry the snapshot - good. But consider also snapshotting pricing_version for audit.",
+    "There is no DELETE /api/quotes/{qid} endpoint. Admin cannot remove an erroneous quote, and owner cannot cancel one. Consider DELETE (admin) + /cancel (owner) flows.",
+    "Cotizar.jsx uses a native <select> for room-type rather than shadcn Select - inconsistent UX and missing data-testid, complicating e2e tests."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter6_quotes.py (NEW - 18 tests for event-types + quotes flow)"
+  ],
+  "success_rate": {"backend": "100% (102/102)", "frontend": "~90% - /cotizar full happy-path verified with correct live total; /registro-equipo logo picker+preview verified. Admin /admin/cotizaciones UI (dropdown status change) was NOT exercised via Playwright because the equivalent PUT /api/quotes/{id}/status path is already covered by backend tests and the admin routes follow the same layout pattern confirmed in iter5; main agent can self-test by logging in as admin and opening /admin/cotizaciones."},
+  "test_credentials": "admin@futuresoccercup.com / FSCAdmin2025! (verified). Team managers created per-test via /api/auth/register-team with TEST_iter6_*@test.com.",
+  "seed_data_creation": "TEST_ITER6_TEAM_* teams and TEST_iter6_*@test.com users are cleaned up by module fixture (teams deleted via admin DELETE). One or two residual quote docs (pendiente/aprobada) may remain in db.quotes for the deleted team - no DELETE /api/quotes endpoint exists.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Run: pytest /app/backend/tests/ -v --junitxml=/app/test_reports/pytest/results.xml → 102 tests across 6 files (backend_test.py=24, test_new_features.py=20, test_iter3_fixtures.py=11, test_iter4_approvals.py=16, test_iter5_bulk_import.py=13, test_iter6_quotes.py=18). New iter6 endpoints: GET /api/event-types (public), POST /api/quotes/calculate (public, Literal validation 422 on bad event/tier/room), POST /api/quotes (auth, returns quote with status=pendiente & calc snapshot), GET /api/quotes/mine (auth), GET /api/quotes (admin), PUT /api/quotes/{id}/status?status= (admin; allowed: pendiente|aprobada|rechazada|pagada), PUT /api/quotes/{id}/payment-proof body {url} (owner or admin). Frontend data-testids are mostly absent on Cotizar.jsx event/category/tier cards - tests resort to text selectors.",
+  "rca of the issue": "N/A - no functional issues found. One UX consistency note (native select on Cotizar) and tech-debt comments only."
+}
