@@ -60,5 +60,15 @@ Aplicación versátil para una empresa que organiza eventos de fútbol infantil 
 - **Tarjetas amarilla/roja** en resultados de partidos: nuevo `CardsEditor` en modal de resultados; persistidas en `match.cards`. Nuevo endpoint `/api/stats/discipline` agrega tarjetas por jugador.
 - **Banner de estado** en `/mi-equipo`: el equipo en estado pendiente ve un aviso amarillo de "En revisión".
 
+## Iteration 5 (2026-04-30) — Carga masiva + Simon Guzman admin
+- **Promoción**: `guzmangue@hotmail.com` (Simon Guzman) ahora tiene `role="admin"` (mantiene su contraseña previa).
+- **Endpoints de import**:
+  - `GET /api/import/template/{teams|players}` → descarga plantilla CSV con encabezados oficiales y fila de ejemplo.
+  - `POST /api/import/teams?preview=true|false` (multipart `file`) → vista previa o guardado de equipos.
+  - `POST /api/import/players?preview=true|false` → equivalente para jugadores; vincula por `team_name` (case-insensitive).
+- Soporta `.csv` (UTF-8) y `.xlsx` (openpyxl). Tope 5MB. Registros importados nacen `status="aprobado"`.
+- **UI**: `/admin/carga-masiva` con tabs Equipos/Jugadores, descarga de plantilla, picker de archivo, vista previa con stats (filas/OK/errores) y botón Confirmar.
+- `requirements.txt`: agregados `openpyxl==3.1.5` y `xlrd==1.2.0`.
+
 ## Last Test Run
-- iteration_4: **71/71 pytest backend en verde** (24 + 20 + 11 + 16 nuevos). Frontend: testing agent corrigió un typo de copy/paste en MyTeam.jsx (orphan JSX + StatusPill duplicado) y verificó AdminApprovals end-to-end. Self-test posterior: login como team-manager → `/mi-equipo` carga correctamente con plantilla y header del equipo.
+- iteration_5: **84/84 pytest backend en verde** (13 nuevos para iter5). Frontend verificado end-to-end (descarga plantilla → preview con errores → confirmar → equipos persistidos visibles en `/admin/equipos`).
