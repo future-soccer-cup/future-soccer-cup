@@ -1,0 +1,46 @@
+{
+  "summary": "Iter5 testing of Bulk Import (CSV/XLSX) for teams + players, plus Simon Guzman admin promotion. Backend: 84/84 pytest pass (71 regression carried from iter4 + 13 new iter5 tests covering templates, teams import preview/persist/invalid-cat/xlsx/auth/oversize, players import extended fields/case-insensitive team lookup/unknown team errors, and Simon Guzman role=admin verification with bcrypt hash unchanged). Frontend: /admin/carga-masiva fully functional - sidebar 'Carga masiva' nav with FileUp icon present, two tabs (Equipos/Jugadores) with correct description swapping, Paso 1 (Descargar plantilla CSV) triggers file download to /api/import/template/teams (200), file picker upload of CSV with 3 rows + invalid category produced correct preview panel (Filas/OK/Errores stats + scrollable error list), 'Confirmar e importar' persisted teams visible immediately in /admin/equipos. End-to-end happy path confirmed.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter5_bulk_import.py",
+    "/app/backend/tests/test_iter4_approvals.py",
+    "/app/backend/tests/test_iter3_fixtures.py",
+    "/app/backend/tests/test_new_features.py",
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/iteration_5_full.xml",
+    "/app/test_reports/pytest/iteration_5_new.xml",
+    "/app/test_reports/pytest/iteration_5_regression.xml"
+  ],
+  "action_items": [
+    "Address tech-debt items flagged in critical_code_review_comments (no functional bugs found in iter5)."
+  ],
+  "critical_code_review_comments": [
+    "server.py is now 1297 lines (was 1152 in iter4, 700-line threshold flagged since iter3). Bulk-import endpoints add another ~110 lines to the monolith. Strongly recommend splitting into routers: routers/auth.py, routers/teams.py, routers/players.py, routers/matches.py, routers/fixtures.py, routers/inventory.py, routers/bookings.py, routers/uploads.py, routers/imports.py.",
+    "_parse_uploaded() does no validation of header set against the expected template - a CSV with completely wrong columns silently produces rows where every required value is empty, returning N 'Falta el nombre del equipo' errors. Better UX: detect 'no expected headers found' upfront and return a single clear error 'Encabezados inválidos. Use la plantilla descargable.'",
+    "import_teams / import_players use insert_many AFTER full validation pass but before any DB-level uniqueness check. Two CSVs with the same team name (case difference) will create duplicate teams. Consider adding a pre-insert duplicate check against db.teams or a unique compound index on (name, category).",
+    "TeamOut and PlayerOut Pydantic models do not include the 'status' field, so it is silently stripped from every public/admin GET response. The admin /aprobaciones page uses the status query filter (q.status=...) which works at the DB level, but consumers cannot read status off a single team object - they must round-trip via the filter. Add status: Optional[str] = 'aprobado' to TeamOut/PlayerOut so it round-trips properly.",
+    "import_teams accepts raw query string preview=true/false. FastAPI's bool casting is lenient but a value like ?preview=foo is treated as truthy (preview=True, no save). Recommend: preview: bool = Query(False) and document explicitly, or switch to ?save=true semantics.",
+    "import_players' team_name lookup is built from db.teams.find({}) capped at 2000 docs. For a tournament with >2000 historical teams this will silently miss matches. Either remove the cap or paginate.",
+    "5MB cap is enforced AFTER awaiting file.read() (full body buffered into RAM). A malicious 500MB upload still consumes memory before the 400. Use UploadFile streaming with a chunk-counting wrapper or rely on a server-level limit (e.g., starlette's max_request_size).",
+    "openpyxl load_workbook(data_only=True) is correct but xlrd==1.2.0 is in requirements.txt yet never imported - it predates xlsx support and is dead weight. Remove unless .xls (legacy) is a planned input format.",
+    "import_teams/players default 'status': 'aprobado' bypasses the approval workflow added in iter4. Document this clearly in admin UX (the AdminBulkUpload.jsx already calls the page 'Carga masiva' but should display a hint like 'Los registros importados quedan auto-aprobados').",
+    "AdminBulkUpload.jsx: the 'Confirmar e importar' button is only shown when result && !result.saved && result.ok > 0. After a successful save, if the user picks a NEW file the previous result lingers and the new preview workflow is unclear. Consider clearing result when file changes (already cleared on file pick - good) and after successful save reset file too.",
+    "AdminBulkUpload uses formatApiError(err.response?.data?.detail) but the toast.error('...') falls back to 'Error al importar' if no detail - 5MB rejection backend returns 400 with detail 'Archivo > 5MB' which DOES surface. Good. Just confirm formatApiError handles string detail correctly."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter5_bulk_import.py (NEW - 13 tests covering templates, teams/players bulk import paths, Simon Guzman admin verification)"
+  ],
+  "success_rate": {"backend": "100% (84/84)", "frontend": "100% - end-to-end /admin/carga-masiva flow verified (template download, CSV preview with errors, save & confirm, persisted teams visible in /admin/equipos)"},
+  "test_credentials": "admin@futuresoccercup.com / FSCAdmin2025! (verified). Simon Guzman: guzmangue@hotmail.com (role=admin verified directly in db.users; password unchanged - bcrypt $2 prefix).",
+  "seed_data_creation": "TEST_ITER5_ prefixed teams/players auto-cleaned by module-level fixture; TEST_UI_ teams created via Playwright UI flow already cleaned.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Run all backend tests with: pytest /app/backend/tests/ -v --junitxml=/app/test_reports/pytest/results.xml. 5 test files: backend_test.py (24), test_new_features.py (20), test_iter3_fixtures.py (11), test_iter4_approvals.py (16), test_iter5_bulk_import.py (13) = 84 total, all passing. New iter5 endpoints: GET /api/import/template/{teams|players}, POST /api/import/teams, POST /api/import/players (multipart file=, query preview=true|false, admin auth required, 5MB cap). Frontend page: /admin/carga-masiva (data-testid='admin-bulk-upload', tabs 'bulk-tab-teams|players', actions 'download-template-btn'/'bulk-preview-btn'/'bulk-save-btn'/'bulk-file-input'). Sidebar nav data-testid='admin-nav-carga-masiva'.",
+  "rca of the issue": "N/A - no functional issues found in iter5. All backend endpoints behave per spec and the AdminBulkUpload page integrates correctly with the API."
+}

@@ -10,6 +10,7 @@ import {
   ClipboardList,
   Wand2,
   CheckSquare,
+  FileUp,
 } from "lucide-react";
 import Logo from "../../components/Logo";
 import { useAuth } from "../../context/AuthContext";
@@ -19,6 +20,7 @@ const NAV = [
   { to: "/admin/aprobaciones", label: "Aprobaciones", icon: CheckSquare },
   { to: "/admin/equipos", label: "Equipos", icon: Shirt },
   { to: "/admin/jugadores", label: "Jugadores", icon: Users },
+  { to: "/admin/carga-masiva", label: "Carga masiva", icon: FileUp },
   { to: "/admin/partidos", label: "Partidos", icon: Calendar },
   { to: "/admin/generador-fixture", label: "Generar Fixture", icon: Wand2 },
   { to: "/admin/inventario", label: "Inventario", icon: Hotel },

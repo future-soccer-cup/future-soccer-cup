@@ -11,14 +11,17 @@ import bcrypt
 import jwt
 import secrets
 import requests
+import csv
+import io
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional, Literal
 
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Response, Query, UploadFile, File
-from fastapi.responses import Response as FastAPIResponse
+from fastapi.responses import Response as FastAPIResponse, StreamingResponse
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field, EmailStr
+from openpyxl import load_workbook
 
 # -------------------- Categories --------------------
 CATEGORIES = ["Sub-8", "Sub-10", "Sub-12", "Sub-14", "Sub-16", "Sub-18"]
@@ -1080,6 +1083,148 @@ async def serve_file(path: str):
         raise HTTPException(status_code=404, detail="Archivo no encontrado")
     data, ct = get_object(path)
     return FastAPIResponse(content=data, media_type=record.get("content_type", ct))
+
+# -------------------- Bulk Import (CSV / XLSX) --------------------
+TEAM_TEMPLATE_HEADERS = ["name", "category", "birth_year", "group_name", "coach", "city", "country", "president", "delegate_phone", "color"]
+PLAYER_TEMPLATE_HEADERS = ["team_name", "name", "jersey_number", "position", "birth_date", "document_id", "nickname", "gender", "eps", "guardian_name", "guardian_doc", "guardian_relation", "guardian_phone"]
+
+def _parse_uploaded(file: UploadFile, raw: bytes) -> List[dict]:
+    """Returns list of dicts with stringified cell values, keyed by lowercase headers."""
+    name = (file.filename or "").lower()
+    if name.endswith(".csv"):
+        text = raw.decode("utf-8-sig", errors="replace")
+        reader = csv.DictReader(io.StringIO(text))
+        return [{(k or "").strip().lower(): (v or "").strip() for k, v in row.items()} for row in reader]
+    elif name.endswith(".xlsx"):
+        wb = load_workbook(io.BytesIO(raw), data_only=True)
+        ws = wb.active
+        headers = [str(c.value or "").strip().lower() for c in next(ws.iter_rows(max_row=1))]
+        rows = []
+        for r in ws.iter_rows(min_row=2, values_only=True):
+            if not any(r):
+                continue
+            d = {h: ("" if v is None else str(v).strip()) for h, v in zip(headers, r)}
+            rows.append(d)
+        return rows
+    else:
+        raise HTTPException(status_code=400, detail="Formato no soportado. Usa .csv o .xlsx")
+
+@api.get("/import/template/{kind}")
+async def download_template(kind: str, _: dict = Depends(require_admin)):
+    if kind == "teams":
+        headers = TEAM_TEMPLATE_HEADERS
+        sample = ["Leones FC", "Sub-12", "2014", "Grupo A", "Pedro Coach", "Quito", "Ecuador", "Maria Pdta", "+593987654321", "#1d4ed8"]
+    elif kind == "players":
+        headers = PLAYER_TEMPLATE_HEADERS
+        sample = ["Leones FC", "Carlos Pérez", "10", "Delantero", "2014-03-15", "1750000000", "Pipo", "M", "Sanitas", "Maria Pérez", "0701234567", "Madre", "+593987654321"]
+    else:
+        raise HTTPException(status_code=400, detail="Tipo inválido (teams|players)")
+
+    out = io.StringIO()
+    writer = csv.writer(out)
+    writer.writerow(headers)
+    writer.writerow(sample)
+    return StreamingResponse(
+        iter([out.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=fsc-{kind}-template.csv"},
+    )
+
+@api.post("/import/teams")
+async def import_teams(file: UploadFile = File(...), preview: bool = False, _: dict = Depends(require_admin)):
+    raw = await file.read()
+    if len(raw) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Archivo > 5MB")
+    rows = _parse_uploaded(file, raw)
+
+    created, errors = [], []
+    for idx, r in enumerate(rows, start=2):
+        name = r.get("name") or r.get("nombre") or ""
+        category = r.get("category") or r.get("categoria") or ""
+        if not name:
+            errors.append({"row": idx, "error": "Falta el nombre del equipo"})
+            continue
+        if category not in CATEGORIES:
+            errors.append({"row": idx, "error": f"Categoría '{category}' inválida (use {', '.join(CATEGORIES)})"})
+            continue
+        doc = {
+            "id": str(uuid.uuid4()),
+            "name": name,
+            "category": category,
+            "birth_year": int(r["birth_year"]) if r.get("birth_year", "").isdigit() else None,
+            "group_name": r.get("group_name", ""),
+            "coach": r.get("coach", ""),
+            "city": r.get("city", ""),
+            "country": r.get("country", ""),
+            "president": r.get("president", ""),
+            "delegate_phone": r.get("delegate_phone", ""),
+            "color": r.get("color") or "#1d4ed8",
+            "logo_url": "",
+            "status": "aprobado",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        created.append(doc)
+
+    if not preview and created:
+        await db.teams.insert_many([dict(d) for d in created])
+        for d in created:
+            d.pop("_id", None)
+
+    return {"total_rows": len(rows), "ok": len(created), "errors": errors, "saved": not preview, "created": [{"id": d["id"], "name": d["name"], "category": d["category"]} for d in created]}
+
+@api.post("/import/players")
+async def import_players(file: UploadFile = File(...), preview: bool = False, _: dict = Depends(require_admin)):
+    raw = await file.read()
+    if len(raw) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Archivo > 5MB")
+    rows = _parse_uploaded(file, raw)
+
+    teams = await db.teams.find({}, {"_id": 0, "id": 1, "name": 1}).to_list(2000)
+    name_to_id = {t["name"].lower(): t["id"] for t in teams}
+
+    created, errors = [], []
+    for idx, r in enumerate(rows, start=2):
+        team_name = (r.get("team_name") or r.get("equipo") or "").lower()
+        team_id = name_to_id.get(team_name)
+        if not team_id:
+            errors.append({"row": idx, "error": f"Equipo no encontrado: '{r.get('team_name')}'"})
+            continue
+        name = r.get("name") or r.get("nombre") or ""
+        if not name:
+            errors.append({"row": idx, "error": "Falta el nombre del jugador"})
+            continue
+        try:
+            jersey = int(r.get("jersey_number") or r.get("dorsal") or 0)
+        except ValueError:
+            errors.append({"row": idx, "error": "Dorsal inválido"})
+            continue
+        doc = {
+            "id": str(uuid.uuid4()),
+            "team_id": team_id,
+            "name": name,
+            "jersey_number": jersey,
+            "position": r.get("position") or "Mediocampista",
+            "birth_date": r.get("birth_date") or "",
+            "document_id": r.get("document_id") or "",
+            "nickname": r.get("nickname") or "",
+            "gender": r.get("gender") or "",
+            "eps": r.get("eps") or "",
+            "guardian_name": r.get("guardian_name") or "",
+            "guardian_doc": r.get("guardian_doc") or "",
+            "guardian_relation": r.get("guardian_relation") or "",
+            "guardian_phone": r.get("guardian_phone") or "",
+            "photo_url": "",
+            "status": "aprobado",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        }
+        created.append(doc)
+
+    if not preview and created:
+        await db.players.insert_many([dict(d) for d in created])
+        for d in created:
+            d.pop("_id", None)
+
+    return {"total_rows": len(rows), "ok": len(created), "errors": errors, "saved": not preview, "created": [{"id": d["id"], "name": d["name"], "team_id": d["team_id"]} for d in created]}
 
 # -------------------- Startup --------------------
 async def seed_admin():
