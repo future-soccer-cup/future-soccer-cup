@@ -6,7 +6,7 @@ import { Plus, Pencil, Trash2 } from "lucide-react";
 import ImageUpload from "../components/ImageUpload";
 import CategorySelect from "../components/CategorySelect";
 
-const EMPTY_PLAYER = { name: "", team_id: "", jersey_number: 1, position: "Mediocampista", birth_date: "", photo_url: "", document_id: "" };
+const EMPTY_PLAYER = { name: "", team_id: "", jersey_number: 1, position: "Mediocampista", birth_date: "", photo_url: "", document_id: "", nickname: "", gender: "", eps: "", guardian_name: "", guardian_doc: "", guardian_relation: "", guardian_phone: "" };
 
 export default function MyTeam() {
   const { user } = useAuth();
@@ -106,6 +106,7 @@ export default function MyTeam() {
                 <div className="flex items-center gap-2">
                   <span className="font-display text-xl font-black text-blue-700">#{p.jersey_number}</span>
                   <span className="font-semibold truncate">{p.name}</span>
+                  <StatusPill status={p.status} />
                 </div>
                 <div className="text-xs text-slate-500">{p.position}</div>
               </div>
@@ -136,7 +137,16 @@ export default function MyTeam() {
       {editingPlayer && (
         <Modal title={editingPlayer.id ? "Editar jugador" : "Nuevo jugador"} onClose={() => setEditingPlayer(null)}>
           <form onSubmit={savePlayer} className="space-y-3">
-            <Field label="Nombre" required value={editingPlayer.name} onChange={(v) => setEditingPlayer({ ...editingPlayer, name: v })} testId="player-name-input" />
+            <Field label="Nombre completo" required value={editingPlayer.name} onChange={(v) => setEditingPlayer({ ...editingPlayer, name: v })} testId="player-name-input" />
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Apodo / Nick name" value={editingPlayer.nickname} onChange={(v) => setEditingPlayer({ ...editingPlayer, nickname: v })} />
+              <label className="block">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Género</span>
+                <select value={editingPlayer.gender || ""} onChange={(e) => setEditingPlayer({ ...editingPlayer, gender: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md">
+                  <option value="">—</option><option value="M">Masculino</option><option value="F">Femenino</option>
+                </select>
+              </label>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Dorsal" type="number" required value={editingPlayer.jersey_number} onChange={(v) => setEditingPlayer({ ...editingPlayer, jersey_number: v })} testId="player-jersey-input" />
               <label className="block">
@@ -146,9 +156,23 @@ export default function MyTeam() {
                 </select>
               </label>
             </div>
-            <Field label="Fecha nacimiento" type="date" value={editingPlayer.birth_date} onChange={(v) => setEditingPlayer({ ...editingPlayer, birth_date: v })} />
-            <Field label="Documento" value={editingPlayer.document_id} onChange={(v) => setEditingPlayer({ ...editingPlayer, document_id: v })} />
-            <ImageUpload value={editingPlayer.photo_url} onChange={(v) => setEditingPlayer({ ...editingPlayer, photo_url: v })} label="Foto del jugador" testId="player-photo-upload" />
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Fecha nacimiento" type="date" value={editingPlayer.birth_date} onChange={(v) => setEditingPlayer({ ...editingPlayer, birth_date: v })} />
+              <Field label="Documento" value={editingPlayer.document_id} onChange={(v) => setEditingPlayer({ ...editingPlayer, document_id: v })} />
+            </div>
+            <Field label="EPS" value={editingPlayer.eps} onChange={(v) => setEditingPlayer({ ...editingPlayer, eps: v })} />
+            <ImageUpload value={editingPlayer.photo_url} onChange={(v) => setEditingPlayer({ ...editingPlayer, photo_url: v })} label="Foto del jugador (sin fondo)" testId="player-photo-upload" />
+
+            <div className="border-t border-slate-200 pt-3 mt-3">
+              <h4 className="font-display text-base font-black uppercase tracking-tight mb-2">Acudiente / Contacto</h4>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Nombre acudiente" value={editingPlayer.guardian_name} onChange={(v) => setEditingPlayer({ ...editingPlayer, guardian_name: v })} />
+                <Field label="Documento acudiente" value={editingPlayer.guardian_doc} onChange={(v) => setEditingPlayer({ ...editingPlayer, guardian_doc: v })} />
+                <Field label="Parentesco" value={editingPlayer.guardian_relation} onChange={(v) => setEditingPlayer({ ...editingPlayer, guardian_relation: v })} />
+                <Field label="Teléfono" value={editingPlayer.guardian_phone} onChange={(v) => setEditingPlayer({ ...editingPlayer, guardian_phone: v })} />
+              </div>
+            </div>
+
             <button className="fsc-btn-red w-full py-2 rounded-md" data-testid="save-player-btn">Guardar</button>
           </form>
         </Modal>
@@ -178,4 +202,14 @@ function Modal({ children, onClose, title }) {
       </div>
     </div>
   );
+}
+
+function StatusPill({ status }) {
+  if (!status || status === "aprobado") {
+    return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-green-100 text-green-800">Aprobado</span>;
+  }
+  if (status === "pendiente") {
+    return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-yellow-100 text-yellow-800">Pendiente</span>;
+  }
+  return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-red-100 text-red-800">Rechazado</span>;
 }

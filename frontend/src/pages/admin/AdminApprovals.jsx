@@ -1,0 +1,142 @@
+import { useEffect, useState } from "react";
+import api from "../../lib/api";
+import { toast, Toaster } from "sonner";
+import { Check, X, Clock, Shirt, Users } from "lucide-react";
+
+const TABS = [
+  { key: "teams", label: "Equipos", icon: Shirt, endpoint: "/teams", patch: "/teams" },
+  { key: "players", label: "Jugadores", icon: Users, endpoint: "/players", patch: "/players" },
+];
+
+export default function AdminApprovals() {
+  const [tab, setTab] = useState("teams");
+  const [items, setItems] = useState([]);
+  const [teams, setTeams] = useState([]);
+  const [statusFilter, setStatusFilter] = useState("pendiente");
+
+  const load = async () => {
+    if (tab === "teams") {
+      const r = await api.get(`/teams?status=${statusFilter}`);
+      setItems(r.data);
+    } else {
+      const [pr, tr] = await Promise.all([
+        api.get(`/players?status=${statusFilter}`),
+        api.get("/teams"),
+      ]);
+      setItems(pr.data);
+      setTeams(tr.data);
+    }
+  };
+
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [tab, statusFilter]);
+
+  const tmap = Object.fromEntries(teams.map((t) => [t.id, t]));
+
+  const setStatus = async (id, status) => {
+    const url = tab === "teams" ? `/teams/${id}/status?status=${status}` : `/players/${id}/status?status=${status}`;
+    try {
+      await api.put(url);
+      toast.success(status === "aprobado" ? "Aprobado" : "Rechazado");
+      load();
+    } catch (err) {
+      toast.error("Error al cambiar estado");
+    }
+  };
+
+  return (
+    <div data-testid="admin-approvals">
+      <Toaster position="top-right" />
+      <h1 className="font-display text-4xl font-black uppercase tracking-tighter">Aprobaciones</h1>
+      <p className="text-sm text-slate-500 mt-1">Revisa y aprueba registros enviados por equipos.</p>
+
+      <div className="flex gap-2 border-b border-slate-200 mt-6 mb-2">
+        {TABS.map((t) => (
+          <button key={t.key} onClick={() => setTab(t.key)} className={`px-4 py-3 text-sm font-bold uppercase tracking-wide flex items-center gap-2 -mb-px border-b-2 ${tab === t.key ? "border-blue-700 text-blue-700" : "border-transparent text-slate-600"}`} data-testid={`approvals-tab-${t.key}`}>
+            <t.icon size={16}/> {t.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex gap-2 mb-6">
+        {["pendiente", "aprobado", "rechazado"].map((s) => (
+          <button key={s} onClick={() => setStatusFilter(s)} className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wide rounded-md border-2 ${statusFilter === s ? (s === "aprobado" ? "bg-green-600 text-white border-green-600" : s === "rechazado" ? "bg-red-600 text-white border-red-600" : "bg-yellow-500 text-white border-yellow-500") : "bg-white text-slate-600 border-slate-200"}`} data-testid={`status-filter-${s}`}>
+            {s}
+          </button>
+        ))}
+      </div>
+
+      {items.length === 0 && (
+        <div className="text-center py-16 border-2 border-dashed border-slate-200 rounded-xl">
+          <Clock className="mx-auto text-slate-300" size={48} />
+          <p className="mt-3 text-slate-500 font-semibold">Sin registros en este estado</p>
+        </div>
+      )}
+
+      <div className="space-y-3">
+        {tab === "teams" && items.map((t) => (
+          <div key={t.id} className="bg-white border border-slate-200 rounded-lg p-4 grid md:grid-cols-12 gap-3 items-center" data-testid={`approval-team-${t.id}`}>
+            <div className="md:col-span-1">
+              <div className="h-12 w-12 rounded flex items-center justify-center text-sm font-display font-black text-white" style={{ background: t.color || "#1d4ed8" }}>
+                {t.logo_url ? <img src={t.logo_url} alt="" className="h-full w-full object-contain p-0.5" /> : t.name[0]}
+              </div>
+            </div>
+            <div className="md:col-span-4">
+              <div className="font-display text-lg font-black uppercase tracking-tight">{t.name}</div>
+              <div className="text-xs text-slate-500">{t.category} {t.birth_year && `· ${t.birth_year}`}</div>
+            </div>
+            <div className="md:col-span-3 text-sm text-slate-600">
+              {t.city && <div>{t.city}</div>}
+              {t.coach && <div className="text-xs">DT: {t.coach}</div>}
+            </div>
+            <div className="md:col-span-2">
+              <StatusBadge status={t.status || "pendiente"} />
+            </div>
+            <div className="md:col-span-2 flex gap-2 justify-end">
+              {t.status !== "aprobado" && <button onClick={() => setStatus(t.id, "aprobado")} className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded text-xs font-bold uppercase tracking-wide flex items-center gap-1" data-testid={`approve-team-${t.id}`}><Check size={14}/> Aprobar</button>}
+              {t.status !== "rechazado" && <button onClick={() => setStatus(t.id, "rechazado")} className="bg-slate-100 hover:bg-red-50 text-red-600 px-3 py-1.5 rounded text-xs font-bold uppercase tracking-wide flex items-center gap-1" data-testid={`reject-team-${t.id}`}><X size={14}/> Rechazar</button>}
+            </div>
+          </div>
+        ))}
+
+        {tab === "players" && items.map((p) => {
+          const team = tmap[p.team_id];
+          return (
+            <div key={p.id} className="bg-white border border-slate-200 rounded-lg p-4 grid md:grid-cols-12 gap-3 items-center" data-testid={`approval-player-${p.id}`}>
+              <div className="md:col-span-1">
+                {p.photo_url ? <img src={p.photo_url} alt="" className="h-12 w-12 rounded-full object-cover" /> : <div className="h-12 w-12 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold">{p.name[0]}</div>}
+              </div>
+              <div className="md:col-span-4">
+                <div className="flex items-center gap-2">
+                  <span className="font-display text-xl font-black text-blue-700">#{p.jersey_number}</span>
+                  <span className="font-semibold">{p.name}</span>
+                </div>
+                <div className="text-xs text-slate-500">{p.position} · {team?.name || "—"} ({team?.category || "—"})</div>
+              </div>
+              <div className="md:col-span-3 text-xs text-slate-600">
+                <div>Doc: {p.document_id || "—"}</div>
+                <div>Nac: {p.birth_date}</div>
+                {p.guardian_name && <div className="mt-1 text-slate-500">Acudiente: {p.guardian_name}</div>}
+              </div>
+              <div className="md:col-span-2">
+                <StatusBadge status={p.status || "pendiente"} />
+              </div>
+              <div className="md:col-span-2 flex gap-2 justify-end">
+                {p.status !== "aprobado" && <button onClick={() => setStatus(p.id, "aprobado")} className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded text-xs font-bold uppercase tracking-wide flex items-center gap-1" data-testid={`approve-player-${p.id}`}><Check size={14}/> Aprobar</button>}
+                {p.status !== "rechazado" && <button onClick={() => setStatus(p.id, "rechazado")} className="bg-slate-100 hover:bg-red-50 text-red-600 px-3 py-1.5 rounded text-xs font-bold uppercase tracking-wide flex items-center gap-1" data-testid={`reject-player-${p.id}`}><X size={14}/> Rechazar</button>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function StatusBadge({ status }) {
+  const map = {
+    pendiente: "bg-yellow-100 text-yellow-800",
+    aprobado: "bg-green-100 text-green-800",
+    rechazado: "bg-red-100 text-red-800",
+  };
+  return <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${map[status] || map.pendiente}`}>{status}</span>;
+}

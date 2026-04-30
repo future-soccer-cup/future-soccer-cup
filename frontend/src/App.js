@@ -30,6 +30,7 @@ import AdminInventory from "./pages/admin/AdminInventory";
 import AdminBookings from "./pages/admin/AdminBookings";
 import AdminCarnets from "./pages/admin/AdminCarnets";
 import AdminFixtureGenerator from "./pages/admin/AdminFixtureGenerator";
+import AdminApprovals from "./pages/admin/AdminApprovals";
 
 function PublicLayout() {
   const loc = useLocation();
@@ -82,6 +83,7 @@ function App() {
             <Route path="jugadores" element={<AdminPlayers />} />
             <Route path="partidos" element={<AdminMatches />} />
             <Route path="generador-fixture" element={<AdminFixtureGenerator />} />
+            <Route path="aprobaciones" element={<AdminApprovals />} />
             <Route path="inventario" element={<AdminInventory />} />
             <Route path="reservas" element={<AdminBookings />} />
             <Route path="carnets" element={<AdminCarnets />} />

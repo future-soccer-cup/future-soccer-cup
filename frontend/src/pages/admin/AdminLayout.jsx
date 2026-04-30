@@ -9,12 +9,14 @@ import {
   IdCard,
   ClipboardList,
   Wand2,
+  CheckSquare,
 } from "lucide-react";
 import Logo from "../../components/Logo";
 import { useAuth } from "../../context/AuthContext";
 
 const NAV = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, end: true },
+  { to: "/admin/aprobaciones", label: "Aprobaciones", icon: CheckSquare },
   { to: "/admin/equipos", label: "Equipos", icon: Shirt },
   { to: "/admin/jugadores", label: "Jugadores", icon: Users },
   { to: "/admin/partidos", label: "Partidos", icon: Calendar },

@@ -196,9 +196,13 @@ class TeamIn(BaseModel):
     birth_year: Optional[int] = None  # Año de nacimiento (ej. 2014)
     coach: Optional[str] = ""
     city: Optional[str] = ""
+    country: Optional[str] = ""
+    president: Optional[str] = ""
+    delegate_phone: Optional[str] = ""
     logo_url: Optional[str] = ""
     color: Optional[str] = "#1d4ed8"
     group_name: Optional[str] = ""  # Grupo A, Grupo B, Unigrupo
+    cuerpo_tecnico: Optional[List[dict]] = []  # [{name, document, role}]
 
 class TeamOut(TeamIn):
     id: str
@@ -212,6 +216,13 @@ class PlayerIn(BaseModel):
     birth_date: str  # ISO date
     photo_url: Optional[str] = ""
     document_id: Optional[str] = ""
+    nickname: Optional[str] = ""
+    gender: Optional[str] = ""  # M / F
+    eps: Optional[str] = ""
+    guardian_name: Optional[str] = ""
+    guardian_doc: Optional[str] = ""
+    guardian_relation: Optional[str] = ""
+    guardian_phone: Optional[str] = ""
 
 class PlayerOut(PlayerIn):
     id: str
@@ -247,7 +258,8 @@ class MatchResultIn(BaseModel):
     home_score: int
     away_score: int
     scorers: Optional[List[dict]] = []  # [{player_id, team_id, minute}]
-    home_fair_play: Optional[int] = 0  # puntos juego limpio
+    cards: Optional[List[dict]] = []  # [{player_id, team_id, type: 'yellow'|'red', minute}]
+    home_fair_play: Optional[int] = 0
     away_fair_play: Optional[int] = 0
 
 class FixtureGenerateIn(BaseModel):
@@ -361,6 +373,7 @@ async def register_team(payload: TeamRegisterIn, response: Response):
         "logo_url": payload.logo_url or "",
         "color": payload.color or "#1d4ed8",
         "manager_user_id": user_id,
+        "status": "pendiente",  # Self-registered, awaits admin approval
         "created_at": now,
     }
     user_doc = {
@@ -444,10 +457,24 @@ async def refresh_token(request: Request, response: Response):
 
 # -------------------- Teams --------------------
 @api.get("/teams", response_model=List[TeamOut])
-async def list_teams(category: Optional[str] = None):
+async def list_teams(category: Optional[str] = None, status: Optional[str] = None, request: Request = None):
     q = {}
     if category:
         q["category"] = category
+    # Public endpoint: by default show only approved teams (legacy teams without status field also visible)
+    is_admin = False
+    try:
+        token = request.cookies.get("access_token") if request else None
+        if token:
+            payload = jwt.decode(token, get_jwt_secret(), algorithms=[JWT_ALGORITHM])
+            user_doc = await db.users.find_one({"id": payload["sub"]}, {"role": 1})
+            is_admin = user_doc and user_doc.get("role") == "admin"
+    except Exception:
+        pass
+    if status and is_admin:
+        q["status"] = status
+    elif not is_admin:
+        q["$or"] = [{"status": "aprobado"}, {"status": {"$exists": False}}]
     items = await db.teams.find(q, {"_id": 0}).sort("name", 1).to_list(500)
     return items
 
@@ -464,6 +491,7 @@ async def create_team(payload: TeamIn, _: dict = Depends(require_admin)):
         raise HTTPException(status_code=400, detail=f"Categoría inválida. Use: {', '.join(CATEGORIES)}")
     doc = payload.model_dump()
     doc["id"] = str(uuid.uuid4())
+    doc["status"] = "aprobado"  # Admin-created teams are auto-approved
     doc["created_at"] = datetime.now(timezone.utc).isoformat()
     await db.teams.insert_one(doc)
     doc.pop("_id", None)
@@ -494,10 +522,34 @@ async def delete_team(team_id: str, _: dict = Depends(require_admin)):
 
 # -------------------- Players --------------------
 @api.get("/players", response_model=List[PlayerOut])
-async def list_players(team_id: Optional[str] = None):
+async def list_players(team_id: Optional[str] = None, status: Optional[str] = None, request: Request = None):
     q = {}
     if team_id:
         q["team_id"] = team_id
+    is_admin = False
+    is_team = False
+    user_team_id = None
+    try:
+        token = request.cookies.get("access_token") if request else None
+        if token:
+            payload = jwt.decode(token, get_jwt_secret(), algorithms=[JWT_ALGORITHM])
+            user_doc = await db.users.find_one({"id": payload["sub"]}, {"role": 1, "team_id": 1})
+            if user_doc:
+                is_admin = user_doc.get("role") == "admin"
+                if user_doc.get("role") == "team":
+                    is_team = True
+                    user_team_id = user_doc.get("team_id")
+    except Exception:
+        pass
+    # Admin filter override
+    if status and is_admin:
+        q["status"] = status
+    # Team manager: see their own players regardless of status
+    elif is_team and team_id == user_team_id:
+        pass
+    else:
+        # Public: only approved
+        q["$or"] = [{"status": "aprobado"}, {"status": {"$exists": False}}]
     items = await db.players.find(q, {"_id": 0}).sort("jersey_number", 1).to_list(2000)
     return items
 
@@ -517,6 +569,8 @@ async def create_player(payload: PlayerIn, user: dict = Depends(require_admin_or
         raise HTTPException(status_code=403, detail="Solo puedes agregar jugadores a tu propio equipo")
     doc = payload.model_dump()
     doc["id"] = str(uuid.uuid4())
+    # Admin-added players are auto-approved; team-added are pending
+    doc["status"] = "aprobado" if user["role"] == "admin" else "pendiente"
     doc["created_at"] = datetime.now(timezone.utc).isoformat()
     await db.players.insert_one(doc)
     doc.pop("_id", None)
@@ -542,6 +596,25 @@ async def delete_player(player_id: str, user: dict = Depends(require_admin_or_te
     if user["role"] == "team" and user.get("team_id") != existing["team_id"]:
         raise HTTPException(status_code=403, detail="Solo puedes eliminar jugadores de tu propio equipo")
     await db.players.delete_one({"id": player_id})
+    return {"ok": True}
+
+# -------------------- Approval Workflows --------------------
+@api.put("/teams/{team_id}/status")
+async def set_team_status(team_id: str, status: str, _: dict = Depends(require_admin)):
+    if status not in {"pendiente", "aprobado", "rechazado"}:
+        raise HTTPException(status_code=400, detail="Estado inválido")
+    res = await db.teams.update_one({"id": team_id}, {"$set": {"status": status}})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Equipo no encontrado")
+    return {"ok": True}
+
+@api.put("/players/{player_id}/status")
+async def set_player_status(player_id: str, status: str, _: dict = Depends(require_admin)):
+    if status not in {"pendiente", "aprobado", "rechazado"}:
+        raise HTTPException(status_code=400, detail="Estado inválido")
+    res = await db.players.update_one({"id": player_id}, {"$set": {"status": status}})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Jugador no encontrado")
     return {"ok": True}
 
 # -------------------- Tournaments --------------------
@@ -602,6 +675,7 @@ async def update_match_result(mid: str, payload: MatchResultIn, _: dict = Depend
             "away_score": payload.away_score,
             "status": "finalizado",
             "scorers": payload.scorers or [],
+            "cards": payload.cards or [],
             "home_fair_play": payload.home_fair_play or 0,
             "away_fair_play": payload.away_fair_play or 0,
         }}
@@ -841,6 +915,42 @@ async def top_scorers(category: Optional[str] = None, limit: int = 20):
             "category": t.get("category", "")
         })
     rows.sort(key=lambda r: -r["goals"])
+    return rows[:limit]
+
+@api.get("/stats/discipline")
+async def discipline(category: Optional[str] = None, limit: int = 50):
+    matches = await db.matches.find({"status": "finalizado"}, {"_id": 0}).to_list(2000)
+    yc = {}
+    rc = {}
+    for m in matches:
+        for c in (m.get("cards") or []):
+            pid = c.get("player_id")
+            if not pid:
+                continue
+            if c.get("type") == "yellow":
+                yc[pid] = yc.get(pid, 0) + 1
+            elif c.get("type") == "red":
+                rc[pid] = rc.get(pid, 0) + 1
+    pids = list(set(yc.keys()) | set(rc.keys()))
+    if not pids:
+        return []
+    players = await db.players.find({"id": {"$in": pids}}, {"_id": 0}).to_list(2000)
+    team_ids = list({p["team_id"] for p in players})
+    teams = await db.teams.find({"id": {"$in": team_ids}}, {"_id": 0}).to_list(500)
+    tmap = {t["id"]: t for t in teams}
+    rows = []
+    for p in players:
+        t = tmap.get(p["team_id"], {})
+        if category and t.get("category") != category:
+            continue
+        rows.append({
+            "player_id": p["id"], "name": p["name"],
+            "team_name": t.get("name", "—"), "team_logo": t.get("logo_url", ""),
+            "yellow_cards": yc.get(p["id"], 0),
+            "red_cards": rc.get(p["id"], 0),
+            "category": t.get("category", ""),
+        })
+    rows.sort(key=lambda r: (-r["red_cards"], -r["yellow_cards"]))
     return rows[:limit]
 
 # -------------------- Inventory: Hotels / Transports / Tours --------------------

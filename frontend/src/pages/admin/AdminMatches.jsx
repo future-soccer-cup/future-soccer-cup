@@ -48,6 +48,7 @@ export default function AdminMatches() {
         home_score: Number(scoring.home_score),
         away_score: Number(scoring.away_score),
         scorers: scoring.scorers || [],
+        cards: scoring.cards || [],
         home_fair_play: Number(scoring.home_fair_play || 0),
         away_fair_play: Number(scoring.away_fair_play || 0),
       });
@@ -155,6 +156,7 @@ export default function AdminMatches() {
               </div>
             </div>
             <ScorersEditor scoring={scoring} setScoring={setScoring} teams={teams} />
+            <CardsEditor scoring={scoring} setScoring={setScoring} />
             <div className="grid grid-cols-2 gap-3">
               <label className="block">
                 <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">Juego Limpio Local</span>
@@ -216,6 +218,60 @@ function ScorersEditor({ scoring, setScoring, teams }) {
           </select>
           <input type="number" placeholder="Min" value={s.minute || ""} onChange={(e) => updateScorer(i, "minute", Number(e.target.value))} className="col-span-3 px-2 py-1 border border-slate-200 rounded text-sm" />
           <button type="button" onClick={() => removeScorer(i)} className="col-span-1 text-red-600">✕</button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+
+function CardsEditor({ scoring, setScoring }) {
+  const [players, setPlayers] = useState([]);
+  useEffect(() => {
+    const ids = [scoring.home_team_id, scoring.away_team_id];
+    Promise.all(ids.map((id) => api.get(`/players?team_id=${id}`))).then((rs) => {
+      setPlayers([...rs[0].data, ...rs[1].data]);
+    });
+  }, [scoring.home_team_id, scoring.away_team_id]);
+
+  const cards = scoring.cards || [];
+  const addCard = (type) => {
+    setScoring({ ...scoring, cards: [...cards, { player_id: "", team_id: "", type, minute: 0 }] });
+  };
+  const updateCard = (i, field, val) => {
+    const next = [...cards];
+    next[i] = { ...next[i], [field]: val };
+    if (field === "player_id") {
+      const p = players.find((x) => x.id === val);
+      if (p) next[i].team_id = p.team_id;
+    }
+    setScoring({ ...scoring, cards: next });
+  };
+  const removeCard = (i) => {
+    const next = [...cards];
+    next.splice(i, 1);
+    setScoring({ ...scoring, cards: next });
+  };
+
+  return (
+    <div className="border border-slate-200 rounded-md p-3">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Tarjetas</span>
+        <div className="flex gap-2">
+          <button type="button" onClick={() => addCard("yellow")} className="text-xs font-bold text-yellow-600 flex items-center gap-1" data-testid="add-yellow-card"><span className="inline-block w-3 h-4 bg-yellow-400 rounded-sm" />+ Amarilla</button>
+          <button type="button" onClick={() => addCard("red")} className="text-xs font-bold text-red-600 flex items-center gap-1" data-testid="add-red-card"><span className="inline-block w-3 h-4 bg-red-600 rounded-sm" />+ Roja</button>
+        </div>
+      </div>
+      {cards.length === 0 && <p className="text-xs text-slate-400 py-1">Sin tarjetas registradas</p>}
+      {cards.map((c, i) => (
+        <div key={i} className="grid grid-cols-12 gap-2 mb-2 items-center">
+          <span className={`col-span-1 inline-block w-3 h-4 rounded-sm ${c.type === "red" ? "bg-red-600" : "bg-yellow-400"}`} />
+          <select value={c.player_id} onChange={(e) => updateCard(i, "player_id", e.target.value)} className="col-span-7 px-2 py-1 border border-slate-200 rounded text-sm">
+            <option value="">Jugador...</option>
+            {players.map((p) => <option key={p.id} value={p.id}>{p.name} (#{p.jersey_number})</option>)}
+          </select>
+          <input type="number" placeholder="Min" value={c.minute || ""} onChange={(e) => updateCard(i, "minute", Number(e.target.value))} className="col-span-3 px-2 py-1 border border-slate-200 rounded text-sm" />
+          <button type="button" onClick={() => removeCard(i)} className="col-span-1 text-red-600">✕</button>
         </div>
       ))}
     </div>
