@@ -61,7 +61,7 @@ export default function Register() {
         <div className="relative text-center px-12">
           <img src={FSC_LOGO} alt="FSC" className="h-32 mx-auto bg-white rounded-2xl p-3" />
           <h2 className="mt-6 font-display text-5xl font-black uppercase text-white tracking-tighter">Únete a FSC</h2>
-          <p className="mt-3 text-blue-100 max-w-sm">Reservas, fixture y novedades en un solo lugar.</p>
+          <p className="mt-3 text-blue-100 max-w-sm">Cotizaciones, fixture y novedades en un solo lugar.</p>
         </div>
       </div>
     </div>

@@ -1,0 +1,48 @@
+{
+  "summary": "Iter8 regression — 13 pruebas (11 PASS, 1 SKIP, 1 FAIL). HIGH #1 (checkout/status 500→404) CONFIRMADO ARREGLADO. HIGH #2 (bookings eliminados) CONFIRMADO ARREGLADO (4/4). Smoke iter7 sigue verde: event-types COP (festival 1.000.000, premier 1.800.000, gold double 400.000, transport 100.000), register-team con event_type/manager_name persiste correctamente, quote calc Premier+Sub12+gold+double+4x3+transport = 7.000.000 COP exacto, /api/payments/registration/session devuelve session_id + url Stripe. PERO: el fix #3 solicitado ('cotización pagada → 400 \"ya fue pagada\"') está INCOMPLETO — la rama sigue siendo dead code porque el check de status!='aprobada' va ANTES del check status=='pagada' en server.py líneas 1182-1185. Usuario ve mensaje engañoso 'Solo cotizaciones aprobadas pueden pagarse' en vez de 'Esta cotización ya fue pagada'. HTTP status 400 sí es correcto.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "POST /api/payments/checkout/session (con quote.status=='pagada')",
+        "issue": "Dead-code branch sigue presente. server.py L1182 revisa `quote['status'] != 'aprobada'` PRIMERO, retornando 400 'Solo cotizaciones aprobadas pueden pagarse'. La línea 1184 (`status=='pagada' or payment_status=='paid' → 'Esta cotización ya fue pagada') nunca se alcanza. Fix: mover el bloque de pagada ANTES del bloque de aprobada. Repro: crear cotización → aprobar → PUT ?status=pagada → POST /payments/checkout/session devuelve 'Solo cotizaciones aprobadas' (mensaje equivocado).",
+        "priority": "HIGH"
+      }
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Login.jsx", "issue": "Copy stale 'Accede a tu cuenta para gestionar reservas.' (L46). Debería decir 'cotizaciones' tras limpieza de Bookings/Reservas.", "selector": "/login subtítulo", "priority": "MINOR"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter8_regressions.py",
+    "/app/test_reports/pytest/iteration_8.xml"
+  ],
+  "action_items": [
+    "HIGH: Reordenar las comprobaciones en POST /api/payments/checkout/session (server.py L1175-1185): mover el bloque 'if quote.get(\"status\") == \"pagada\" or quote.get(\"payment_status\") == \"paid\": 400' ANTES de 'if quote[\"status\"] != \"aprobada\": 400'. Sólo así se activa el mensaje 'Esta cotización ya fue pagada' y deja de ser dead code.",
+    "MINOR: Actualizar /app/frontend/src/pages/Login.jsx L46 — cambiar 'gestionar reservas' → 'gestionar cotizaciones' (o similar) para alinear con la eliminación del módulo Reservas."
+  ],
+  "critical_code_review_comments": [
+    "Regresiones HIGH #1 (checkout/status → 404) y HIGH #2 (bookings eliminados por completo del backend y del índice de MongoDB) quedaron bien resueltas. grep de 'bookings|Booking' en /app/backend/server.py devuelve vacío.",
+    "Sin embargo el fix #3 no completa el ciclo: el orden de los guards sigue dejando inalcanzable el branch 'ya fue pagada'. Un reordenamiento de 4 líneas lo resuelve.",
+    "server.py continúa siendo un monolito (~1662 líneas) — recomendación histórica de dividir en routers todavía pendiente.",
+    "Login.jsx mantiene copy 'reservas' tras haberse limpiado Register.jsx, Navbar y módulo backend — revisar todos los textos de landing/auth para coherencia."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter8_regressions.py (nuevo: 13 pruebas de regresión para iter8)"
+  ],
+  "success_rate": {
+    "backend": "92% (12/13 pass, 1 skip por /api/clubes no expuesto; 1 fail por el dead-code branch no corregido)",
+    "frontend": "no re-testeado este round (testing_type=backend only). Register.jsx copy confirmado correcto vía grep. Login.jsx copy stale detectado vía grep."
+  },
+  "test_credentials": "admin@futuresoccercup.com / FSCAdmin2025! (verificado). Coach de prueba se crea por run: TEST_iter8_team_<uuid>@test.com / TeamPass2025!",
+  "seed_data_creation": "Crea 1 team manager TEST_iter8_team_<uuid> + 1 cotización TEST (borrada en teardown del test). Equipo TEST_ITER8_* queda en db.teams (sin endpoint de limpieza de usuarios).",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Ejecutar: pytest /app/backend/tests/test_iter8_regressions.py -v. Tras reordenar los checks en server.py L1182-1185, el único FAIL (TestCheckoutQuotePagada::test_pagada_quote_rejects_new_session) debe pasar y el suite queda 12/13 (1 skip esperado). Los casos de bookings removed y checkout/status 404 ya son verdes estables.",
+  "rca of the issue": "server.py L1175-1185 en POST /api/payments/checkout/session valida en este orden: (1) 404 si no existe, (2) 403 si no es dueño, (3) 400 si status!='aprobada', (4) 400 si status=='pagada' OR payment_status=='paid'. El paso 3 captura a cualquier status distinto de 'aprobada' — incluyendo 'pagada' — por lo que el paso 4 nunca se ejecuta. Usuario que intente pagar de nuevo ve el mensaje incorrecto. Solución: intercambiar los bloques (3) y (4), o fusionar: `if quote['status'] == 'pagada' or quote.get('payment_status') == 'paid': raise 400 'Esta cotización ya fue pagada'; if quote['status'] != 'aprobada': raise 400 'Solo cotizaciones aprobadas pueden pagarse'`."
+}

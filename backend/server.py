@@ -381,31 +381,6 @@ class TourIn(BaseModel):
 class TourOut(TourIn):
     id: str
 
-class BookingIn(BaseModel):
-    type: Literal["hotel", "transport", "tour"]
-    item_id: str
-    start_date: str
-    end_date: Optional[str] = None
-    guests: int = 1
-    notes: Optional[str] = ""
-    contact_phone: Optional[str] = ""
-
-class BookingOut(BaseModel):
-    id: str
-    user_id: str
-    user_name: str
-    user_email: str
-    type: str
-    item_id: str
-    item_name: str
-    start_date: str
-    end_date: Optional[str] = None
-    guests: int
-    notes: Optional[str] = ""
-    contact_phone: Optional[str] = ""
-    status: str
-    created_at: str
-
 # -------------------- Auth --------------------
 @api.post("/auth/register")
 async def register(payload: RegisterIn, response: Response):
@@ -1075,53 +1050,6 @@ _crud_endpoints("hotels", HotelIn, HotelOut, "hotels")
 _crud_endpoints("transports", TransportIn, TransportOut, "transports")
 _crud_endpoints("tours", TourIn, TourOut, "tours")
 
-# -------------------- Bookings --------------------
-@api.post("/bookings", response_model=BookingOut)
-async def create_booking(payload: BookingIn, user: dict = Depends(get_current_user)):
-    coll_map = {"hotel": "hotels", "transport": "transports", "tour": "tours"}
-    coll = coll_map.get(payload.type)
-    item = await db[coll].find_one({"id": payload.item_id}, {"_id": 0})
-    if not item:
-        raise HTTPException(status_code=404, detail="Ítem no encontrado")
-    doc = {
-        "id": str(uuid.uuid4()),
-        "user_id": user["id"],
-        "user_name": user["name"],
-        "user_email": user["email"],
-        "type": payload.type,
-        "item_id": payload.item_id,
-        "item_name": item["name"],
-        "start_date": payload.start_date,
-        "end_date": payload.end_date,
-        "guests": payload.guests,
-        "notes": payload.notes,
-        "contact_phone": payload.contact_phone,
-        "status": "pendiente",
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    }
-    await db.bookings.insert_one(doc)
-    doc.pop("_id", None)
-    return doc
-
-@api.get("/bookings/mine", response_model=List[BookingOut])
-async def my_bookings(user: dict = Depends(get_current_user)):
-    items = await db.bookings.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(500)
-    return items
-
-@api.get("/bookings", response_model=List[BookingOut])
-async def all_bookings(_: dict = Depends(require_admin)):
-    items = await db.bookings.find({}, {"_id": 0}).sort("created_at", -1).to_list(2000)
-    return items
-
-@api.put("/bookings/{bid}/status")
-async def update_booking_status(bid: str, status: str, _: dict = Depends(require_admin)):
-    if status not in {"pendiente", "confirmada", "cancelada"}:
-        raise HTTPException(status_code=400, detail="Estado inválido")
-    res = await db.bookings.update_one({"id": bid}, {"$set": {"status": status}})
-    if res.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Reserva no encontrada")
-    return {"ok": True}
-
 # -------------------- Health --------------------
 @api.get("/")
 async def root():
@@ -1253,7 +1181,7 @@ async def create_checkout(payload: CheckoutSessionIn, http_request: Request, use
         raise HTTPException(status_code=403, detail="No autorizado")
     if quote["status"] != "aprobada":
         raise HTTPException(status_code=400, detail="Solo cotizaciones aprobadas pueden pagarse")
-    if quote.get("payment_status") == "paid":
+    if quote.get("status") == "pagada" or quote.get("payment_status") == "paid":
         raise HTTPException(status_code=400, detail="Esta cotización ya fue pagada")
 
     stripe = _get_stripe(http_request)
@@ -1363,7 +1291,11 @@ async def get_checkout_status(session_id: str, user: dict = Depends(get_current_
     if not api_key:
         raise HTTPException(status_code=503, detail="Stripe no configurado")
     stripe = StripeCheckout(api_key=api_key, webhook_url="")
-    status = await stripe.get_checkout_status(session_id)
+    try:
+        status = await stripe.get_checkout_status(session_id)
+    except Exception as e:
+        logging.warning(f"Stripe status lookup failed for {session_id}: {e}")
+        raise HTTPException(status_code=404, detail="Sesión de pago no encontrada o expirada")
 
     tx = await db.payment_transactions.find_one({"session_id": session_id}, {"_id": 0})
     if tx and tx.get("payment_status") != "paid" and status.payment_status == "paid":
@@ -1701,7 +1633,6 @@ async def on_startup():
     await db.teams.create_index("id", unique=True)
     await db.players.create_index("id", unique=True)
     await db.matches.create_index("id", unique=True)
-    await db.bookings.create_index("id", unique=True)
     await db.quotes.create_index("id", unique=True)
     await db.posts.create_index("id", unique=True)
     await db.payment_transactions.create_index("session_id", unique=True)
