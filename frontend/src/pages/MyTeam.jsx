@@ -230,34 +230,59 @@ export default function MyTeam() {
         </div>
       </div>
 
+      {/* Panel de gestión de jugadores */}
       <div className="mt-10">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
           <h2 className="font-display text-3xl font-black uppercase tracking-tight">Plantilla ({players.length})</h2>
-          <div className="flex gap-2">
-            <button onClick={() => fileRef.current?.click()} className="px-3 py-2 border-2 border-slate-900 text-slate-900 hover:bg-slate-900 hover:text-white rounded-md text-xs font-bold uppercase tracking-wide flex items-center gap-2" data-testid="bulk-upload-btn">
-              <FileUp size={14}/> Carga masiva
-            </button>
-            <input ref={fileRef} type="file" accept=".xlsx" hidden onChange={(e) => { setBulkFile(e.target.files?.[0] || null); if (e.target.files?.[0]) uploadBulk(true); }} data-testid="bulk-upload-input" />
-            <button onClick={() => setEditingPlayer({ ...EMPTY_PLAYER, team_id: teamId })} className="fsc-btn-red px-4 py-2 rounded-md text-sm flex items-center gap-2" data-testid="add-player-btn">
-              <Plus size={16}/> Agregar jugador
-            </button>
-          </div>
+          <input ref={fileRef} type="file" accept=".xlsx" hidden onChange={(e) => { setBulkFile(e.target.files?.[0] || null); if (e.target.files?.[0]) uploadBulk(true); }} data-testid="bulk-upload-input" />
         </div>
 
         {!bulkPreview && (
-          <div className="mb-4 bg-blue-50 border border-blue-200 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
-            <div className="flex-1">
-              <div className="text-xs font-bold uppercase tracking-wider text-blue-700">Importa cuerpo técnico + jugadores en lote</div>
-              <p className="text-xs text-slate-600 mt-1">Descarga la plantilla Excel (2 hojas: <strong>Jugadores</strong> + <strong>Cuerpo Técnico</strong>), complétala y súbela para cargar todo de una vez.</p>
-            </div>
-            <button onClick={downloadTemplate} className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide px-4 py-2 bg-white border-2 border-blue-700 text-blue-700 rounded-md hover:bg-blue-700 hover:text-white" data-testid="download-template-btn">
-              <Download size={14}/> Descargar plantilla XLSX
+          <div className="mb-6 grid md:grid-cols-2 gap-4" data-testid="player-actions-panel">
+            {/* Acción individual */}
+            <button
+              onClick={() => setEditingPlayer({ ...EMPTY_PLAYER, team_id: teamId })}
+              data-testid="add-player-btn"
+              className="text-left bg-gradient-to-br from-red-600 to-red-700 text-white rounded-2xl p-6 hover:shadow-xl hover:scale-[1.01] transition-all"
+            >
+              <div className="flex items-start gap-4">
+                <div className="h-12 w-12 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
+                  <Plus size={24}/>
+                </div>
+                <div className="flex-1">
+                  <div className="text-[10px] font-bold uppercase tracking-[0.25em] text-red-200">Crear de a uno</div>
+                  <div className="font-display text-2xl font-black uppercase tracking-tight mt-0.5">Agregar jugador</div>
+                  <p className="text-xs text-red-100 mt-2 leading-relaxed">Formulario completo con foto, dorsal, posición, EPS, datos del acudiente y autorizaciones.</p>
+                </div>
+              </div>
             </button>
+
+            {/* Acción masiva */}
+            <div className="bg-gradient-to-br from-blue-700 to-blue-900 text-white rounded-2xl p-6">
+              <div className="flex items-start gap-4">
+                <div className="h-12 w-12 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
+                  <FileUp size={24}/>
+                </div>
+                <div className="flex-1">
+                  <div className="text-[10px] font-bold uppercase tracking-[0.25em] text-blue-200">Carga masiva</div>
+                  <div className="font-display text-2xl font-black uppercase tracking-tight mt-0.5">Importar desde Excel</div>
+                  <p className="text-xs text-blue-100 mt-2 leading-relaxed">Excel con formato profesional: hojas separadas para <strong>Jugadores</strong> y <strong>Cuerpo Técnico</strong>.</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button onClick={downloadTemplate} className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide px-3 py-2 bg-white text-blue-800 rounded-md hover:bg-blue-50" data-testid="download-template-btn">
+                      <Download size={14}/> 1) Descargar plantilla
+                    </button>
+                    <button onClick={() => fileRef.current?.click()} className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wide px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-md ring-1 ring-blue-400" data-testid="bulk-upload-btn">
+                      <FileUp size={14}/> 2) Subir archivo
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
         {bulkPreview && (
-          <div className="mb-4 bg-white border-2 border-blue-700 rounded-xl p-5" data-testid="bulk-preview">
+          <div className="mb-6 bg-white border-2 border-blue-700 rounded-xl p-5" data-testid="bulk-preview">
             <div className="flex items-center justify-between mb-3">
               <div>
                 <div className="text-xs font-bold uppercase tracking-wider text-blue-700">Vista previa de importación</div>
@@ -269,15 +294,30 @@ export default function MyTeam() {
               <div className="border border-slate-200 rounded-lg p-3">
                 <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Jugadores</div>
                 <div className="font-display text-3xl font-black text-green-600">{bulkPreview.players.ok}<span className="text-sm text-slate-400 font-bold ml-1">/ {bulkPreview.players.total}</span></div>
-                {bulkPreview.players.errors?.length > 0 && <div className="text-xs text-red-600 mt-1">{bulkPreview.players.errors.length} errores</div>}
+                {bulkPreview.players.errors?.length > 0 && (
+                  <details className="mt-2">
+                    <summary className="text-xs text-red-600 cursor-pointer font-semibold">{bulkPreview.players.errors.length} errores</summary>
+                    <ul className="text-[11px] text-red-700 mt-1 space-y-0.5 max-h-32 overflow-auto">
+                      {bulkPreview.players.errors.slice(0, 20).map((er, i) => <li key={i}>Fila {er.row}: {er.error}</li>)}
+                    </ul>
+                  </details>
+                )}
               </div>
               <div className="border border-slate-200 rounded-lg p-3">
                 <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Cuerpo técnico</div>
                 <div className="font-display text-3xl font-black text-green-600">{bulkPreview.staff.ok}<span className="text-sm text-slate-400 font-bold ml-1">/ {bulkPreview.staff.total}</span></div>
+                {bulkPreview.staff.errors?.length > 0 && (
+                  <details className="mt-2">
+                    <summary className="text-xs text-red-600 cursor-pointer font-semibold">{bulkPreview.staff.errors.length} errores</summary>
+                    <ul className="text-[11px] text-red-700 mt-1 space-y-0.5 max-h-32 overflow-auto">
+                      {bulkPreview.staff.errors.slice(0, 20).map((er, i) => <li key={i}>Fila {er.row}: {er.error}</li>)}
+                    </ul>
+                  </details>
+                )}
               </div>
             </div>
             <button onClick={() => uploadBulk(false)} disabled={uploading} className="mt-4 fsc-btn-red w-full py-2 rounded-md text-sm disabled:opacity-50" data-testid="bulk-confirm-btn">
-              {uploading ? "Importando..." : "Confirmar y guardar"}
+              {uploading ? "Importando..." : `Confirmar y guardar ${bulkPreview.players.ok} jugadores + ${bulkPreview.staff.ok} del staff`}
             </button>
           </div>
         )}
