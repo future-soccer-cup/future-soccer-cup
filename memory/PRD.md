@@ -52,5 +52,13 @@ Aplicación versátil para una empresa que organiza eventos de fútbol infantil 
 - **UI nueva** (`/admin/generador-fixture`): elige categoría → filtra equipos → marca participantes → define inicio, días entre jornadas, lista de canchas y de horarios → vista previa con tabla de partidos + descansos por ronda → botón Guardar.
 - **Filtro por jornada** en `/fixture` público (chips F1, F2, F3...).
 
+## Iteration 4 (2026-04-30) — Workflows de aprobación + planilla completa
+- **Aprobaciones**: equipos auto-registrados via `/api/auth/register-team` y jugadores agregados por team-managers nacen con `status="pendiente"`. Admin (con superusuario) tiene página `/admin/aprobaciones` con tabs Equipos/Jugadores + filtros por estado y botones Aprobar/Rechazar. Endpoints: `PUT /api/teams/{id}/status`, `PUT /api/players/{id}/status`.
+- **Visibilidad pública**: `/api/teams` y `/api/players` (sin auth) solo retornan registros aprobados; el admin con `?status=` ve cualquier estado; team-managers ven sus propios pendientes.
+- **Planilla extendida (jugador)**: agregados `nickname`, `gender`, `eps`, `guardian_name`, `guardian_doc`, `guardian_relation`, `guardian_phone` en formulario de "Mi equipo".
+- **Planilla extendida (equipo)**: agregados `country`, `president`, `delegate_phone`, `cuerpo_tecnico` (JSON list).
+- **Tarjetas amarilla/roja** en resultados de partidos: nuevo `CardsEditor` en modal de resultados; persistidas en `match.cards`. Nuevo endpoint `/api/stats/discipline` agrega tarjetas por jugador.
+- **Banner de estado** en `/mi-equipo`: el equipo en estado pendiente ve un aviso amarillo de "En revisión".
+
 ## Last Test Run
-- iteration_3: 55/55 pytest backend pass (44 regresión + 11 nuevos generator). Frontend retesteado tras corregir 2 wirings menores (route + chips); todas las pantallas y flujos críticos verificados.
+- iteration_4: **71/71 pytest backend en verde** (24 + 20 + 11 + 16 nuevos). Frontend: testing agent corrigió un typo de copy/paste en MyTeam.jsx (orphan JSX + StatusPill duplicado) y verificó AdminApprovals end-to-end. Self-test posterior: login como team-manager → `/mi-equipo` carga correctamente con plantilla y header del equipo.
