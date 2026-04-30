@@ -1460,21 +1460,151 @@ async def serve_file(path: str):
     data, ct = get_object(path)
     return FastAPIResponse(content=data, media_type=record.get("content_type", ct))
 
-# -------------------- Bulk Import (CSV / XLSX) --------------------
+# -------------------- Bulk Import (XLSX) --------------------
 TEAM_TEMPLATE_HEADERS = ["name", "category", "birth_year", "group_name", "coach", "city", "country", "president", "delegate_phone", "color"]
 PLAYER_TEMPLATE_HEADERS = ["team_name", "name", "jersey_number", "position", "birth_date", "document_id", "nickname", "gender", "eps", "guardian_name", "guardian_doc", "guardian_relation", "guardian_phone"]
 
+# Spanish display headers + import alias mapping (Spanish → canonical English keys used internally)
+TEAM_HEADERS_ES = [
+    ("name",            "Nombre"),
+    ("category",        "Categoría"),
+    ("birth_year",      "Año de nacimiento"),
+    ("group_name",      "Grupo"),
+    ("coach",           "Director técnico"),
+    ("city",            "Ciudad"),
+    ("country",         "País"),
+    ("president",       "Presidente"),
+    ("delegate_phone",  "Teléfono delegado"),
+    ("color",           "Color (HEX)"),
+]
+TEAM_SAMPLE_ES = ["Leones FC", "Sub-12", 2014, "Grupo A", "Pedro Coach", "Bogotá", "Colombia", "María Pdta.", "+57 310 123 4567", "#1d4ed8"]
+
+PLAYER_HEADERS_ES = [
+    ("team_name",         "Equipo"),
+    ("name",              "Nombre del jugador"),
+    ("jersey_number",     "Dorsal"),
+    ("position",          "Posición"),
+    ("birth_date",        "Fecha de nacimiento (AAAA-MM-DD)"),
+    ("document_id",       "Documento de identidad"),
+    ("nickname",          "Apodo"),
+    ("gender",            "Género (M/F)"),
+    ("eps",               "EPS / Seguro médico"),
+    ("guardian_name",     "Nombre del acudiente"),
+    ("guardian_doc",      "Documento del acudiente"),
+    ("guardian_relation", "Parentesco"),
+    ("guardian_phone",    "Teléfono del acudiente"),
+]
+PLAYER_SAMPLE_ES = ["Leones FC", "Carlos Pérez", 10, "Delantero", "2014-03-15", "1750000000", "Pipo", "M", "Sanitas", "María Pérez", "0701234567", "Madre", "+57 310 765 4321"]
+
+STAFF_HEADERS_ES = [
+    ("name",     "Nombre completo"),
+    ("role",     "Rol / Cargo"),
+    ("document", "Documento de identidad"),
+    ("phone",    "Teléfono"),
+]
+STAFF_SAMPLE_ES = ["Pedro Coach", "Director técnico", "1700000000", "+57 310 555 0001"]
+
+# Aliases: lowercased Spanish/English variants → canonical English key
+HEADER_ALIASES = {
+    # Equipos
+    "nombre": "name", "name": "name", "nombre del equipo": "team_name",
+    "equipo": "team_name", "team_name": "team_name",
+    "categoria": "category", "categoría": "category", "category": "category",
+    "ano de nacimiento": "birth_year", "año de nacimiento": "birth_year", "birth_year": "birth_year",
+    "grupo": "group_name", "group_name": "group_name",
+    "director tecnico": "coach", "director técnico": "coach", "dt": "coach", "coach": "coach",
+    "ciudad": "city", "city": "city",
+    "pais": "country", "país": "country", "country": "country",
+    "presidente": "president", "president": "president",
+    "telefono delegado": "delegate_phone", "teléfono delegado": "delegate_phone", "delegate_phone": "delegate_phone",
+    "color (hex)": "color", "color": "color",
+    # Jugadores
+    "nombre del jugador": "name",
+    "dorsal": "jersey_number", "numero": "jersey_number", "número": "jersey_number", "jersey_number": "jersey_number",
+    "posicion": "position", "posición": "position", "position": "position",
+    "fecha de nacimiento": "birth_date", "fecha de nacimiento (aaaa-mm-dd)": "birth_date", "birth_date": "birth_date",
+    "documento de identidad": "document_id", "documento": "document_id", "document_id": "document_id",
+    "apodo": "nickname", "nickname": "nickname",
+    "genero": "gender", "género": "gender", "género (m/f)": "gender", "genero (m/f)": "gender", "gender": "gender",
+    "eps": "eps", "eps / seguro medico": "eps", "eps / seguro médico": "eps",
+    "nombre del acudiente": "guardian_name", "guardian_name": "guardian_name",
+    "documento del acudiente": "guardian_doc", "guardian_doc": "guardian_doc",
+    "parentesco": "guardian_relation", "guardian_relation": "guardian_relation",
+    "telefono del acudiente": "guardian_phone", "teléfono del acudiente": "guardian_phone", "guardian_phone": "guardian_phone",
+    # Cuerpo técnico
+    "nombre completo": "name",
+    "rol": "role", "rol / cargo": "role", "cargo": "role", "role": "role",
+    "telefono": "phone", "teléfono": "phone", "phone": "phone",
+}
+
+def _norm_key(h: str) -> str:
+    k = (h or "").strip().lower()
+    return HEADER_ALIASES.get(k, k)
+
+
+def _build_styled_template(sheet_name: str, headers_es: list, sample: list, *, brand_color: str = "1D4ED8", instructions: list = None) -> bytes:
+    """Build a styled XLSX template with Spanish headers, bold colored header row, borders, and column widths.
+    Optional instructions go into a separate 'Instrucciones' sheet so they aren't parsed as data."""
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+    wb = Workbook()
+    ws = wb.active
+    ws.title = sheet_name
+    spanish = [h[1] for h in headers_es]
+    ws.append(spanish)
+    ws.append(sample)
+
+    header_fill = PatternFill("solid", fgColor=brand_color)
+    header_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
+    border = Border(
+        left=Side(style="thin", color="DDDDDD"),
+        right=Side(style="thin", color="DDDDDD"),
+        top=Side(style="thin", color="DDDDDD"),
+        bottom=Side(style="thin", color="DDDDDD"),
+    )
+    center = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    left = Alignment(horizontal="left", vertical="center", wrap_text=True)
+
+    for col_idx in range(1, len(spanish) + 1):
+        c = ws.cell(row=1, column=col_idx)
+        c.fill = header_fill
+        c.font = header_font
+        c.alignment = center
+        c.border = border
+        ws.column_dimensions[get_column_letter(col_idx)].width = max(20, len(spanish[col_idx - 1]) + 4)
+        s = ws.cell(row=2, column=col_idx)
+        s.alignment = left
+        s.border = border
+        s.font = Font(name="Calibri", size=10, italic=True, color="64748B")
+
+    ws.row_dimensions[1].height = 30
+    ws.freeze_panes = "A2"
+
+    # Instructions in separate sheet
+    if instructions:
+        wsi = wb.create_sheet("Instrucciones")
+        wsi.column_dimensions["A"].width = 110
+        wsi.cell(row=1, column=1, value="📝 Plantilla de carga masiva — Future Soccer Cup").font = Font(bold=True, size=14, color=brand_color)
+        for i, line in enumerate(instructions):
+            wsi.cell(row=3 + i, column=1, value=line).font = Font(size=11, color="334155")
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return buf.getvalue()
+
+
 def _parse_uploaded(file: UploadFile, raw: bytes) -> List[dict]:
-    """Returns list of dicts with stringified cell values, keyed by lowercase headers."""
+    """Returns list of dicts keyed by canonical English keys; accepts Spanish or English headers."""
     name = (file.filename or "").lower()
     if name.endswith(".csv"):
         text = raw.decode("utf-8-sig", errors="replace")
         reader = csv.DictReader(io.StringIO(text))
-        return [{(k or "").strip().lower(): (v or "").strip() for k, v in row.items()} for row in reader]
+        return [{_norm_key(k): (v or "").strip() for k, v in row.items()} for row in reader]
     elif name.endswith(".xlsx"):
         wb = load_workbook(io.BytesIO(raw), data_only=True)
         ws = wb.active
-        headers = [str(c.value or "").strip().lower() for c in next(ws.iter_rows(max_row=1))]
+        headers = [_norm_key(str(c.value or "")) for c in next(ws.iter_rows(max_row=1))]
         rows = []
         for r in ws.iter_rows(min_row=2, values_only=True):
             if not any(r):
@@ -1483,36 +1613,28 @@ def _parse_uploaded(file: UploadFile, raw: bytes) -> List[dict]:
             rows.append(d)
         return rows
     else:
-        raise HTTPException(status_code=400, detail="Formato no soportado. Usa .csv o .xlsx")
+        raise HTTPException(status_code=400, detail="Formato no soportado. Usa .xlsx")
 
 @api.get("/import/template/{kind}")
 async def download_template(kind: str, _: dict = Depends(require_admin)):
+    base_instr = [
+        "• Conserva el nombre y el orden de las columnas. Puedes traducirlos, pero no los borres.",
+        "• La fila 2 es un ejemplo: bórrala antes de cargar tu información real.",
+        "• Formato de fecha: AAAA-MM-DD (ejemplo: 2014-03-15).",
+        "• Categoría válida: Sub-8, Sub-10, Sub-12, Sub-14, Sub-16, Sub-18.",
+        "• Para Jugadores: la columna 'Equipo' debe coincidir con el nombre del equipo ya creado en la plataforma.",
+        "• Color en formato HEX (ej. #1d4ed8). Si no lo sabes, déjalo en blanco.",
+    ]
     if kind == "teams":
-        headers = TEAM_TEMPLATE_HEADERS
-        sample = ["Leones FC", "Sub-12", "2014", "Grupo A", "Pedro Coach", "Quito", "Ecuador", "Maria Pdta", "+593987654321", "#1d4ed8"]
-        sheet_name = "Equipos"
+        content = _build_styled_template("Equipos", TEAM_HEADERS_ES, TEAM_SAMPLE_ES, brand_color="1D4ED8", instructions=base_instr)
     elif kind == "players":
-        headers = PLAYER_TEMPLATE_HEADERS
-        sample = ["Leones FC", "Carlos Pérez", "10", "Delantero", "2014-03-15", "1750000000", "Pipo", "M", "Sanitas", "Maria Pérez", "0701234567", "Madre", "+593987654321"]
-        sheet_name = "Jugadores"
+        content = _build_styled_template("Jugadores", PLAYER_HEADERS_ES, PLAYER_SAMPLE_ES, brand_color="DC2626", instructions=base_instr)
     else:
         raise HTTPException(status_code=400, detail="Tipo inválido (teams|players)")
-
-    wb = Workbook()
-    ws = wb.active
-    ws.title = sheet_name
-    ws.append(list(headers))
-    ws.append(sample)
-    # Adjust width for readability
-    for col_idx, _h in enumerate(headers, start=1):
-        ws.column_dimensions[ws.cell(row=1, column=col_idx).column_letter].width = 18
-    buf = io.BytesIO()
-    wb.save(buf)
-    buf.seek(0)
     return FastAPIResponse(
-        content=buf.getvalue(),
+        content=content,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f"attachment; filename=fsc-{kind}-template.xlsx"},
+        headers={"Content-Disposition": f"attachment; filename=fsc-{kind}-plantilla.xlsx"},
     )
 
 @api.post("/import/teams")
@@ -1612,16 +1734,15 @@ async def import_players(file: UploadFile = File(...), preview: bool = False, _:
     return {"total_rows": len(rows), "ok": len(created), "errors": errors, "saved": not preview, "created": [{"id": d["id"], "name": d["name"], "team_id": d["team_id"]} for d in created]}
 
 # -------------------- Bulk Import (Team Manager - Multi-sheet XLSX) --------------------
-STAFF_HEADERS = ["name", "role", "document", "phone"]
 
 def _parse_xlsx_sheets(raw: bytes) -> dict:
-    """Parse all sheets in an XLSX as lowercase-keyed dicts. Returns {sheet_name_lower: [rows]}."""
+    """Parse all sheets in an XLSX as canonical-keyed dicts (Spanish→English aliases). Returns {sheet_name_lower: [rows]}."""
     wb = load_workbook(io.BytesIO(raw), data_only=True)
     out = {}
     for sh in wb.sheetnames:
         ws = wb[sh]
         try:
-            headers = [str(c.value or "").strip().lower() for c in next(ws.iter_rows(max_row=1))]
+            headers = [_norm_key(str(c.value or "")) for c in next(ws.iter_rows(max_row=1))]
         except StopIteration:
             headers = []
         rows = []
@@ -1634,17 +1755,61 @@ def _parse_xlsx_sheets(raw: bytes) -> dict:
 
 @api.get("/team-roster/template")
 async def download_team_roster_template(user: dict = Depends(get_current_user)):
-    """Multi-sheet XLSX template for team managers: Jugadores + Cuerpo Técnico."""
+    """Multi-sheet XLSX template (styled, Spanish): Jugadores + Cuerpo Técnico."""
     if user.get("role") not in ("team", "admin"):
         raise HTTPException(status_code=403, detail="Solo directores técnicos")
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+
     wb = Workbook()
+    # Sheet 1: Jugadores (skip team_name; implícito por el equipo del DT)
     ws1 = wb.active
     ws1.title = "Jugadores"
-    ws1.append(PLAYER_TEMPLATE_HEADERS[1:])  # skip team_name (implied from current team)
-    ws1.append(["Carlos Pérez", "10", "Delantero", "2014-03-15", "1750000000", "Pipo", "M", "Sanitas", "Maria Pérez", "0701234567", "Madre", "+593987654321"])
+    headers_jug = PLAYER_HEADERS_ES[1:]  # quitar "Nombre del equipo"
+    sample_jug = PLAYER_SAMPLE_ES[1:]
+    ws1.append([h[1] for h in headers_jug])
+    ws1.append(sample_jug)
+
+    # Sheet 2: Cuerpo Técnico
     ws2 = wb.create_sheet("Cuerpo Tecnico")
-    ws2.append(STAFF_HEADERS)
-    ws2.append(["Pedro Coach", "Director técnico", "1700000000", "+593987654321"])
+    ws2.append([h[1] for h in STAFF_HEADERS_ES])
+    ws2.append(STAFF_SAMPLE_ES)
+
+    # Styling helper
+    border = Border(left=Side(style="thin", color="DDDDDD"), right=Side(style="thin", color="DDDDDD"),
+                    top=Side(style="thin", color="DDDDDD"), bottom=Side(style="thin", color="DDDDDD"))
+    center = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    left = Alignment(horizontal="left", vertical="center", wrap_text=True)
+
+    def style(ws, hdrs, color):
+        fill = PatternFill("solid", fgColor=color)
+        font_h = Font(bold=True, color="FFFFFF", size=11)
+        font_s = Font(size=10, italic=True, color="64748B")
+        for col_idx in range(1, len(hdrs) + 1):
+            c = ws.cell(row=1, column=col_idx); c.fill = fill; c.font = font_h; c.alignment = center; c.border = border
+            ws.column_dimensions[get_column_letter(col_idx)].width = max(20, len(hdrs[col_idx - 1]) + 4)
+            s = ws.cell(row=2, column=col_idx); s.alignment = left; s.border = border; s.font = font_s
+        ws.row_dimensions[1].height = 28
+        ws.freeze_panes = "A2"
+
+    style(ws1, [h[1] for h in headers_jug], "DC2626")
+    style(ws2, [h[1] for h in STAFF_HEADERS_ES], "1D4ED8")
+
+    # Instrucciones en hoja separada (no se parsean como datos)
+    wsi = wb.create_sheet("Instrucciones")
+    wsi.column_dimensions["A"].width = 110
+    wsi.cell(row=1, column=1, value="📝 Plantilla del equipo — Future Soccer Cup").font = Font(bold=True, size=14, color="DC2626")
+    notes = [
+        "• Hoja 'Jugadores': lista de jugadores del equipo. La fila 2 es un ejemplo, bórrala antes de cargar.",
+        "• Hoja 'Cuerpo Tecnico': director técnico, asistentes, médico, fisioterapeuta, delegado, etc.",
+        "• Conserva el nombre y orden de las columnas. Puedes traducirlas, pero no las borres.",
+        "• Formato de fecha: AAAA-MM-DD (ejemplo: 2014-03-15).",
+        "• La categoría se hereda del equipo registrado en la plataforma.",
+        "• Las fotos se cargan luego desde Mi Equipo > editar jugador.",
+    ]
+    for i, line in enumerate(notes):
+        wsi.cell(row=3 + i, column=1, value=line).font = Font(size=11, color="334155")
+
     buf = io.BytesIO()
     wb.save(buf)
     buf.seek(0)
