@@ -97,6 +97,34 @@ Aplicación versátil para una empresa que organiza eventos de fútbol infantil 
 - **Stripe Checkout (emergentintegrations)**:
   - `POST /api/payments/registration/session` — crea checkout para pagar la inscripción del equipo (COP).
   - `POST /api/payments/checkout/session` — crea checkout para pagar una cotización aprobada (COP).
+  - `GET /api/payments/checkout/status/{sid}` — polling idempotente. kind=="registration" → `teams.registration_payment_status="paid"`; kind=="quote" → `quotes.status="pagada"`.
+  - `POST /api/webhook/stripe` — transición idempotente.
+  - Colección `payment_transactions` con `kind/session_id/amount/currency/payment_status`.
+- **Frontend**:
+  - `/registro-equipo`: bloque "Evento" con 3 cards (pricing COP) y filtro de categorías por evento.
+  - `/mi-equipo`: banner Pagada/Pendiente + CTA "Pagar inscripción", CRUD de **Cuerpo técnico** (nombre, rol, documento, teléfono), CTAs a Cotizar / Mis cotizaciones.
+  - `/mis-cotizaciones`: botón "Pagar" si `status=="aprobada"` y `payment_status!="paid"`.
+  - `/pago-exitoso`: polling con kind + mensaje contextual.
+  - `/equipos` (Clubes) → agrupación Club → Categorías (chips). `/clubes/:slug` (nuevo): detalle con secciones por categoría y plantillas.
+  - Navbar limpio: eliminados Bookings/MyBookings/AdminBookings/AdminInventory. Admin side-nav agrega "Noticias".
+  - Formato numérico es-CO en Cotizar, MyQuotes, MyTeam, AdminQuotes.
+
+## Iteration 8 (2026-04-30) — Regresiones post-iter7
+- **Bookings eliminado del backend**: removidos `BookingIn/BookingOut`, endpoints `POST/GET/PUT /api/bookings*`, e índice `db.bookings` en startup. Rutas ahora devuelven 404.
+- **Stripe status resiliente**: `GET /api/payments/checkout/status/{sid}` con `try/except` devuelve `404 "Sesión de pago no encontrada o expirada"` en lugar de 500 si Stripe no encuentra la sesión.
+- **Cotización ya pagada**: Reordenado el guard en `POST /api/payments/checkout/session` para que el check `status=='pagada' or payment_status=='paid'` corra ANTES del check de `aprobada`, garantizando el mensaje correcto.
+- **UI copy**: `Login.jsx` actualizado "gestionar reservas" → "gestionar cotizaciones".
+
+## Last Test Run
+- iteration_8: 13 regresiones (11 PASS + 1 skip + 1 fail re-fijado). HIGH #1 (500→404) ✅; HIGH #2 (bookings eliminados) ✅; HIGH #3 (dead-code rama "ya pagada") ✅ tras reordenar los checks (validado con curl).
+- **Moneda: COP (Pesos Colombianos)**. Tarifas del backend actualizadas:
+  - Inscripción equipos: Festival $1.000.000, Premier Par/Impar $1.800.000.
+  - Hospedaje per pax/noche: Diamante $720k-$400k; Gold $520k-$280k; Silver $380k-$200k; Bronce $240k-$130k.
+  - Adicionales por pax: Transporte $100k, Parque $140k, Tour $110k.
+- **Evento en registro del equipo**: `TeamRegisterIn.event_type` requerido. Al crear el equipo se guardan `event_type`, `registration_fee` y `registration_payment_status="pending"`. El registro **no se bloquea** por falta de pago — el responsable puede pagar después desde `/mi-equipo`.
+- **Stripe Checkout (emergentintegrations)**:
+  - `POST /api/payments/registration/session` — crea checkout para pagar la inscripción del equipo (COP).
+  - `POST /api/payments/checkout/session` — crea checkout para pagar una cotización aprobada (COP).
   - `GET /api/payments/checkout/status/{sid}` — polling idempotente. Al `payment_status=="paid"`:
     - `kind=="registration"` → `teams.registration_payment_status="paid"`.
     - `kind=="quote"` → `quotes.status="pagada"`.

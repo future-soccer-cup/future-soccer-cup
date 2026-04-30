@@ -43,7 +43,7 @@ export default function Login() {
       <div className="flex items-center justify-center p-8">
         <div className="w-full max-w-sm">
           <h1 className="font-display text-4xl font-black uppercase tracking-tighter">Ingresar</h1>
-          <p className="text-sm text-slate-500 mt-1">Accede a tu cuenta para gestionar reservas.</p>
+          <p className="text-sm text-slate-500 mt-1">Accede a tu cuenta para gestionar cotizaciones.</p>
 
           <form onSubmit={submit} className="mt-6 space-y-4">
             <label className="block">

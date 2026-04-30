@@ -1179,10 +1179,10 @@ async def create_checkout(payload: CheckoutSessionIn, http_request: Request, use
         raise HTTPException(status_code=404, detail="Cotización no encontrada")
     if quote["user_id"] != user["id"] and user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="No autorizado")
-    if quote["status"] != "aprobada":
-        raise HTTPException(status_code=400, detail="Solo cotizaciones aprobadas pueden pagarse")
     if quote.get("status") == "pagada" or quote.get("payment_status") == "paid":
         raise HTTPException(status_code=400, detail="Esta cotización ya fue pagada")
+    if quote["status"] != "aprobada":
+        raise HTTPException(status_code=400, detail="Solo cotizaciones aprobadas pueden pagarse")
 
     stripe = _get_stripe(http_request)
     success_url = f"{payload.origin_url}/pago-exitoso?session_id={{CHECKOUT_SESSION_ID}}&kind=quote"
