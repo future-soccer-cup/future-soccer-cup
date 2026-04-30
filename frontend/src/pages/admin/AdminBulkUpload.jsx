@@ -19,11 +19,10 @@ export default function AdminBulkUpload() {
   const downloadTemplate = async () => {
     try {
       const res = await api.get(`/import/template/${t.endpoint}`, { responseType: "blob" });
-      const blob = new Blob([res.data], { type: "text/csv" });
-      const url = URL.createObjectURL(blob);
+      const url = URL.createObjectURL(res.data);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `fsc-${t.endpoint}-template.csv`;
+      a.download = `fsc-${t.endpoint}-template.xlsx`;
       a.click();
       URL.revokeObjectURL(url);
       toast.success("Plantilla descargada");
@@ -55,7 +54,7 @@ export default function AdminBulkUpload() {
     <div data-testid="admin-bulk-upload">
       <Toaster position="top-right" />
       <h1 className="font-display text-4xl font-black uppercase tracking-tighter">Carga masiva</h1>
-      <p className="text-sm text-slate-500 mt-1">Importa equipos y jugadores desde CSV o Excel (.xlsx). Útil para migrar tu fixture histórico.</p>
+      <p className="text-sm text-slate-500 mt-1">Importa equipos y jugadores desde Excel (.xlsx). Descarga la plantilla, complétala y súbela.</p>
 
       <div className="flex gap-2 border-b border-slate-200 mt-6 mb-6">
         {TABS.map((tt) => (
@@ -79,7 +78,7 @@ export default function AdminBulkUpload() {
             <p className="text-sm text-slate-500 mt-1">{t.description}</p>
           </div>
           <button onClick={downloadTemplate} className="fsc-btn-primary px-4 py-2 rounded-md text-sm flex items-center gap-2" data-testid="download-template-btn">
-            <Download size={16}/> Descargar plantilla CSV
+            <Download size={16}/> Descargar plantilla XLSX
           </button>
 
           <div className="border-t border-slate-200 pt-4">

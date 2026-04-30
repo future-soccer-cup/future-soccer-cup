@@ -1490,20 +1490,29 @@ async def download_template(kind: str, _: dict = Depends(require_admin)):
     if kind == "teams":
         headers = TEAM_TEMPLATE_HEADERS
         sample = ["Leones FC", "Sub-12", "2014", "Grupo A", "Pedro Coach", "Quito", "Ecuador", "Maria Pdta", "+593987654321", "#1d4ed8"]
+        sheet_name = "Equipos"
     elif kind == "players":
         headers = PLAYER_TEMPLATE_HEADERS
         sample = ["Leones FC", "Carlos Pérez", "10", "Delantero", "2014-03-15", "1750000000", "Pipo", "M", "Sanitas", "Maria Pérez", "0701234567", "Madre", "+593987654321"]
+        sheet_name = "Jugadores"
     else:
         raise HTTPException(status_code=400, detail="Tipo inválido (teams|players)")
 
-    out = io.StringIO()
-    writer = csv.writer(out)
-    writer.writerow(headers)
-    writer.writerow(sample)
-    return StreamingResponse(
-        iter([out.getvalue()]),
-        media_type="text/csv",
-        headers={"Content-Disposition": f"attachment; filename=fsc-{kind}-template.csv"},
+    wb = Workbook()
+    ws = wb.active
+    ws.title = sheet_name
+    ws.append(list(headers))
+    ws.append(sample)
+    # Adjust width for readability
+    for col_idx, _h in enumerate(headers, start=1):
+        ws.column_dimensions[ws.cell(row=1, column=col_idx).column_letter].width = 18
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return FastAPIResponse(
+        content=buf.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename=fsc-{kind}-template.xlsx"},
     )
 
 @api.post("/import/teams")
@@ -1654,20 +1663,13 @@ async def import_team_roster(file: UploadFile = File(...), preview: bool = False
     if not team_id:
         raise HTTPException(status_code=400, detail="No tienes un equipo asignado")
     fname = (file.filename or "").lower()
-    if not (fname.endswith(".xlsx") or fname.endswith(".csv")):
-        raise HTTPException(status_code=400, detail="Usa formato .xlsx (con 2 hojas) o .csv (solo jugadores)")
+    if not fname.endswith(".xlsx"):
+        raise HTTPException(status_code=400, detail="Usa el formato Excel (.xlsx) de la plantilla oficial")
     raw = await file.read()
     if len(raw) > 5 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="Archivo > 5MB")
 
-    sheets: dict
-    if fname.endswith(".csv"):
-        text = raw.decode("utf-8-sig", errors="replace")
-        reader = csv.DictReader(io.StringIO(text))
-        rows = [{(k or "").strip().lower(): (v or "").strip() for k, v in row.items()} for row in reader]
-        sheets = {"jugadores": rows}
-    else:
-        sheets = _parse_xlsx_sheets(raw)
+    sheets = _parse_xlsx_sheets(raw)
     # Normalize sheet names (accepting common variants)
     players_sheet = None
     staff_sheet = None

@@ -118,21 +118,8 @@ export default function MyTeam() {
     loadTeam();
   };
 
-  const downloadTemplate = async (fmt = "xlsx") => {
+  const downloadTemplate = async () => {
     try {
-      if (fmt === "csv") {
-        // CSV simple para jugadores (más fácil de editar)
-        const headers = ["name","jersey_number","position","birth_date","document_id","nickname","gender","eps","guardian_name","guardian_doc","guardian_relation","guardian_phone"];
-        const sample = ["Carlos Pérez","10","Delantero","2014-03-15","1750000000","Pipo","M","Sanitas","Maria Pérez","0701234567","Madre","+593987654321"];
-        const csv = headers.join(",") + "\n" + sample.join(",") + "\n";
-        const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url; a.download = "fsc-jugadores.csv"; a.click();
-        URL.revokeObjectURL(url);
-        toast.success("Plantilla CSV descargada");
-        return;
-      }
       const r = await api.get("/team-roster/template", { responseType: "blob" });
       const url = URL.createObjectURL(r.data);
       const a = document.createElement("a");
@@ -250,7 +237,7 @@ export default function MyTeam() {
             <button onClick={() => fileRef.current?.click()} className="px-3 py-2 border-2 border-slate-900 text-slate-900 hover:bg-slate-900 hover:text-white rounded-md text-xs font-bold uppercase tracking-wide flex items-center gap-2" data-testid="bulk-upload-btn">
               <FileUp size={14}/> Carga masiva
             </button>
-            <input ref={fileRef} type="file" accept=".xlsx,.csv" hidden onChange={(e) => { setBulkFile(e.target.files?.[0] || null); if (e.target.files?.[0]) uploadBulk(true); }} data-testid="bulk-upload-input" />
+            <input ref={fileRef} type="file" accept=".xlsx" hidden onChange={(e) => { setBulkFile(e.target.files?.[0] || null); if (e.target.files?.[0]) uploadBulk(true); }} data-testid="bulk-upload-input" />
             <button onClick={() => setEditingPlayer({ ...EMPTY_PLAYER, team_id: teamId })} className="fsc-btn-red px-4 py-2 rounded-md text-sm flex items-center gap-2" data-testid="add-player-btn">
               <Plus size={16}/> Agregar jugador
             </button>
@@ -261,16 +248,11 @@ export default function MyTeam() {
           <div className="mb-4 bg-blue-50 border border-blue-200 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3">
             <div className="flex-1">
               <div className="text-xs font-bold uppercase tracking-wider text-blue-700">Importa cuerpo técnico + jugadores en lote</div>
-              <p className="text-xs text-slate-600 mt-1">Descarga la plantilla, complétala y súbela. <strong>XLSX</strong> permite cargar jugadores + cuerpo técnico en hojas separadas. <strong>CSV</strong> es para jugadores únicamente.</p>
+              <p className="text-xs text-slate-600 mt-1">Descarga la plantilla Excel (2 hojas: <strong>Jugadores</strong> + <strong>Cuerpo Técnico</strong>), complétala y súbela para cargar todo de una vez.</p>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <button onClick={() => downloadTemplate("xlsx")} className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide px-3 py-2 bg-white border-2 border-blue-700 text-blue-700 rounded-md hover:bg-blue-700 hover:text-white" data-testid="download-template-btn">
-                <Download size={14}/> XLSX
-              </button>
-              <button onClick={() => downloadTemplate("csv")} className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide px-3 py-2 bg-white border-2 border-slate-700 text-slate-700 rounded-md hover:bg-slate-700 hover:text-white" data-testid="download-csv-btn">
-                <Download size={14}/> CSV
-              </button>
-            </div>
+            <button onClick={downloadTemplate} className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide px-4 py-2 bg-white border-2 border-blue-700 text-blue-700 rounded-md hover:bg-blue-700 hover:text-white" data-testid="download-template-btn">
+              <Download size={14}/> Descargar plantilla XLSX
+            </button>
           </div>
         )}
 
