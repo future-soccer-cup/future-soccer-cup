@@ -167,7 +167,10 @@ export default function Cotizar() {
             {hotelsInTier.length > 0 && (
               <div className="mt-6">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Hoteles disponibles ({hotelsInTier.length})</span>
+                  <div>
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Hoteles disponibles ({hotelsInTier.length})</span>
+                    <p className="text-[10px] text-slate-400">Selección informativa · no altera el total estimado.</p>
+                  </div>
                   {pickedHotel && <button type="button" onClick={() => setPickedHotel(null)} className="text-[10px] text-slate-400 hover:text-slate-900 underline">Quitar selección</button>}
                 </div>
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
