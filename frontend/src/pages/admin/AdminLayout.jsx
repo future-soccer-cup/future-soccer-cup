@@ -12,6 +12,7 @@ import {
   FileUp,
   Receipt,
   Newspaper,
+  KeyRound,
 } from "lucide-react";
 import Logo from "../../components/Logo";
 import { useAuth } from "../../context/AuthContext";
@@ -27,6 +28,7 @@ const NAV = [
   { to: "/admin/cotizaciones", label: "Cotizaciones", icon: Receipt },
   { to: "/admin/inventario", label: "Inventario", icon: Hotel },
   { to: "/admin/noticias", label: "Noticias", icon: Newspaper },
+  { to: "/admin/recuperaciones", label: "Recuperar clave", icon: KeyRound },
   { to: "/admin/carnets", label: "Carnets", icon: IdCard },
 ];
 

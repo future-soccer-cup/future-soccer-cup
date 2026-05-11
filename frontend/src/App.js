@@ -23,6 +23,8 @@ import Cotizar from "./pages/Cotizar";
 import MyQuotes from "./pages/MyQuotes";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import Noticias from "./pages/Noticias";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -36,6 +38,7 @@ import AdminBulkUpload from "./pages/admin/AdminBulkUpload";
 import AdminQuotes from "./pages/admin/AdminQuotes";
 import AdminPosts from "./pages/admin/AdminPosts";
 import AdminInventory from "./pages/admin/AdminInventory";
+import AdminPasswordResets from "./pages/admin/AdminPasswordResets";
 
 function PublicLayout() {
   const loc = useLocation();
@@ -71,6 +74,8 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/registro" element={<Register />} />
             <Route path="/registro-equipo" element={<TeamRegister />} />
+            <Route path="/recuperar-clave" element={<ForgotPassword />} />
+            <Route path="/restablecer-clave" element={<ResetPassword />} />
             <Route path="/pago-exitoso" element={<PaymentSuccess />} />
             <Route
               path="/mi-equipo"
@@ -96,6 +101,7 @@ function App() {
             <Route path="cotizaciones" element={<AdminQuotes />} />
             <Route path="noticias" element={<AdminPosts />} />
             <Route path="inventario" element={<AdminInventory />} />
+            <Route path="recuperaciones" element={<AdminPasswordResets />} />
             <Route path="carnets" element={<AdminCarnets />} />
           </Route>
         </Routes>

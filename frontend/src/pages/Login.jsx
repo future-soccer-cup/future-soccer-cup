@@ -57,6 +57,9 @@ export default function Login() {
             <button type="submit" disabled={loading} className="fsc-btn-primary w-full py-3 rounded-md disabled:opacity-50" data-testid="login-submit-btn">
               {loading ? "Ingresando..." : "Ingresar"}
             </button>
+            <div className="text-right">
+              <Link to="/recuperar-clave" className="text-xs font-bold text-blue-700 hover:underline" data-testid="forgot-password-link">¿Olvidaste tu contraseña?</Link>
+            </div>
           </form>
 
           <p className="mt-6 text-sm text-slate-500">¿Aún no tienes cuenta? <Link to="/registro-equipo" className="text-red-600 font-bold">Registrar equipo</Link></p>

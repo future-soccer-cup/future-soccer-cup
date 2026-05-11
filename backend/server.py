@@ -208,6 +208,86 @@ async def require_admin_or_team(user: dict = Depends(get_current_user)) -> dict:
         raise HTTPException(status_code=403, detail="Solo administradores o equipos")
     return user
 
+# -------------------- Password Reset --------------------
+class ForgotPasswordIn(BaseModel):
+    email: EmailStr
+
+class ResetPasswordIn(BaseModel):
+    email: EmailStr
+    code: str = Field(min_length=4, max_length=12)
+    new_password: str = Field(min_length=6)
+
+
+def _generate_reset_code() -> str:
+    return "".join(secrets.choice("0123456789") for _ in range(8))
+
+
+@api.post("/auth/forgot-password")
+async def forgot_password(payload: ForgotPasswordIn):
+    """Crea un código de reset de 8 dígitos. Por seguridad responde igual exista o no el usuario."""
+    email = payload.email.lower()
+    user = await db.users.find_one({"email": email}, {"_id": 0})
+    if user:
+        code = _generate_reset_code()
+        now = datetime.now(timezone.utc)
+        expires_at = now + timedelta(hours=24)
+        # Invalidate any prior pending codes for this email
+        await db.password_resets.update_many(
+            {"email": email, "status": "pending"},
+            {"$set": {"status": "expired"}},
+        )
+        await db.password_resets.insert_one({
+            "id": str(uuid.uuid4()),
+            "email": email,
+            "user_id": user["id"],
+            "user_name": user.get("name", ""),
+            "code": code,
+            "status": "pending",
+            "created_at": now.isoformat(),
+            "expires_at": expires_at.isoformat(),
+        })
+    return {"ok": True, "message": "Si el correo existe, se generó un código de recuperación. Solicítaselo al administrador."}
+
+
+@api.post("/auth/reset-password")
+async def reset_password(payload: ResetPasswordIn):
+    email = payload.email.lower()
+    code = payload.code.strip()
+    reset = await db.password_resets.find_one(
+        {"email": email, "code": code, "status": "pending"}, {"_id": 0}
+    )
+    if not reset:
+        raise HTTPException(status_code=400, detail="Código inválido o expirado")
+    expires_at = datetime.fromisoformat(reset["expires_at"])
+    now = datetime.now(timezone.utc)
+    if expires_at < now:
+        await db.password_resets.update_one({"id": reset["id"]}, {"$set": {"status": "expired"}})
+        raise HTTPException(status_code=400, detail="Código vencido. Solicita uno nuevo.")
+
+    # Update password and mark code as used
+    new_hash = hash_password(payload.new_password)
+    await db.users.update_one({"email": email}, {"$set": {"password_hash": new_hash}})
+    await db.password_resets.update_one(
+        {"id": reset["id"]},
+        {"$set": {"status": "used", "used_at": now.isoformat()}},
+    )
+    return {"ok": True, "message": "Contraseña actualizada"}
+
+
+@api.get("/admin/password-resets")
+async def list_password_resets(_: dict = Depends(require_admin)):
+    """Lista códigos de reset pendientes para que el admin los entregue al usuario."""
+    items = await db.password_resets.find({"status": "pending"}, {"_id": 0}).sort("created_at", -1).to_list(200)
+    return items
+
+
+@api.post("/admin/password-resets/{rid}/cancel")
+async def cancel_password_reset(rid: str, _: dict = Depends(require_admin)):
+    res = await db.password_resets.update_one({"id": rid, "status": "pending"}, {"$set": {"status": "cancelled"}})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Código no encontrado")
+    return {"ok": True}
+
 # -------------------- Models --------------------
 class RegisterIn(BaseModel):
     email: EmailStr
