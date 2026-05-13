@@ -33,25 +33,50 @@ EVENT_TYPES = {
     "festival": {
         "id": "festival",
         "name": "Festival",
-        "description": "Evento temático para todas las edades. Ideal como primera experiencia.",
-        "categories": ["Sub-8", "Sub-10", "Sub-12"],
-        "registration_fee_per_team": 1000000.0,
+        "description": "Evento temático para iniciación. 5 al 10 de Octubre.",
+        "birth_years": [2013, 2014, 2015, 2016, 2017],
+        "dates": "5-10 Octubre",
+        "fees_by_year": {
+            "2017": 1800000.0,
+            "2016": 2000000.0,
+            "2015": 2200000.0,
+            "2014": 2200000.0,
+            "2013": 2200000.0,
+        },
+        "registration_fee_per_team": 2000000.0,  # fallback
     },
     "premier_par": {
         "id": "premier_par",
         "name": "Premier Par",
-        "description": "Premier para categorías de años pares (2014, 2012, 2010).",
-        "categories": ["Sub-12", "Sub-14", "Sub-16"],
-        "registration_fee_per_team": 1800000.0,
+        "description": "Premier elite con temática dorada. 7 al 12 de Diciembre. Años pares.",
+        "birth_years": [2010, 2012, 2014, 2016],
+        "dates": "7-12 Diciembre",
+        "fees_by_year": {
+            "2016": 2350000.0,
+            "2014": 2450000.0,
+            "2012": 2700000.0,
+            "2010": 3000000.0,
+        },
+        "registration_fee_per_team": 2450000.0,
     },
     "premier_impar": {
         "id": "premier_impar",
         "name": "Premier Impar",
-        "description": "Premier para categorías de años impares (2015, 2013, 2011).",
-        "categories": ["Sub-10", "Sub-12", "Sub-14", "Sub-16"],
-        "registration_fee_per_team": 1800000.0,
+        "description": "Premier elite con temática dorada. 13 al 18 de Diciembre. Años impares.",
+        "birth_years": [2011, 2013, 2015, 2017],
+        "dates": "13-18 Diciembre",
+        "fees_by_year": {
+            "2017": 2350000.0,
+            "2015": 2450000.0,
+            "2013": 3000000.0,
+            "2011": 2700000.0,
+        },
+        "registration_fee_per_team": 2450000.0,
     },
 }
+
+# Designaciones por club/categoría
+TEAM_DESIGNATIONS = ["Único", "Equipo A", "Equipo B"]
 
 # Lodging tiers: tarifas en COP por persona por noche
 LODGING_TIERS = {
@@ -296,17 +321,26 @@ class RegisterIn(BaseModel):
     data_consent: bool = False
 
 class TeamRegisterIn(BaseModel):
-    # Team manager + team info, all in one payload
+    # Team manager + Club info, all in one payload
     email: EmailStr
     password: str = Field(min_length=6)
     manager_name: str = Field(min_length=1)
-    team_name: str = Field(min_length=1)
-    category: str
-    event_type: Literal["festival", "premier_par", "premier_impar"]
-    coach: Optional[str] = ""
-    city: Optional[str] = ""
+    manager_phone: Optional[str] = ""
+    manager_role: Optional[str] = "Director técnico"
+    manager_document: Optional[str] = ""
+    # Club info (created if doesn't exist)
+    club_name: str = Field(min_length=1)
+    club_country: Optional[str] = "Colombia"
+    club_city: Optional[str] = ""
+    club_phone: Optional[str] = ""
+    club_email: Optional[str] = ""
+    club_website: Optional[str] = ""
     logo_url: Optional[str] = ""
     color: Optional[str] = "#1d4ed8"
+    # First team registered with the club
+    event_type: Literal["festival", "premier_par", "premier_impar"]
+    birth_year: int = Field(ge=2008, le=2020)
+    designation: Optional[Literal["Único", "Equipo A", "Equipo B"]] = "Único"
     data_consent: bool = False
 
 class LoginIn(BaseModel):
@@ -319,10 +353,30 @@ class UserOut(BaseModel):
     name: str
     role: str
 
+# -------- Clubs --------
+class ClubIn(BaseModel):
+    name: str = Field(min_length=1)
+    country: Optional[str] = "Colombia"
+    city: Optional[str] = ""
+    phone: Optional[str] = ""
+    email: Optional[str] = ""
+    website: Optional[str] = ""
+    logo_url: Optional[str] = ""
+    color: Optional[str] = "#1d4ed8"
+
+class ClubOut(ClubIn):
+    id: str
+    status: str
+    manager_user_id: Optional[str] = ""
+    created_at: str
+    image_name: Optional[str] = ""
+
 class TeamIn(BaseModel):
-    name: str
-    category: str  # Sub-8, Sub-10, etc.
+    name: str  # Visible name = "{ClubName} {Año} {Designation}"
+    club_id: Optional[str] = ""
+    category: Optional[str] = ""  # Legacy "Sub-X" (kept for backwards compat)
     birth_year: Optional[int] = None  # Año de nacimiento (ej. 2014)
+    designation: Optional[str] = "Único"
     coach: Optional[str] = ""
     city: Optional[str] = ""
     country: Optional[str] = ""
@@ -331,7 +385,7 @@ class TeamIn(BaseModel):
     logo_url: Optional[str] = ""
     color: Optional[str] = "#1d4ed8"
     group_name: Optional[str] = ""  # Grupo A, Grupo B, Unigrupo
-    cuerpo_tecnico: Optional[List[dict]] = []  # [{name, document, role}]
+    cuerpo_tecnico: Optional[List[dict]] = []  # [{name, document, role, doc_type}]
     event_type: Optional[str] = ""  # festival | premier_par | premier_impar
     registration_fee: Optional[float] = 0.0
     registration_payment_status: Optional[str] = "pending"  # pending | paid | waived
@@ -479,13 +533,11 @@ async def register_team(payload: TeamRegisterIn, response: Response):
     email = payload.email.lower()
     if not payload.data_consent:
         raise HTTPException(status_code=400, detail="Debes aceptar el tratamiento de datos personales para continuar.")
-    if payload.category not in CATEGORIES:
-        raise HTTPException(status_code=400, detail=f"Categoría inválida. Use: {', '.join(CATEGORIES)}")
     event = EVENT_TYPES.get(payload.event_type)
     if not event:
         raise HTTPException(status_code=400, detail="Tipo de evento inválido")
-    if payload.category not in event["categories"]:
-        raise HTTPException(status_code=400, detail=f"La categoría {payload.category} no aplica al {event['name']}")
+    if payload.birth_year not in event["birth_years"]:
+        raise HTTPException(status_code=400, detail=f"El año {payload.birth_year} no aplica al {event['name']}. Años válidos: {event['birth_years']}")
     if await db.users.find_one({"email": email}):
         raise HTTPException(status_code=400, detail="El correo ya está registrado")
 
@@ -493,18 +545,52 @@ async def register_team(payload: TeamRegisterIn, response: Response):
     team_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
 
+    # 1) Find or create Club
+    club_name_norm = payload.club_name.strip()
+    club = await db.clubs.find_one({"name": {"$regex": f"^{club_name_norm}$", "$options": "i"}}, {"_id": 0})
+    if not club:
+        club_id = str(uuid.uuid4())
+        club = {
+            "id": club_id,
+            "name": club_name_norm,
+            "country": payload.club_country or "Colombia",
+            "city": payload.club_city or "",
+            "phone": payload.club_phone or "",
+            "email": payload.club_email or email,
+            "website": payload.club_website or "",
+            "logo_url": payload.logo_url or "",
+            "color": payload.color or "#1d4ed8",
+            "status": "pendiente",
+            "manager_user_id": user_id,
+            "created_at": now,
+        }
+        await db.clubs.insert_one(club)
+        club.pop("_id", None)
+    else:
+        club_id = club["id"]
+
+    # 2) Compute registration fee from event + birth_year
+    fee = float(event.get("fees_by_year", {}).get(str(payload.birth_year), event["registration_fee_per_team"]))
+
+    # 3) Create team
+    visible_name = f"{club_name_norm} {payload.birth_year} {payload.designation}".strip()
     team_doc = {
         "id": team_id,
-        "name": payload.team_name,
-        "category": payload.category,
-        "coach": payload.coach or "",
-        "city": payload.city or "",
+        "name": visible_name,
+        "club_id": club_id,
+        "club_name": club_name_norm,  # denormalized for convenience
+        "birth_year": payload.birth_year,
+        "designation": payload.designation or "Único",
+        "category": f"Año {payload.birth_year}",  # legacy display
+        "coach": payload.manager_name,
+        "city": payload.club_city or "",
+        "country": payload.club_country or "Colombia",
         "logo_url": payload.logo_url or "",
         "color": payload.color or "#1d4ed8",
         "manager_user_id": user_id,
-        "status": "pendiente",  # Self-registered, awaits admin approval
+        "status": "pendiente",
         "event_type": payload.event_type,
-        "registration_fee": event["registration_fee_per_team"],
+        "registration_fee": fee,
         "registration_payment_status": "pending",
         "cuerpo_tecnico": [],
         "created_at": now,
@@ -513,8 +599,12 @@ async def register_team(payload: TeamRegisterIn, response: Response):
         "id": user_id,
         "email": email,
         "name": payload.manager_name,
+        "phone": payload.manager_phone or "",
         "role": "team",
+        "manager_role": payload.manager_role or "Director técnico",
+        "document": payload.manager_document or "",
         "team_id": team_id,
+        "club_id": club_id,
         "password_hash": hash_password(payload.password),
         "data_consent": True,
         "consent_at": now,
@@ -1137,12 +1227,125 @@ async def list_categories():
 
 @api.get("/event-types")
 async def list_event_types():
-    """Return all event types with their categories and lodging tiers."""
+    """Return all event types with their birth_years (and legacy fields) plus lodging/addons."""
     return {
         "events": list(EVENT_TYPES.values()),
         "lodging_tiers": list(LODGING_TIERS.values()),
         "addons": ADDON_PRICES,
+        "designations": TEAM_DESIGNATIONS,
     }
+
+# -------------------- Clubs CRUD --------------------
+@api.get("/clubs", response_model=List[ClubOut])
+async def list_clubs(status: Optional[str] = None):
+    q = {}
+    if status:
+        q["status"] = status
+    items = await db.clubs.find(q, {"_id": 0}).sort("name", 1).to_list(2000)
+    return items
+
+@api.get("/clubs/{cid}", response_model=ClubOut)
+async def get_club(cid: str):
+    item = await db.clubs.find_one({"id": cid}, {"_id": 0})
+    if not item:
+        raise HTTPException(status_code=404, detail="Club no encontrado")
+    return item
+
+@api.post("/clubs", response_model=ClubOut)
+async def create_club(payload: ClubIn, _: dict = Depends(require_admin)):
+    doc = {**payload.model_dump(), "id": str(uuid.uuid4()), "status": "aprobado", "created_at": datetime.now(timezone.utc).isoformat()}
+    await db.clubs.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+@api.put("/clubs/{cid}", response_model=ClubOut)
+async def update_club(cid: str, payload: ClubIn, user: dict = Depends(get_current_user)):
+    # admin OR the club manager can update
+    club = await db.clubs.find_one({"id": cid}, {"_id": 0})
+    if not club:
+        raise HTTPException(status_code=404, detail="Club no encontrado")
+    if user.get("role") != "admin" and club.get("manager_user_id") != user["id"]:
+        raise HTTPException(status_code=403, detail="No autorizado")
+    update = payload.model_dump()
+    await db.clubs.update_one({"id": cid}, {"$set": update})
+    return {**club, **update}
+
+@api.delete("/clubs/{cid}")
+async def delete_club(cid: str, _: dict = Depends(require_admin)):
+    res = await db.clubs.delete_one({"id": cid})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Club no encontrado")
+    return {"ok": True}
+
+@api.put("/clubs/{cid}/status")
+async def set_club_status(cid: str, status: str, _: dict = Depends(require_admin)):
+    if status not in {"pendiente", "aprobado", "rechazado"}:
+        raise HTTPException(status_code=400, detail="Estado inválido")
+    res = await db.clubs.update_one({"id": cid}, {"$set": {"status": status}})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Club no encontrado")
+    return {"ok": True}
+
+# DT can register additional teams under their existing club
+class TeamAddIn(BaseModel):
+    event_type: Literal["festival", "premier_par", "premier_impar"]
+    birth_year: int = Field(ge=2008, le=2020)
+    designation: Optional[Literal["Único", "Equipo A", "Equipo B"]] = "Único"
+
+@api.post("/clubs/{cid}/teams")
+async def add_team_to_club(cid: str, payload: TeamAddIn, user: dict = Depends(get_current_user)):
+    if user.get("role") not in ("admin", "team"):
+        raise HTTPException(status_code=403, detail="No autorizado")
+    club = await db.clubs.find_one({"id": cid}, {"_id": 0})
+    if not club:
+        raise HTTPException(status_code=404, detail="Club no encontrado")
+    if user.get("role") != "admin" and club.get("manager_user_id") != user["id"]:
+        raise HTTPException(status_code=403, detail="No autorizado")
+    event = EVENT_TYPES.get(payload.event_type)
+    if payload.birth_year not in event["birth_years"]:
+        raise HTTPException(status_code=400, detail=f"El año {payload.birth_year} no aplica al {event['name']}")
+    # Uniqueness: one (club_id, event_type, birth_year, designation)
+    existing = await db.teams.find_one({
+        "club_id": cid,
+        "event_type": payload.event_type,
+        "birth_year": payload.birth_year,
+        "designation": payload.designation,
+    })
+    if existing:
+        raise HTTPException(status_code=400, detail="Ya tienes un equipo con esa designación para ese evento y año")
+
+    fee = float(event.get("fees_by_year", {}).get(str(payload.birth_year), event["registration_fee_per_team"]))
+    tid = str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+    team_doc = {
+        "id": tid,
+        "name": f"{club['name']} {payload.birth_year} {payload.designation}".strip(),
+        "club_id": cid,
+        "club_name": club["name"],
+        "birth_year": payload.birth_year,
+        "designation": payload.designation or "Único",
+        "category": f"Año {payload.birth_year}",
+        "coach": user.get("name", ""),
+        "city": club.get("city", ""),
+        "country": club.get("country", ""),
+        "logo_url": club.get("logo_url", ""),
+        "color": club.get("color", "#1d4ed8"),
+        "manager_user_id": club.get("manager_user_id", ""),
+        "status": "pendiente",
+        "event_type": payload.event_type,
+        "registration_fee": fee,
+        "registration_payment_status": "pending",
+        "cuerpo_tecnico": [],
+        "created_at": now,
+    }
+    await db.teams.insert_one(team_doc)
+    team_doc.pop("_id", None)
+    return team_doc
+
+@api.get("/clubs/{cid}/teams")
+async def list_club_teams(cid: str):
+    items = await db.teams.find({"club_id": cid}, {"_id": 0}).sort("birth_year", 1).to_list(500)
+    return items
 
 # -------------------- Quotes (Cotizaciones) --------------------
 def _calculate_quote(payload: QuoteIn) -> dict:
@@ -1150,8 +1353,9 @@ def _calculate_quote(payload: QuoteIn) -> dict:
     tier = LODGING_TIERS.get(payload.lodging_tier)
     if not event or not tier:
         raise HTTPException(status_code=400, detail="Evento o nivel de hospedaje inválido")
-    if payload.category not in event["categories"]:
-        raise HTTPException(status_code=400, detail=f"Categoría {payload.category} no aplica para {event['name']}")
+    if payload.category and payload.category not in (event.get("categories") or []):
+        # Soft validation: only block if legacy categories list provided. New flow uses birth_year on the team.
+        pass
     rate = tier["rates"].get(payload.room_type)
     if rate is None:
         raise HTTPException(status_code=400, detail="Tipo de habitación inválido")
@@ -2015,6 +2219,8 @@ async def on_startup():
     await db.users.create_index("email", unique=True)
     await db.users.create_index("id", unique=True)
     await db.teams.create_index("id", unique=True)
+    await db.clubs.create_index("id", unique=True)
+    await db.clubs.create_index("name")
     await db.players.create_index("id", unique=True)
     await db.matches.create_index("id", unique=True)
     await db.quotes.create_index("id", unique=True)
@@ -2024,7 +2230,62 @@ async def on_startup():
     await db.login_attempts.create_index("identifier")
     await seed_admin()
     await seed_demo_inventory()
+    await migrate_teams_to_clubs()
     init_storage()
+
+
+async def migrate_teams_to_clubs():
+    """Idempotent migration: for each team without club_id, create a Club from team.name (or set existing)."""
+    cursor = db.teams.find({"$or": [{"club_id": {"$exists": False}}, {"club_id": ""}]}, {"_id": 0})
+    teams = await cursor.to_list(5000)
+    if not teams:
+        return
+    logging.info(f"[migrate_teams_to_clubs] {len(teams)} equipos sin club_id")
+    name_to_club: dict = {}
+    for t in teams:
+        name = (t.get("name") or "").strip()
+        if not name:
+            continue
+        # Try to extract a "club_name" by removing trailing year+designation. Fallback: whole name.
+        club_name = name
+        for d in ("Equipo A", "Equipo B", "Único"):
+            club_name = club_name.replace(d, "").strip()
+        # strip trailing 4-digit year
+        parts = club_name.split()
+        if parts and parts[-1].isdigit() and len(parts[-1]) == 4:
+            parts = parts[:-1]
+        club_name = " ".join(parts).strip() or name
+
+        key = club_name.lower()
+        if key in name_to_club:
+            club_id = name_to_club[key]
+        else:
+            existing = await db.clubs.find_one({"name": {"$regex": f"^{club_name}$", "$options": "i"}}, {"_id": 0})
+            if existing:
+                club_id = existing["id"]
+            else:
+                club_id = str(uuid.uuid4())
+                await db.clubs.insert_one({
+                    "id": club_id,
+                    "name": club_name,
+                    "country": t.get("country") or "Colombia",
+                    "city": t.get("city") or "",
+                    "phone": t.get("delegate_phone") or "",
+                    "email": "",
+                    "website": "",
+                    "logo_url": t.get("logo_url") or "",
+                    "color": t.get("color") or "#1d4ed8",
+                    "status": t.get("status") or "aprobado",
+                    "manager_user_id": t.get("manager_user_id") or "",
+                    "created_at": t.get("created_at") or datetime.now(timezone.utc).isoformat(),
+                })
+            name_to_club[key] = club_id
+        # Update team
+        update = {"club_id": club_id, "club_name": club_name}
+        if not t.get("designation"):
+            update["designation"] = "Único"
+        await db.teams.update_one({"id": t["id"]}, {"$set": update})
+    logging.info(f"[migrate_teams_to_clubs] done; {len(name_to_club)} clubes")
 
 @app.on_event("shutdown")
 async def shutdown():

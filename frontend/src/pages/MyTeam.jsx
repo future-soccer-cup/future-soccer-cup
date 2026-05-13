@@ -24,6 +24,10 @@ export default function MyTeam() {
   const [bulkFile, setBulkFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef(null);
+  const [clubTeams, setClubTeams] = useState([]);
+  const [events, setEvents] = useState([]);
+  const [showAddTeam, setShowAddTeam] = useState(false);
+  const [newTeam, setNewTeam] = useState({ event_type: "", birth_year: "", designation: "Único" });
 
   const teamId = user?.team_id;
 
@@ -34,9 +38,18 @@ export default function MyTeam() {
     setTeamForm(t.data);
     const p = await api.get(`/players?team_id=${teamId}`);
     setPlayers(p.data);
+    // Load other teams in same club
+    if (t.data.club_id) {
+      const ct = await api.get(`/clubs/${t.data.club_id}/teams`).catch(() => ({ data: [] }));
+      setClubTeams(ct.data);
+    }
   };
 
-  useEffect(() => { loadTeam(); /* eslint-disable-next-line */ }, [teamId]);
+  useEffect(() => {
+    loadTeam();
+    api.get("/event-types").then((r) => setEvents(r.data.events || [])).catch(() => {});
+    /* eslint-disable-next-line */
+  }, [teamId]);
 
   if (!user) return null;
   if (user.role !== "team" || !teamId) {
@@ -131,8 +144,7 @@ export default function MyTeam() {
     }
   };
 
-  const uploadBulk = async (runPreview) => {
-    if (!bulkFile) { toast.error("Selecciona un archivo .xlsx"); return; }
+  const uploadBulk = async (runPreview) => {    if (!bulkFile) { toast.error("Selecciona un archivo .xlsx"); return; }
     setUploading(true);
     try {
       const fd = new FormData();
@@ -157,6 +169,24 @@ export default function MyTeam() {
   const regPaid = team.registration_payment_status === "paid";
   const eventLabel = { festival: "Festival", premier_par: "Premier Par", premier_impar: "Premier Impar" }[team.event_type] || "—";
   const staff = Array.isArray(team.cuerpo_tecnico) ? team.cuerpo_tecnico : [];
+
+  const newEvent = events.find((e) => e.id === newTeam.event_type);
+  const newYears = newEvent?.birth_years || [];
+  const newFee = newEvent?.fees_by_year?.[String(newTeam.birth_year)] || 0;
+
+  const addTeamToClub = async () => {
+    if (!team.club_id) return toast.error("Tu equipo aún no está vinculado a un club");
+    if (!newTeam.event_type || !newTeam.birth_year) return toast.error("Completa evento y año");
+    try {
+      await api.post(`/clubs/${team.club_id}/teams`, { ...newTeam, birth_year: Number(newTeam.birth_year) });
+      toast.success("Equipo agregado al club");
+      setShowAddTeam(false);
+      setNewTeam({ event_type: "", birth_year: "", designation: "Único" });
+      loadTeam();
+    } catch (err) {
+      toast.error(formatApiError(err.response?.data?.detail) || "Error al agregar");
+    }
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12" data-testid="my-team-page">
@@ -204,6 +234,67 @@ export default function MyTeam() {
           <div className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Historial</div>
           <div className="font-display text-2xl font-black uppercase tracking-tight">Mis cotizaciones →</div>
         </Link>
+      </div>
+
+      {/* Equipos del club */}
+      <div className="mt-10" data-testid="club-teams-section">
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+          <div>
+            <h2 className="font-display text-3xl font-black uppercase tracking-tight">Equipos de mi club ({clubTeams.length})</h2>
+            <p className="text-xs text-slate-500 mt-1">Bajo el club <strong>{team.club_name || team.name}</strong> puedes inscribir varios equipos (otros años o A/B).</p>
+          </div>
+          <button onClick={() => setShowAddTeam(!showAddTeam)} className="fsc-btn-primary px-4 py-2 rounded-md text-sm flex items-center gap-2" data-testid="add-club-team-btn">
+            <Plus size={16}/> {showAddTeam ? "Cerrar" : "Agregar equipo"}
+          </button>
+        </div>
+
+        {showAddTeam && (
+          <div className="mb-4 bg-blue-50 border-2 border-blue-200 rounded-xl p-5" data-testid="add-team-form">
+            <div className="grid sm:grid-cols-3 gap-3">
+              <label className="block">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Evento</span>
+                <select value={newTeam.event_type} onChange={(e) => setNewTeam({ ...newTeam, event_type: e.target.value, birth_year: "" })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="add-team-event">
+                  <option value="">Seleccionar...</option>
+                  {events.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+                </select>
+              </label>
+              <label className="block">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Año</span>
+                <select value={newTeam.birth_year} onChange={(e) => setNewTeam({ ...newTeam, birth_year: e.target.value })} disabled={!newEvent} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md disabled:bg-slate-100" data-testid="add-team-year">
+                  <option value="">Seleccionar...</option>
+                  {newYears.map((y) => <option key={y} value={y}>{y}</option>)}
+                </select>
+              </label>
+              <label className="block">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Designación</span>
+                <select value={newTeam.designation} onChange={(e) => setNewTeam({ ...newTeam, designation: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="add-team-designation">
+                  <option>Único</option>
+                  <option>Equipo A</option>
+                  <option>Equipo B</option>
+                </select>
+              </label>
+            </div>
+            {newFee > 0 && <p className="text-xs text-slate-600 mt-3">Inscripción: <strong className="text-blue-700">{fmtCOP(newFee)}</strong></p>}
+            <button onClick={addTeamToClub} className="mt-3 fsc-btn-red px-5 py-2 rounded-md text-sm" data-testid="add-team-confirm">Crear equipo</button>
+          </div>
+        )}
+
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {clubTeams.map((t) => (
+            <div key={t.id} className={`border rounded-lg p-3 ${t.id === teamId ? "border-blue-700 bg-blue-50/30" : "border-slate-200 bg-white"}`} data-testid={`club-team-${t.id}`}>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{ {festival:"Festival", premier_par:"Premier Par", premier_impar:"Premier Impar"}[t.event_type] || t.event_type }</span>
+                <StatusPill status={t.status} />
+              </div>
+              <div className="mt-1 font-display text-lg font-black uppercase tracking-tight">Año {t.birth_year}</div>
+              <div className="text-xs text-slate-500">{t.designation}</div>
+              <div className="mt-2 text-xs flex items-center justify-between">
+                <span className="text-slate-500">Inscripción</span>
+                <span className={`font-bold tabular-nums ${t.registration_payment_status === "paid" ? "text-green-600" : "text-amber-600"}`}>{t.registration_payment_status === "paid" ? "Pagada" : fmtCOP(t.registration_fee)}</span>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Cuerpo técnico */}

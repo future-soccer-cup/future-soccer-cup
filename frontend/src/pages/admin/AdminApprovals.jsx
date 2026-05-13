@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import api from "../../lib/api";
+import api, { imgSrc } from "../../lib/api";
 import { toast, Toaster } from "sonner";
-import { Check, X, Clock, Shirt, Users } from "lucide-react";
+import { Check, X, Clock, Shirt, Users, Building2 } from "lucide-react";
 
 const TABS = [
-  { key: "teams", label: "Equipos", icon: Shirt, endpoint: "/teams", patch: "/teams" },
-  { key: "players", label: "Jugadores", icon: Users, endpoint: "/players", patch: "/players" },
+  { key: "clubs", label: "Clubes", icon: Building2, endpoint: "/clubs" },
+  { key: "teams", label: "Equipos", icon: Shirt, endpoint: "/teams" },
+  { key: "players", label: "Jugadores", icon: Users, endpoint: "/players" },
 ];
 
 export default function AdminApprovals() {
@@ -15,7 +16,10 @@ export default function AdminApprovals() {
   const [statusFilter, setStatusFilter] = useState("pendiente");
 
   const load = async () => {
-    if (tab === "teams") {
+    if (tab === "clubs") {
+      const r = await api.get(`/clubs?status=${statusFilter}`);
+      setItems(r.data);
+    } else if (tab === "teams") {
       const r = await api.get(`/teams?status=${statusFilter}`);
       setItems(r.data);
     } else {
@@ -33,7 +37,10 @@ export default function AdminApprovals() {
   const tmap = Object.fromEntries(teams.map((t) => [t.id, t]));
 
   const setStatus = async (id, status) => {
-    const url = tab === "teams" ? `/teams/${id}/status?status=${status}` : `/players/${id}/status?status=${status}`;
+    const url =
+      tab === "clubs" ? `/clubs/${id}/status?status=${status}` :
+      tab === "teams" ? `/teams/${id}/status?status=${status}` :
+      `/players/${id}/status?status=${status}`;
     try {
       await api.put(url);
       toast.success(status === "aprobado" ? "Aprobado" : "Rechazado");
@@ -73,6 +80,32 @@ export default function AdminApprovals() {
       )}
 
       <div className="space-y-3">
+        {tab === "clubs" && items.map((c) => (
+          <div key={c.id} className="bg-white border border-slate-200 rounded-lg p-4 grid md:grid-cols-12 gap-3 items-center" data-testid={`approval-club-${c.id}`}>
+            <div className="md:col-span-1">
+              <div className="h-12 w-12 rounded flex items-center justify-center text-sm font-display font-black text-white" style={{ background: c.color || "#1d4ed8" }}>
+                {c.logo_url ? <img src={imgSrc(c.logo_url)} alt="" className="h-full w-full object-contain p-0.5" /> : c.name[0]}
+              </div>
+            </div>
+            <div className="md:col-span-4">
+              <div className="font-display text-lg font-black uppercase tracking-tight">{c.name}</div>
+              <div className="text-xs text-slate-500">{c.city || "—"} · {c.country || "—"}</div>
+            </div>
+            <div className="md:col-span-3 text-xs text-slate-600">
+              {c.phone && <div>📞 {c.phone}</div>}
+              {c.email && <div className="truncate">✉ {c.email}</div>}
+              {c.website && <div className="truncate">🌐 {c.website}</div>}
+            </div>
+            <div className="md:col-span-2">
+              <StatusBadge status={c.status || "pendiente"} />
+            </div>
+            <div className="md:col-span-2 flex gap-2 justify-end">
+              {c.status !== "aprobado" && <button onClick={() => setStatus(c.id, "aprobado")} className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded text-xs font-bold uppercase tracking-wide flex items-center gap-1" data-testid={`approve-club-${c.id}`}><Check size={14}/> Aprobar</button>}
+              {c.status !== "rechazado" && <button onClick={() => setStatus(c.id, "rechazado")} className="bg-slate-100 hover:bg-red-50 text-red-600 px-3 py-1.5 rounded text-xs font-bold uppercase tracking-wide flex items-center gap-1" data-testid={`reject-club-${c.id}`}><X size={14}/> Rechazar</button>}
+            </div>
+          </div>
+        ))}
+
         {tab === "teams" && items.map((t) => (
           <div key={t.id} className="bg-white border border-slate-200 rounded-lg p-4 grid md:grid-cols-12 gap-3 items-center" data-testid={`approval-team-${t.id}`}>
             <div className="md:col-span-1">
