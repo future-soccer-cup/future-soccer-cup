@@ -78,16 +78,51 @@ EVENT_TYPES = {
 # Designaciones por club/categoría
 TEAM_DESIGNATIONS = ["Único", "Equipo A", "Equipo B"]
 
-# Lodging tiers: tarifas en COP por persona por noche
+# Lodging tiers (precios POR PERSONA por 5 NOCHES en COP, tomados del PDF oficial)
 LODGING_TIERS = {
-    "diamond":  {"id": "diamond",  "name": "Diamante", "description": "Hotel 5★ con todas las comodidades.", "rates": {"single": 720000, "double": 560000, "triple": 480000, "quadruple": 400000}},
-    "gold":     {"id": "gold",     "name": "Gold",     "description": "Hotel 4★ confortable y bien ubicado.",  "rates": {"single": 520000, "double": 400000, "triple": 340000, "quadruple": 280000}},
-    "silver":   {"id": "silver",   "name": "Silver",   "description": "Hotel 3★ limpio y acogedor.",            "rates": {"single": 380000, "double": 300000, "triple": 240000, "quadruple": 200000}},
-    "bronze":   {"id": "bronze",   "name": "Bronce",   "description": "Hospedaje básico y económico.",          "rates": {"single": 240000, "double": 180000, "triple": 150000, "quadruple": 130000}},
+    "esmerald": {"id": "esmerald", "name": "Esmerald", "description": "Hospedaje premium 5★. Precio por persona por 5 noches.",
+                 "rates": {"single": 1450000, "double": 1550000, "triple": 1650000, "multiple": 0}},
+    "sapphire": {"id": "sapphire", "name": "Sapphire", "description": "Hospedaje superior con excelente ubicación.",
+                 "rates": {"single": 0, "double": 1270000, "triple": 1170000, "multiple": 1070000}},
+    "diamond":  {"id": "diamond",  "name": "Diamond",  "description": "Hospedaje 4★ amplio y cómodo.",
+                 "rates": {"single": 0, "double": 1170000, "triple": 1070000, "multiple": 970000}},
+    "gold":     {"id": "gold",     "name": "Gold",     "description": "Hospedaje 4★ con buena relación calidad-precio.",
+                 "rates": {"single": 0, "double": 1170000, "triple": 1070000, "multiple": 970000}},
+    "silver":   {"id": "silver",   "name": "Silver",   "description": "Hospedaje 3★ funcional.",
+                 "rates": {"single": 0, "double":  980000, "triple":  880000, "multiple": 780000}},
+    "bronze":   {"id": "bronze",   "name": "Bronze",   "description": "Hospedaje básico económico.",
+                 "rates": {"single": 0, "double":  860000, "triple":  760000, "multiple": 660000}},
 }
 
+# Planes de alimentación (POR PERSONA POR DÍA en COP)
+MEAL_PLANS = {
+    "breakfast": {"id": "breakfast", "name": "Desayuno", "per_day_by_tier": {
+        "esmerald": 27000, "sapphire": 20000, "diamond": 21000, "gold": 27000, "silver": 18000, "bronze": 14000
+    }},
+    "lunch": {"id": "lunch", "name": "Almuerzo", "per_day_by_tier": {
+        "esmerald": 37000, "sapphire": 37000, "diamond": 30000, "gold": 37000, "silver": 27000, "bronze": 22000
+    }},
+}
+
+# Rutas/Tours/Transporte (POR PERSONA en COP)
+TRANSPORT_ROUTES = {
+    "airport_to_hotel": {"id": "airport_to_hotel", "name": "Aeropuerto → Hotel", "price": 15000},
+    "hotel_to_airport": {"id": "hotel_to_airport", "name": "Hotel → Aeropuerto", "price": 15000},
+    "stadium": {"id": "stadium", "name": "Hotel → Escenario deportivo (ida y vuelta)", "price": 0},
+}
+
+TOURS_CATALOG = {
+    "parque_del_cafe": {"id": "parque_del_cafe", "name": "Parque del Café", "price": 105000},
+    "panaca": {"id": "panaca", "name": "Panaca", "price": 25000},
+}
+
+# Configuración del evento (días fijos del torneo)
+EVENT_NIGHTS = 5
+EVENT_DAYS = 6
+
+# Compat: ADDON_PRICES legacy - mantenido para no romper viejas pantallas
 ADDON_PRICES = {
-    "transport": 100000.0,  # COP por persona
+    "transport": 100000.0,
     "parque":    140000.0,
     "tour":      110000.0,
 }
@@ -461,11 +496,25 @@ class FixtureGenerateIn(BaseModel):
 
 class QuoteIn(BaseModel):
     event_type: Literal["festival", "premier_par", "premier_impar"]
-    category: str
-    lodging_tier: Literal["diamond", "gold", "silver", "bronze"]
-    room_type: Literal["single", "double", "triple", "quadruple"]
+    birth_year: Optional[int] = None
+    category: Optional[str] = ""  # legacy
+    # Hospedaje
+    lodging_tier: Literal["esmerald", "sapphire", "diamond", "gold", "silver", "bronze"]
+    room_type: Literal["single", "double", "triple", "multiple"]
     pax: int = Field(ge=1)
-    nights: int = Field(ge=1)
+    nights: int = Field(default=5, ge=1)  # default 5 según PDF
+    days: int = Field(default=6, ge=1)
+    # Alimentación
+    includes_breakfast: bool = False
+    includes_lunch: bool = False
+    meal_days: Optional[int] = None  # defaults to days
+    # Transporte
+    transport_routes: Optional[List[str]] = []  # ids de TRANSPORT_ROUTES
+    # Tours
+    tour_ids: Optional[List[str]] = []
+    # Inscripción equipo (opcional al cotizar)
+    include_registration: bool = True
+    # Compat con flujo anterior (deprecated)
     includes_transport: bool = False
     includes_parque: bool = False
     includes_tour: bool = False
@@ -1231,8 +1280,13 @@ async def list_event_types():
     return {
         "events": list(EVENT_TYPES.values()),
         "lodging_tiers": list(LODGING_TIERS.values()),
-        "addons": ADDON_PRICES,
+        "meal_plans": list(MEAL_PLANS.values()),
+        "transport_routes": list(TRANSPORT_ROUTES.values()),
+        "tours_catalog": list(TOURS_CATALOG.values()),
+        "addons": ADDON_PRICES,  # legacy
         "designations": TEAM_DESIGNATIONS,
+        "event_nights": EVENT_NIGHTS,
+        "event_days": EVENT_DAYS,
     }
 
 # -------------------- Clubs CRUD --------------------
@@ -1353,30 +1407,76 @@ def _calculate_quote(payload: QuoteIn) -> dict:
     tier = LODGING_TIERS.get(payload.lodging_tier)
     if not event or not tier:
         raise HTTPException(status_code=400, detail="Evento o nivel de hospedaje inválido")
-    if payload.category and payload.category not in (event.get("categories") or []):
-        # Soft validation: only block if legacy categories list provided. New flow uses birth_year on the team.
-        pass
-    rate = tier["rates"].get(payload.room_type)
-    if rate is None:
-        raise HTTPException(status_code=400, detail="Tipo de habitación inválido")
 
-    lodging_total = rate * payload.pax * payload.nights
-    transport_total = ADDON_PRICES["transport"] * payload.pax if payload.includes_transport else 0
-    parque_total = ADDON_PRICES["parque"] * payload.pax if payload.includes_parque else 0
-    tour_total = ADDON_PRICES["tour"] * payload.pax if payload.includes_tour else 0
-    registration = event["registration_fee_per_team"]
-    total = lodging_total + transport_total + parque_total + tour_total + registration
+    # Tarifa hospedaje (precio TOTAL por persona por 5 noches del PDF)
+    rate_per_person = tier["rates"].get(payload.room_type, 0)
+    if rate_per_person == 0:
+        raise HTTPException(status_code=400, detail=f"El tier {tier['name']} no ofrece habitación {payload.room_type}")
+
+    nights = payload.nights or EVENT_NIGHTS
+    days = payload.days or EVENT_DAYS
+    meal_days = payload.meal_days or days
+
+    # Adjuste lineal por noches (las tarifas del PDF son para 5 noches)
+    lodging_total = rate_per_person * payload.pax * (nights / EVENT_NIGHTS)
+
+    # Alimentación
+    breakfast_per_day = MEAL_PLANS["breakfast"]["per_day_by_tier"].get(payload.lodging_tier, 0)
+    lunch_per_day = MEAL_PLANS["lunch"]["per_day_by_tier"].get(payload.lodging_tier, 0)
+    breakfast_total = breakfast_per_day * payload.pax * meal_days if payload.includes_breakfast else 0
+    lunch_total = lunch_per_day * payload.pax * meal_days if payload.includes_lunch else 0
+    meals_total = breakfast_total + lunch_total
+
+    # Transporte (rutas múltiples × pax)
+    transport_routes = payload.transport_routes or []
+    transport_total = sum(
+        TRANSPORT_ROUTES.get(r, {}).get("price", 0) * payload.pax for r in transport_routes
+    )
+    # Compat: si se usó la bandera legacy `includes_transport` y no hay rutas, asume aeropuerto ida+vuelta
+    if payload.includes_transport and not transport_routes:
+        transport_total = (TRANSPORT_ROUTES["airport_to_hotel"]["price"] + TRANSPORT_ROUTES["hotel_to_airport"]["price"]) * payload.pax
+        transport_routes = ["airport_to_hotel", "hotel_to_airport"]
+
+    # Tours
+    tour_ids = payload.tour_ids or []
+    if payload.includes_parque and "parque_del_cafe" not in tour_ids:
+        tour_ids.append("parque_del_cafe")
+    if payload.includes_tour and "panaca" not in tour_ids:
+        tour_ids.append("panaca")
+    tours_total = sum(TOURS_CATALOG.get(tid, {}).get("price", 0) * payload.pax for tid in tour_ids)
+
+    # Inscripción: prefer fees_by_year cuando birth_year disponible
+    registration = 0
+    if payload.include_registration:
+        fees_by_year = event.get("fees_by_year") or {}
+        if payload.birth_year and str(payload.birth_year) in fees_by_year:
+            registration = float(fees_by_year[str(payload.birth_year)])
+        else:
+            registration = float(event.get("registration_fee_per_team", 0))
+
+    total = lodging_total + meals_total + transport_total + tours_total + registration
 
     return {
         "lodging_subtotal": lodging_total,
+        "rate_per_person_5nights": rate_per_person,
+        "rate_per_person_night": int(rate_per_person / EVENT_NIGHTS) if rate_per_person else 0,
+        "meals_subtotal": meals_total,
+        "breakfast_subtotal": breakfast_total,
+        "lunch_subtotal": lunch_total,
         "transport_subtotal": transport_total,
-        "parque_subtotal": parque_total,
-        "tour_subtotal": tour_total,
+        "transport_routes_applied": transport_routes,
+        "tours_subtotal": tours_total,
+        "tour_ids_applied": tour_ids,
+        # legacy keys for backwards-compat
+        "parque_subtotal": TOURS_CATALOG["parque_del_cafe"]["price"] * payload.pax if "parque_del_cafe" in tour_ids else 0,
+        "tour_subtotal": TOURS_CATALOG["panaca"]["price"] * payload.pax if "panaca" in tour_ids else 0,
         "registration_fee": registration,
         "total_amount": total,
-        "rate_per_person_night": rate,
         "event_name": event["name"],
         "lodging_name": tier["name"],
+        "nights": nights,
+        "days": days,
+        "pax": payload.pax,
     }
 
 @api.post("/quotes/calculate")
