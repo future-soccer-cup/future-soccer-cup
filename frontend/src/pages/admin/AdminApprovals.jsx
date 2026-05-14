@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import api, { imgSrc } from "../../lib/api";
 import { toast, Toaster } from "sonner";
 import { Check, X, Clock, Shirt, Users, Building2 } from "lucide-react";
+import { usePagedSearch, SearchBar, Pagination } from "../../components/PagedTable";
 
 const TABS = [
   { key: "clubs", label: "Clubes", icon: Building2, endpoint: "/clubs" },
@@ -36,6 +37,32 @@ export default function AdminApprovals() {
 
   const tmap = Object.fromEntries(teams.map((t) => [t.id, t]));
 
+  const matchFn = useCallback((it, q) => {
+    if (tab === "clubs") {
+      return (it.name || "").toLowerCase().includes(q) ||
+        (it.city || "").toLowerCase().includes(q) ||
+        (it.country || "").toLowerCase().includes(q) ||
+        (it.email || "").toLowerCase().includes(q);
+    }
+    if (tab === "teams") {
+      return (it.name || "").toLowerCase().includes(q) ||
+        (it.category || "").toLowerCase().includes(q) ||
+        (it.city || "").toLowerCase().includes(q) ||
+        (it.coach || "").toLowerCase().includes(q) ||
+        String(it.birth_year || "").includes(q);
+    }
+    // players
+    const team = tmap[it.team_id];
+    return (it.name || "").toLowerCase().includes(q) ||
+      (it.position || "").toLowerCase().includes(q) ||
+      (it.document_id || "").toLowerCase().includes(q) ||
+      String(it.jersey_number || "").includes(q) ||
+      (team?.name || "").toLowerCase().includes(q);
+  }, [tab, tmap]);
+
+  const { query, setQuery, page, setPage, totalPages, pageItems, filteredCount, totalCount } =
+    usePagedSearch(items, matchFn, 15);
+
   const setStatus = async (id, status) => {
     const url =
       tab === "clubs" ? `/clubs/${id}/status?status=${status}` :
@@ -64,23 +91,33 @@ export default function AdminApprovals() {
         ))}
       </div>
 
-      <div className="flex gap-2 mb-6">
+      <div className="flex flex-wrap items-center gap-2 mb-6">
         {["pendiente", "aprobado", "rechazado"].map((s) => (
           <button key={s} onClick={() => setStatusFilter(s)} className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wide rounded-md border-2 ${statusFilter === s ? (s === "aprobado" ? "bg-green-600 text-white border-green-600" : s === "rechazado" ? "bg-red-600 text-white border-red-600" : "bg-yellow-500 text-white border-yellow-500") : "bg-white text-slate-600 border-slate-200"}`} data-testid={`status-filter-${s}`}>
             {s}
           </button>
         ))}
+        <div className="ml-auto w-full sm:w-auto sm:flex-1 sm:max-w-md">
+          <SearchBar
+            value={query}
+            onChange={setQuery}
+            placeholder={tab === "players" ? "Buscar por nombre, dorsal, documento o equipo..." : "Buscar por nombre, ciudad, categoría..."}
+            filteredCount={filteredCount}
+            totalCount={totalCount}
+            testIdPrefix="approvals"
+          />
+        </div>
       </div>
 
-      {items.length === 0 && (
+      {pageItems.length === 0 && (
         <div className="text-center py-16 border-2 border-dashed border-slate-200 rounded-xl">
           <Clock className="mx-auto text-slate-300" size={48} />
-          <p className="mt-3 text-slate-500 font-semibold">Sin registros en este estado</p>
+          <p className="mt-3 text-slate-500 font-semibold">{items.length === 0 ? "Sin registros en este estado" : "Sin resultados para la búsqueda"}</p>
         </div>
       )}
 
       <div className="space-y-3">
-        {tab === "clubs" && items.map((c) => (
+        {tab === "clubs" && pageItems.map((c) => (
           <div key={c.id} className="bg-white border border-slate-200 rounded-lg p-4 grid md:grid-cols-12 gap-3 items-center" data-testid={`approval-club-${c.id}`}>
             <div className="md:col-span-1">
               <div className="h-12 w-12 rounded flex items-center justify-center text-sm font-display font-black text-white" style={{ background: c.color || "#1d4ed8" }}>
@@ -106,7 +143,7 @@ export default function AdminApprovals() {
           </div>
         ))}
 
-        {tab === "teams" && items.map((t) => (
+        {tab === "teams" && pageItems.map((t) => (
           <div key={t.id} className="bg-white border border-slate-200 rounded-lg p-4 grid md:grid-cols-12 gap-3 items-center" data-testid={`approval-team-${t.id}`}>
             <div className="md:col-span-1">
               <div className="h-12 w-12 rounded flex items-center justify-center text-sm font-display font-black text-white" style={{ background: t.color || "#1d4ed8" }}>
@@ -131,7 +168,7 @@ export default function AdminApprovals() {
           </div>
         ))}
 
-        {tab === "players" && items.map((p) => {
+        {tab === "players" && pageItems.map((p) => {
           const team = tmap[p.team_id];
           return (
             <div key={p.id} className="bg-white border border-slate-200 rounded-lg p-4 grid md:grid-cols-12 gap-3 items-center" data-testid={`approval-player-${p.id}`}>
@@ -161,6 +198,8 @@ export default function AdminApprovals() {
           );
         })}
       </div>
+
+      <Pagination page={page} totalPages={totalPages} onPage={setPage} testIdPrefix="approvals" />
     </div>
   );
 }

@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import api from "../../lib/api";
 import { toast, Toaster } from "sonner";
+import { usePagedSearch, SearchBar, Pagination } from "../../components/PagedTable";
 
 const STATUSES = ["pendiente", "aprobada", "rechazada", "pagada"];
 
@@ -21,7 +22,18 @@ export default function AdminQuotes() {
     }
   };
 
-  const filtered = filter ? quotes.filter((q) => q.status === filter) : quotes;
+  const filteredByStatus = filter ? quotes.filter((q) => q.status === filter) : quotes;
+
+  const matchFn = useCallback((q, term) =>
+    (q.user_name || "").toLowerCase().includes(term) ||
+    (q.user_email || "").toLowerCase().includes(term) ||
+    (q.event_name || "").toLowerCase().includes(term) ||
+    (q.category || "").toLowerCase().includes(term) ||
+    (q.lodging_name || "").toLowerCase().includes(term)
+  , []);
+
+  const { query, setQuery, page, setPage, totalPages, pageItems, filteredCount, totalCount } =
+    usePagedSearch(filteredByStatus, matchFn, 15);
 
   return (
     <div data-testid="admin-quotes">
@@ -29,11 +41,21 @@ export default function AdminQuotes() {
       <h1 className="font-display text-4xl font-black uppercase tracking-tighter">Cotizaciones</h1>
       <p className="text-sm text-slate-500 mt-1">Solicitudes de cotización generadas por equipos y familias.</p>
 
-      <div className="flex gap-2 mt-6 mb-4">
+      <div className="flex flex-wrap items-center gap-2 mt-6 mb-4">
         <button onClick={() => setFilter("")} className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wide rounded-md border-2 ${!filter ? "bg-slate-900 text-white border-slate-900" : "bg-white border-slate-200"}`} data-testid="quote-filter-all">Todas</button>
         {STATUSES.map((s) => (
           <button key={s} onClick={() => setFilter(s)} className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wide rounded-md border-2 ${filter === s ? "bg-blue-700 text-white border-blue-700" : "bg-white border-slate-200"}`} data-testid={`quote-filter-${s}`}>{s}</button>
         ))}
+        <div className="ml-auto w-full sm:w-auto sm:flex-1 sm:max-w-md">
+          <SearchBar
+            value={query}
+            onChange={setQuery}
+            placeholder="Buscar por cliente, evento, categoría o hospedaje..."
+            filteredCount={filteredCount}
+            totalCount={totalCount}
+            testIdPrefix="quotes"
+          />
+        </div>
       </div>
 
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
@@ -52,8 +74,8 @@ export default function AdminQuotes() {
             </tr>
           </thead>
           <tbody>
-            {filtered.length === 0 && <tr><td colSpan="9" className="text-center py-12 text-slate-400">Sin cotizaciones</td></tr>}
-            {filtered.map((q) => (
+            {pageItems.length === 0 && <tr><td colSpan="9" className="text-center py-12 text-slate-400">{quotes.length === 0 ? "Sin cotizaciones" : "Sin resultados"}</td></tr>}
+            {pageItems.map((q) => (
               <tr key={q.id} className="border-t border-slate-100" data-testid={`admin-quote-${q.id}`}>
                 <td className="px-4 py-2">
                   <div className="font-semibold">{q.user_name}</div>
@@ -78,6 +100,8 @@ export default function AdminQuotes() {
           </tbody>
         </table>
       </div>
+
+      <Pagination page={page} totalPages={totalPages} onPage={setPage} testIdPrefix="quotes" />
     </div>
   );
 }

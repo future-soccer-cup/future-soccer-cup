@@ -149,8 +149,23 @@ Aplicación versátil para una empresa que organiza eventos de fútbol infantil 
 - **Componentes nuevos**: `FileUpload.jsx` (imagen/PDF), `PaymentForm.jsx`, `PaymentsList.jsx` + `PaymentStatusBadge`.
 - **Tests**: `/app/backend/tests/test_iter10_manual_payments.py` (21/21 PASS). Cobertura: submit, mine, by-target, admin list+filtros, status updates, RBAC, /upload pdf, flujo E2E quote 30%+70%, team registration full pay, validación Pydantic.
 
+## Iteration 12 (2026-05-14) — Sprint 4 (parcial): Paginación + Búsqueda en tablas admin
+
+- **Componente reutilizable** `/app/frontend/src/components/PagedTable.jsx` con:
+  - Hook `usePagedSearch(items, matchFn, pageSize=15)` — filtrado + paginación client-side; reinicia a página 1 cuando cambia la búsqueda; auto-clampea cuando los filtros reducen el dataset.
+  - `<SearchBar>` con input + contador `filteredCount / totalCount`.
+  - `<Pagination>` con prev/next + window deslizante de 5 páginas (no renderiza si `totalPages < 2`).
+- **Aplicado a 5 tablas admin** (15 items/pág):
+  - `/admin/aprobaciones` — busca por nombre, ciudad/equipo, categoría/dorsal según el tab activo (clubs/teams/players).
+  - `/admin/equipos` — nombre, categoría, ciudad, DT, año.
+  - `/admin/jugadores` — nombre, dorsal, documento, posición, equipo asociado.
+  - `/admin/cotizaciones` — cliente, evento, categoría, hospedaje (combinable con filtro de estado).
+  - `/admin/pagos` — DT, email, concepto, referencia, método, monto (combinable con filtro status + target_type).
+- **Testids agregados**: `{prefix}-search-input`, `{prefix}-count`, `{prefix}-pagination`, `{prefix}-page-{n}`, `{prefix}-page-prev`, `{prefix}-page-next` (donde prefix ∈ teams/players/quotes/payments/approvals).
+- **UX**: estado vacío diferenciado ("Sin resultados" cuando hay filtro activo vs. "Sin equipos"/etc. cuando el dataset está vacío).
+- Smoke-test Playwright: contadores y filtros validados (3→1→0 con búsqueda 'cristiano', empty state, contador "1 / 3 resultados").
+
 ## Backlog actualizado (P1/P2)
-- **P1**: Sprint 4 — Paginación 15/pág + filtros search en tablas admin (Aprobaciones, Cotizaciones, Pagos, Equipos, Jugadores).
 - **P1**: Sprint 4 — Bracket eliminación directa (visual).
 - **P2**: Notificaciones email (Resend/SendGrid) en cambios de estado (abonos, equipos, jugadores, cotizaciones).
 - **P2**: Refactor `server.py` (>2600 líneas) en `/app/backend/routes/{auth,teams,quotes,payments,inventory,roster}.py`.

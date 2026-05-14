@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import api, { formatApiError } from "../../lib/api";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Modal, Field } from "./AdminTeams";
 import ImageUpload from "../../components/ImageUpload";
+import { usePagedSearch, SearchBar, Pagination } from "../../components/PagedTable";
 
 const EMPTY = { name: "", team_id: "", jersey_number: 1, position: "Mediocampista", birth_date: "", photo_url: "", document_id: "" };
 
@@ -15,6 +16,21 @@ export default function AdminPlayers() {
   const load = () => Promise.all([api.get("/players"), api.get("/teams")]).then(([p, t]) => { setPlayers(p.data); setTeams(t.data); });
   useEffect(() => { load(); }, []);
   const tmap = Object.fromEntries(teams.map((t) => [t.id, t]));
+
+  const matchFn = useCallback((p, q) => {
+    const team = tmap[p.team_id];
+    return (
+      (p.name || "").toLowerCase().includes(q) ||
+      (p.position || "").toLowerCase().includes(q) ||
+      (p.document_id || "").toLowerCase().includes(q) ||
+      String(p.jersey_number || "").includes(q) ||
+      (team?.name || "").toLowerCase().includes(q) ||
+      (team?.category || "").toLowerCase().includes(q)
+    );
+  }, [tmap]);
+
+  const { query, setQuery, page, setPage, totalPages, pageItems, filteredCount, totalCount } =
+    usePagedSearch(players, matchFn, 15);
 
   const save = async (e) => {
     e.preventDefault();
@@ -42,9 +58,20 @@ export default function AdminPlayers() {
 
   return (
     <div data-testid="admin-players">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="font-display text-4xl font-black uppercase tracking-tighter">Jugadores</h1>
-        <button onClick={() => setEditing({ ...EMPTY, team_id: teams[0]?.id || "" })} className="fsc-btn-primary px-4 py-2 rounded-md text-sm flex items-center gap-2" data-testid="add-player-btn"><Plus size={16}/> Nuevo</button>
+      <div className="flex items-center justify-between mb-6 gap-3">
+        <h1 className="font-display text-4xl font-black uppercase tracking-tighter shrink-0">Jugadores</h1>
+        <button onClick={() => setEditing({ ...EMPTY, team_id: teams[0]?.id || "" })} className="fsc-btn-primary px-4 py-2 rounded-md text-sm flex items-center gap-2 shrink-0" data-testid="add-player-btn"><Plus size={16}/> Nuevo</button>
+      </div>
+
+      <div className="mb-3">
+        <SearchBar
+          value={query}
+          onChange={setQuery}
+          placeholder="Buscar por nombre, dorsal, documento, posición o equipo..."
+          filteredCount={filteredCount}
+          totalCount={totalCount}
+          testIdPrefix="players"
+        />
       </div>
 
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
@@ -60,7 +87,7 @@ export default function AdminPlayers() {
             </tr>
           </thead>
           <tbody>
-            {players.map((p) => (
+            {pageItems.map((p) => (
               <tr key={p.id} className="border-t border-slate-100" data-testid={`player-row-${p.id}`}>
                 <td className="px-4 py-2 font-display font-black text-blue-700">#{p.jersey_number}</td>
                 <td className="px-4 py-2 font-semibold">{p.name}</td>
@@ -73,10 +100,12 @@ export default function AdminPlayers() {
                 </td>
               </tr>
             ))}
-            {players.length === 0 && <tr><td colSpan="6" className="text-center py-12 text-slate-400">Sin jugadores</td></tr>}
+            {pageItems.length === 0 && <tr><td colSpan="6" className="text-center py-12 text-slate-400">{players.length === 0 ? "Sin jugadores" : "Sin resultados"}</td></tr>}
           </tbody>
         </table>
       </div>
+
+      <Pagination page={page} totalPages={totalPages} onPage={setPage} testIdPrefix="players" />
 
       {editing && (
         <Modal onClose={() => setEditing(null)} title={editing.id ? "Editar jugador" : "Nuevo jugador"}>

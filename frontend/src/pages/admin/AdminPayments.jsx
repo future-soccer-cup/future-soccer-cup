@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import api, { API_BASE, formatApiError } from "../../lib/api";
 import { toast, Toaster } from "sonner";
 import { CheckCircle2, XCircle, FileText, ImageIcon, ExternalLink } from "lucide-react";
 import { PaymentStatusBadge } from "../../components/PaymentsList";
+import { usePagedSearch, SearchBar, Pagination } from "../../components/PagedTable";
 
 const STATUSES = ["sin_verificar", "aprobado", "saldo_pendiente", "rechazado"];
 const TARGETS = [
@@ -48,6 +49,18 @@ export default function AdminPayments() {
   };
 
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [statusFilter, targetFilter]);
+
+  const matchFn = useCallback((p, q) =>
+    (p.user_name || "").toLowerCase().includes(q) ||
+    (p.user_email || "").toLowerCase().includes(q) ||
+    (p.target_label || "").toLowerCase().includes(q) ||
+    (p.reference || "").toLowerCase().includes(q) ||
+    (p.method || "").toLowerCase().includes(q) ||
+    String(p.amount || "").includes(q)
+  , []);
+
+  const { query, setQuery, page, setPage, totalPages, pageItems, filteredCount, totalCount } =
+    usePagedSearch(items, matchFn, 15);
 
   const stats = useMemo(() => {
     const sum = items.reduce((acc, p) => acc + Number(p.amount || 0), 0);
@@ -105,6 +118,17 @@ export default function AdminPayments() {
         </div>
       </div>
 
+      <div className="mt-3">
+        <SearchBar
+          value={query}
+          onChange={setQuery}
+          placeholder="Buscar por DT, email, concepto, referencia, método o monto..."
+          filteredCount={filteredCount}
+          totalCount={totalCount}
+          testIdPrefix="payments"
+        />
+      </div>
+
       <div className="mt-4 bg-white border border-slate-200 rounded-xl overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-blue-50 text-xs uppercase tracking-wider">
@@ -121,8 +145,8 @@ export default function AdminPayments() {
           </thead>
           <tbody>
             {loading && <tr><td colSpan="8" className="text-center py-12 text-slate-400">Cargando...</td></tr>}
-            {!loading && items.length === 0 && <tr><td colSpan="8" className="text-center py-12 text-slate-400">No hay abonos con este filtro</td></tr>}
-            {!loading && items.map((p) => {
+            {!loading && pageItems.length === 0 && <tr><td colSpan="8" className="text-center py-12 text-slate-400">{items.length === 0 ? "No hay abonos con este filtro" : "Sin resultados para la búsqueda"}</td></tr>}
+            {!loading && pageItems.map((p) => {
               const isPdf = p.receipt_url && /\.pdf$/i.test(p.receipt_url);
               return (
                 <tr key={p.id} className="border-t border-slate-100" data-testid={`admin-payment-row-${p.id}`}>
@@ -159,6 +183,8 @@ export default function AdminPayments() {
           </tbody>
         </table>
       </div>
+
+      <Pagination page={page} totalPages={totalPages} onPage={setPage} testIdPrefix="payments" />
 
       {review && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4" data-testid="payment-review-modal" onClick={() => setReview(null)}>

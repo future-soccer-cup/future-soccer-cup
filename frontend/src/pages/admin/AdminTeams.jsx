@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import api, { formatApiError } from "../../lib/api";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import ImageUpload from "../../components/ImageUpload";
 import CategorySelect from "../../components/CategorySelect";
+import { usePagedSearch, SearchBar, Pagination } from "../../components/PagedTable";
 
 const EMPTY = { name: "", category: "Sub-12", birth_year: null, coach: "", city: "", logo_url: "", color: "#1d4ed8", group_name: "" };
 
@@ -13,6 +14,17 @@ export default function AdminTeams() {
 
   const load = () => api.get("/teams").then((r) => setTeams(r.data));
   useEffect(() => { load(); }, []);
+
+  const matchFn = useCallback((t, q) =>
+    (t.name || "").toLowerCase().includes(q) ||
+    (t.category || "").toLowerCase().includes(q) ||
+    (t.city || "").toLowerCase().includes(q) ||
+    (t.coach || "").toLowerCase().includes(q) ||
+    String(t.birth_year || "").includes(q)
+  , []);
+
+  const { query, setQuery, page, setPage, totalPages, pageItems, filteredCount, totalCount } =
+    usePagedSearch(teams, matchFn, 15);
 
   const save = async (e) => {
     e.preventDefault();
@@ -40,9 +52,20 @@ export default function AdminTeams() {
 
   return (
     <div data-testid="admin-teams">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="font-display text-4xl font-black uppercase tracking-tighter">Equipos</h1>
-        <button onClick={() => setEditing({ ...EMPTY })} className="fsc-btn-primary px-4 py-2 rounded-md text-sm flex items-center gap-2" data-testid="add-team-btn"><Plus size={16}/> Nuevo</button>
+      <div className="flex items-center justify-between mb-6 gap-3">
+        <h1 className="font-display text-4xl font-black uppercase tracking-tighter shrink-0">Equipos</h1>
+        <button onClick={() => setEditing({ ...EMPTY })} className="fsc-btn-primary px-4 py-2 rounded-md text-sm flex items-center gap-2 shrink-0" data-testid="add-team-btn"><Plus size={16}/> Nuevo</button>
+      </div>
+
+      <div className="mb-3">
+        <SearchBar
+          value={query}
+          onChange={setQuery}
+          placeholder="Buscar por nombre, categoría, ciudad, DT o año..."
+          filteredCount={filteredCount}
+          totalCount={totalCount}
+          testIdPrefix="teams"
+        />
       </div>
 
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
@@ -57,7 +80,7 @@ export default function AdminTeams() {
             </tr>
           </thead>
           <tbody>
-            {teams.map((t) => (
+            {pageItems.map((t) => (
               <tr key={t.id} className="border-t border-slate-100" data-testid={`team-row-${t.id}`}>
                 <td className="px-4 py-2 flex items-center gap-2">
                   <div className="h-8 w-8 rounded flex items-center justify-center text-xs font-display font-black text-white" style={{ background: t.color }}>{t.logo_url ? <img src={t.logo_url} alt="" className="h-full w-full object-contain" /> : t.name[0]}</div>
@@ -72,10 +95,12 @@ export default function AdminTeams() {
                 </td>
               </tr>
             ))}
-            {teams.length === 0 && <tr><td colSpan="5" className="text-center py-12 text-slate-400">Sin equipos</td></tr>}
+            {pageItems.length === 0 && <tr><td colSpan="5" className="text-center py-12 text-slate-400">{teams.length === 0 ? "Sin equipos" : "Sin resultados"}</td></tr>}
           </tbody>
         </table>
       </div>
+
+      <Pagination page={page} totalPages={totalPages} onPage={setPage} testIdPrefix="teams" />
 
       {editing && (
         <Modal onClose={() => setEditing(null)} title={editing.id ? "Editar equipo" : "Nuevo equipo"}>
