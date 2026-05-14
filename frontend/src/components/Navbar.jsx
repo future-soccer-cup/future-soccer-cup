@@ -6,6 +6,7 @@ import { useAuth } from "../context/AuthContext";
 
 const NAV = [
   { to: "/fixture", label: "Fixture" },
+  { to: "/bracket", label: "Bracket" },
   { to: "/posiciones", label: "Posiciones" },
   { to: "/equipos", label: "Equipos" },
   { to: "/jugadores", label: "Jugadores" },

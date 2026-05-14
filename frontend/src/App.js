@@ -23,6 +23,7 @@ import Cotizar from "./pages/Cotizar";
 import MyQuotes from "./pages/MyQuotes";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import Noticias from "./pages/Noticias";
+import Bracket from "./pages/Bracket";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 
@@ -33,6 +34,7 @@ import AdminPlayers from "./pages/admin/AdminPlayers";
 import AdminMatches from "./pages/admin/AdminMatches";
 import AdminCarnets from "./pages/admin/AdminCarnets";
 import AdminFixtureGenerator from "./pages/admin/AdminFixtureGenerator";
+import AdminBracketGenerator from "./pages/admin/AdminBracketGenerator";
 import AdminApprovals from "./pages/admin/AdminApprovals";
 import AdminBulkUpload from "./pages/admin/AdminBulkUpload";
 import AdminQuotes from "./pages/admin/AdminQuotes";
@@ -71,6 +73,7 @@ function App() {
             <Route path="/jugadores" element={<Players />} />
             <Route path="/jugadores/:id" element={<PlayerDetail />} />
             <Route path="/noticias" element={<Noticias />} />
+            <Route path="/bracket" element={<Bracket />} />
             <Route path="/cotizar" element={<Cotizar />} />
             <Route path="/login" element={<Login />} />
             <Route path="/registro" element={<Register />} />
@@ -97,6 +100,7 @@ function App() {
             <Route path="jugadores" element={<AdminPlayers />} />
             <Route path="partidos" element={<AdminMatches />} />
             <Route path="generador-fixture" element={<AdminFixtureGenerator />} />
+            <Route path="bracket" element={<AdminBracketGenerator />} />
             <Route path="aprobaciones" element={<AdminApprovals />} />
             <Route path="carga-masiva" element={<AdminBulkUpload />} />
             <Route path="cotizaciones" element={<AdminQuotes />} />

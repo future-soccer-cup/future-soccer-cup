@@ -482,6 +482,7 @@ class MatchResultIn(BaseModel):
     cards: Optional[List[dict]] = []  # [{player_id, team_id, type: 'yellow'|'red', minute}]
     home_fair_play: Optional[int] = 0
     away_fair_play: Optional[int] = 0
+    winner_team_id: Optional[str] = None  # required for ties in bracket matches
 
 class FixtureGenerateIn(BaseModel):
     tournament_id: Optional[str] = None
@@ -952,11 +953,15 @@ async def update_match_result(mid: str, payload: MatchResultIn, _: dict = Depend
             "cards": payload.cards or [],
             "home_fair_play": payload.home_fair_play or 0,
             "away_fair_play": payload.away_fair_play or 0,
+            **({"winner_team_id": payload.winner_team_id} if payload.winner_team_id else {}),
         }}
     )
     if res.matched_count == 0:
         raise HTTPException(status_code=404, detail="Partido no encontrado")
     m = await db.matches.find_one({"id": mid}, {"_id": 0})
+    # Auto-advance winner if this match is part of a bracket
+    if m.get("bracket_id"):
+        await _advance_bracket_winner(m, payload.home_score, payload.away_score, payload.winner_team_id)
     return m
 
 @api.delete("/matches/{mid}")
@@ -1107,6 +1112,257 @@ async def generate_fixture(payload: FixtureGenerateIn, _: dict = Depends(require
         "byes_per_round": [{"round": k, "team_id": v, "team_name": tmap.get(v, {}).get("name", "")} for k, v in byes.items()],
         "saved": not payload.preview,
     }
+
+# -------------------- Bracket (eliminación directa) --------------------
+BRACKET_SIZES = [4, 8, 16, 32]
+STAGE_BY_OFFSET = {0: "final", 1: "semis", 2: "cuartos", 3: "octavos", 4: "treintaidosavos"}
+
+
+def _bracket_seed_order(n: int) -> List[int]:
+    """Standard bracket seeding so top seeds meet only in late rounds.
+    Returns list of seed numbers (1..n) in slot order for round 1."""
+    if n == 1:
+        return [1]
+    prev = _bracket_seed_order(n // 2)
+    out = []
+    for s in prev:
+        out.append(s)
+        out.append(n + 1 - s)
+    return out
+
+
+class BracketIn(BaseModel):
+    name: str
+    category: str
+    size: Literal[4, 8, 16, 32]
+    team_ids: List[str]  # length == size; in seed order 1..N
+    include_third_place: bool = False
+    start_date: str  # YYYY-MM-DD for round 1
+    days_between_rounds: int = 7
+    venues: List[str] = []
+    time_slots: List[str] = []
+    tournament_id: Optional[str] = None
+    preview: bool = False
+
+
+@api.get("/brackets")
+async def list_brackets(category: Optional[str] = None):
+    q = {}
+    if category:
+        q["category"] = category
+    items = await db.brackets.find(q, {"_id": 0}).sort("created_at", -1).to_list(200)
+    return items
+
+
+@api.get("/brackets/{bid}")
+async def get_bracket(bid: str):
+    bracket = await db.brackets.find_one({"id": bid}, {"_id": 0})
+    if not bracket:
+        raise HTTPException(status_code=404, detail="Bracket no encontrado")
+    matches = await db.matches.find({"bracket_id": bid}, {"_id": 0}).sort("bracket_round", 1).to_list(500)
+    # Enrich with team names
+    team_ids_flat = set(bracket["team_ids"])
+    for m in matches:
+        if m.get("home_team_id"): team_ids_flat.add(m["home_team_id"])
+        if m.get("away_team_id"): team_ids_flat.add(m["away_team_id"])
+    teams = await db.teams.find({"id": {"$in": list(team_ids_flat)}}, {"_id": 0, "id": 1, "name": 1, "logo_url": 1, "color": 1}).to_list(500)
+    tmap = {t["id"]: t for t in teams}
+    for m in matches:
+        if m.get("home_team_id"):
+            t = tmap.get(m["home_team_id"], {})
+            m["home_team_name"] = t.get("name", "")
+            m["home_team_logo"] = t.get("logo_url", "")
+            m["home_team_color"] = t.get("color", "")
+        else:
+            m["home_team_name"] = "Por definir"
+        if m.get("away_team_id"):
+            t = tmap.get(m["away_team_id"], {})
+            m["away_team_name"] = t.get("name", "")
+            m["away_team_logo"] = t.get("logo_url", "")
+            m["away_team_color"] = t.get("color", "")
+        else:
+            m["away_team_name"] = "Por definir"
+    bracket["matches"] = matches
+    bracket["teams"] = [tmap.get(tid, {"id": tid, "name": "—"}) for tid in bracket["team_ids"]]
+    return bracket
+
+
+@api.post("/brackets")
+async def create_bracket(payload: BracketIn, _: dict = Depends(require_admin)):
+    if payload.size not in BRACKET_SIZES:
+        raise HTTPException(status_code=400, detail=f"Tamaño inválido. Permitidos: {BRACKET_SIZES}")
+    if len(payload.team_ids) != payload.size:
+        raise HTTPException(status_code=400, detail=f"Se requieren exactamente {payload.size} equipos sembrados")
+    if len(set(payload.team_ids)) != len(payload.team_ids):
+        raise HTTPException(status_code=400, detail="Hay equipos duplicados en la siembra")
+    # Validate teams exist
+    existing = await db.teams.find({"id": {"$in": payload.team_ids}}, {"_id": 0, "id": 1}).to_list(64)
+    if len(existing) != payload.size:
+        raise HTTPException(status_code=400, detail="Uno o más equipos no existen")
+
+    bid = str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+    total_rounds = {4: 2, 8: 3, 16: 4, 32: 5}[payload.size]
+    seed_order = _bracket_seed_order(payload.size)  # seed numbers in slot order
+    # slot_team[i] = team_id at slot i (0-indexed) for round 1
+    slot_team = [payload.team_ids[s - 1] for s in seed_order]
+
+    # Parse start date
+    try:
+        start = datetime.fromisoformat(payload.start_date).date()
+    except Exception:
+        raise HTTPException(status_code=400, detail="start_date inválida (YYYY-MM-DD)")
+
+    venues = payload.venues or [""]
+    slots = payload.time_slots or ["10:00"]
+
+    # Build matches per round. Round r (1-indexed) has size / 2^r matches.
+    # match_ids[(round, position)] = id  — to wire next_match references
+    match_ids: dict = {}
+    all_matches: List[dict] = []
+    for r in range(1, total_rounds + 1):
+        n_matches = payload.size // (2 ** r)
+        round_date = start + timedelta(days=payload.days_between_rounds * (r - 1))
+        for pos in range(n_matches):
+            mid = str(uuid.uuid4())
+            match_ids[(r, pos)] = mid
+            home_team_id = slot_team[pos * 2] if r == 1 else None
+            away_team_id = slot_team[pos * 2 + 1] if r == 1 else None
+            stage = STAGE_BY_OFFSET.get(total_rounds - r, f"ronda_{r}")
+            time_slot = slots[pos % len(slots)]
+            venue = venues[pos % len(venues)]
+            match_dt = datetime.combine(round_date, datetime.strptime(time_slot, "%H:%M").time(), tzinfo=timezone.utc)
+            all_matches.append({
+                "id": mid,
+                "tournament_id": payload.tournament_id or bid,
+                "home_team_id": home_team_id,
+                "away_team_id": away_team_id,
+                "match_date": match_dt.isoformat(),
+                "venue": venue,
+                "group_name": "",
+                "matchday": None,
+                "stage": stage,
+                "home_score": None,
+                "away_score": None,
+                "status": "programado",
+                "bracket_id": bid,
+                "bracket_round": r,
+                "bracket_position": pos,
+                "is_third_place": False,
+                "created_at": now,
+            })
+
+    # Wire next_match_id / next_match_slot for rounds 1..total_rounds-1
+    for r in range(1, total_rounds):
+        n_matches = payload.size // (2 ** r)
+        for pos in range(n_matches):
+            mid = match_ids[(r, pos)]
+            parent = match_ids[(r + 1, pos // 2)]
+            slot = "home" if pos % 2 == 0 else "away"
+            # find this match in all_matches and patch
+            for m in all_matches:
+                if m["id"] == mid:
+                    m["next_match_id"] = parent
+                    m["next_match_slot"] = slot
+                    break
+
+    # Third place match: winner of each semi loser plays. We only mark loser_next_match_id
+    # on the two semi matches.
+    third_place_id = None
+    if payload.include_third_place and total_rounds >= 2:
+        third_place_id = str(uuid.uuid4())
+        # third place plays the same day as final (or day before — keep same day)
+        final_match = next(m for m in all_matches if m["bracket_round"] == total_rounds)
+        all_matches.append({
+            "id": third_place_id,
+            "tournament_id": payload.tournament_id or bid,
+            "home_team_id": None,
+            "away_team_id": None,
+            "match_date": final_match["match_date"],
+            "venue": final_match["venue"],
+            "group_name": "",
+            "matchday": None,
+            "stage": "tercer_puesto",
+            "home_score": None,
+            "away_score": None,
+            "status": "programado",
+            "bracket_id": bid,
+            "bracket_round": total_rounds,  # same level as final, but separate
+            "bracket_position": -1,
+            "is_third_place": True,
+            "created_at": now,
+        })
+        # patch semi matches to send losers to third_place
+        for m in all_matches:
+            if m["bracket_round"] == total_rounds - 1 and not m.get("is_third_place"):
+                m["loser_next_match_id"] = third_place_id
+                m["loser_next_match_slot"] = "home" if m["bracket_position"] == 0 else "away"
+
+    bracket_doc = {
+        "id": bid,
+        "name": payload.name,
+        "category": payload.category,
+        "size": payload.size,
+        "team_ids": payload.team_ids,
+        "include_third_place": payload.include_third_place,
+        "third_place_match_id": third_place_id,
+        "total_rounds": total_rounds,
+        "tournament_id": payload.tournament_id or bid,
+        "status": "activo",
+        "created_at": now,
+    }
+
+    if payload.preview:
+        return {**bracket_doc, "matches": [dict(m) for m in all_matches], "saved": False}
+
+    await db.brackets.insert_one(bracket_doc)
+    if all_matches:
+        await db.matches.insert_many(all_matches)
+    bracket_doc.pop("_id", None)
+    return {**bracket_doc, "matches": [{k: v for k, v in m.items() if k != "_id"} for m in all_matches], "saved": True}
+
+
+@api.delete("/brackets/{bid}")
+async def delete_bracket(bid: str, _: dict = Depends(require_admin)):
+    res = await db.brackets.delete_one({"id": bid})
+    await db.matches.delete_many({"bracket_id": bid})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Bracket no encontrado")
+    return {"ok": True}
+
+
+async def _advance_bracket_winner(match_doc: dict, home_score: int, away_score: int, winner_team_id: Optional[str] = None):
+    """If the match is part of a bracket, propagate winner (and loser → third place if applicable)."""
+    bracket_id = match_doc.get("bracket_id")
+    if not bracket_id:
+        return
+    home_id = match_doc.get("home_team_id")
+    away_id = match_doc.get("away_team_id")
+    if not home_id or not away_id:
+        return
+    if home_score > away_score:
+        winner, loser = home_id, away_id
+    elif away_score > home_score:
+        winner, loser = away_id, home_id
+    elif winner_team_id in (home_id, away_id):
+        winner = winner_team_id
+        loser = away_id if winner == home_id else home_id
+    else:
+        # tie without resolution — do not advance
+        return
+
+    next_id = match_doc.get("next_match_id")
+    next_slot = match_doc.get("next_match_slot")
+    if next_id and next_slot in ("home", "away"):
+        field = "home_team_id" if next_slot == "home" else "away_team_id"
+        await db.matches.update_one({"id": next_id}, {"$set": {field: winner}})
+
+    loser_next_id = match_doc.get("loser_next_match_id")
+    loser_slot = match_doc.get("loser_next_match_slot")
+    if loser_next_id and loser_slot in ("home", "away"):
+        field = "home_team_id" if loser_slot == "home" else "away_team_id"
+        await db.matches.update_one({"id": loser_next_id}, {"$set": {field: loser}})
+
 
 # -------------------- Stats --------------------
 @api.get("/stats/standings")
@@ -2490,6 +2746,8 @@ async def on_startup():
     await db.clubs.create_index("name")
     await db.players.create_index("id", unique=True)
     await db.matches.create_index("id", unique=True)
+    await db.brackets.create_index("id", unique=True)
+    await db.matches.create_index("bracket_id")
     await db.quotes.create_index("id", unique=True)
     await db.posts.create_index("id", unique=True)
     await db.payment_transactions.create_index("session_id", unique=True)

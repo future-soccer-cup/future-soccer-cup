@@ -182,10 +182,55 @@ Aplicación versátil para una empresa que organiza eventos de fútbol infantil 
 - **Testids agregados**: `{tabla}-export-csv` (`teams-export-csv`, `players-export-csv`, `quotes-export-csv`, `payments-export-csv`, `approvals-export-csv`).
 - E2E validado: descarga de cotizaciones (13 filas, 1552 bytes), BOM presente, encoding correcto.
 
+## Iteration 14 (2026-05-14) — Dashboard KPIs + Bracket eliminación directa
+
+### Mini-dashboard `/admin`
+- KPI cards principales (4): Clubes/Equipos/Jugadores aprobados con sub-stat de pendientes; Partidos jugados con sub-stat de programados/en curso.
+- Sección **Ingresos & Pagos** (4 cards): COP totales históricos, COP del mes, abonos por revisar (link a `/admin/pagos`), cotizaciones pagadas con facturado total.
+- Sección **Operación** (3 cards): cotizaciones pendientes, aprobaciones pendientes (clubes+equipos+jugadores), total clubes inscritos.
+- Acciones rápidas: revisar aprobaciones, validar abonos, generar fixture, cotizaciones, carnets, noticias.
+- Panel "Pulso del torneo": resumen ejecutivo en texto.
+- Testids: `kpi-{nombre}`, `dash-quick-actions`.
+
+### Bracket eliminación directa (Sprint 4)
+**Backend** (`/api/brackets`):
+- Modelo `bracket`: `{id, name, category, size (4/8/16/32), team_ids (en orden de siembra), include_third_place, total_rounds, status}`.
+- Endpoints: `GET /api/brackets`, `GET /api/brackets/{id}` (con enriquecimiento de nombres + logos), `POST /api/brackets` (preview o save), `DELETE /api/brackets/{id}` (admin only).
+- **Seeding estándar de tenis**: `_bracket_seed_order(n)` recursivo → (1v8)(4v5)(2v7)(3v6) para 8, escala a 16/32.
+- Genera partidos como documentos en `db.matches` con `bracket_id`, `bracket_round`, `bracket_position`, `next_match_id`, `next_match_slot`, `is_third_place`, `loser_next_match_id/slot` (para alimentar 3er puesto).
+- **Auto-advance del ganador**: `PUT /api/matches/{id}/result` ahora propaga winner al siguiente match (next_match_id + slot home/away) y loser al match de 3er puesto cuando aplica.
+- `MatchResultIn.winner_team_id` opcional → resuelve empates en bracket (sin él, los empates no avanzan, permitiendo re-PUT con winner definido por penales).
+- Validaciones: tamaño en `{4,8,16,32}`, len(team_ids)==size, no duplicados, equipos existen, fecha válida.
+- Índices nuevos: `db.brackets.id` (unique), `db.matches.bracket_id`.
+
+**Frontend admin** `/admin/bracket`:
+- Form: nombre, categoría, tamaño (4/8/16/32), fecha 1ª ronda, días entre rondas, canchas, horarios, toggle 3er puesto.
+- Sembrado interactivo: panel "Equipos disponibles" (filtrado por categoría + aprobados, excluye ya sembrados) → click agrega como semilla; reordenar con flechas ▲▼; quitar con ✕; contador "X/N".
+- Vista previa antes de guardar (lista de partidos generados).
+- Listado de brackets existentes con CTA Ver/Eliminar.
+- Sidenav admin: ítem **Bracket** (icono Trophy).
+
+**Frontend público** `/bracket`:
+- Árbol horizontal con columnas por ronda, espaciado vertical exponencial (2^(r-1)) para alinear cruces.
+- Cada match-card: 2 lados (logo + nombre + score), ganador en verde, "Por definir" en italic cuando el slot aún no tiene equipo.
+- Banner de **Campeón** cuando la final está finalizada.
+- Sección dedicada al 3er puesto cuando aplica.
+- Selector entre múltiples brackets si existen (`?id=` en query).
+- Link "Bracket" agregado al Navbar público.
+
+**Tests** (manuales con curl, todos PASS):
+- Seeding 8 equipos: pairings 1v8, 4v5, 2v7, 3v6 ✓
+- Generación R1 (4 matches) + SF (2) + Final (1) + 3er puesto (1) = 8 matches ✓
+- Auto-advance home win: R1.home → SF.home slot ✓
+- Auto-advance away win: R1.away → SF.away slot ✓
+- 3er puesto recibe perdedores de SF ✓
+- Empate sin `winner_team_id` → no avanza ✓
+- Empate con `winner_team_id` → avanza ganador especificado ✓
+- Validación tamaño/duplicados → 400 ✓
+
+
 ## Backlog actualizado (P1/P2)
-- **P1**: Sprint 4 — Bracket eliminación directa (visual).
-- **P2**: Notificaciones email (Resend/SendGrid).
-- **P2**: Refactor `server.py` (>2600 líneas) en `/app/backend/routes/{auth,teams,quotes,payments,inventory,roster}.py`.
+- **P2**: Notificaciones email (Resend/SendGrid) en cambios de estado.
 - **P2**: Stripe webhook signature verification.
 - **P3**: Validar `receipt_url` (formato `/api/files/...`) y tope de `amount` ≤ balance pendiente en `POST /api/payments`.
 - **P3**: Audit trail en `/admin/payments/{id}/status` (guardar `reviewed_by_user_id/email`).
