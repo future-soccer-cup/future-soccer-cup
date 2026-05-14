@@ -1535,6 +1535,157 @@ async def attach_payment_proof(qid: str, payload: dict, user: dict = Depends(get
     await db.quotes.update_one({"id": qid}, {"$set": {"payment_proof_url": url}})
     return {"ok": True}
 
+# -------------------- Manual Payments (Abonos con comprobantes) --------------------
+PAYMENT_STATUSES = ["sin_verificar", "aprobado", "saldo_pendiente", "rechazado"]
+PAYMENT_TARGET_TYPES = ["quote", "team_registration"]
+
+
+class PaymentIn(BaseModel):
+    target_type: Literal["quote", "team_registration"]
+    target_id: str
+    amount: float = Field(gt=0)
+    payment_date: Optional[str] = None  # ISO date
+    method: Optional[str] = "transferencia"  # transferencia | efectivo | pse | otro
+    receipt_url: Optional[str] = ""
+    reference: Optional[str] = ""  # nro. de comprobante/operación
+    notes: Optional[str] = ""
+
+
+class PaymentStatusUpdate(BaseModel):
+    status: Literal["sin_verificar", "aprobado", "saldo_pendiente", "rechazado"]
+    admin_note: Optional[str] = ""
+
+
+async def _target_total(target_type: str, target_id: str) -> Optional[float]:
+    if target_type == "quote":
+        q = await db.quotes.find_one({"id": target_id}, {"_id": 0})
+        return float(q["total_amount"]) if q else None
+    if target_type == "team_registration":
+        t = await db.teams.find_one({"id": target_id}, {"_id": 0})
+        return float(t.get("registration_fee", 0)) if t else None
+    return None
+
+
+async def _can_pay(user: dict, target_type: str, target_id: str) -> bool:
+    if user.get("role") == "admin":
+        return True
+    if target_type == "quote":
+        q = await db.quotes.find_one({"id": target_id}, {"_id": 0})
+        return q and q.get("user_id") == user["id"]
+    if target_type == "team_registration":
+        t = await db.teams.find_one({"id": target_id}, {"_id": 0})
+        return t and t.get("manager_user_id") == user["id"]
+    return False
+
+
+async def _recompute_balance(target_type: str, target_id: str) -> dict:
+    """Sum approved payments and update parent record's payment state."""
+    total = await _target_total(target_type, target_id) or 0
+    approved = await db.payments.aggregate([
+        {"$match": {"target_type": target_type, "target_id": target_id, "status": "aprobado"}},
+        {"$group": {"_id": None, "sum": {"$sum": "$amount"}}}
+    ]).to_list(1)
+    paid = float(approved[0]["sum"]) if approved else 0.0
+    balance = max(total - paid, 0)
+    fully_paid = total > 0 and paid >= total
+    now = datetime.now(timezone.utc).isoformat()
+    if target_type == "quote":
+        update = {"amount_paid": paid, "amount_balance": balance}
+        if fully_paid:
+            update["status"] = "pagada"
+            update["payment_status"] = "paid"
+            update["paid_at"] = now
+        elif paid > 0:
+            update["payment_status"] = "partial"
+        await db.quotes.update_one({"id": target_id}, {"$set": update})
+    elif target_type == "team_registration":
+        update = {"registration_amount_paid": paid, "registration_amount_balance": balance}
+        if fully_paid:
+            update["registration_payment_status"] = "paid"
+            update["registration_paid_at"] = now
+        elif paid > 0:
+            update["registration_payment_status"] = "partial"
+        await db.teams.update_one({"id": target_id}, {"$set": update})
+    return {"total": total, "paid": paid, "balance": balance}
+
+
+@api.post("/payments")
+async def submit_payment(payload: PaymentIn, user: dict = Depends(get_current_user)):
+    if not await _can_pay(user, payload.target_type, payload.target_id):
+        raise HTTPException(status_code=403, detail="No autorizado")
+    total = await _target_total(payload.target_type, payload.target_id)
+    if total is None:
+        raise HTTPException(status_code=404, detail="Recurso no encontrado")
+    now = datetime.now(timezone.utc).isoformat()
+    doc = {
+        "id": str(uuid.uuid4()),
+        "target_type": payload.target_type,
+        "target_id": payload.target_id,
+        "amount": float(payload.amount),
+        "payment_date": payload.payment_date or now,
+        "method": payload.method or "transferencia",
+        "receipt_url": payload.receipt_url or "",
+        "reference": payload.reference or "",
+        "notes": payload.notes or "",
+        "user_id": user["id"],
+        "user_email": user["email"],
+        "user_name": user.get("name", ""),
+        "status": "sin_verificar",
+        "admin_note": "",
+        "created_at": now,
+    }
+    await db.payments.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+
+@api.get("/payments/mine")
+async def my_payments(user: dict = Depends(get_current_user)):
+    items = await db.payments.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    return items
+
+
+@api.get("/payments/by-target")
+async def payments_by_target(target_type: str, target_id: str, user: dict = Depends(get_current_user)):
+    if not await _can_pay(user, target_type, target_id):
+        raise HTTPException(status_code=403, detail="No autorizado")
+    items = await db.payments.find({"target_type": target_type, "target_id": target_id}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    balance = await _recompute_balance(target_type, target_id)
+    return {"items": items, "balance": balance}
+
+
+@api.get("/admin/payments")
+async def admin_list_payments(status: Optional[str] = None, target_type: Optional[str] = None, _: dict = Depends(require_admin)):
+    q = {}
+    if status:
+        q["status"] = status
+    if target_type:
+        q["target_type"] = target_type
+    items = await db.payments.find(q, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    # Enrich each item with target name
+    for it in items:
+        if it["target_type"] == "quote":
+            tg = await db.quotes.find_one({"id": it["target_id"]}, {"_id": 0, "id": 1, "event_name": 1, "total_amount": 1})
+            it["target_label"] = f"Cotización · {tg['event_name']}" if tg else "Cotización"
+            it["target_total"] = float(tg["total_amount"]) if tg else 0
+        elif it["target_type"] == "team_registration":
+            tg = await db.teams.find_one({"id": it["target_id"]}, {"_id": 0, "id": 1, "name": 1, "registration_fee": 1})
+            it["target_label"] = f"Inscripción · {tg['name']}" if tg else "Inscripción"
+            it["target_total"] = float(tg.get("registration_fee", 0)) if tg else 0
+    return items
+
+
+@api.put("/admin/payments/{pid}/status")
+async def admin_set_payment_status(pid: str, payload: PaymentStatusUpdate, _: dict = Depends(require_admin)):
+    p = await db.payments.find_one({"id": pid}, {"_id": 0})
+    if not p:
+        raise HTTPException(status_code=404, detail="Pago no encontrado")
+    update = {"status": payload.status, "admin_note": payload.admin_note or "", "reviewed_at": datetime.now(timezone.utc).isoformat()}
+    await db.payments.update_one({"id": pid}, {"$set": update})
+    bal = await _recompute_balance(p["target_type"], p["target_id"])
+    return {"ok": True, "balance": bal}
+
+
 # -------------------- Stripe Payments --------------------
 class CheckoutSessionIn(BaseModel):
     quote_id: str
