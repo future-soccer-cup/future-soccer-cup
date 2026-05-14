@@ -1579,7 +1579,9 @@ async def _can_pay(user: dict, target_type: str, target_id: str) -> bool:
 
 
 async def _recompute_balance(target_type: str, target_id: str) -> dict:
-    """Sum approved payments and update parent record's payment state."""
+    """Sum approved payments and update parent record's payment state.
+    Idempotent: reverts paid_at and status when paid drops below total (e.g. admin
+    rejects a previously-approved payment)."""
     total = await _target_total(target_type, target_id) or 0
     approved = await db.payments.aggregate([
         {"$match": {"target_type": target_type, "target_id": target_id, "status": "aprobado"}},
@@ -1591,21 +1593,35 @@ async def _recompute_balance(target_type: str, target_id: str) -> dict:
     now = datetime.now(timezone.utc).isoformat()
     if target_type == "quote":
         update = {"amount_paid": paid, "amount_balance": balance}
+        unset = {}
         if fully_paid:
             update["status"] = "pagada"
             update["payment_status"] = "paid"
             update["paid_at"] = now
-        elif paid > 0:
-            update["payment_status"] = "partial"
-        await db.quotes.update_one({"id": target_id}, {"$set": update})
+        else:
+            # Revert "pagada" if it had been marked previously
+            quote = await db.quotes.find_one({"id": target_id}, {"_id": 0, "status": 1})
+            if quote and quote.get("status") == "pagada":
+                update["status"] = "aprobada"
+            update["payment_status"] = "partial" if paid > 0 else "pending"
+            unset["paid_at"] = ""
+        op = {"$set": update}
+        if unset:
+            op["$unset"] = unset
+        await db.quotes.update_one({"id": target_id}, op)
     elif target_type == "team_registration":
         update = {"registration_amount_paid": paid, "registration_amount_balance": balance}
+        unset = {}
         if fully_paid:
             update["registration_payment_status"] = "paid"
             update["registration_paid_at"] = now
-        elif paid > 0:
-            update["registration_payment_status"] = "partial"
-        await db.teams.update_one({"id": target_id}, {"$set": update})
+        else:
+            update["registration_payment_status"] = "partial" if paid > 0 else "pending"
+            unset["registration_paid_at"] = ""
+        op = {"$set": update}
+        if unset:
+            op["$unset"] = unset
+        await db.teams.update_one({"id": target_id}, op)
     return {"total": total, "paid": paid, "balance": balance}
 
 

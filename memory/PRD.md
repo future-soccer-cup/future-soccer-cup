@@ -129,6 +129,36 @@ Aplicación versátil para una empresa que organiza eventos de fútbol infantil 
 - **Carnets PDF descargable** en `/admin/carnets` con `jspdf` + `html2canvas`. Botón "Descargar PDF" genera A4 con 8 carnets/página (2 columnas × 4 filas), respetando proporción y con QR de cada jugador. Incluye logo del club en el carnet (si está cargado). Backend ya filtraba a `status="aprobado"`.
 - **Crear equipo**: validado E2E con Playwright — campos mínimos (manager, email, password, evento, nombre, categoría, consent) → redirige a `/mi-equipo` y muestra banner de inscripción pendiente con CTA Stripe.
 
+## Iteration 11 (2026-05-14) — Sprint 3: Pagos Manuales con Abonos
+
+- **Modelo `db.payments`**: `{id, target_type, target_id, amount, payment_date, method, receipt_url, reference, notes, user_id/email/name, status, admin_note, reviewed_at, created_at}` con índices compuestos `(target_type, target_id)`, `user_id`, `status`.
+- **Estados de abono**: `sin_verificar` (inicial) · `aprobado` · `saldo_pendiente` · `rechazado`.
+- **target_types**: `quote` y `team_registration` (extensible).
+- **Endpoints**:
+  - `POST /api/payments` — DT/admin registra abono con receipt_url.
+  - `GET /api/payments/mine` — historial del DT.
+  - `GET /api/payments/by-target?target_type=&target_id=` — listado + balance `{total, paid, balance}` (paid solo cuenta `aprobado`).
+  - `GET /api/admin/payments?status=&target_type=` — admin lista con enrichment `target_label/target_total`.
+  - `PUT /api/admin/payments/{pid}/status` body `{status, admin_note}` — admin aprueba/rechaza.
+- **`_recompute_balance` idempotente**: al aprobar→ `payment_status=paid` y `status=pagada` (quote) o `registration_payment_status=paid` (team). Al rechazar un abono previamente aprobado de un target ya "pagado", revierte `status=aprobada` / `registration_payment_status=pending` y `$unset paid_at`/`registration_paid_at`.
+- **`/api/upload` extendido**: ahora acepta `pdf` además de imágenes (jpg/jpeg/png/gif/webp) hasta 5MB.
+- **Frontend**:
+  - `/mis-cotizaciones`: toggle por cotización con panel de abonos (total/pagado/saldo), historial con badges + link al comprobante, botón "Registrar abono" abre `PaymentForm`. El botón "Pagar saldo con Stripe" sigue disponible para cotizaciones aprobadas.
+  - `/mi-equipo`: banner de inscripción ahora tiene CTA "Abonos" con el mismo panel + form para registrar abono manual de la inscripción.
+  - `/admin/pagos` (nueva): tabla con filtros por status y target_type, modal de revisión con vista previa del comprobante (PDF o imagen), botones Aprobar/Saldo pendiente/Rechazar + nota interna. Sidenav admin: nuevo ítem **Pagos**.
+- **Componentes nuevos**: `FileUpload.jsx` (imagen/PDF), `PaymentForm.jsx`, `PaymentsList.jsx` + `PaymentStatusBadge`.
+- **Tests**: `/app/backend/tests/test_iter10_manual_payments.py` (21/21 PASS). Cobertura: submit, mine, by-target, admin list+filtros, status updates, RBAC, /upload pdf, flujo E2E quote 30%+70%, team registration full pay, validación Pydantic.
+
+## Backlog actualizado (P1/P2)
+- **P1**: Sprint 4 — Paginación 15/pág + filtros search en tablas admin (Aprobaciones, Cotizaciones, Pagos, Equipos, Jugadores).
+- **P1**: Sprint 4 — Bracket eliminación directa (visual).
+- **P2**: Notificaciones email (Resend/SendGrid) en cambios de estado (abonos, equipos, jugadores, cotizaciones).
+- **P2**: Refactor `server.py` (>2600 líneas) en `/app/backend/routes/{auth,teams,quotes,payments,inventory,roster}.py`.
+- **P2**: Stripe webhook signature verification.
+- **P3**: Validar `receipt_url` (formato `/api/files/...`) y tope de `amount` ≤ balance pendiente en `POST /api/payments`.
+- **P3**: Audit trail en `/admin/payments/{id}/status` (guardar `reviewed_by_user_id/email`).
+
+
 ## Last Test Run
 - iteration_8: 13 regresiones (11 PASS + 1 skip + 1 fail re-fijado). HIGH #1 (500→404) ✅; HIGH #2 (bookings eliminados) ✅; HIGH #3 (dead-code rama "ya pagada") ✅ tras reordenar los checks (validado con curl).
 - **Moneda: COP (Pesos Colombianos)**. Tarifas del backend actualizadas:
