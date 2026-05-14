@@ -191,7 +191,7 @@ def get_object(path: str):
     resp.raise_for_status()
     return resp.content, resp.headers.get("Content-Type", "application/octet-stream")
 
-MIME = {"jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "gif": "image/gif", "webp": "image/webp"}
+MIME = {"jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "gif": "image/gif", "webp": "image/webp", "pdf": "application/pdf"}
 
 # -------------------- Setup --------------------
 mongo_url = os.environ['MONGO_URL']
@@ -1951,10 +1951,10 @@ async def social_instagram():
 async def upload_file(file: UploadFile = File(...), user: dict = Depends(get_current_user)):
     ext = (file.filename.rsplit(".", 1)[-1] if "." in (file.filename or "") else "bin").lower()
     if ext not in MIME:
-        raise HTTPException(status_code=400, detail="Solo se aceptan imágenes (jpg, jpeg, png, gif, webp)")
+        raise HTTPException(status_code=400, detail="Solo se aceptan imágenes o PDF (jpg, jpeg, png, gif, webp, pdf)")
     data = await file.read()
     if len(data) > 5 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="Imagen mayor a 5MB")
+        raise HTTPException(status_code=400, detail="Archivo mayor a 5MB")
     storage_path = f"{APP_NAME}/uploads/{user['id']}/{uuid.uuid4()}.{ext}"
     content_type = file.content_type or MIME[ext]
     result = put_object(storage_path, data, content_type)
@@ -2477,6 +2477,10 @@ async def on_startup():
     await db.quotes.create_index("id", unique=True)
     await db.posts.create_index("id", unique=True)
     await db.payment_transactions.create_index("session_id", unique=True)
+    await db.payments.create_index("id", unique=True)
+    await db.payments.create_index([("target_type", 1), ("target_id", 1)])
+    await db.payments.create_index("user_id")
+    await db.payments.create_index("status")
     await db.files.create_index("storage_path")
     await db.login_attempts.create_index("identifier")
     await seed_admin()

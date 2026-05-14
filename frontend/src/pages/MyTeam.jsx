@@ -2,10 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import api, { formatApiError, imgSrc } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import { toast, Toaster } from "sonner";
-import { Plus, Pencil, Trash2, Users2, CreditCard, CheckCircle2, AlertCircle, FileUp, Download } from "lucide-react";
+import { Plus, Pencil, Trash2, Users2, CreditCard, CheckCircle2, AlertCircle, FileUp, Download, Receipt as ReceiptIcon, ChevronDown, ChevronUp } from "lucide-react";
 import { Link } from "react-router-dom";
 import ImageUpload from "../components/ImageUpload";
 import CategorySelect from "../components/CategorySelect";
+import PaymentForm from "../components/PaymentForm";
+import PaymentsList from "../components/PaymentsList";
 
 const EMPTY_PLAYER = { name: "", team_id: "", jersey_number: 1, position: "Mediocampista", birth_date: "", photo_url: "", document_id: "", nickname: "", gender: "", eps: "", guardian_name: "", guardian_doc: "", guardian_relation: "", guardian_phone: "" };
 const EMPTY_STAFF = { name: "", document: "", role: "Director técnico", phone: "" };
@@ -20,6 +22,9 @@ export default function MyTeam() {
   const [editingPlayer, setEditingPlayer] = useState(null);
   const [editingStaff, setEditingStaff] = useState(null); // {idx?, data}
   const [payingReg, setPayingReg] = useState(false);
+  const [regPaymentsOpen, setRegPaymentsOpen] = useState(false);
+  const [regPaymentsData, setRegPaymentsData] = useState(null);
+  const [regShowForm, setRegShowForm] = useState(false);
   const [bulkPreview, setBulkPreview] = useState(null);
   const [bulkFile, setBulkFile] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -170,6 +175,26 @@ export default function MyTeam() {
   const eventLabel = { festival: "Festival", premier_par: "Premier Par", premier_impar: "Premier Impar" }[team.event_type] || "—";
   const staff = Array.isArray(team.cuerpo_tecnico) ? team.cuerpo_tecnico : [];
 
+  const loadRegPayments = async () => {
+    try {
+      const r = await api.get(`/payments/by-target?target_type=team_registration&target_id=${team.id}`);
+      setRegPaymentsData(r.data);
+    } catch {/* silent */}
+  };
+  const toggleRegPayments = async () => {
+    const next = !regPaymentsOpen;
+    setRegPaymentsOpen(next);
+    if (next && !regPaymentsData) await loadRegPayments();
+  };
+  const onRegPaymentCreated = async () => {
+    setRegShowForm(false);
+    await loadRegPayments();
+    await loadTeam();
+  };
+  const regTotal = regPaymentsData?.balance?.total ?? Number(team.registration_fee || 0);
+  const regPaidAmt = regPaymentsData?.balance?.paid ?? 0;
+  const regBalance = regPaymentsData?.balance?.balance ?? regTotal;
+
   const newEvent = events.find((e) => e.id === newTeam.event_type);
   const newYears = newEvent?.birth_years || [];
   const newFee = newEvent?.fees_by_year?.[String(newTeam.birth_year)] || 0;
@@ -205,22 +230,75 @@ export default function MyTeam() {
       </div>
 
       {/* Banner inscripción al evento */}
-      <div className={`mt-4 rounded-2xl p-5 border-2 flex flex-col md:flex-row md:items-center gap-4 ${regPaid ? "bg-green-50 border-green-200" : "bg-amber-50 border-amber-200"}`} data-testid="registration-banner">
-        {regPaid ? <CheckCircle2 className="text-green-600 shrink-0" size={32}/> : <AlertCircle className="text-amber-600 shrink-0" size={32}/>}
-        <div className="flex-1">
-          <div className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Inscripción al evento</div>
-          <div className="font-display text-2xl font-black uppercase tracking-tight">
-            {regPaid ? "Pagada" : "Pendiente de pago"}
+      <div className={`mt-4 rounded-2xl p-5 border-2 ${regPaid ? "bg-green-50 border-green-200" : "bg-amber-50 border-amber-200"}`} data-testid="registration-banner">
+        <div className="flex flex-col md:flex-row md:items-center gap-4">
+          {regPaid ? <CheckCircle2 className="text-green-600 shrink-0" size={32}/> : <AlertCircle className="text-amber-600 shrink-0" size={32}/>}
+          <div className="flex-1">
+            <div className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">Inscripción al evento</div>
+            <div className="font-display text-2xl font-black uppercase tracking-tight">
+              {regPaid ? "Pagada" : team.registration_payment_status === "partial" ? "Pago parcial" : "Pendiente de pago"}
+            </div>
+            <div className="text-sm text-slate-600 mt-1">
+              {eventLabel} · {fmtCOP(team.registration_fee)}
+              {!regPaid && <span className="ml-2">— El equipo será activado al confirmar el pago.</span>}
+            </div>
           </div>
-          <div className="text-sm text-slate-600 mt-1">
-            {eventLabel} · {fmtCOP(team.registration_fee)}
-            {!regPaid && <span className="ml-2">— El equipo será activado al confirmar el pago.</span>}
+          <div className="flex flex-wrap gap-2 shrink-0">
+            {!regPaid && (
+              <button onClick={payRegistration} disabled={payingReg} className="fsc-btn-red px-5 py-3 rounded-md text-sm flex items-center gap-2 disabled:opacity-50" data-testid="pay-registration-btn">
+                <CreditCard size={16}/> {payingReg ? "Redirigiendo..." : "Pagar con Stripe"}
+              </button>
+            )}
+            <button
+              onClick={toggleRegPayments}
+              className="px-4 py-3 rounded-md text-sm font-bold uppercase tracking-wide border-2 border-slate-900 text-slate-900 hover:bg-slate-900 hover:text-white flex items-center gap-2"
+              data-testid="toggle-reg-payments-btn"
+            >
+              <ReceiptIcon size={14}/> Abonos {regPaymentsOpen ? <ChevronUp size={14}/> : <ChevronDown size={14}/>}
+            </button>
           </div>
         </div>
-        {!regPaid && (
-          <button onClick={payRegistration} disabled={payingReg} className="fsc-btn-red px-5 py-3 rounded-md text-sm flex items-center gap-2 shrink-0 disabled:opacity-50" data-testid="pay-registration-btn">
-            <CreditCard size={16}/> {payingReg ? "Redirigiendo..." : "Pagar inscripción"}
-          </button>
+
+        {regPaymentsOpen && (
+          <div className="mt-4 pt-4 border-t border-slate-200 space-y-4" data-testid="reg-payments-panel">
+            <div className="grid sm:grid-cols-3 gap-3 text-center">
+              <div className="bg-white border border-slate-200 rounded-lg p-3">
+                <div className="text-[10px] uppercase tracking-widest text-slate-500">Total</div>
+                <div className="font-display text-xl font-black tabular-nums">{fmtCOP(regTotal)}</div>
+              </div>
+              <div className="bg-white border border-green-200 rounded-lg p-3">
+                <div className="text-[10px] uppercase tracking-widest text-green-600">Pagado</div>
+                <div className="font-display text-xl font-black text-green-700 tabular-nums" data-testid="reg-balance-paid">{fmtCOP(regPaidAmt)}</div>
+              </div>
+              <div className="bg-white border border-amber-200 rounded-lg p-3">
+                <div className="text-[10px] uppercase tracking-widest text-amber-600">Saldo</div>
+                <div className="font-display text-xl font-black text-amber-700 tabular-nums" data-testid="reg-balance-remaining">{fmtCOP(regBalance)}</div>
+              </div>
+            </div>
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">Historial de abonos</h3>
+              <PaymentsList items={regPaymentsData?.items || []} />
+            </div>
+            {!regPaid && (
+              regShowForm ? (
+                <PaymentForm
+                  targetType="team_registration"
+                  targetId={team.id}
+                  suggestedAmount={regBalance}
+                  onCreated={onRegPaymentCreated}
+                  onCancel={() => setRegShowForm(false)}
+                />
+              ) : (
+                <button
+                  onClick={() => setRegShowForm(true)}
+                  className="fsc-btn-primary px-4 py-2 rounded-md text-xs flex items-center gap-2"
+                  data-testid="register-reg-payment-btn"
+                >
+                  <ReceiptIcon size={14}/> Registrar abono (comprobante)
+                </button>
+              )
+            )}
+          </div>
         )}
       </div>
 

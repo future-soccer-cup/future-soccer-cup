@@ -1,0 +1,50 @@
+{
+  "summary": "Sprint 3 (Manual Payments / Abonos) — backend + frontend regresión completa. Suite pytest /app/backend/tests/test_iter10_manual_payments.py: 21/21 PASS. Cobertura backend: POST /api/payments (target_type=quote/team_registration con receipt_url) → status inicial 'sin_verificar' ✓; GET /api/payments/mine ✓; GET /api/payments/by-target con balance {total,paid,balance} y paid sólo cuenta 'aprobado' ✓; GET /api/admin/payments con filtros status/target_type + enrichment target_label/target_total ✓; PUT /api/admin/payments/{pid}/status para aprobado/rechazado/saldo_pendiente + recálculo: parcial→payment_status='partial', sumas≥total→quote.status='pagada'+payment_status='paid' y team.registration_payment_status='paid' ✓; rechazo NO suma al paid ✓; RBAC (DT no puede pagar a team ajeno→403, DT no puede listar /admin/payments→401/403, DT no puede PUT status→401/403, anónimo→401/403) ✓; /api/upload acepta PDF (application/pdf) y PNG, rechaza .txt (400), rechaza >5MB (400) ✓; flujo end-to-end Premier Par Sub-12 gold double 4×3 (total=$5.508.000 real; 30%+70%→aprobar ambos→quote.status='pagada' + payment_status='paid' + paid_at set + balance=0) ✓; flujo team_registration pago full (1 abono full→aprobar→registration_payment_status='paid', balance=0) ✓; validación Pydantic (target_type inválido→422, amount<=0→422) ✓; payment 404 al actualizar status de id inexistente ✓. Frontend Playwright validado contra preview URL: /mis-cotizaciones expand quote → payments-panel-{id}, balance-paid-{id}=$0, balance-remaining-{id}=$5.508.000, register-payment-btn-{id} abre payment-form con campos monto/método/comprobante/notas y suggestedAmount precargado ✓; /mi-equipo: toggle-reg-payments-btn presente, reg-payments-panel se abre con reg-balance-paid + reg-balance-remaining ($2.700.000), register-reg-payment-btn presente ✓; /admin/pagos: admin-payments-page, admin-nav-pagos en side-nav, pay-filter-all/sin_verificar/aprobado/rechazado, pay-target-filter, fila admin-payment-row-{pid}, botón admin-pay-review-{pid} abre payment-review-modal con payment-admin-note + payment-approve-btn + payment-reject-btn + payment-saldo-btn ✓; aprobar pago en UI → toast 'Estado actualizado' + API confirma status='aprobado' (re-fetch GET /api/admin/payments) ✓. NO se encontraron bugs HIGH/CRITICAL en Sprint 3.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/payments", "issue": "No valida que el receipt_url apunte realmente a un archivo de /api/files; un cliente puede enviar receipt_url='/api/files/anything' o string vacío sin que el backend lo detecte. PaymentIn.receipt_url es Optional con default ''. Se sugiere requerirlo cuando method != 'efectivo' (regla de negocio FSC)."},
+      {"endpoint": "PUT /api/admin/payments/{pid}/status", "issue": "Cuando se cambia un pago previamente 'aprobado' a 'rechazado', _recompute_balance baja correctamente el paid, pero quote.status='pagada' y payment_status='paid' NO se revierten. Es decir, si admin aprueba el último abono (queda pagada) y luego rechaza uno previo, la cotización queda inconsistente (status='pagada' con paid<total). Reproducible vía manual; no cubierto en mis tests automatizados."},
+      {"endpoint": "POST /api/payments", "issue": "No hay tope por amount: un DT puede registrar amount > target_total. La aprobación lo cuenta y deja balance=0 pero el cliente perdió la trazabilidad de excedente."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/admin/pagos", "issues": ["La fila no muestra el balance actualizado (paid/balance) del target tras aprobar; el saldo se ve sólo entrando al equipo/cotización del DT. Sugerido: incluir columna 'Saldo del concepto' o link al target."]},
+      {"screen": "PaymentForm", "issues": ["No hay validación cliente que evite submit si comprobante (receipt_url) es vacío — el backend tampoco lo bloquea (ver minor backend). Si el upload falla, el form sigue habilitado."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter10_manual_payments.py",
+    "/app/test_reports/pytest/iteration_10.xml"
+  ],
+  "action_items": [
+    "OPCIONAL P2: Al rechazar un pago previamente aprobado de una cotización ya 'pagada', revertir quote.status='aprobada' y payment_status='partial'/'pending' en _recompute_balance (mismo aplica a team_registration).",
+    "OPCIONAL P2: Validar en backend que amount no exceda balance pendiente (target_total - approved_sum), o al menos warning admin.",
+    "OPCIONAL P3: PaymentForm — hacer receipt_url obligatorio cuando method='transferencia'/'pse' (alineado con UX FSC)."
+  ],
+  "critical_code_review_comments": [
+    "server.py sigue >2500 líneas (Sprint 3 sumó ~150). Urge dividir en routers (payments, quotes, teams, auth, inventory).",
+    "_recompute_balance no es idempotente respecto a reversiones (rechazar un pago previamente aprobado mantiene 'pagada'/'paid_at'). Falta limpiar paid_at/registration_paid_at + bajar payment_status cuando paid<total.",
+    "PaymentIn.receipt_url es Optional sin validación de formato — debería validarse que sea string que comience con '/api/files/' o regla similar para evitar abonos sin comprobante real.",
+    "admin_list_payments hace N+1 queries (1 find_one por payment para enrichment). Para 1000 pagos esto es 1001 queries — usar $lookup o batch fetch.",
+    "PUT /admin/payments/{pid}/status no audit-loggea quién aprobó/rechazó (reviewed_at se guarda pero no reviewed_by_user_id/email). Auditoría legal Ley 1581/2012 lo requeriría.",
+    "PaymentStatusUpdate acepta status='sin_verificar' que es el inicial — el admin no debería poder 'des-revisar' un pago ya revisado; considerar workflow máquina de estados."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter10_manual_payments.py (NEW - 21 tests)"
+  ],
+  "success_rate": {
+    "backend": "100% (21/21 pass en suite iter10)",
+    "frontend": "100% de testids Sprint 3 verificados (payments-panel-{id}, balance-paid-{id}, balance-remaining-{id}, register-payment-btn-{id}, payment-form, toggle-reg-payments-btn, reg-payments-panel, reg-balance-paid, reg-balance-remaining, register-reg-payment-btn, admin-payments-page, admin-nav-pagos, pay-filter-{all,sin_verificar,aprobado,rechazado}, pay-target-filter, admin-payment-row-{id}, admin-pay-review-{id}, payment-review-modal, payment-approve-btn, payment-reject-btn, payment-saldo-btn, payment-admin-note). Aprobar en UI dispara re-fetch y status confirmado vía API."
+  },
+  "test_credentials": "admin@futuresoccercup.com / FSCAdmin2025! (verificado). Suite crea por run: TEST_iter10a_<uuid>@test.com + TEST_iter10b_<uuid>@test.com con TeamPass2025!.",
+  "seed_data_creation": "Cada run inserta: 2 team managers + 2 clubs TEST_ITER10A/B + 2 teams + 1 quote Premier Par Sub-12 gold double 4×3 ($5.508.000) + 4-6 abonos en db.payments. Test UI agrega 1 DT extra TEST_iter10ui_<uuid> + 1 quote + 1 abono aprobado. No hay endpoint de cleanup; los TEST_* quedan en db.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Ejecutar: pytest /app/backend/tests/test_iter10_manual_payments.py -v. La suite usa fallback para REACT_APP_BACKEND_URL desde /app/frontend/.env y registra DTs on-the-fly (sin dependencia de DTs previos). Para UI Sprint 3: registrar DT vía POST /api/auth/register-team con event_type=premier_par + birth_year=2012, crear quote y navegar /mis-cotizaciones; para /admin/pagos basta login admin y POST de un /api/payments para tener fila visible. Los 3 minor backend issues (rechazo no revierte 'pagada', no valida receipt_url, no tope por amount) son P2 — main agent puede self-test si decide arreglarlos.",
+  "rca of the issue": "N/A — Sprint 3 cerró limpio sin issues HIGH/CRITICAL. Los 3 minor backend son edge cases (rechazo de pago previamente aprobado en cotización ya 'pagada' no revierte estado; receipt_url sin validar; amount sin tope) que no afectan el happy path del cliente FSC."
+}

@@ -11,6 +11,7 @@ import {
   CheckSquare,
   FileUp,
   Receipt,
+  Wallet,
   Newspaper,
   KeyRound,
 } from "lucide-react";
@@ -26,6 +27,7 @@ const NAV = [
   { to: "/admin/partidos", label: "Partidos", icon: Calendar },
   { to: "/admin/generador-fixture", label: "Generar Fixture", icon: Wand2 },
   { to: "/admin/cotizaciones", label: "Cotizaciones", icon: Receipt },
+  { to: "/admin/pagos", label: "Pagos", icon: Wallet },
   { to: "/admin/inventario", label: "Inventario", icon: Hotel },
   { to: "/admin/noticias", label: "Noticias", icon: Newspaper },
   { to: "/admin/recuperaciones", label: "Recuperar clave", icon: KeyRound },
