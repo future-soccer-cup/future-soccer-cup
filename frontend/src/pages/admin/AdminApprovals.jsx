@@ -3,6 +3,7 @@ import api, { imgSrc } from "../../lib/api";
 import { toast, Toaster } from "sonner";
 import { Check, X, Clock, Shirt, Users, Building2 } from "lucide-react";
 import { usePagedSearch, SearchBar, Pagination } from "../../components/PagedTable";
+import ExportCsvButton from "../../components/ExportCsvButton";
 
 const TABS = [
   { key: "clubs", label: "Clubes", icon: Building2, endpoint: "/clubs" },
@@ -60,8 +61,37 @@ export default function AdminApprovals() {
       (team?.name || "").toLowerCase().includes(q);
   }, [tab, tmap]);
 
-  const { query, setQuery, page, setPage, totalPages, pageItems, filteredCount, totalCount } =
+  const { query, setQuery, page, setPage, totalPages, pageItems, filtered, filteredCount, totalCount } =
     usePagedSearch(items, matchFn, 15);
+
+  const exportColumns = tab === "clubs" ? [
+    { key: "name", label: "Club" },
+    { key: "city", label: "Ciudad" },
+    { key: "country", label: "País" },
+    { key: "email", label: "Email" },
+    { key: "phone", label: "Teléfono" },
+    { key: "president", label: "Presidente" },
+    { key: "status", label: "Estado" },
+  ] : tab === "teams" ? [
+    { key: "name", label: "Equipo" },
+    { key: "category", label: "Categoría" },
+    { key: "birth_year", label: "Año" },
+    { key: "city", label: "Ciudad" },
+    { key: "coach", label: "DT" },
+    { key: "event_type", label: "Evento" },
+    { key: "status", label: "Estado" },
+  ] : [
+    { key: "jersey_number", label: "Dorsal" },
+    { key: "name", label: "Nombre" },
+    { key: "team_name", label: "Equipo", accessor: (p) => tmap[p.team_id]?.name || "" },
+    { key: "team_category", label: "Categoría", accessor: (p) => tmap[p.team_id]?.category || "" },
+    { key: "position", label: "Posición" },
+    { key: "document_id", label: "Documento" },
+    { key: "birth_date", label: "Nacimiento" },
+    { key: "guardian_name", label: "Acudiente" },
+    { key: "guardian_phone", label: "Tel. acudiente" },
+    { key: "status", label: "Estado" },
+  ];
 
   const setStatus = async (id, status) => {
     const url =
@@ -107,6 +137,7 @@ export default function AdminApprovals() {
             testIdPrefix="approvals"
           />
         </div>
+        <ExportCsvButton rows={filtered} columns={exportColumns} filename={`aprobaciones_${tab}_${statusFilter}`} testId="approvals-export-csv" />
       </div>
 
       {pageItems.length === 0 && (

@@ -40,6 +40,7 @@ export function usePagedSearch(items, matchFn, pageSize = 15) {
     page, setPage,
     totalPages,
     pageItems,
+    filtered,
     filteredCount: filtered.length,
     totalCount: items.length,
     pageSize,

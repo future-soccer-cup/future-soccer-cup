@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import ImageUpload from "../../components/ImageUpload";
 import CategorySelect from "../../components/CategorySelect";
 import { usePagedSearch, SearchBar, Pagination } from "../../components/PagedTable";
+import ExportCsvButton from "../../components/ExportCsvButton";
 
 const EMPTY = { name: "", category: "Sub-12", birth_year: null, coach: "", city: "", logo_url: "", color: "#1d4ed8", group_name: "" };
 
@@ -23,8 +24,24 @@ export default function AdminTeams() {
     String(t.birth_year || "").includes(q)
   , []);
 
-  const { query, setQuery, page, setPage, totalPages, pageItems, filteredCount, totalCount } =
+  const { query, setQuery, page, setPage, totalPages, pageItems, filtered, filteredCount, totalCount } =
     usePagedSearch(teams, matchFn, 15);
+
+  const exportColumns = [
+    { key: "name", label: "Nombre" },
+    { key: "category", label: "Categoría" },
+    { key: "birth_year", label: "Año" },
+    { key: "group_name", label: "Grupo" },
+    { key: "city", label: "Ciudad" },
+    { key: "country", label: "País" },
+    { key: "coach", label: "DT" },
+    { key: "president", label: "Presidente" },
+    { key: "delegate_phone", label: "Teléfono delegado" },
+    { key: "event_type", label: "Evento" },
+    { key: "registration_fee", label: "Inscripción (COP)" },
+    { key: "registration_payment_status", label: "Estado pago" },
+    { key: "status", label: "Estado equipo" },
+  ];
 
   const save = async (e) => {
     e.preventDefault();
@@ -57,15 +74,18 @@ export default function AdminTeams() {
         <button onClick={() => setEditing({ ...EMPTY })} className="fsc-btn-primary px-4 py-2 rounded-md text-sm flex items-center gap-2 shrink-0" data-testid="add-team-btn"><Plus size={16}/> Nuevo</button>
       </div>
 
-      <div className="mb-3">
-        <SearchBar
-          value={query}
-          onChange={setQuery}
-          placeholder="Buscar por nombre, categoría, ciudad, DT o año..."
-          filteredCount={filteredCount}
-          totalCount={totalCount}
-          testIdPrefix="teams"
-        />
+      <div className="mb-3 flex items-center gap-3 flex-wrap">
+        <div className="flex-1 min-w-[260px]">
+          <SearchBar
+            value={query}
+            onChange={setQuery}
+            placeholder="Buscar por nombre, categoría, ciudad, DT o año..."
+            filteredCount={filteredCount}
+            totalCount={totalCount}
+            testIdPrefix="teams"
+          />
+        </div>
+        <ExportCsvButton rows={filtered} columns={exportColumns} filename="equipos" testId="teams-export-csv" />
       </div>
 
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">

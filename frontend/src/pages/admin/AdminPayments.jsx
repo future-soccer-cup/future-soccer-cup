@@ -4,6 +4,7 @@ import { toast, Toaster } from "sonner";
 import { CheckCircle2, XCircle, FileText, ImageIcon, ExternalLink } from "lucide-react";
 import { PaymentStatusBadge } from "../../components/PaymentsList";
 import { usePagedSearch, SearchBar, Pagination } from "../../components/PagedTable";
+import ExportCsvButton from "../../components/ExportCsvButton";
 
 const STATUSES = ["sin_verificar", "aprobado", "saldo_pendiente", "rechazado"];
 const TARGETS = [
@@ -59,8 +60,23 @@ export default function AdminPayments() {
     String(p.amount || "").includes(q)
   , []);
 
-  const { query, setQuery, page, setPage, totalPages, pageItems, filteredCount, totalCount } =
+  const { query, setQuery, page, setPage, totalPages, pageItems, filtered, filteredCount, totalCount } =
     usePagedSearch(items, matchFn, 15);
+
+  const exportColumns = [
+    { key: "payment_date", label: "Fecha pago", accessor: (p) => (p.payment_date || p.created_at) ? new Date(p.payment_date || p.created_at).toISOString().slice(0,10) : "" },
+    { key: "user_name", label: "DT" },
+    { key: "user_email", label: "Email" },
+    { key: "target_type", label: "Tipo" },
+    { key: "target_label", label: "Concepto" },
+    { key: "target_total", label: "Total target (COP)" },
+    { key: "amount", label: "Monto abono (COP)" },
+    { key: "method", label: "Método" },
+    { key: "reference", label: "Referencia" },
+    { key: "status", label: "Estado" },
+    { key: "admin_note", label: "Nota admin" },
+    { key: "reviewed_at", label: "Revisado", accessor: (p) => p.reviewed_at ? new Date(p.reviewed_at).toISOString().slice(0,10) : "" },
+  ];
 
   const stats = useMemo(() => {
     const sum = items.reduce((acc, p) => acc + Number(p.amount || 0), 0);
@@ -118,15 +134,18 @@ export default function AdminPayments() {
         </div>
       </div>
 
-      <div className="mt-3">
-        <SearchBar
-          value={query}
-          onChange={setQuery}
-          placeholder="Buscar por DT, email, concepto, referencia, método o monto..."
-          filteredCount={filteredCount}
-          totalCount={totalCount}
-          testIdPrefix="payments"
-        />
+      <div className="mt-3 flex items-center gap-3 flex-wrap">
+        <div className="flex-1 min-w-[260px]">
+          <SearchBar
+            value={query}
+            onChange={setQuery}
+            placeholder="Buscar por DT, email, concepto, referencia, método o monto..."
+            filteredCount={filteredCount}
+            totalCount={totalCount}
+            testIdPrefix="payments"
+          />
+        </div>
+        <ExportCsvButton rows={filtered} columns={exportColumns} filename="pagos" testId="payments-export-csv" />
       </div>
 
       <div className="mt-4 bg-white border border-slate-200 rounded-xl overflow-hidden">

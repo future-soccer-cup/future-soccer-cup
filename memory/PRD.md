@@ -165,9 +165,26 @@ Aplicación versátil para una empresa que organiza eventos de fútbol infantil 
 - **UX**: estado vacío diferenciado ("Sin resultados" cuando hay filtro activo vs. "Sin equipos"/etc. cuando el dataset está vacío).
 - Smoke-test Playwright: contadores y filtros validados (3→1→0 con búsqueda 'cristiano', empty state, contador "1 / 3 resultados").
 
+## Iteration 13 (2026-05-14) — Sprint 4: Export CSV en tablas admin
+
+- **Nuevo componente** `/app/frontend/src/components/ExportCsvButton.jsx` + helpers `buildCsv` / `downloadCsv`:
+  - CSV con BOM UTF-8 (Excel abre correctamente caracteres con tildes).
+  - Escape RFC 4180 (quotes, comas, saltos de línea).
+  - Filename con timestamp `{name}_{YYYY-MM-DD}.csv`.
+  - Botón se deshabilita cuando no hay filas (rows = 0).
+- **Hook `usePagedSearch` ahora expone `filtered`** (rows post-búsqueda, pre-paginación) además de `pageItems` — el export usa `filtered` para respetar la búsqueda activa y los filtros (status, target_type, tabs).
+- **Aplicado a las 5 tablas admin** con columnas específicas por contexto:
+  - **Equipos** — nombre, categoría, año, ciudad, DT, presidente, evento, fee inscripción, estado pago.
+  - **Jugadores** — dorsal, nombre, equipo (joined), categoría, posición, documento, fecha nac., acudiente + tel.
+  - **Cotizaciones** — cliente, evento, categoría, hospedaje, pax×noches, total, pagado, saldo, estado.
+  - **Pagos** — fecha, DT, concepto, tipo, monto, método, referencia, estado, nota admin.
+  - **Aprobaciones** — columnas dinámicas por tab activo (clubs/teams/players).
+- **Testids agregados**: `{tabla}-export-csv` (`teams-export-csv`, `players-export-csv`, `quotes-export-csv`, `payments-export-csv`, `approvals-export-csv`).
+- E2E validado: descarga de cotizaciones (13 filas, 1552 bytes), BOM presente, encoding correcto.
+
 ## Backlog actualizado (P1/P2)
 - **P1**: Sprint 4 — Bracket eliminación directa (visual).
-- **P2**: Notificaciones email (Resend/SendGrid) en cambios de estado (abonos, equipos, jugadores, cotizaciones).
+- **P2**: Notificaciones email (Resend/SendGrid).
 - **P2**: Refactor `server.py` (>2600 líneas) en `/app/backend/routes/{auth,teams,quotes,payments,inventory,roster}.py`.
 - **P2**: Stripe webhook signature verification.
 - **P3**: Validar `receipt_url` (formato `/api/files/...`) y tope de `amount` ≤ balance pendiente en `POST /api/payments`.

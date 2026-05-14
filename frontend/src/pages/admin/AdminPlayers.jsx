@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Modal, Field } from "./AdminTeams";
 import ImageUpload from "../../components/ImageUpload";
 import { usePagedSearch, SearchBar, Pagination } from "../../components/PagedTable";
+import ExportCsvButton from "../../components/ExportCsvButton";
 
 const EMPTY = { name: "", team_id: "", jersey_number: 1, position: "Mediocampista", birth_date: "", photo_url: "", document_id: "" };
 
@@ -29,8 +30,26 @@ export default function AdminPlayers() {
     );
   }, [tmap]);
 
-  const { query, setQuery, page, setPage, totalPages, pageItems, filteredCount, totalCount } =
+  const { query, setQuery, page, setPage, totalPages, pageItems, filtered, filteredCount, totalCount } =
     usePagedSearch(players, matchFn, 15);
+
+  const exportColumns = [
+    { key: "jersey_number", label: "Dorsal" },
+    { key: "name", label: "Nombre" },
+    { key: "nickname", label: "Alias" },
+    { key: "team_name", label: "Equipo", accessor: (p) => tmap[p.team_id]?.name || "" },
+    { key: "team_category", label: "Categoría", accessor: (p) => tmap[p.team_id]?.category || "" },
+    { key: "position", label: "Posición" },
+    { key: "birth_date", label: "Fecha nacimiento" },
+    { key: "document_id", label: "Documento" },
+    { key: "gender", label: "Género" },
+    { key: "eps", label: "EPS" },
+    { key: "guardian_name", label: "Acudiente" },
+    { key: "guardian_doc", label: "Doc. acudiente" },
+    { key: "guardian_relation", label: "Parentesco" },
+    { key: "guardian_phone", label: "Tel. acudiente" },
+    { key: "status", label: "Estado" },
+  ];
 
   const save = async (e) => {
     e.preventDefault();
@@ -63,15 +82,18 @@ export default function AdminPlayers() {
         <button onClick={() => setEditing({ ...EMPTY, team_id: teams[0]?.id || "" })} className="fsc-btn-primary px-4 py-2 rounded-md text-sm flex items-center gap-2 shrink-0" data-testid="add-player-btn"><Plus size={16}/> Nuevo</button>
       </div>
 
-      <div className="mb-3">
-        <SearchBar
-          value={query}
-          onChange={setQuery}
-          placeholder="Buscar por nombre, dorsal, documento, posición o equipo..."
-          filteredCount={filteredCount}
-          totalCount={totalCount}
-          testIdPrefix="players"
-        />
+      <div className="mb-3 flex items-center gap-3 flex-wrap">
+        <div className="flex-1 min-w-[260px]">
+          <SearchBar
+            value={query}
+            onChange={setQuery}
+            placeholder="Buscar por nombre, dorsal, documento, posición o equipo..."
+            filteredCount={filteredCount}
+            totalCount={totalCount}
+            testIdPrefix="players"
+          />
+        </div>
+        <ExportCsvButton rows={filtered} columns={exportColumns} filename="jugadores" testId="players-export-csv" />
       </div>
 
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">

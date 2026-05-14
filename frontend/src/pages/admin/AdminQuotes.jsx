@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import api from "../../lib/api";
 import { toast, Toaster } from "sonner";
 import { usePagedSearch, SearchBar, Pagination } from "../../components/PagedTable";
+import ExportCsvButton from "../../components/ExportCsvButton";
 
 const STATUSES = ["pendiente", "aprobada", "rechazada", "pagada"];
 
@@ -32,8 +33,25 @@ export default function AdminQuotes() {
     (q.lodging_name || "").toLowerCase().includes(term)
   , []);
 
-  const { query, setQuery, page, setPage, totalPages, pageItems, filteredCount, totalCount } =
+  const { query, setQuery, page, setPage, totalPages, pageItems, filtered, filteredCount, totalCount } =
     usePagedSearch(filteredByStatus, matchFn, 15);
+
+  const exportColumns = [
+    { key: "user_name", label: "Cliente" },
+    { key: "user_email", label: "Email" },
+    { key: "event_name", label: "Evento" },
+    { key: "category", label: "Categoría" },
+    { key: "lodging_name", label: "Hospedaje" },
+    { key: "room_type", label: "Habitación" },
+    { key: "pax", label: "Pax" },
+    { key: "nights", label: "Noches" },
+    { key: "total_amount", label: "Total (COP)" },
+    { key: "amount_paid", label: "Pagado (COP)" },
+    { key: "amount_balance", label: "Saldo (COP)" },
+    { key: "status", label: "Estado" },
+    { key: "payment_status", label: "Estado pago" },
+    { key: "created_at", label: "Fecha", accessor: (q) => q.created_at ? new Date(q.created_at).toISOString().slice(0,10) : "" },
+  ];
 
   return (
     <div data-testid="admin-quotes">
@@ -56,6 +74,7 @@ export default function AdminQuotes() {
             testIdPrefix="quotes"
           />
         </div>
+        <ExportCsvButton rows={filtered} columns={exportColumns} filename="cotizaciones" testId="quotes-export-csv" />
       </div>
 
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
