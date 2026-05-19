@@ -1577,9 +1577,8 @@ def _crud_endpoints(name: str, ModelIn, ModelOut, collection):
         await db[collection].delete_one({"id": iid})
         return {"ok": True}
 
-_crud_endpoints("hotels", HotelIn, HotelOut, "hotels")
-_crud_endpoints("transports", TransportIn, TransportOut, "transports")
-_crud_endpoints("tours", TourIn, TourOut, "tours")
+# Legacy inventory endpoints (hotels/transports/tours) removed in iter18 — replaced by
+# the unified /api/event-types + /api/admin/catalog pricing catalog backed by db.pricing_catalog.
 
 # -------------------- Health --------------------
 @api.get("/")
@@ -1590,20 +1589,144 @@ async def root():
 async def list_categories():
     return CATEGORIES
 
+async def _load_catalog() -> dict:
+    """Load pricing catalog from MongoDB and shape it like the legacy in-memory dicts.
+    Falls back to the seed constants if a row is missing so /cotizar never breaks."""
+    rows = await db.pricing_catalog.find({}, {"_id": 0}).sort("sort_order", 1).to_list(200)
+    lodging, meals, transport, tours = {}, {}, {}, {}
+    for r in rows:
+        t = r.get("type")
+        if t == "lodging":
+            lodging[r["id"]] = {
+                "id": r["id"], "name": r["name"], "description": r.get("description", ""),
+                "base_5_nights": float(r.get("base_5_nights", 0) or 0),
+                "additional_night": float(r.get("additional_night", 0) or 0),
+                "available": bool(r.get("available", True)),
+                **({"no_lodging": True} if r.get("no_lodging") else {}),
+            }
+        elif t == "meal":
+            meals[r["id"]] = {
+                "id": r["id"], "name": r["name"],
+                "per_day_by_tier": {k: float(v or 0) for k, v in (r.get("per_day_by_tier") or {}).items()},
+            }
+        elif t == "transport":
+            transport[r["id"]] = {"id": r["id"], "name": r["name"], "price": float(r.get("price", 0) or 0)}
+        elif t == "tour":
+            tours[r["id"]] = {"id": r["id"], "name": r["name"], "price": float(r.get("price", 0) or 0)}
+    # Fallback to constants when DB is empty (only on the very first request after deploy).
+    return {
+        "lodging": lodging or LODGING_TIERS,
+        "meals": meals or MEAL_PLANS,
+        "transport": transport or TRANSPORT_ROUTES,
+        "tours": tours or TOURS_CATALOG,
+    }
+
+
 @api.get("/event-types")
 async def list_event_types():
-    """Return all event types with their birth_years (and legacy fields) plus lodging/addons."""
+    """Return all event types with their birth_years (and legacy fields) plus lodging/addons.
+    Lodging/meal/transport/tour catalogs are now sourced from MongoDB so the admin can edit them.
+    """
+    cat = await _load_catalog()
     return {
         "events": list(EVENT_TYPES.values()),
-        "lodging_tiers": list(LODGING_TIERS.values()),
-        "meal_plans": list(MEAL_PLANS.values()),
-        "transport_routes": list(TRANSPORT_ROUTES.values()),
-        "tours_catalog": list(TOURS_CATALOG.values()),
+        "lodging_tiers": list(cat["lodging"].values()),
+        "meal_plans": list(cat["meals"].values()),
+        "transport_routes": list(cat["transport"].values()),
+        "tours_catalog": list(cat["tours"].values()),
         "addons": ADDON_PRICES,  # legacy
         "designations": TEAM_DESIGNATIONS,
         "event_nights": EVENT_NIGHTS,
         "event_days": EVENT_DAYS,
     }
+
+
+# ============================================================
+# Pricing catalog (lodging / meal / transport / tour) — admin
+# ============================================================
+CATALOG_TYPES = {"lodging", "meal", "transport", "tour"}
+
+
+def _slugify(name: str) -> str:
+    import unicodedata
+    s = unicodedata.normalize("NFKD", name or "").encode("ascii", "ignore").decode("ascii")
+    s = re.sub(r"[^a-zA-Z0-9]+", "_", s).strip("_").lower()
+    return s or str(uuid.uuid4())[:8]
+
+
+def _validate_catalog_row(t: str, body: dict) -> dict:
+    """Coerce + validate fields by row type. Returns the writable subset to $set."""
+    if t not in CATALOG_TYPES:
+        raise HTTPException(status_code=400, detail=f"Tipo de catálogo inválido: {t}")
+    name = (body.get("name") or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="El nombre es obligatorio")
+    out = {"name": name, "updated_at": datetime.now(timezone.utc).isoformat()}
+    if "description" in body:
+        out["description"] = (body.get("description") or "").strip()
+    if "sort_order" in body:
+        try: out["sort_order"] = int(body["sort_order"])
+        except Exception: pass
+    if t == "lodging":
+        out["base_5_nights"] = max(0.0, float(body.get("base_5_nights", 0) or 0))
+        out["additional_night"] = max(0.0, float(body.get("additional_night", 0) or 0))
+        out["available"] = bool(body.get("available", True))
+        out["no_lodging"] = bool(body.get("no_lodging", False))
+    elif t == "meal":
+        per_day = body.get("per_day_by_tier") or {}
+        out["per_day_by_tier"] = {k: max(0.0, float(v or 0)) for k, v in per_day.items()}
+    elif t in ("transport", "tour"):
+        out["price"] = max(0.0, float(body.get("price", 0) or 0))
+    return out
+
+
+@api.get("/admin/catalog")
+async def admin_list_catalog(_: dict = Depends(require_admin)):
+    rows = await db.pricing_catalog.find({}, {"_id": 0}).sort([("type", 1), ("sort_order", 1)]).to_list(500)
+    return rows
+
+
+@api.post("/admin/catalog/{t}")
+async def admin_create_catalog(t: str, body: dict, user: dict = Depends(require_admin)):
+    if t not in CATALOG_TYPES:
+        raise HTTPException(status_code=400, detail="Tipo inválido")
+    update = _validate_catalog_row(t, body)
+    rid = (body.get("id") or _slugify(update["name"]))
+    if await db.pricing_catalog.find_one({"id": rid, "type": t}):
+        raise HTTPException(status_code=400, detail="Ya existe un ítem con ese id")
+    # Default sort_order = max + 1 of its type
+    if "sort_order" not in update:
+        last = await db.pricing_catalog.find({"type": t}, {"_id": 0, "sort_order": 1}).sort("sort_order", -1).limit(1).to_list(1)
+        update["sort_order"] = (last[0]["sort_order"] + 1) if last else 0
+    doc = {"id": rid, "type": t, "created_at": update["updated_at"], **update}
+    await db.pricing_catalog.insert_one(doc)
+    await _record_audit(f"catalog_{t}", rid, "create", None, "active", user)
+    doc.pop("_id", None)
+    return doc
+
+
+@api.put("/admin/catalog/{t}/{rid}")
+async def admin_update_catalog(t: str, rid: str, body: dict, user: dict = Depends(require_admin)):
+    if t not in CATALOG_TYPES:
+        raise HTTPException(status_code=400, detail="Tipo inválido")
+    prev = await db.pricing_catalog.find_one({"id": rid, "type": t}, {"_id": 0})
+    if not prev:
+        raise HTTPException(status_code=404, detail="Ítem no encontrado")
+    update = _validate_catalog_row(t, body)
+    await db.pricing_catalog.update_one({"id": rid, "type": t}, {"$set": update})
+    await _record_audit(f"catalog_{t}", rid, "update", "active", "active", user, note=f"Actualizado: {', '.join(update.keys())}")
+    return {**prev, **update}
+
+
+@api.delete("/admin/catalog/{t}/{rid}")
+async def admin_delete_catalog(t: str, rid: str, user: dict = Depends(require_admin)):
+    if t not in CATALOG_TYPES:
+        raise HTTPException(status_code=400, detail="Tipo inválido")
+    res = await db.pricing_catalog.delete_one({"id": rid, "type": t})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Ítem no encontrado")
+    await _record_audit(f"catalog_{t}", rid, "delete", "active", "deleted", user)
+    return {"ok": True}
 
 # -------------------- Clubs CRUD --------------------
 @api.get("/clubs", response_model=List[ClubOut])
@@ -1720,9 +1843,9 @@ async def list_club_teams(cid: str):
     return items
 
 # -------------------- Quotes (Cotizaciones) --------------------
-def _calculate_quote(payload: QuoteIn) -> dict:
+def _calculate_quote(payload: QuoteIn, catalog: dict) -> dict:
     event = EVENT_TYPES.get(payload.event_type)
-    tier = LODGING_TIERS.get(payload.lodging_tier)
+    tier = (catalog["lodging"] or {}).get(payload.lodging_tier)
     if not event or not tier:
         raise HTTPException(status_code=400, detail="Evento o paquete de hospedaje inválido")
 
@@ -1738,27 +1861,31 @@ def _calculate_quote(payload: QuoteIn) -> dict:
     lodging_total = rate_per_person * payload.pax
 
     # Alimentación (por persona × día). 0 en MEAL_PLANS significa N/A para ese paquete.
-    breakfast_per_day = float(MEAL_PLANS["breakfast"]["per_day_by_tier"].get(payload.lodging_tier, 0) or 0)
-    lunch_per_day = float(MEAL_PLANS["lunch"]["per_day_by_tier"].get(payload.lodging_tier, 0) or 0)
-    dinner_per_day = float(MEAL_PLANS["dinner"]["per_day_by_tier"].get(payload.lodging_tier, 0) or 0)
+    meal_plans = catalog["meals"] or {}
+    breakfast_per_day = float((meal_plans.get("breakfast") or {}).get("per_day_by_tier", {}).get(payload.lodging_tier, 0) or 0)
+    lunch_per_day = float((meal_plans.get("lunch") or {}).get("per_day_by_tier", {}).get(payload.lodging_tier, 0) or 0)
+    dinner_per_day = float((meal_plans.get("dinner") or {}).get("per_day_by_tier", {}).get(payload.lodging_tier, 0) or 0)
     breakfast_total = breakfast_per_day * payload.pax * meal_days if payload.includes_breakfast and breakfast_per_day > 0 else 0
     lunch_total     = lunch_per_day     * payload.pax * meal_days if payload.includes_lunch     and lunch_per_day     > 0 else 0
     dinner_total    = dinner_per_day    * payload.pax * meal_days if payload.includes_dinner    and dinner_per_day    > 0 else 0
     meals_total = breakfast_total + lunch_total + dinner_total
 
     # Transporte (rutas múltiples × pax). Compat con bandera legacy.
+    transport_total = sum(
+        (catalog["transport"].get(r, {}) or {}).get("price", 0) * payload.pax for r in (payload.transport_routes or [])
+    )
     transport_routes = list(payload.transport_routes or [])
     if payload.includes_transport and not transport_routes:
         transport_routes = ["airport_to_hotel", "hotel_to_airport"]
-    transport_total = sum(
-        TRANSPORT_ROUTES.get(r, {}).get("price", 0) * payload.pax for r in transport_routes
-    )
+        transport_total = sum(
+            (catalog["transport"].get(r, {}) or {}).get("price", 0) * payload.pax for r in transport_routes
+        )
 
-    # Tours (solo Parque del Café en el catálogo oficial)
+    # Tours
     tour_ids = list(payload.tour_ids or [])
     if (payload.includes_parque or payload.includes_tour) and "parque_del_cafe" not in tour_ids:
         tour_ids.append("parque_del_cafe")
-    tours_total = sum(TOURS_CATALOG.get(tid, {}).get("price", 0) * payload.pax for tid in tour_ids)
+    tours_total = sum((catalog["tours"].get(tid, {}) or {}).get("price", 0) * payload.pax for tid in tour_ids)
 
     # Inscripción: prefer fees_by_year cuando birth_year disponible
     registration = 0
@@ -1786,7 +1913,7 @@ def _calculate_quote(payload: QuoteIn) -> dict:
         "tours_subtotal": tours_total,
         "tour_ids_applied": tour_ids,
         # legacy keys for backwards-compat
-        "parque_subtotal": TOURS_CATALOG["parque_del_cafe"]["price"] * payload.pax if "parque_del_cafe" in tour_ids else 0,
+        "parque_subtotal": (catalog["tours"].get("parque_del_cafe", {}) or {}).get("price", 0) * payload.pax if "parque_del_cafe" in tour_ids else 0,
         "tour_subtotal": 0,
         "registration_fee": registration,
         "total_amount": total,
@@ -1800,13 +1927,15 @@ def _calculate_quote(payload: QuoteIn) -> dict:
 @api.post("/quotes/calculate")
 async def calculate_quote(payload: QuoteIn):
     """Public estimate without saving."""
-    return _calculate_quote(payload)
+    cat = await _load_catalog()
+    return _calculate_quote(payload, cat)
 
 @api.post("/quotes")
 async def create_quote(payload: QuoteIn, user: dict = Depends(get_current_user)):
     if user.get("role") not in ("team", "admin"):
         raise HTTPException(status_code=403, detail="Solo los directores técnicos pueden enviar cotizaciones")
-    breakdown = _calculate_quote(payload)
+    cat = await _load_catalog()
+    breakdown = _calculate_quote(payload, cat)
     doc = {
         "id": str(uuid.uuid4()),
         "user_id": user["id"],
@@ -2850,21 +2979,54 @@ async def seed_admin():
         )
 
 async def seed_demo_inventory():
-    if await db.hotels.count_documents({}) == 0:
-        await db.hotels.insert_many([
-            {"id": str(uuid.uuid4()), "name": "Hotel Estadio Plaza", "description": "Hotel familiar a 5 min del estadio principal. Desayuno incluido y piscina.", "address": "Av. Deportiva 123", "price_per_night": 89.0, "image_url": "https://images.unsplash.com/photo-1747561088583-b8b849045895?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Njd8MHwxfHNlYXJjaHwyfHxtb2Rlcm4lMjBmYW1pbHklMjByZXNvcnQlMjBob3RlbHxlbnwwfHx8fDE3NzczMzIxMjB8MA&ixlib=rb-4.1.0&q=85", "amenities": ["WiFi", "Desayuno", "Piscina", "Estacionamiento"], "capacity": 4},
-            {"id": str(uuid.uuid4()), "name": "Resort Champions", "description": "Resort 4 estrellas con todo incluido para familias deportivas.", "address": "Costa Azul 456", "price_per_night": 145.0, "image_url": "https://images.unsplash.com/photo-1640677118257-8e13fa9ebc1a?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2Njd8MHwxfHNlYXJjaHwzfHxtb2Rlcm4lMjBmYW1pbHklMjByZXNvcnQlMjBob3RlbHxlbnwwfHx8fDE3NzczMzIxMjB8MA&ixlib=rb-4.1.0&q=85", "amenities": ["Todo incluido", "WiFi", "Spa", "Gimnasio"], "capacity": 6},
-        ])
-    if await db.transports.count_documents({}) == 0:
-        await db.transports.insert_many([
-            {"id": str(uuid.uuid4()), "name": "Bus 40 plazas", "description": "Bus turístico para traslados entre estadios.", "type": "bus", "price": 250.0, "image_url": "https://images.pexels.com/photos/29586609/pexels-photo-29586609.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940", "capacity": 40},
-            {"id": str(uuid.uuid4()), "name": "Van Familiar 12 plazas", "description": "Van privada con aire acondicionado.", "type": "van", "price": 120.0, "image_url": "", "capacity": 12},
-        ])
-    if await db.tours.count_documents({}) == 0:
-        await db.tours.insert_many([
-            {"id": str(uuid.uuid4()), "name": "Tour Ciudad Histórica", "description": "Recorrido guiado de 4 horas por el centro histórico.", "duration": "4h", "price": 35.0, "image_url": ""},
-            {"id": str(uuid.uuid4()), "name": "Estadio + Museo del Fútbol", "description": "Visita el estadio y el museo oficial. Incluye snack.", "duration": "3h", "price": 28.0, "image_url": ""},
-        ])
+    """Seed pricing catalog (paquetes, comidas, transporte, tours) from defaults in this module
+    ONLY when the collection is empty. After that, the admin manages prices via /admin/catalog.
+
+    Also drops legacy 'hotels', 'transports', 'tours' demo collections — the catalog is the only
+    source of truth used by /cotizar and /admin/inventario.
+    """
+    # Drop legacy inventory collections (replaced by pricing_catalog).
+    for coll in ("hotels", "transports", "tours"):
+        try:
+            await db[coll].drop()
+        except Exception:
+            pass
+
+    if await db.pricing_catalog.count_documents({}) > 0:
+        return
+
+    now = datetime.now(timezone.utc).isoformat()
+    rows: list = []
+    # Lodging packages (defaults from LODGING_TIERS constants in module).
+    for i, (key, t) in enumerate(LODGING_TIERS.items()):
+        rows.append({
+            "id": key, "type": "lodging", "name": t["name"], "description": t.get("description", ""),
+            "base_5_nights": float(t.get("base_5_nights", 0) or 0),
+            "additional_night": float(t.get("additional_night", 0) or 0),
+            "available": bool(t.get("available", True)),
+            "no_lodging": bool(t.get("no_lodging", False)),
+            "sort_order": i, "created_at": now, "updated_at": now,
+        })
+    # Meals.
+    for i, (key, m) in enumerate(MEAL_PLANS.items()):
+        rows.append({
+            "id": key, "type": "meal", "name": m["name"],
+            "per_day_by_tier": {k: float(v or 0) for k, v in m["per_day_by_tier"].items()},
+            "sort_order": i, "created_at": now, "updated_at": now,
+        })
+    # Transport routes.
+    for i, (key, r) in enumerate(TRANSPORT_ROUTES.items()):
+        rows.append({
+            "id": key, "type": "transport", "name": r["name"], "price": float(r["price"] or 0),
+            "sort_order": i, "created_at": now, "updated_at": now,
+        })
+    # Tours.
+    for i, (key, t) in enumerate(TOURS_CATALOG.items()):
+        rows.append({
+            "id": key, "type": "tour", "name": t["name"], "price": float(t["price"] or 0),
+            "sort_order": i, "created_at": now, "updated_at": now,
+        })
+    await db.pricing_catalog.insert_many(rows)
 
 @app.on_event("startup")
 async def on_startup():
@@ -2878,6 +3040,8 @@ async def on_startup():
     await db.audit_log.create_index("id", unique=True)
     await db.audit_log.create_index([("entity_type", 1), ("entity_id", 1)])
     await db.audit_log.create_index([("created_at", -1)])
+    await db.pricing_catalog.create_index([("type", 1), ("id", 1)], unique=True)
+    await db.pricing_catalog.create_index([("type", 1), ("sort_order", 1)])
     await db.brackets.create_index("id", unique=True)
     await db.matches.create_index("bracket_id")
     await db.quotes.create_index("id", unique=True)

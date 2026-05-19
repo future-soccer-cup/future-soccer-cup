@@ -208,6 +208,48 @@ Audit `_record_audit` aplicado a teams/players/clubs/quotes/payments status endp
 
 ## Iteration 17 (2026-05-19) — Code Quality (críticos del code review)
 
+Fixes aplicados al reporte de code review: `status` no inicializado en `get_checkout_status`, stale closures en 9 páginas admin (refactor a `useCallback`), empty catches con logging+toast, array index keys reemplazados por `_uid` en AdminMatches y `document` en MyTeam staff, AuthContext memoizado, console.error de AdminCarnets wrappeado con NODE_ENV. Lint frontend 0 issues; smoke E2E OK.
+
+## Iteration 18 (2026-05-19) — Inventario unificado con /cotizar (catálogo en MongoDB)
+
+**Problema:** `/admin/inventario` mostraba hoteles/transportes/tours demo desconectados del módulo `/cotizar` (que leía constantes Python hardcoded). Cualquier edición en inventario no afectaba las cotizaciones.
+
+### Backend
+- **Nueva colección `db.pricing_catalog`** con documentos `{id, type, name, ...}`:
+  - `type="lodging"`: `{id, name, description, base_5_nights, additional_night, available, no_lodging, sort_order}`
+  - `type="meal"`: `{id, name, per_day_by_tier: {sapphire, diamond, gold, silver, bronze, domicilio}}`
+  - `type="transport"`: `{id, name, price}`
+  - `type="tour"`: `{id, name, price}`
+- **Seed automático en startup** desde las constantes Python (`LODGING_TIERS`, `MEAL_PLANS`, `TRANSPORT_ROUTES`, `TOURS_CATALOG`) — solo si la colección está vacía.
+- **`seed_demo_inventory` borra las colecciones legacy** `db.hotels`, `db.transports`, `db.tours` al arrancar (limpieza solicitada por el usuario).
+- **Endpoints `/api/hotels`, `/api/transports`, `/api/tours` removidos** (`_crud_endpoints` legacy).
+- **Helper `_load_catalog()`** lee de Mongo y devuelve dicts con shape compatible con `LODGING_TIERS` etc.
+- **`/api/event-types`** ahora retorna el catálogo desde Mongo (no constantes) → `/cotizar` refleja cambios en vivo.
+- **`_calculate_quote(payload, catalog)`** acepta catálogo inyectado; `calculate_quote` y `create_quote` cargan catálogo antes de calcular.
+- **CRUD admin (require_admin)**:
+  - `GET /api/admin/catalog` → todos los rows
+  - `POST /api/admin/catalog/{type}` → crear (auto-slug del nombre como id, sort_order = max+1)
+  - `PUT /api/admin/catalog/{type}/{id}` → actualizar campos por tipo (validación Pydantic-like: floats ≥ 0, name no vacío)
+  - `DELETE /api/admin/catalog/{type}/{id}` → eliminar
+  - Cada operación registra entrada en `audit_log` (Ley 1581).
+- **Índices**: `db.pricing_catalog.(type, id)` unique + `(type, sort_order)`.
+
+### Frontend
+- **`AdminInventory.jsx` reescrito** con 4 pestañas:
+  - **Paquetes hospedaje** (6): grid de cards editables — nombre, descripción, base 5n, noche adicional, disponible, sin hospedaje.
+  - **Comidas** (3 filas × 6 columnas tier): matriz inline editable, 0 = N/A.
+  - **Transporte** (3): tabla con nombre + precio editable.
+  - **Tours** (1+): tabla con nombre + precio editable.
+- Cada fila tiene botón "Guardar" individual (controlled inputs) + "Eliminar".
+- Modal "Nuevo paquete/transporte/tour" con auto-slug.
+- Testids: `inv-tab-{type}`, `inv-lodging-{id}`, `inv-meal-{id}-{tier}`, `inv-{type}-{id}`, `inv-save-{type}-{id}`, `inv-delete-{type}-{id}`, `inv-add-{type}`, `inv-create-modal`.
+
+### Verificación
+- 10/10 tests curl: catálogo seeded correctamente con valores del PDF, evento-types refleja edición, cotizar recalcula con nuevo precio (Sapphire 1.32M → 1.4M cambia subtotal 5.28M → 5.6M), CRUD completo, RBAC, auto-slug (`"Panaca"` → id `panaca`).
+- Smoke E2E Playwright: 4 pestañas renderizan, 19 inputs en lodging, 18 celdas en matriz comidas.
+
+
+
 ### Backend
 - **`server.py:2230` get_checkout_status**: inicializa `status = None` defensivo + chequeo `if status is None` antes de usar, evitando posible `NameError` si la integración Stripe lanza una excepción inusual sin lanzar `HTTPException`.
 
