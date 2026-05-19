@@ -195,6 +195,51 @@ Aplicación versátil para una empresa que organiza eventos de fútbol infantil 
 
 ## Iteration 15 (2026-05-19) — Cotizar: paquetes oficiales (PDF VALORES PARA WEB)
 
+Reescritura completa del módulo `/cotizar` con precios oficiales 2026:
+- 6 paquetes (Sapphire, Diamond, Gold, Silver, Bronze, **Domicilio**) con tarifas POR PERSONA por 5 noches + valor por noche adicional, sin exponer nombres de hoteles.
+- 3 opciones de alimentación (Desayuno/Almuerzo/**Cena**) por paquete; N/A se deshabilita visualmente.
+- Inscripciones corregidas por año de nacimiento (Festival/Premier Par/Premier Impar).
+- Transporte $16.000/persona, Parque del Café $99.000/persona.
+- Limpieza de `room_type` y tier `esmerald` legacy en UI.
+
+## Iteration 16 (2026-05-19) — Audit Trail (Ley 1581) + Validación de pagos manuales
+
+### Audit Trail (compliance Ley 1581 — Habeas Data Colombia)
+- Helper `_record_audit(entity_type, entity_id, action, prev_status, new_status, user, note="")`:
+  - Persiste entrada en `db.audit_log` con `id, entity_type, entity_id, action, previous_status, new_status, note, user_id/email/name, created_at`.
+  - Devuelve `{reviewed_by_user_id, reviewed_by_email, reviewed_by_name, reviewed_at, reviewed_status[, reviewed_note]}` que se mergea al documento del recurso aprobado/rechazado.
+- **Aplicado a 5 endpoints de cambio de estado** (todos require_admin):
+  - `PUT /api/teams/{id}/status`
+  - `PUT /api/players/{id}/status`
+  - `PUT /api/clubs/{id}/status`
+  - `PUT /api/quotes/{id}/status`
+  - `PUT /api/admin/payments/{id}/status` (la nota admin se incluye en el log)
+- Modelos `TeamOut`, `PlayerOut`, `ClubOut` extendidos con campos opcionales de audit para que el frontend pueda mostrar quién/cuándo aprobó.
+- **Nuevo endpoint** `GET /api/admin/audit-log?entity_type=&entity_id=&limit=200` (admin only): consulta histórica filtrable.
+- Índices: `db.audit_log` unique `id` + compound `(entity_type, entity_id)` + descending `created_at`.
+- Frontend: modal de revisión de pagos `/admin/pagos` muestra banner "Última revisión: {status} por {nombre} · {fecha}" con `data-testid="payment-audit-info"`.
+
+### Validación de POST /api/payments
+- **`receipt_url` obligatorio y validado** con regex `^(/api/files/[A-Za-z0-9._\-/]+|https?://[^\s]+)$`:
+  - Vacío → 400 "Debes adjuntar el comprobante de pago".
+  - Schemes inseguros (ej. `javascript:`) → 400 "receipt_url inválido".
+  - Acepta `/api/files/...` (uploads internos) y URLs `http(s)://...`.
+- **Tope `amount ≤ saldo`** via nuevo helper `_pending_balance(target_type, target_id)`:
+  - Calcula `remaining = total - aprobados - en_revisión(sin_verificar+saldo_pendiente)`.
+  - Si `remaining <= 0`: 400 "El target ya cubre su valor con abonos aprobados o en revisión".
+  - Si `amount > remaining + 0.5`: 400 con mensaje detallado de aprobado/en revisión/saldo (formato COP).
+  - Evita que DT envíe múltiples abonos pendientes que en conjunto superen el total.
+
+### Tests E2E (curl)
+- Audit: 3 cambios consecutivos → 3 entradas en `audit_log` con previous_status/new_status correctos ✓
+- Audit incluido en respuesta de `GET /teams/{id}` (`reviewed_by_email`) ✓
+- Pagos audit con `note="Verificado"` persiste correctamente ✓
+- Receipt vacío/inválido/`javascript:` → 400; `/api/files/x.png` y `https://...` → 200 ✓
+- Amount > saldo bloqueado con mensaje "excede el saldo disponible (1.900.000 COP)" ✓
+- Saturación pendiente bloquea siguientes envíos ✓
+- DT no puede leer `/admin/audit-log` → 403 ✓
+
+
 **Cambio mayor solicitado por usuario**: en `/cotizar` no se exponen nombres de hoteles, solo paquetes. Precios alineados al PDF oficial 2026.
 
 ### Backend

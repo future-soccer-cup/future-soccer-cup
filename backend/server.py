@@ -11,6 +11,7 @@ import bcrypt
 import jwt
 import secrets
 import requests
+import re
 import csv
 import io
 from datetime import datetime, timezone, timedelta
@@ -272,6 +273,35 @@ async def require_admin(user: dict = Depends(get_current_user)) -> dict:
         raise HTTPException(status_code=403, detail="Solo administradores")
     return user
 
+
+async def _record_audit(entity_type: str, entity_id: str, action: str, prev_status: Optional[str], new_status: Optional[str], user: dict, note: str = "") -> dict:
+    """Persist an audit-trail entry (Ley 1581) and return the metadata to merge into the target doc."""
+    now = datetime.now(timezone.utc).isoformat()
+    actor = {
+        "reviewed_by_user_id": user.get("id", ""),
+        "reviewed_by_email": user.get("email", ""),
+        "reviewed_by_name": user.get("name", ""),
+        "reviewed_at": now,
+        "reviewed_status": new_status or "",
+    }
+    if note:
+        actor["reviewed_note"] = note
+    log_entry = {
+        "id": str(uuid.uuid4()),
+        "entity_type": entity_type,
+        "entity_id": entity_id,
+        "action": action,
+        "previous_status": prev_status or "",
+        "new_status": new_status or "",
+        "note": note or "",
+        "user_id": user.get("id", ""),
+        "user_email": user.get("email", ""),
+        "user_name": user.get("name", ""),
+        "created_at": now,
+    }
+    await db.audit_log.insert_one(log_entry)
+    return actor
+
 async def require_admin_or_team(user: dict = Depends(get_current_user)) -> dict:
     if user.get("role") not in ("admin", "team"):
         raise HTTPException(status_code=403, detail="Solo administradores o equipos")
@@ -414,6 +444,11 @@ class ClubOut(ClubIn):
     manager_user_id: Optional[str] = ""
     created_at: str
     image_name: Optional[str] = ""
+    reviewed_by_user_id: Optional[str] = None
+    reviewed_by_email: Optional[str] = None
+    reviewed_by_name: Optional[str] = None
+    reviewed_at: Optional[str] = None
+    reviewed_status: Optional[str] = None
 
 class TeamIn(BaseModel):
     name: str  # Visible name = "{ClubName} {Año} {Designation}"
@@ -437,6 +472,12 @@ class TeamIn(BaseModel):
 class TeamOut(TeamIn):
     id: str
     created_at: str
+    # Audit-trail (Ley 1581). Optional to keep response-shape stable for older docs.
+    reviewed_by_user_id: Optional[str] = None
+    reviewed_by_email: Optional[str] = None
+    reviewed_by_name: Optional[str] = None
+    reviewed_at: Optional[str] = None
+    reviewed_status: Optional[str] = None
 
 class PlayerIn(BaseModel):
     name: str
@@ -457,6 +498,11 @@ class PlayerIn(BaseModel):
 class PlayerOut(PlayerIn):
     id: str
     created_at: str
+    reviewed_by_user_id: Optional[str] = None
+    reviewed_by_email: Optional[str] = None
+    reviewed_by_name: Optional[str] = None
+    reviewed_at: Optional[str] = None
+    reviewed_status: Optional[str] = None
 
 class TournamentIn(BaseModel):
     name: str
@@ -885,21 +931,25 @@ async def delete_player(player_id: str, user: dict = Depends(require_admin_or_te
 
 # -------------------- Approval Workflows --------------------
 @api.put("/teams/{team_id}/status")
-async def set_team_status(team_id: str, status: str, _: dict = Depends(require_admin)):
+async def set_team_status(team_id: str, status: str, user: dict = Depends(require_admin)):
     if status not in {"pendiente", "aprobado", "rechazado"}:
         raise HTTPException(status_code=400, detail="Estado inválido")
-    res = await db.teams.update_one({"id": team_id}, {"$set": {"status": status}})
-    if res.matched_count == 0:
+    prev = await db.teams.find_one({"id": team_id}, {"_id": 0, "status": 1})
+    if not prev:
         raise HTTPException(status_code=404, detail="Equipo no encontrado")
+    actor = await _record_audit("team", team_id, "status_change", prev.get("status"), status, user)
+    await db.teams.update_one({"id": team_id}, {"$set": {"status": status, **actor}})
     return {"ok": True}
 
 @api.put("/players/{player_id}/status")
-async def set_player_status(player_id: str, status: str, _: dict = Depends(require_admin)):
+async def set_player_status(player_id: str, status: str, user: dict = Depends(require_admin)):
     if status not in {"pendiente", "aprobado", "rechazado"}:
         raise HTTPException(status_code=400, detail="Estado inválido")
-    res = await db.players.update_one({"id": player_id}, {"$set": {"status": status}})
-    if res.matched_count == 0:
+    prev = await db.players.find_one({"id": player_id}, {"_id": 0, "status": 1})
+    if not prev:
         raise HTTPException(status_code=404, detail="Jugador no encontrado")
+    actor = await _record_audit("player", player_id, "status_change", prev.get("status"), status, user)
+    await db.players.update_one({"id": player_id}, {"$set": {"status": status, **actor}})
     return {"ok": True}
 
 # -------------------- Tournaments --------------------
@@ -1598,12 +1648,14 @@ async def delete_club(cid: str, _: dict = Depends(require_admin)):
     return {"ok": True}
 
 @api.put("/clubs/{cid}/status")
-async def set_club_status(cid: str, status: str, _: dict = Depends(require_admin)):
+async def set_club_status(cid: str, status: str, user: dict = Depends(require_admin)):
     if status not in {"pendiente", "aprobado", "rechazado"}:
         raise HTTPException(status_code=400, detail="Estado inválido")
-    res = await db.clubs.update_one({"id": cid}, {"$set": {"status": status}})
-    if res.matched_count == 0:
+    prev = await db.clubs.find_one({"id": cid}, {"_id": 0, "status": 1})
+    if not prev:
         raise HTTPException(status_code=404, detail="Club no encontrado")
+    actor = await _record_audit("club", cid, "status_change", prev.get("status"), status, user)
+    await db.clubs.update_one({"id": cid}, {"$set": {"status": status, **actor}})
     return {"ok": True}
 
 # DT can register additional teams under their existing club
@@ -1782,12 +1834,14 @@ async def all_quotes(_: dict = Depends(require_admin)):
     return items
 
 @api.put("/quotes/{qid}/status")
-async def update_quote_status(qid: str, status: str, _: dict = Depends(require_admin)):
+async def update_quote_status(qid: str, status: str, user: dict = Depends(require_admin)):
     if status not in {"pendiente", "aprobada", "rechazada", "pagada"}:
         raise HTTPException(status_code=400, detail="Estado inválido")
-    res = await db.quotes.update_one({"id": qid}, {"$set": {"status": status}})
-    if res.matched_count == 0:
+    prev = await db.quotes.find_one({"id": qid}, {"_id": 0, "status": 1})
+    if not prev:
         raise HTTPException(status_code=404, detail="Cotización no encontrada")
+    actor = await _record_audit("quote", qid, "status_change", prev.get("status"), status, user)
+    await db.quotes.update_one({"id": qid}, {"$set": {"status": status, **actor}})
     return {"ok": True}
 
 @api.put("/quotes/{qid}/payment-proof")
@@ -1891,22 +1945,69 @@ async def _recompute_balance(target_type: str, target_id: str) -> dict:
     return {"total": total, "paid": paid, "balance": balance}
 
 
+# Receipt URL formats accepted:
+#  - /api/files/...  (uploaded via /api/upload — preferred)
+#  - http(s)://...   (external URL, e.g. cloud storage)
+RECEIPT_URL_RE = re.compile(r"^(/api/files/[A-Za-z0-9._\-/]+|https?://[^\s]+)$")
+
+
+def _validate_receipt_url(url: Optional[str]) -> str:
+    url = (url or "").strip()
+    if not url:
+        raise HTTPException(status_code=400, detail="Debes adjuntar el comprobante de pago (receipt_url).")
+    if not RECEIPT_URL_RE.match(url):
+        raise HTTPException(status_code=400, detail="receipt_url inválido. Sube el comprobante con /api/upload o usa una URL https válida.")
+    return url
+
+
+async def _pending_balance(target_type: str, target_id: str, exclude_pid: Optional[str] = None) -> dict:
+    """Returns {total, paid_approved, pending_sin_verificar, remaining_for_new_payment}.
+
+    remaining_for_new_payment = max(total - approved - sin_verificar, 0)
+    so a DT can't queue abonos that, combined, exceed the total target.
+    """
+    total = await _target_total(target_type, target_id) or 0
+    q_match = {"target_type": target_type, "target_id": target_id}
+    if exclude_pid:
+        q_match["id"] = {"$ne": exclude_pid}
+    pipeline = [
+        {"$match": q_match},
+        {"$group": {"_id": "$status", "sum": {"$sum": "$amount"}}}
+    ]
+    by_status = {row["_id"]: float(row["sum"]) for row in await db.payments.aggregate(pipeline).to_list(50)}
+    approved = by_status.get("aprobado", 0.0)
+    pending = by_status.get("sin_verificar", 0.0) + by_status.get("saldo_pendiente", 0.0)
+    remaining = max(total - approved - pending, 0.0)
+    return {"total": float(total), "approved": approved, "pending": pending, "remaining": remaining}
+
+
 @api.post("/payments")
 async def submit_payment(payload: PaymentIn, user: dict = Depends(get_current_user)):
     if not await _can_pay(user, payload.target_type, payload.target_id):
         raise HTTPException(status_code=403, detail="No autorizado")
+    receipt_url = _validate_receipt_url(payload.receipt_url)
     total = await _target_total(payload.target_type, payload.target_id)
     if total is None:
         raise HTTPException(status_code=404, detail="Recurso no encontrado")
+    amount = float(payload.amount)
+    # Cap: amount cannot exceed remaining (total - aprobados - en_revision)
+    bal = await _pending_balance(payload.target_type, payload.target_id)
+    if bal["remaining"] <= 0:
+        raise HTTPException(status_code=400, detail="El target ya cubre su valor con abonos aprobados o en revisión.")
+    if amount > bal["remaining"] + 0.5:  # tolerate cent rounding
+        raise HTTPException(
+            status_code=400,
+            detail=f"El monto excede el saldo disponible ({int(bal['remaining']):,} COP). Aprobados: {int(bal['approved']):,}, en revisión: {int(bal['pending']):,}.".replace(",", ".")
+        )
     now = datetime.now(timezone.utc).isoformat()
     doc = {
         "id": str(uuid.uuid4()),
         "target_type": payload.target_type,
         "target_id": payload.target_id,
-        "amount": float(payload.amount),
+        "amount": amount,
         "payment_date": payload.payment_date or now,
         "method": payload.method or "transferencia",
-        "receipt_url": payload.receipt_url or "",
+        "receipt_url": receipt_url,
         "reference": payload.reference or "",
         "notes": payload.notes or "",
         "user_id": user["id"],
@@ -1958,14 +2059,29 @@ async def admin_list_payments(status: Optional[str] = None, target_type: Optiona
 
 
 @api.put("/admin/payments/{pid}/status")
-async def admin_set_payment_status(pid: str, payload: PaymentStatusUpdate, _: dict = Depends(require_admin)):
+async def admin_set_payment_status(pid: str, payload: PaymentStatusUpdate, user: dict = Depends(require_admin)):
     p = await db.payments.find_one({"id": pid}, {"_id": 0})
     if not p:
         raise HTTPException(status_code=404, detail="Pago no encontrado")
-    update = {"status": payload.status, "admin_note": payload.admin_note or "", "reviewed_at": datetime.now(timezone.utc).isoformat()}
+    actor = await _record_audit("payment", pid, "status_change", p.get("status"), payload.status, user, note=payload.admin_note or "")
+    update = {"status": payload.status, "admin_note": payload.admin_note or "", **actor}
     await db.payments.update_one({"id": pid}, {"$set": update})
     bal = await _recompute_balance(p["target_type"], p["target_id"])
     return {"ok": True, "balance": bal}
+
+
+@api.get("/admin/audit-log")
+async def admin_audit_log(
+    entity_type: Optional[str] = None,
+    entity_id: Optional[str] = None,
+    limit: int = 200,
+    _: dict = Depends(require_admin),
+):
+    q = {}
+    if entity_type: q["entity_type"] = entity_type
+    if entity_id:   q["entity_id"] = entity_id
+    items = await db.audit_log.find(q, {"_id": 0}).sort("created_at", -1).to_list(min(max(limit, 1), 1000))
+    return items
 
 
 # -------------------- Stripe Payments --------------------
@@ -2756,6 +2872,9 @@ async def on_startup():
     await db.clubs.create_index("name")
     await db.players.create_index("id", unique=True)
     await db.matches.create_index("id", unique=True)
+    await db.audit_log.create_index("id", unique=True)
+    await db.audit_log.create_index([("entity_type", 1), ("entity_id", 1)])
+    await db.audit_log.create_index([("created_at", -1)])
     await db.brackets.create_index("id", unique=True)
     await db.matches.create_index("bracket_id")
     await db.quotes.create_index("id", unique=True)

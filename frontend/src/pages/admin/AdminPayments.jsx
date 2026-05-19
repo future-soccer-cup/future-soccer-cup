@@ -223,6 +223,13 @@ export default function AdminPayments() {
               <div><span className="text-xs uppercase tracking-wider text-slate-500">Fecha del pago</span><div className="font-semibold">{new Date(review.payment_date || review.created_at).toLocaleDateString("es-CO")}</div></div>
               <div><span className="text-xs uppercase tracking-wider text-slate-500">Referencia</span><div className="font-semibold">{review.reference || "—"}</div></div>
               <div className="sm:col-span-2"><span className="text-xs uppercase tracking-wider text-slate-500">Notas del DT</span><div className="text-sm">{review.notes || "—"}</div></div>
+              {review.reviewed_by_email && (
+                <div className="sm:col-span-2 bg-slate-50 border border-slate-200 rounded-md p-2 text-[11px] text-slate-600" data-testid="payment-audit-info">
+                  <span className="font-bold uppercase tracking-wide text-slate-500">Última revisión:</span>{" "}
+                  {review.reviewed_status || "—"} por <span className="font-semibold">{review.reviewed_by_name || review.reviewed_by_email}</span>
+                  {review.reviewed_at && <> · {new Date(review.reviewed_at).toLocaleString("es-CO")}</>}
+                </div>
+              )}
             </div>
 
             {review.receipt_url && (
