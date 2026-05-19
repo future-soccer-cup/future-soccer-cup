@@ -74,19 +74,47 @@ export default function PlayerDetail() {
   );
 }
 
-export function Carnet({ player, team, qrValue }) {
+// Category-based background palette for printed carnets.
+// Defaults to "blue/red" branding when category doesn't match a known one.
+const CATEGORY_PALETTE = {
+  "Sub-9":  { from: "#0ea5e9", to: "#0369a1", accent: "#fde047" },   // sky → blue
+  "Sub-10": { from: "#10b981", to: "#065f46", accent: "#fde047" },   // emerald
+  "Sub-11": { from: "#f59e0b", to: "#b45309", accent: "#fff" },      // amber
+  "Sub-12": { from: "#ef4444", to: "#7f1d1d", accent: "#fde047" },   // red (default-ish)
+  "Sub-13": { from: "#8b5cf6", to: "#4c1d95", accent: "#fde047" },   // violet
+  "Sub-14": { from: "#ec4899", to: "#831843", accent: "#fde047" },   // pink
+  "Sub-15": { from: "#06b6d4", to: "#155e75", accent: "#fde047" },   // cyan
+  "Sub-16": { from: "#f97316", to: "#7c2d12", accent: "#fff" },      // orange
+  "Sub-17": { from: "#14b8a6", to: "#134e4a", accent: "#fde047" },   // teal
+  "Sub-18": { from: "#1d4ed8", to: "#0c1b54", accent: "#fde047" },   // FSC blue (default)
+};
+const DEFAULT_PALETTE = { from: "#1d4ed8", to: "#0c1b54", accent: "#dc2626" };
+
+function paletteFor(category) {
+  return CATEGORY_PALETTE[category] || DEFAULT_PALETTE;
+}
+
+/**
+ * Generic carnet (player OR staff). When `staffRole` is provided, the layout swaps
+ * "Dorsal" → "Rol" and "Jugador" → "Cuerpo técnico".
+ */
+export function Carnet({ player, team, qrValue, staffRole }) {
+  const isStaff = !!staffRole;
+  const p = paletteFor(team?.category);
   return (
-    <div className="carnet-print bg-slate-900 text-white rounded-2xl border border-blue-500/30 shadow-2xl overflow-hidden relative" style={{ width: 380, maxWidth: "100%" }} data-testid="player-carnet">
+    <div className="carnet-print rounded-2xl border border-white/10 shadow-2xl overflow-hidden relative text-white"
+         style={{ width: 380, maxWidth: "100%", background: `linear-gradient(135deg, ${p.from} 0%, ${p.to} 100%)` }}
+         data-testid={isStaff ? "staff-carnet" : "player-carnet"}>
       {/* texture */}
-      <div className="absolute inset-0 opacity-30" style={{
-        backgroundImage: "repeating-linear-gradient(45deg, rgba(220,38,38,0.15) 0 2px, transparent 2px 12px), repeating-linear-gradient(-45deg, rgba(29,78,216,0.2) 0 2px, transparent 2px 14px)"
+      <div className="absolute inset-0 opacity-25" style={{
+        backgroundImage: `repeating-linear-gradient(45deg, rgba(255,255,255,0.18) 0 2px, transparent 2px 14px), repeating-linear-gradient(-45deg, rgba(0,0,0,0.18) 0 2px, transparent 2px 16px)`
       }} />
-      <div className="relative px-5 pt-5 pb-4 flex items-center justify-between border-b border-white/10">
-        <img src={FSC_LOGO} alt="FSC" className="h-12 w-12 bg-white/5 rounded p-0.5" />
+      <div className="relative px-5 pt-5 pb-4 flex items-center justify-between border-b border-white/15">
+        <img src={FSC_LOGO} alt="FSC" className="h-12 w-12 bg-white/15 rounded p-0.5" />
         <div className="text-right flex items-center gap-3">
           <div>
-            <div className="font-display text-xs tracking-[0.25em] font-bold text-red-400">FUTURE SOCCER CUP</div>
-            <div className="font-display text-[10px] tracking-[0.3em] text-slate-400">CARNET OFICIAL · 2025</div>
+            <div className="font-display text-xs tracking-[0.25em] font-bold" style={{ color: p.accent }}>FUTURE SOCCER CUP</div>
+            <div className="font-display text-[10px] tracking-[0.3em] text-white/70">CARNET OFICIAL · {team?.category || "FSC"}</div>
           </div>
           {team?.logo_url && (
             <img src={team.logo_url} alt={team.name} crossOrigin="anonymous" className="h-12 w-12 bg-white rounded object-contain p-0.5" />
@@ -97,39 +125,41 @@ export function Carnet({ player, team, qrValue }) {
       <div className="relative px-5 py-5 grid grid-cols-3 gap-4">
         <div className="col-span-1">
           {player.photo_url ? (
-            <img src={player.photo_url} alt={player.name} crossOrigin="anonymous" className="w-full aspect-[3/4] object-cover rounded-md border-2 border-red-500" />
+            <img src={player.photo_url} alt={player.name} crossOrigin="anonymous" className="w-full aspect-[3/4] object-cover rounded-md border-2" style={{ borderColor: p.accent }} />
           ) : (
-            <div className="w-full aspect-[3/4] bg-slate-800 rounded-md border-2 border-red-500 flex items-center justify-center font-display text-5xl font-black">{player.name[0]}</div>
+            <div className="w-full aspect-[3/4] bg-black/30 rounded-md border-2 flex items-center justify-center font-display text-5xl font-black" style={{ borderColor: p.accent }}>{player.name?.[0] || "?"}</div>
           )}
         </div>
         <div className="col-span-2 flex flex-col justify-between">
           <div>
-            <div className="text-[10px] uppercase tracking-[0.25em] text-slate-400">Jugador</div>
+            <div className="text-[10px] uppercase tracking-[0.25em] text-white/70">{isStaff ? "Cuerpo técnico" : "Jugador"}</div>
             <div className="font-display text-2xl font-black uppercase leading-tight tracking-tight">{player.name}</div>
-            <div className="mt-1 text-xs text-slate-300">{player.position}</div>
+            <div className="mt-1 text-xs text-white/85">{isStaff ? staffRole : player.position}</div>
           </div>
           <div className="grid grid-cols-2 gap-2 text-[10px]">
             <div>
-              <div className="uppercase tracking-widest text-slate-500">Dorsal</div>
-              <div className="font-display text-3xl font-black text-red-500 leading-none">#{player.jersey_number}</div>
+              <div className="uppercase tracking-widest text-white/60">{isStaff ? "Rol" : "Dorsal"}</div>
+              <div className="font-display text-3xl font-black leading-none" style={{ color: p.accent }}>
+                {isStaff ? <span className="text-xl">{staffRole?.split(" ").map((w) => w[0]).join("").slice(0, 3).toUpperCase()}</span> : `#${player.jersey_number}`}
+              </div>
             </div>
             <div>
-              <div className="uppercase tracking-widest text-slate-500">Categoría</div>
+              <div className="uppercase tracking-widest text-white/60">Categoría</div>
               <div className="font-bold text-sm">{team?.category || "—"}</div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="relative px-5 pb-5 pt-3 border-t border-white/10 flex items-center justify-between gap-4">
+      <div className="relative px-5 pb-5 pt-3 border-t border-white/15 flex items-center justify-between gap-4">
         <div className="min-w-0">
-          <div className="text-[10px] uppercase tracking-widest text-slate-500">Equipo</div>
+          <div className="text-[10px] uppercase tracking-widest text-white/60">Equipo</div>
           <div className="font-display text-lg font-black uppercase truncate">{team?.name || "—"}</div>
-          <div className="text-[10px] text-slate-400 mt-1">DOC: {player.document_id || "—"}</div>
-          <div className="text-[10px] text-slate-400">NAC: {player.birth_date}</div>
+          <div className="text-[10px] text-white/70 mt-1">DOC: {player.document_id || player.document || "—"}</div>
+          {!isStaff && <div className="text-[10px] text-white/70">NAC: {player.birth_date || "—"}</div>}
         </div>
         <div className="bg-white p-1.5 rounded">
-          <QRCodeSVG value={qrValue || player.id} size={64} />
+          <QRCodeSVG value={qrValue || player.id || player.document || player.name} size={64} />
         </div>
       </div>
     </div>

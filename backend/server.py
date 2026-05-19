@@ -86,17 +86,23 @@ TEAM_DESIGNATIONS = ["Único", "Equipo A", "Equipo B"]
 # Precio por persona: paquete normal de 5 noches + costo por noche adicional.
 # Los nombres de hoteles internos no se exponen al cliente: solo el paquete.
 LODGING_TIERS = {
-    "sapphire": {"id": "sapphire", "name": "Sapphire", "description": "Paquete premium con la mejor experiencia.",
+    "sapphire": {"id": "sapphire", "name": "Sapphire", "description": "Hotel dentro del complejo deportivo. Incluye alojamiento, alimentación, restaurante y parqueadero privado.",
+                 "includes": ["Acomodación múltiple", "5 Desayunos", "4 Almuerzos", "5 Cenas", "Restaurante dentro del complejo", "Parqueadero privado", "Piscinas semiolímpicas", "Piscina para niños", "Acuaparque (toboganes y piscina para bebés)", "5 canchas de fútbol 11", "3 canchas de fútbol 8", "2 canchas de fútbol 5", "Tenis de campo (7 canchas)", "Voleibol y baloncesto", "Minitejo cubierto y tejo abierto", "Salón de juegos", "Tirolina y muro escalador", "Bicicleta acuática y lago", "Sendero ecológico", "Bolera"],
                  "base_5_nights": 1320000, "additional_night": 264000, "available": True},
-    "diamond":  {"id": "diamond",  "name": "Diamond",  "description": "Paquete superior con excelente confort.",
+    "diamond":  {"id": "diamond",  "name": "Diamond",  "description": "A 12 minutos de la sede deportiva. Incluye alojamiento, alimentación, piscina, restaurante y jacuzzi.",
+                 "includes": ["Acomodación múltiple", "5 Desayunos", "4 Almuerzos", "5 Cenas", "Piscina", "Restaurante", "Jacuzzi", "Salón de juegos (billar, pin pon, juegos de mesa)", "Zona Wi-Fi", "Parqueadero privado"],
                  "base_5_nights": 1280000, "additional_night": 256000, "available": True},
-    "gold":     {"id": "gold",     "name": "Gold",     "description": "Paquete intermedio premium.",
+    "gold":     {"id": "gold",     "name": "Gold",     "description": "A 5 minutos de la sede deportiva. Villa para 13/14 personas con piscina privada, cocina, comedor y sala.",
+                 "includes": ["Acomodación múltiple", "Villa para 13/14 personas", "Piscina privada", "Cocina, comedor y sala", "5 habitaciones con baño privado", "Zona de lavandería", "5 Desayunos", "4 Almuerzos", "5 Cenas", "Restaurante dentro del hotel", "Wi-Fi fibra óptica 24 horas", "Capilla y salón de eventos"],
                  "base_5_nights": 1130000, "additional_night": 226000, "available": True},
-    "silver":   {"id": "silver",   "name": "Silver",   "description": "Paquete funcional con buena ubicación.",
+    "silver":   {"id": "silver",   "name": "Silver",   "description": "A 5 minutos de la sede deportiva. Incluye alojamiento, alimentación, piscina, jacuzzi y fonda típica.",
+                 "includes": ["Acomodación múltiple", "5 Desayunos", "4 Almuerzos", "5 Cenas", "Alimentación dentro del hotel", "Piscina", "Jacuzzi", "Turco", "Fonda típica", "Sala de juegos", "Parqueadero privado"],
                  "base_5_nights":  960000, "additional_night": 192000, "available": True},
-    "bronze":   {"id": "bronze",   "name": "Bronze",   "description": "Paquete económico.",
+    "bronze":   {"id": "bronze",   "name": "Bronze",   "description": "A 25 minutos de la sede deportiva. Incluye alojamiento, alimentación, piscina, salón de juegos y restaurante.",
+                 "includes": ["Acomodación múltiple", "5 Desayunos", "4 Almuerzos", "5 Cenas", "Parqueadero privado", "Piscina", "Salón de juegos", "Restaurante"],
                  "base_5_nights":  800000, "additional_night": 160000, "available": True},
-    "domicilio":{"id": "domicilio","name": "Domicilio","description": "Sin hospedaje (alojamiento por cuenta del equipo).",
+    "domicilio":{"id": "domicilio","name": "Domicilio","description": "Sin hospedaje. El equipo se aloja en viviendas particulares y solo paga las comidas adicionales que requiera por fecha.",
+                 "includes": ["Sin hospedaje incluido", "Alimentación opcional por fecha y número de personas", "Acceso al evento deportivo"],
                  "base_5_nights": 0,       "additional_night": 0,       "available": True, "no_lodging": True},
 }
 
@@ -550,6 +556,17 @@ class FixtureGenerateIn(BaseModel):
     time_slots: List[str] = []  # ["08:00", "09:30"]
     preview: bool = False  # If true, do not save
 
+class QuoteMealEntry(BaseModel):
+    date: str            # YYYY-MM-DD
+    meal_type: Literal["breakfast", "lunch", "dinner"]
+    pax: int = Field(ge=1)
+
+
+class QuoteTourEntry(BaseModel):
+    tour_id: str
+    pax: int = Field(ge=1)
+
+
 class QuoteIn(BaseModel):
     event_type: Literal["festival", "premier_par", "premier_impar"]
     birth_year: Optional[int] = None
@@ -560,15 +577,20 @@ class QuoteIn(BaseModel):
     pax: int = Field(ge=1)
     nights: int = Field(default=5, ge=1)  # default 5 según PDF
     days: int = Field(default=6, ge=1)
-    # Alimentación
+    # Alimentación incluida en el paquete: 5 desayunos + 4 almuerzos + 5 cenas.
+    # Estos toggles agregan comidas **adicionales** (llegadas tempranas, días extra)
+    # multiplicadas por `meal_days` cuando no se usa meal_entries.
     includes_breakfast: bool = False
     includes_lunch: bool = False
     includes_dinner: bool = False
     meal_days: Optional[int] = None  # defaults to days
+    # Para Domicilio: alimentación específica por fecha + pax (más granular que pax × days).
+    meal_entries: Optional[List[QuoteMealEntry]] = []
     # Transporte
     transport_routes: Optional[List[str]] = []  # ids de TRANSPORT_ROUTES
-    # Tours
-    tour_ids: Optional[List[str]] = []
+    # Tours: ahora cada uno con pax independiente (puede que solo parte del equipo vaya).
+    tour_entries: Optional[List[QuoteTourEntry]] = []
+    tour_ids: Optional[List[str]] = []  # legacy (asume pax del paquete)
     # Inscripción equipo (opcional al cotizar)
     include_registration: bool = True
     # Compat con flujo anterior (deprecated)
@@ -1599,6 +1621,7 @@ async def _load_catalog() -> dict:
         if t == "lodging":
             lodging[r["id"]] = {
                 "id": r["id"], "name": r["name"], "description": r.get("description", ""),
+                "includes": r.get("includes", []),
                 "base_5_nights": float(r.get("base_5_nights", 0) or 0),
                 "additional_night": float(r.get("additional_night", 0) or 0),
                 "available": bool(r.get("available", True)),
@@ -1636,6 +1659,7 @@ async def list_event_types():
         "tours_catalog": list(cat["tours"].values()),
         "addons": ADDON_PRICES,  # legacy
         "designations": TEAM_DESIGNATIONS,
+        "staff_roles": STAFF_ROLES,
         "event_nights": EVENT_NIGHTS,
         "event_days": EVENT_DAYS,
     }
@@ -1672,6 +1696,11 @@ def _validate_catalog_row(t: str, body: dict) -> dict:
         out["additional_night"] = max(0.0, float(body.get("additional_night", 0) or 0))
         out["available"] = bool(body.get("available", True))
         out["no_lodging"] = bool(body.get("no_lodging", False))
+        if "includes" in body:
+            inc = body.get("includes") or []
+            if isinstance(inc, str):
+                inc = [s.strip() for s in inc.split("\n") if s.strip()]
+            out["includes"] = [str(x) for x in inc if str(x).strip()]
     elif t == "meal":
         per_day = body.get("per_day_by_tier") or {}
         out["per_day_by_tier"] = {k: max(0.0, float(v or 0)) for k, v in per_day.items()}
@@ -1865,9 +1894,23 @@ def _calculate_quote(payload: QuoteIn, catalog: dict) -> dict:
     breakfast_per_day = float((meal_plans.get("breakfast") or {}).get("per_day_by_tier", {}).get(payload.lodging_tier, 0) or 0)
     lunch_per_day = float((meal_plans.get("lunch") or {}).get("per_day_by_tier", {}).get(payload.lodging_tier, 0) or 0)
     dinner_per_day = float((meal_plans.get("dinner") or {}).get("per_day_by_tier", {}).get(payload.lodging_tier, 0) or 0)
-    breakfast_total = breakfast_per_day * payload.pax * meal_days if payload.includes_breakfast and breakfast_per_day > 0 else 0
-    lunch_total     = lunch_per_day     * payload.pax * meal_days if payload.includes_lunch     and lunch_per_day     > 0 else 0
-    dinner_total    = dinner_per_day    * payload.pax * meal_days if payload.includes_dinner    and dinner_per_day    > 0 else 0
+    rate_by_meal = {"breakfast": breakfast_per_day, "lunch": lunch_per_day, "dinner": dinner_per_day}
+
+    # Si hay meal_entries explícitos (Domicilio o personalizados), priorizan sobre los toggles + meal_days.
+    breakfast_total = lunch_total = dinner_total = 0.0
+    if payload.meal_entries:
+        for me in payload.meal_entries:
+            rate = float(rate_by_meal.get(me.meal_type, 0) or 0)
+            if rate <= 0:
+                continue
+            sub = rate * int(me.pax)
+            if me.meal_type == "breakfast": breakfast_total += sub
+            elif me.meal_type == "lunch": lunch_total += sub
+            elif me.meal_type == "dinner": dinner_total += sub
+    else:
+        breakfast_total = breakfast_per_day * payload.pax * meal_days if payload.includes_breakfast and breakfast_per_day > 0 else 0
+        lunch_total     = lunch_per_day     * payload.pax * meal_days if payload.includes_lunch     and lunch_per_day     > 0 else 0
+        dinner_total    = dinner_per_day    * payload.pax * meal_days if payload.includes_dinner    and dinner_per_day    > 0 else 0
     meals_total = breakfast_total + lunch_total + dinner_total
 
     # Transporte (rutas múltiples × pax). Compat con bandera legacy.
@@ -1881,11 +1924,21 @@ def _calculate_quote(payload: QuoteIn, catalog: dict) -> dict:
             (catalog["transport"].get(r, {}) or {}).get("price", 0) * payload.pax for r in transport_routes
         )
 
-    # Tours
-    tour_ids = list(payload.tour_ids or [])
-    if (payload.includes_parque or payload.includes_tour) and "parque_del_cafe" not in tour_ids:
-        tour_ids.append("parque_del_cafe")
-    tours_total = sum((catalog["tours"].get(tid, {}) or {}).get("price", 0) * payload.pax for tid in tour_ids)
+    # Tours: nuevo modelo (tour_entries con pax independiente). Compat con tour_ids legacy.
+    tour_subtotals = []
+    if payload.tour_entries:
+        for te in payload.tour_entries:
+            price = (catalog["tours"].get(te.tour_id, {}) or {}).get("price", 0)
+            tour_subtotals.append({"tour_id": te.tour_id, "pax": te.pax, "subtotal": price * int(te.pax)})
+    else:
+        tour_ids = list(payload.tour_ids or [])
+        if (payload.includes_parque or payload.includes_tour) and "parque_del_cafe" not in tour_ids:
+            tour_ids.append("parque_del_cafe")
+        for tid in tour_ids:
+            price = (catalog["tours"].get(tid, {}) or {}).get("price", 0)
+            tour_subtotals.append({"tour_id": tid, "pax": payload.pax, "subtotal": price * payload.pax})
+    tours_total = sum(t["subtotal"] for t in tour_subtotals)
+    tour_ids_applied = [t["tour_id"] for t in tour_subtotals]
 
     # Inscripción: prefer fees_by_year cuando birth_year disponible
     registration = 0
@@ -1911,9 +1964,10 @@ def _calculate_quote(payload: QuoteIn, catalog: dict) -> dict:
         "transport_subtotal": transport_total,
         "transport_routes_applied": transport_routes,
         "tours_subtotal": tours_total,
-        "tour_ids_applied": tour_ids,
+        "tour_subtotals": tour_subtotals,
+        "tour_ids_applied": tour_ids_applied,
         # legacy keys for backwards-compat
-        "parque_subtotal": (catalog["tours"].get("parque_del_cafe", {}) or {}).get("price", 0) * payload.pax if "parque_del_cafe" in tour_ids else 0,
+        "parque_subtotal": next((t["subtotal"] for t in tour_subtotals if t["tour_id"] == "parque_del_cafe"), 0),
         "tour_subtotal": 0,
         "registration_fee": registration,
         "total_amount": total,
@@ -2546,6 +2600,22 @@ PLAYER_HEADERS_ES = [
 ]
 PLAYER_SAMPLE_ES = ["Leones FC", "Carlos Pérez", 10, "Delantero", "2014-03-15", "1750000000", "Pipo", "M", "Sanitas", "María Pérez", "0701234567", "Madre", "+57 310 765 4321"]
 
+STAFF_ROLES = [
+    "Director técnico",
+    "Asistente técnico",
+    "Preparador físico",
+    "Entrenador de arqueros",
+    "Fisioterapeuta",
+    "Médico",
+    "Psicólogo",
+    "Nutricionista",
+    "Delegado",
+    "Presidente",
+    "Coordinador deportivo",
+    "Utilero",
+    "Otro",
+]
+
 STAFF_HEADERS_ES = [
     ("name",     "Nombre completo"),
     ("role",     "Rol / Cargo"),
@@ -2851,7 +2921,7 @@ async def download_team_roster_template(user: dict = Depends(get_current_user)):
     wsi.cell(row=1, column=1, value="📝 Plantilla del equipo — Future Soccer Cup").font = Font(bold=True, size=14, color="DC2626")
     notes = [
         "• Hoja 'Jugadores': lista de jugadores del equipo. La fila 2 es un ejemplo, bórrala antes de cargar.",
-        "• Hoja 'Cuerpo Tecnico': director técnico, asistentes, médico, fisioterapeuta, delegado, etc.",
+        "• Hoja 'Cuerpo Tecnico': director técnico, asistentes, preparador físico, fisioterapeuta, médico, psicólogo, nutricionista, delegado, presidente, coordinador deportivo, utilero, etc.",
         "• Conserva el nombre y orden de las columnas. Puedes traducirlas, pero no las borres.",
         "• Formato de fecha: AAAA-MM-DD (ejemplo: 2014-03-15).",
         "• La categoría se hereda del equipo registrado en la plataforma.",
@@ -3001,6 +3071,7 @@ async def seed_demo_inventory():
     for i, (key, t) in enumerate(LODGING_TIERS.items()):
         rows.append({
             "id": key, "type": "lodging", "name": t["name"], "description": t.get("description", ""),
+            "includes": t.get("includes", []),
             "base_5_nights": float(t.get("base_5_nights", 0) or 0),
             "additional_night": float(t.get("additional_night", 0) or 0),
             "available": bool(t.get("available", True)),
