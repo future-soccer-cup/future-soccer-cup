@@ -5,13 +5,6 @@ import { useAuth } from "../context/AuthContext";
 import { toast, Toaster } from "sonner";
 import { Trophy, Hotel, Utensils, Bus, Map, BadgeCheck, ArrowRight } from "lucide-react";
 
-const ROOM_TYPES = [
-  { id: "single",   label: "Sencilla (1 pax)" },
-  { id: "double",   label: "Doble (2 pax)" },
-  { id: "triple",   label: "Triple (3 pax)" },
-  { id: "multiple", label: "Múltiple (hasta 20 pax)" },
-];
-
 const fmt = (n) => `$${Number(n || 0).toLocaleString("es-CO")}`;
 
 export default function Cotizar() {
@@ -23,12 +16,13 @@ export default function Cotizar() {
     event_type: "",
     birth_year: "",
     lodging_tier: "gold",
-    room_type: "triple",
     pax: 20,
     nights: 5,
     days: 6,
     includes_breakfast: false,
     includes_lunch: false,
+    includes_dinner: false,
+    meal_days: null,
     transport_routes: [],
     tour_ids: [],
     include_registration: true,
@@ -50,7 +44,7 @@ export default function Cotizar() {
 
   // Live recalculation
   useEffect(() => {
-    if (!form.event_type || !form.lodging_tier || !form.room_type || !form.pax) return;
+    if (!form.event_type || !form.lodging_tier || !form.pax) return;
     const handler = setTimeout(() => {
       api.post("/quotes/calculate", { ...form, birth_year: form.birth_year ? Number(form.birth_year) : null })
         .then((r) => setEstimate(r.data))
@@ -63,23 +57,22 @@ export default function Cotizar() {
 
   const ev = config.events.find((e) => e.id === form.event_type);
   const tier = config.lodging_tiers.find((t) => t.id === form.lodging_tier);
-  const roomAvail = tier?.rates?.[form.room_type] > 0;
+  const isDomicilio = form.lodging_tier === "domicilio";
 
   const toggleRoute = (id) => {
     const set = new Set(form.transport_routes);
-    set.has(id) ? set.delete(id) : set.add(id);
+    if (set.has(id)) set.delete(id); else set.add(id);
     setForm({ ...form, transport_routes: Array.from(set) });
   };
   const toggleTour = (id) => {
     const set = new Set(form.tour_ids);
-    set.has(id) ? set.delete(id) : set.add(id);
+    if (set.has(id)) set.delete(id); else set.add(id);
     setForm({ ...form, tour_ids: Array.from(set) });
   };
 
   const submit = async () => {
     if (!user) { toast.error("Inicia sesión como director técnico"); nav("/login"); return; }
     if (user.role !== "team" && user.role !== "admin") { toast.error("Solo los DT pueden cotizar"); return; }
-    if (!roomAvail) { toast.error(`El tier ${tier?.name} no ofrece esa habitación`); return; }
     setSubmitting(true);
     try {
       await api.post("/quotes", { ...form, birth_year: form.birth_year ? Number(form.birth_year) : null });
@@ -98,7 +91,7 @@ export default function Cotizar() {
       <div className="mb-8">
         <span className="text-xs tracking-[0.25em] uppercase font-bold text-red-600">Armar paquete</span>
         <h1 className="font-display text-5xl md:text-6xl font-black uppercase tracking-tighter">Cotiza tu evento</h1>
-        <p className="text-sm text-slate-500 mt-2 max-w-xl">5 noches / 6 días. Calcula en vivo el costo total por jugadores y acompañantes según el plan que elijas.</p>
+        <p className="text-sm text-slate-500 mt-2 max-w-xl">Paquete base de 5 noches / 6 días. Personaliza alimentación, transporte y tours. Total en vivo.</p>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
@@ -131,63 +124,72 @@ export default function Cotizar() {
             )}
           </Section>
 
-          {/* 2. Hospedaje */}
-          <Section icon={Hotel} title="2) Alojamiento" testId="block-lodging" subtitle="6 niveles disponibles · precios POR PERSONA por 5 noches">
-            <div className="grid sm:grid-cols-3 lg:grid-cols-6 gap-2">
-              {config.lodging_tiers.map((t) => (
-                <button key={t.id} type="button" onClick={() => setForm({ ...form, lodging_tier: t.id })} className={`p-3 rounded-xl border-2 text-left ${form.lodging_tier === t.id ? "border-blue-700 bg-blue-50" : "border-slate-200 hover:border-slate-400"}`} data-testid={`tier-${t.id}`}>
-                  <div className="font-display text-sm font-black uppercase tracking-tight">{t.name}</div>
-                  <div className="text-[10px] text-slate-500 mt-1">desde {fmt(Math.min(...Object.values(t.rates).filter(Boolean)))}</div>
-                </button>
-              ))}
+          {/* 2. Paquete de hospedaje */}
+          <Section icon={Hotel} title="2) Paquete de hospedaje" testId="block-lodging" subtitle="Precio POR PERSONA · base 5 noches + valor por noche adicional">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {config.lodging_tiers.map((t) => {
+                const selected = form.lodging_tier === t.id;
+                const isDom = t.id === "domicilio";
+                return (
+                  <button key={t.id} type="button" onClick={() => setForm({ ...form, lodging_tier: t.id })} className={`text-left p-4 rounded-xl border-2 transition-colors ${selected ? "border-blue-700 bg-blue-50" : "border-slate-200 hover:border-slate-400"}`} data-testid={`tier-${t.id}`}>
+                    <div className="font-display text-2xl font-black uppercase tracking-tight">{t.name}</div>
+                    <div className="text-[11px] text-slate-500 mt-0.5">{t.description}</div>
+                    {!isDom ? (
+                      <>
+                        <div className="mt-3 text-xs">
+                          <span className="text-slate-500">5 noches:</span>{" "}
+                          <span className="font-bold tabular-nums">{fmt(t.base_5_nights)}</span>
+                        </div>
+                        <div className="text-[10px] text-slate-500">Noche adicional: <span className="font-bold tabular-nums">{fmt(t.additional_night)}</span></div>
+                      </>
+                    ) : (
+                      <div className="mt-3 text-[11px] italic text-slate-500">Sin hospedaje (alojamiento propio). Solo alimentación si la añades.</div>
+                    )}
+                  </button>
+                );
+              })}
             </div>
             <div className="grid sm:grid-cols-3 gap-3 mt-4">
-              <label className="block">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Habitación</span>
-                <select value={form.room_type} onChange={(e) => setForm({ ...form, room_type: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="cotizar-room">
-                  {ROOM_TYPES.map((r) => {
-                    const avail = tier?.rates?.[r.id] > 0;
-                    return <option key={r.id} value={r.id} disabled={!avail}>{r.label}{!avail ? " — no disponible" : ` — ${fmt(tier?.rates?.[r.id] || 0)}`}</option>;
-                  })}
-                </select>
-              </label>
               <label className="block">
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Personas (pax)</span>
                 <input type="number" min="1" value={form.pax} onChange={(e) => setForm({ ...form, pax: Number(e.target.value) || 1 })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="cotizar-pax" />
               </label>
               <label className="block">
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Noches</span>
-                <input type="number" min="1" value={form.nights} onChange={(e) => setForm({ ...form, nights: Number(e.target.value) || 1 })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="cotizar-nights" />
+                <input type="number" min="1" disabled={isDomicilio} value={form.nights} onChange={(e) => setForm({ ...form, nights: Number(e.target.value) || 1 })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md disabled:bg-slate-100" data-testid="cotizar-nights" />
+                <span className="text-[10px] text-slate-400">Base 5n; las extras se cobran al valor por noche del paquete.</span>
+              </label>
+              <label className="block">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Días con alimentación</span>
+                <input type="number" min="1" value={form.meal_days ?? form.days} onChange={(e) => setForm({ ...form, meal_days: Number(e.target.value) || 1 })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="cotizar-meal-days" />
               </label>
             </div>
-            {!roomAvail && <p className="mt-2 text-xs text-red-600 font-bold">⚠ La habitación seleccionada no está disponible en este tier.</p>}
           </Section>
 
           {/* 3. Alimentación */}
-          <Section icon={Utensils} title="3) Alimentación" testId="block-meals" subtitle="Planes por persona × día — varían según el tier de hospedaje">
-            <div className="grid sm:grid-cols-2 gap-3">
+          <Section icon={Utensils} title="3) Alimentación" testId="block-meals" subtitle={`Precios POR PERSONA × día — varían según el paquete ${tier?.name || ""}`}>
+            <div className="grid sm:grid-cols-3 gap-3">
               {config.meal_plans.map((m) => {
                 const price = m.per_day_by_tier[form.lodging_tier] || 0;
                 const key = `includes_${m.id}`;
+                const available = price > 0;
                 return (
-                  <label key={m.id} className={`cursor-pointer border-2 rounded-xl p-4 ${form[key] ? "border-emerald-600 bg-emerald-50" : "border-slate-200 hover:border-slate-400"}`} data-testid={`meal-${m.id}`}>
+                  <label key={m.id} className={`border-2 rounded-xl p-4 ${!available ? "opacity-50 cursor-not-allowed bg-slate-50" : "cursor-pointer"} ${form[key] && available ? "border-emerald-600 bg-emerald-50" : "border-slate-200 hover:border-slate-400"}`} data-testid={`meal-${m.id}`}>
                     <div className="flex items-center gap-2">
-                      <input type="checkbox" checked={form[key]} onChange={(e) => setForm({ ...form, [key]: e.target.checked })} className="h-4 w-4 accent-emerald-600" />
+                      <input type="checkbox" checked={form[key] && available} disabled={!available} onChange={(e) => setForm({ ...form, [key]: e.target.checked })} className="h-4 w-4 accent-emerald-600" />
                       <span className="font-display text-lg font-black uppercase tracking-tight">{m.name}</span>
                     </div>
-                    <div className="mt-1 text-xs text-slate-500">{fmt(price)} / persona / día</div>
+                    <div className="mt-1 text-xs text-slate-500">
+                      {available ? `${fmt(price)} / persona / día` : <span className="italic">No disponible en este paquete</span>}
+                    </div>
                   </label>
                 );
               })}
             </div>
-            <label className="block mt-3 max-w-xs">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Días con alimentación</span>
-              <input type="number" min="1" value={form.meal_days ?? form.days} onChange={(e) => setForm({ ...form, meal_days: Number(e.target.value) || 1 })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="cotizar-meal-days" />
-            </label>
           </Section>
 
           {/* 4. Transporte */}
-          <Section icon={Bus} title="4) Transporte" testId="block-transport" subtitle="Rutas por persona — múltiple selección">
+          <Section icon={Bus} title="4) Transporte" testId="block-transport" subtitle="Rutas por persona — selección múltiple">
             <div className="grid sm:grid-cols-2 gap-3">
               {config.transport_routes.map((r) => (
                 <label key={r.id} className={`cursor-pointer border-2 rounded-xl p-4 ${form.transport_routes.includes(r.id) ? "border-blue-700 bg-blue-50" : "border-slate-200 hover:border-slate-400"}`} data-testid={`transport-${r.id}`}>
@@ -240,18 +242,20 @@ export default function Cotizar() {
             {estimate && (
               <div className="mt-4 space-y-2 text-sm" data-testid="cotizar-summary">
                 <Row k="Evento" v={estimate.event_name} />
-                <Row k="Hospedaje" v={`${estimate.lodging_name} · ${form.room_type}`} />
-                <Row k={`Tarifa/pax (5n)`} v={fmt(estimate.rate_per_person_5nights)} />
-                <Row k={`Hospedaje (${estimate.pax}×${estimate.nights}n)`} v={fmt(estimate.lodging_subtotal)} />
+                <Row k="Paquete" v={estimate.lodging_name} />
+                {estimate.rate_per_person_total > 0 && <Row k="Tarifa/pax" v={fmt(estimate.rate_per_person_total)} />}
+                {estimate.extra_nights > 0 && <Row k="Noches extra" v={`${estimate.extra_nights} × ${fmt(estimate.rate_per_person_additional_night)}`} />}
+                {estimate.lodging_subtotal > 0 && <Row k={`Hospedaje (${estimate.pax}×${estimate.nights}n)`} v={fmt(estimate.lodging_subtotal)} />}
                 {estimate.breakfast_subtotal > 0 && <Row k="Desayunos" v={fmt(estimate.breakfast_subtotal)} />}
                 {estimate.lunch_subtotal > 0 && <Row k="Almuerzos" v={fmt(estimate.lunch_subtotal)} />}
+                {estimate.dinner_subtotal > 0 && <Row k="Cenas" v={fmt(estimate.dinner_subtotal)} />}
                 {estimate.transport_subtotal > 0 && <Row k={`Transporte (${estimate.transport_routes_applied?.length || 0} rutas)`} v={fmt(estimate.transport_subtotal)} />}
                 {estimate.tours_subtotal > 0 && <Row k={`Tours (${estimate.tour_ids_applied?.length || 0})`} v={fmt(estimate.tours_subtotal)} />}
                 {estimate.registration_fee > 0 && <Row k="Inscripción" v={fmt(estimate.registration_fee)} />}
                 <div className="border-t border-white/10 pt-3 mt-3">
                   <div className="flex items-baseline justify-between">
                     <span className="text-xs uppercase tracking-widest text-slate-300">Total</span>
-                    <span className="font-display text-3xl font-black text-red-400 tabular-nums">{fmt(estimate.total_amount)}<span className="text-xs text-slate-400 font-bold ml-1">COP</span></span>
+                    <span className="font-display text-3xl font-black text-red-400 tabular-nums" data-testid="cotizar-total">{fmt(estimate.total_amount)}<span className="text-xs text-slate-400 font-bold ml-1">COP</span></span>
                   </div>
                 </div>
               </div>

@@ -108,7 +108,7 @@ export default function MyQuotes() {
                 </div>
                 <div className="md:col-span-3 text-sm">
                   <div className="text-xs uppercase tracking-widest text-slate-500">Hospedaje</div>
-                  <div className="font-semibold">{q.lodging_name} · {q.room_type}</div>
+                  <div className="font-semibold">{q.lodging_name}</div>
                   <div className="text-xs text-slate-500">{q.pax} pax × {q.nights} noches</div>
                 </div>
                 <div className="md:col-span-2 text-sm">

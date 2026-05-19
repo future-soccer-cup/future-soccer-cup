@@ -33,87 +33,96 @@ EVENT_TYPES = {
     "festival": {
         "id": "festival",
         "name": "Festival",
-        "description": "Evento temático para iniciación. 5 al 10 de Octubre.",
-        "birth_years": [2013, 2014, 2015, 2016, 2017],
-        "dates": "5-10 Octubre",
+        "description": "Evento temático para iniciación. Octubre.",
+        "birth_years": [2013, 2014, 2015, 2016, 2017, 2018],
+        "dates": "Octubre",
         "fees_by_year": {
-            "2017": 1800000.0,
-            "2016": 2000000.0,
-            "2015": 2200000.0,
-            "2014": 2200000.0,
-            "2013": 2200000.0,
+            "2013": 2400000.0,
+            "2014": 2400000.0,
+            "2015": 2300000.0,
+            "2016": 2300000.0,
+            "2017": 2300000.0,
+            "2018": 2300000.0,
         },
-        "registration_fee_per_team": 2000000.0,  # fallback
+        "registration_fee_per_team": 2400000.0,  # fallback
     },
     "premier_par": {
         "id": "premier_par",
         "name": "Premier Par",
-        "description": "Premier elite con temática dorada. 7 al 12 de Diciembre. Años pares.",
-        "birth_years": [2010, 2012, 2014, 2016],
-        "dates": "7-12 Diciembre",
+        "description": "Premier elite. Diciembre. Años pares.",
+        "birth_years": [2010, 2012, 2014, 2016, 2018],
+        "dates": "Diciembre",
         "fees_by_year": {
-            "2016": 2350000.0,
-            "2014": 2450000.0,
-            "2012": 2700000.0,
-            "2010": 3000000.0,
+            "2010": 3200000.0,
+            "2012": 3200000.0,
+            "2014": 2800000.0,
+            "2016": 2600000.0,
+            "2018": 2600000.0,
         },
-        "registration_fee_per_team": 2450000.0,
+        "registration_fee_per_team": 2800000.0,
     },
     "premier_impar": {
         "id": "premier_impar",
         "name": "Premier Impar",
-        "description": "Premier elite con temática dorada. 13 al 18 de Diciembre. Años impares.",
-        "birth_years": [2011, 2013, 2015, 2017],
-        "dates": "13-18 Diciembre",
+        "description": "Premier elite. Diciembre. Años impares.",
+        "birth_years": [2009, 2011, 2013, 2015, 2017],
+        "dates": "Diciembre",
         "fees_by_year": {
-            "2017": 2350000.0,
-            "2015": 2450000.0,
-            "2013": 3000000.0,
-            "2011": 2700000.0,
+            "2009": 3200000.0,
+            "2011": 3200000.0,
+            "2013": 2800000.0,
+            "2015": 2600000.0,
+            "2017": 2600000.0,
         },
-        "registration_fee_per_team": 2450000.0,
+        "registration_fee_per_team": 2800000.0,
     },
 }
 
 # Designaciones por club/categoría
 TEAM_DESIGNATIONS = ["Único", "Equipo A", "Equipo B"]
 
-# Lodging tiers (precios POR PERSONA por 5 NOCHES en COP, tomados del PDF oficial)
+# Paquetes de hospedaje (VALORES PARA WEB - PDF oficial 2026).
+# Precio por persona: paquete normal de 5 noches + costo por noche adicional.
+# Los nombres de hoteles internos no se exponen al cliente: solo el paquete.
 LODGING_TIERS = {
-    "esmerald": {"id": "esmerald", "name": "Esmerald", "description": "Hospedaje premium 5★. Precio por persona por 5 noches.",
-                 "rates": {"single": 1450000, "double": 1550000, "triple": 1650000, "multiple": 0}},
-    "sapphire": {"id": "sapphire", "name": "Sapphire", "description": "Hospedaje superior con excelente ubicación.",
-                 "rates": {"single": 0, "double": 1270000, "triple": 1170000, "multiple": 1070000}},
-    "diamond":  {"id": "diamond",  "name": "Diamond",  "description": "Hospedaje 4★ amplio y cómodo.",
-                 "rates": {"single": 0, "double": 1170000, "triple": 1070000, "multiple": 970000}},
-    "gold":     {"id": "gold",     "name": "Gold",     "description": "Hospedaje 4★ con buena relación calidad-precio.",
-                 "rates": {"single": 0, "double": 1170000, "triple": 1070000, "multiple": 970000}},
-    "silver":   {"id": "silver",   "name": "Silver",   "description": "Hospedaje 3★ funcional.",
-                 "rates": {"single": 0, "double":  980000, "triple":  880000, "multiple": 780000}},
-    "bronze":   {"id": "bronze",   "name": "Bronze",   "description": "Hospedaje básico económico.",
-                 "rates": {"single": 0, "double":  860000, "triple":  760000, "multiple": 660000}},
+    "sapphire": {"id": "sapphire", "name": "Sapphire", "description": "Paquete premium con la mejor experiencia.",
+                 "base_5_nights": 1320000, "additional_night": 264000, "available": True},
+    "diamond":  {"id": "diamond",  "name": "Diamond",  "description": "Paquete superior con excelente confort.",
+                 "base_5_nights": 1280000, "additional_night": 256000, "available": True},
+    "gold":     {"id": "gold",     "name": "Gold",     "description": "Paquete intermedio premium.",
+                 "base_5_nights": 1130000, "additional_night": 226000, "available": True},
+    "silver":   {"id": "silver",   "name": "Silver",   "description": "Paquete funcional con buena ubicación.",
+                 "base_5_nights":  960000, "additional_night": 192000, "available": True},
+    "bronze":   {"id": "bronze",   "name": "Bronze",   "description": "Paquete económico.",
+                 "base_5_nights":  800000, "additional_night": 160000, "available": True},
+    "domicilio":{"id": "domicilio","name": "Domicilio","description": "Sin hospedaje (alojamiento por cuenta del equipo).",
+                 "base_5_nights": 0,       "additional_night": 0,       "available": True, "no_lodging": True},
 }
 
-# Planes de alimentación (POR PERSONA POR DÍA en COP)
+# Planes de alimentación POR PERSONA POR DÍA en COP, por paquete (PDF oficial).
+# value 0 => "N/A" (no disponible para ese paquete).
 MEAL_PLANS = {
     "breakfast": {"id": "breakfast", "name": "Desayuno", "per_day_by_tier": {
-        "esmerald": 27000, "sapphire": 20000, "diamond": 21000, "gold": 27000, "silver": 18000, "bronze": 14000
+        "sapphire": 25000, "diamond": 20000, "gold": 28000, "silver": 21000, "bronze": 18000, "domicilio": 21000,
     }},
-    "lunch": {"id": "lunch", "name": "Almuerzo", "per_day_by_tier": {
-        "esmerald": 37000, "sapphire": 37000, "diamond": 30000, "gold": 37000, "silver": 27000, "bronze": 22000
+    "lunch":     {"id": "lunch",     "name": "Almuerzo", "per_day_by_tier": {
+        "sapphire": 35000, "diamond": 41000, "gold": 38000, "silver": 0,     "bronze": 23000, "domicilio": 25000,
+    }},
+    "dinner":    {"id": "dinner",    "name": "Cena",     "per_day_by_tier": {
+        "sapphire": 41000, "diamond": 38000, "gold": 33000, "silver": 23000, "bronze": 23000, "domicilio": 25000,
     }},
 }
 
-# Rutas/Tours/Transporte (POR PERSONA en COP)
+# Transporte POR PERSONA por trayecto (PDF oficial 2026).
 TRANSPORT_ROUTES = {
-    "airport_to_hotel": {"id": "airport_to_hotel", "name": "Aeropuerto → Hotel", "price": 15000},
-    "hotel_to_airport": {"id": "hotel_to_airport", "name": "Hotel → Aeropuerto", "price": 15000},
-    "stadium": {"id": "stadium", "name": "Hotel → Escenario deportivo (ida y vuelta)", "price": 0},
+    "airport_to_hotel":   {"id": "airport_to_hotel",   "name": "Aeropuerto → Hotel",        "price": 16000},
+    "hotel_to_airport":   {"id": "hotel_to_airport",   "name": "Hotel → Aeropuerto",        "price": 16000},
+    "hotel_to_courts":    {"id": "hotel_to_courts",    "name": "Hotel ↔ Canchas (ida y vuelta)", "price": 16000},
 }
 
+# Tours/Recreación POR PERSONA en COP (PDF oficial 2026).
 TOURS_CATALOG = {
-    "parque_del_cafe": {"id": "parque_del_cafe", "name": "Parque del Café", "price": 105000},
-    "panaca": {"id": "panaca", "name": "Panaca", "price": 25000},
+    "parque_del_cafe": {"id": "parque_del_cafe", "name": "Parque del Café", "price": 99000},
 }
 
 # Configuración del evento (días fijos del torneo)
@@ -499,15 +508,16 @@ class QuoteIn(BaseModel):
     event_type: Literal["festival", "premier_par", "premier_impar"]
     birth_year: Optional[int] = None
     category: Optional[str] = ""  # legacy
-    # Hospedaje
-    lodging_tier: Literal["esmerald", "sapphire", "diamond", "gold", "silver", "bronze"]
-    room_type: Literal["single", "double", "triple", "multiple"]
+    # Hospedaje (paquetes — sin mostrar nombres de hoteles)
+    lodging_tier: Literal["sapphire", "diamond", "gold", "silver", "bronze", "domicilio"]
+    room_type: Optional[str] = ""  # legacy, no longer used for pricing
     pax: int = Field(ge=1)
     nights: int = Field(default=5, ge=1)  # default 5 según PDF
     days: int = Field(default=6, ge=1)
     # Alimentación
     includes_breakfast: bool = False
     includes_lunch: bool = False
+    includes_dinner: bool = False
     meal_days: Optional[int] = None  # defaults to days
     # Transporte
     transport_routes: Optional[List[str]] = []  # ids de TRANSPORT_ROUTES
@@ -1662,43 +1672,40 @@ def _calculate_quote(payload: QuoteIn) -> dict:
     event = EVENT_TYPES.get(payload.event_type)
     tier = LODGING_TIERS.get(payload.lodging_tier)
     if not event or not tier:
-        raise HTTPException(status_code=400, detail="Evento o nivel de hospedaje inválido")
-
-    # Tarifa hospedaje (precio TOTAL por persona por 5 noches del PDF)
-    rate_per_person = tier["rates"].get(payload.room_type, 0)
-    if rate_per_person == 0:
-        raise HTTPException(status_code=400, detail=f"El tier {tier['name']} no ofrece habitación {payload.room_type}")
+        raise HTTPException(status_code=400, detail="Evento o paquete de hospedaje inválido")
 
     nights = payload.nights or EVENT_NIGHTS
     days = payload.days or EVENT_DAYS
     meal_days = payload.meal_days or days
 
-    # Adjuste lineal por noches (las tarifas del PDF son para 5 noches)
-    lodging_total = rate_per_person * payload.pax * (nights / EVENT_NIGHTS)
+    # Hospedaje: base 5 noches + costo por noche adicional (todo POR PERSONA)
+    base_5 = float(tier.get("base_5_nights", 0) or 0)
+    add_night = float(tier.get("additional_night", 0) or 0)
+    extra_nights = max(0, nights - 5)
+    rate_per_person = base_5 + add_night * extra_nights
+    lodging_total = rate_per_person * payload.pax
 
-    # Alimentación
-    breakfast_per_day = MEAL_PLANS["breakfast"]["per_day_by_tier"].get(payload.lodging_tier, 0)
-    lunch_per_day = MEAL_PLANS["lunch"]["per_day_by_tier"].get(payload.lodging_tier, 0)
-    breakfast_total = breakfast_per_day * payload.pax * meal_days if payload.includes_breakfast else 0
-    lunch_total = lunch_per_day * payload.pax * meal_days if payload.includes_lunch else 0
-    meals_total = breakfast_total + lunch_total
+    # Alimentación (por persona × día). 0 en MEAL_PLANS significa N/A para ese paquete.
+    breakfast_per_day = float(MEAL_PLANS["breakfast"]["per_day_by_tier"].get(payload.lodging_tier, 0) or 0)
+    lunch_per_day = float(MEAL_PLANS["lunch"]["per_day_by_tier"].get(payload.lodging_tier, 0) or 0)
+    dinner_per_day = float(MEAL_PLANS["dinner"]["per_day_by_tier"].get(payload.lodging_tier, 0) or 0)
+    breakfast_total = breakfast_per_day * payload.pax * meal_days if payload.includes_breakfast and breakfast_per_day > 0 else 0
+    lunch_total     = lunch_per_day     * payload.pax * meal_days if payload.includes_lunch     and lunch_per_day     > 0 else 0
+    dinner_total    = dinner_per_day    * payload.pax * meal_days if payload.includes_dinner    and dinner_per_day    > 0 else 0
+    meals_total = breakfast_total + lunch_total + dinner_total
 
-    # Transporte (rutas múltiples × pax)
-    transport_routes = payload.transport_routes or []
+    # Transporte (rutas múltiples × pax). Compat con bandera legacy.
+    transport_routes = list(payload.transport_routes or [])
+    if payload.includes_transport and not transport_routes:
+        transport_routes = ["airport_to_hotel", "hotel_to_airport"]
     transport_total = sum(
         TRANSPORT_ROUTES.get(r, {}).get("price", 0) * payload.pax for r in transport_routes
     )
-    # Compat: si se usó la bandera legacy `includes_transport` y no hay rutas, asume aeropuerto ida+vuelta
-    if payload.includes_transport and not transport_routes:
-        transport_total = (TRANSPORT_ROUTES["airport_to_hotel"]["price"] + TRANSPORT_ROUTES["hotel_to_airport"]["price"]) * payload.pax
-        transport_routes = ["airport_to_hotel", "hotel_to_airport"]
 
-    # Tours
-    tour_ids = payload.tour_ids or []
-    if payload.includes_parque and "parque_del_cafe" not in tour_ids:
+    # Tours (solo Parque del Café en el catálogo oficial)
+    tour_ids = list(payload.tour_ids or [])
+    if (payload.includes_parque or payload.includes_tour) and "parque_del_cafe" not in tour_ids:
         tour_ids.append("parque_del_cafe")
-    if payload.includes_tour and "panaca" not in tour_ids:
-        tour_ids.append("panaca")
     tours_total = sum(TOURS_CATALOG.get(tid, {}).get("price", 0) * payload.pax for tid in tour_ids)
 
     # Inscripción: prefer fees_by_year cuando birth_year disponible
@@ -1714,18 +1721,21 @@ def _calculate_quote(payload: QuoteIn) -> dict:
 
     return {
         "lodging_subtotal": lodging_total,
-        "rate_per_person_5nights": rate_per_person,
-        "rate_per_person_night": int(rate_per_person / EVENT_NIGHTS) if rate_per_person else 0,
+        "rate_per_person_total": rate_per_person,
+        "rate_per_person_5nights": base_5,
+        "rate_per_person_additional_night": add_night,
+        "extra_nights": extra_nights,
         "meals_subtotal": meals_total,
         "breakfast_subtotal": breakfast_total,
         "lunch_subtotal": lunch_total,
+        "dinner_subtotal": dinner_total,
         "transport_subtotal": transport_total,
         "transport_routes_applied": transport_routes,
         "tours_subtotal": tours_total,
         "tour_ids_applied": tour_ids,
         # legacy keys for backwards-compat
         "parque_subtotal": TOURS_CATALOG["parque_del_cafe"]["price"] * payload.pax if "parque_del_cafe" in tour_ids else 0,
-        "tour_subtotal": TOURS_CATALOG["panaca"]["price"] * payload.pax if "panaca" in tour_ids else 0,
+        "tour_subtotal": 0,
         "registration_fee": registration,
         "total_amount": total,
         "event_name": event["name"],

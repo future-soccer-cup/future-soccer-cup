@@ -186,6 +186,58 @@ Aplicación versátil para una empresa que organiza eventos de fútbol infantil 
 
 ### Mini-dashboard `/admin`
 - KPI cards principales (4): Clubes/Equipos/Jugadores aprobados con sub-stat de pendientes; Partidos jugados con sub-stat de programados/en curso.
+- Sección Ingresos & Pagos (4 cards) + Operación (3 cards) + acciones rápidas + Pulso del torneo.
+
+### Bracket eliminación directa
+- Backend con seeding tenis-style, tamaños 4/8/16/32, auto-advance, 3er puesto opcional.
+- Admin `/admin/bracket` (form + sembrado interactivo + preview).
+- Público `/bracket` con árbol visual, banner de campeón, selector multi-bracket.
+
+## Iteration 15 (2026-05-19) — Cotizar: paquetes oficiales (PDF VALORES PARA WEB)
+
+**Cambio mayor solicitado por usuario**: en `/cotizar` no se exponen nombres de hoteles, solo paquetes. Precios alineados al PDF oficial 2026.
+
+### Backend
+- **`EVENT_TYPES.fees_by_year`** actualizado a precios oficiales:
+  - Festival (Octubre): 2013–2014 = $2.400.000; 2015–2018 = $2.300.000.
+  - Premier Par (Diciembre): 2010, 2012 = $3.200.000; 2014 = $2.800.000; 2016, 2018 = $2.600.000.
+  - Premier Impar (Diciembre): 2009, 2011 = $3.200.000; 2013 = $2.800.000; 2015, 2017 = $2.600.000.
+- **`LODGING_TIERS` simplificado** a 6 paquetes con tarifa única POR PERSONA (sin diferenciar tipo de habitación):
+  - Sapphire $1.320.000 (5n) + $264.000 noche adicional
+  - Diamond $1.280.000 + $256.000
+  - Gold $1.130.000 + $226.000
+  - Silver $960.000 + $192.000
+  - Bronze $800.000 + $160.000
+  - Domicilio $0 (alojamiento propio; solo opcional para alimentación/tours/transporte)
+- **`MEAL_PLANS` por paquete** (POR PERSONA × día), incluyendo nuevo plan **Cena**. Valores 0 indican "No disponible" (ej.: Silver no incluye almuerzo).
+- **`TRANSPORT_ROUTES`**: 3 rutas a $16.000/persona (aeropuerto↔hotel, hotel↔canchas).
+- **`TOURS_CATALOG`**: solo Parque del Café a $99.000/persona (Panaca removido por no estar en el PDF).
+- **`QuoteIn`** updated: removido `esmerald` y `room_type` (legacy, ahora opcional); agregado `domicilio` y `includes_dinner`.
+- **`_calculate_quote`** reescrito:
+  - Lodging = `(base_5n + additional_night × max(0, nights-5)) × pax`.
+  - Meals = `(breakfast + lunch + dinner_per_day_for_tier) × pax × meal_days` (0 si N/A).
+  - Transport y tours suman por persona × pax para los IDs seleccionados.
+  - Inscripción = `fees_by_year[birth_year]` con fallback a `registration_fee_per_team`.
+- Retorna además `rate_per_person_total`, `extra_nights`, `dinner_subtotal` para UI.
+
+### Frontend
+- **`Cotizar.jsx`** reescrito:
+  - Tarjetas de paquetes muestran "5 noches: $X" + "Noche adicional: $Y" (sin nombres de hoteles).
+  - Domicilio incluye nota "Sin hospedaje (alojamiento propio). Solo alimentación si la añades." y deshabilita el input de noches.
+  - Sección Alimentación con 3 opciones (Desayuno/Almuerzo/Cena) — cada checkbox se deshabilita visualmente cuando el paquete activo no ofrece esa comida ("No disponible en este paquete").
+  - Resumen lateral muestra: Tarifa/pax, noches extra (cuando aplica), hospedaje, desayunos, almuerzos, **cenas**, transporte (con conteo de rutas), tours, inscripción.
+  - Testid `cotizar-total` para validación E2E.
+- **`MyQuotes.jsx`** y **`AdminQuotes.jsx`**: removido `· room_type` legacy del display de cotizaciones.
+
+### Verificación E2E
+- Sapphire + Premier Par 2014 + 4 pax + 5n + 3 comidas + 3 transportes + parque = **$11.092.000** (backend curl + frontend live recalculation coinciden).
+- Domicilio = $5.092.000 (mismo paquete, sin hospedaje).
+- Silver desactiva almuerzo automáticamente.
+- Backend lint: ✓, frontend lint: ✓.
+
+
+### Mini-dashboard `/admin`
+- KPI cards principales (4): Clubes/Equipos/Jugadores aprobados con sub-stat de pendientes; Partidos jugados con sub-stat de programados/en curso.
 - Sección **Ingresos & Pagos** (4 cards): COP totales históricos, COP del mes, abonos por revisar (link a `/admin/pagos`), cotizaciones pagadas con facturado total.
 - Sección **Operación** (3 cards): cotizaciones pendientes, aprobaciones pendientes (clubes+equipos+jugadores), total clubes inscritos.
 - Acciones rápidas: revisar aprobaciones, validar abonos, generar fixture, cotizaciones, carnets, noticias.

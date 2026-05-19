@@ -42,7 +42,7 @@ export default function AdminQuotes() {
     { key: "event_name", label: "Evento" },
     { key: "category", label: "Categoría" },
     { key: "lodging_name", label: "Hospedaje" },
-    { key: "room_type", label: "Habitación" },
+    { key: "lodging_tier", label: "Paquete", accessor: (q) => q.lodging_name || q.lodging_tier },
     { key: "pax", label: "Pax" },
     { key: "nights", label: "Noches" },
     { key: "total_amount", label: "Total (COP)" },
@@ -102,7 +102,7 @@ export default function AdminQuotes() {
                 </td>
                 <td className="px-4 py-2">{q.event_name}</td>
                 <td className="px-4 py-2">{q.category}</td>
-                <td className="px-4 py-2">{q.lodging_name} · {q.room_type}</td>
+                <td className="px-4 py-2">{q.lodging_name}</td>
                 <td className="px-4 py-2">{q.pax} × {q.nights}</td>
                 <td className="px-4 py-2 text-right font-display font-black text-blue-700 tabular-nums">${Number(q.total_amount || 0).toLocaleString("es-CO")}<span className="text-[9px] text-slate-400 font-bold ml-1">COP</span></td>
                 <td className="px-4 py-2 text-xs text-slate-500">{new Date(q.created_at).toLocaleDateString("es")}</td>
