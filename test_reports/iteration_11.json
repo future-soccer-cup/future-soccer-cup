@@ -1,0 +1,42 @@
+{
+  "summary": "Tanda C — Fixture doble jornada + edición manual de partidos. Backend: 11/11 PASS en /app/backend/tests/test_iter11_double_matchday.py. Cobertura: (1) POST /api/fixtures/generate con double_matchday=true + 2 slots + 4 equipos => F1/F2 mismo día (slot 10:00 y 15:00 alternando), F3 día siguiente (slot 10:00) ✓; (2) double_matchday=true + 1 slot + 3 equipos => ambas jornadas mismo día con mismo slot ✓; (3) double_matchday=false (default) => cada jornada en día distinto con days_between_rounds ✓; (4) PUT /api/matches/{mid} actualiza match_date/venue/matchday/group_name/stage y persiste en DB ✓; (5) body vacío => 400 'Nada que actualizar' ✓; (6) match_date='no-es-fecha' => 400 'Formato de fecha/hora inválido' ✓; (7) id inexistente => 404 'Partido no encontrado' ✓; (8) sin auth => 401, DT (rol team) => 403 ✓; (9) home_team_id==away_team_id => 400 'Local y visitante deben ser distintos' ✓; (10) PUT /api/matches/{mid}/result regresión OK (status=finalizado, scores guardados) ✓. Frontend Playwright: (a) /admin/generador-fixture — checkbox fg-double-matchday presente; con 1 slot + doble jornada → toast 'Doble jornada requiere al menos 2 horarios' ✓; con 2 slots ('10:00','15:00') + 3 equipos Sub-12 → preview tabla muestra F1 1/6/30 10:00, F2 1/6/30 15:00, F3 2/6/30 10:00 (exactamente lo esperado) ✓; (b) /admin/partidos — botón edit-match-{id} (CalendarClock) abre modal manual-edit-form, datetime-local + manual-edit-matchday editables, click manual-edit-save → toast 'Partido actualizado', modal cierra, nueva fecha 25/12/2030 18:00 reflejada en la fila ✓. NO se encontraron bugs HIGH/CRITICAL en Tanda C.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/admin/partidos", "issues": ["Muchas filas existentes muestran 'Local: —' y 'Visitante: —' (dashes) porque los matches en DB tienen home_team_id/away_team_id huérfanos (de equipos eliminados en tests previos). No es bug de Tanda C, pero impacta UX. Sugerencia: filtrar matches huérfanos en GET /api/matches o mostrar el id truncado en lugar de '—'."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter11_double_matchday.py",
+    "/app/test_reports/pytest/iteration_11.xml"
+  ],
+  "action_items": [
+    "OPCIONAL P3: Limpieza de matches huérfanos (home_team_id que ya no existen en db.teams) — afecta UX en /admin/partidos pero no la funcionalidad de Tanda C."
+  ],
+  "critical_code_review_comments": [
+    "server.py sigue creciendo (3252 líneas con Tanda C). Sigue urgiendo split en routers (matches, fixtures, teams, etc.).",
+    "PUT /api/matches/{mid} acepta status arbitrario (str) sin validar contra enum ('programado','finalizado','cancelado'). Sugerido: Literal['programado','en_curso','finalizado','cancelado'] en MatchUpdateIn.status.",
+    "El bloque de validación 'home_team_id == away_team_id' en update_match sólo dispara cuando AMBOS están en el body. Si el cliente envía solo home_team_id que iguala al away existente en DB, no se valida. Sugerido: cargar match actual y validar contra el doc final.",
+    "MatchUpdateIn no valida que matchday sea > 0 ni que stage esté en un enum permitido ('grupos','octavos','cuartos','semis','final','treintaidosavos'). Sugerido: Field(gt=0) y Literal.",
+    "double_matchday cuando r_idx//2 puede mezclar jornadas con días no múltiplos del days_between_rounds esperado. Funciona correctamente porque day_index*days_between_rounds aplica al par; documentar este comportamiento en el docstring/comentario para evitar confusión."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter11_double_matchday.py (NEW - 11 tests)"
+  ],
+  "success_rate": {
+    "backend": "100% (11/11 pass en suite iter11)",
+    "frontend": "100% de testids Tanda C verificados (fg-double-matchday, fg-double-matchday-label, fg-preview-btn, fg-save-btn, fg-slots-add, fg-slots-{i}, fg-match-{id}, edit-match-{id}, manual-edit-form, manual-edit-matchday, manual-edit-save). Flujos completos: error de validación 1 slot, preview con 2 slots, edición manual con toast + cierre de modal + reflejo en tabla."
+  },
+  "test_credentials": "admin@futuresoccercup.com / FSCAdmin2025! (verificado). Suite crea 1 DT temporal TEST_iter11_dt_<uuid>@test.com + TeamPass2025!, y reutiliza/crea hasta 4 equipos Sub-12 TEST_ITER11_TEAM_<uuid>.",
+  "seed_data_creation": "Cada run iter11 puede insertar: 0-4 equipos TEST_ITER11_TEAM_* Sub-12 aprobados + 1 tournament FSC (reutilizado) + ~5 grupos (TEST_GRUPO_ITER11_A/B/C/SAVED/RESULT) con sus partidos. UI test edita 1 match existente cambiando matchday=9 y fecha=2030-12-25 18:00 (persistido). No hay endpoint de cleanup automático.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Ejecutar: pytest /app/backend/tests/test_iter11_double_matchday.py -v. La suite valida fixture doble jornada (preview only, no satura DB con 'TEST_GRUPO_ITER11_A/B/C') y edición manual de partidos via PUT /api/matches/{mid}. Para UI tests, usar las testids: fg-double-matchday (checkbox), fg-slots-add + fg-slots-{i} (horarios), fg-preview-btn, fg-match-{id} (filas preview); edit-match-{id} (botón CalendarClock en /admin/partidos), manual-edit-form (modal), manual-edit-matchday + manual-edit-save (submit). Toast esperado: 'Partido actualizado' / 'Doble jornada requiere al menos 2 horarios'. Existen 85 partidos en DB (varios con teams huérfanos, no afecta Tanda C).",
+  "rca of the issue": "N/A — Tanda C cerró sin issues HIGH/CRITICAL. Backend y frontend implementan correctamente: (a) day_index = r_idx//2 + slot[r_idx % len(slots)] cuando double_matchday=true; (b) PUT /api/matches/{mid} con MatchUpdateIn y validaciones (vacío→400, fecha inválida→400, no existe→404, home==away→400, RBAC admin→401/403). El minor design issue de filas '—' en /admin/partidos es data corruption pre-existente (matches huérfanos de tests previos), no regresión de esta tanda."
+}

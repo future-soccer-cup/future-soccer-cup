@@ -13,6 +13,7 @@ export default function AdminFixtureGenerator() {
   const [daysBetween, setDaysBetween] = useState(1);
   const [venues, setVenues] = useState(["Cancha 1"]);
   const [slots, setSlots] = useState(["10:00"]);
+  const [doubleMatchday, setDoubleMatchday] = useState(false);
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -27,6 +28,10 @@ export default function AdminFixtureGenerator() {
   const generate = async (saveIt) => {
     if (selectedIds.length < 2) { toast.error("Selecciona al menos 2 equipos"); return; }
     if (!category || !startDate) { toast.error("Completa categoría y fecha de inicio"); return; }
+    if (doubleMatchday && slots.filter(Boolean).length < 2) {
+      toast.error("Doble jornada requiere al menos 2 horarios (mañana + tarde)");
+      return;
+    }
     setLoading(true);
     try {
       const res = await api.post("/fixtures/generate", {
@@ -37,6 +42,7 @@ export default function AdminFixtureGenerator() {
         days_between_rounds: Number(daysBetween),
         venues: venues.filter(Boolean),
         time_slots: slots.filter(Boolean),
+        double_matchday: doubleMatchday,
         preview: !saveIt,
       });
       setPreview(res.data);
@@ -83,6 +89,21 @@ export default function AdminFixtureGenerator() {
           <ListEditor label="Canchas" items={venues} setItems={setVenues} placeholder="Cancha 5.1" testId="fg-venues" />
           <ListEditor label="Horarios" items={slots} setItems={setSlots} placeholder="10:00" testId="fg-slots" />
 
+          <label className="flex items-start gap-3 p-3 rounded-md border border-blue-200 bg-blue-50/40 cursor-pointer" data-testid="fg-double-matchday-label">
+            <input
+              type="checkbox"
+              checked={doubleMatchday}
+              onChange={(e) => setDoubleMatchday(e.target.checked)}
+              className="mt-1"
+              data-testid="fg-double-matchday"
+            />
+            <span className="flex-1">
+              <span className="block text-sm font-bold text-blue-900">Doble jornada (2 jornadas por día)</span>
+              <span className="block text-xs text-slate-500 mt-0.5">
+                Cada equipo juega 2 veces el mismo día. Requiere 2+ horarios (mañana y tarde). Jornadas pares e impares alternan turno.
+              </span>
+            </span>
+          </label>
           <div className="flex gap-2 pt-2">
             <button onClick={() => generate(false)} disabled={loading} className="flex-1 fsc-btn-primary py-2 rounded-md text-sm flex items-center justify-center gap-2 disabled:opacity-50" data-testid="fg-preview-btn">
               <Wand2 size={16}/> {loading ? "..." : "Vista previa"}

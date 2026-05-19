@@ -554,7 +554,23 @@ class FixtureGenerateIn(BaseModel):
     days_between_rounds: int = 7
     venues: List[str] = []
     time_slots: List[str] = []  # ["08:00", "09:30"]
+    # Doble jornada: dos jornadas el mismo día (mañana + tarde). Cada equipo juega 2 veces/día.
+    # Cuando es True: la jornada r usa el slot time_slots[r % len(time_slots)] (alternando),
+    # y dos jornadas consecutivas (r y r+1) caen en la misma fecha.
+    double_matchday: bool = False
     preview: bool = False  # If true, do not save
+
+
+class MatchUpdateIn(BaseModel):
+    """Edición manual de un partido programado (fecha, hora, cancha, etc.)."""
+    match_date: Optional[str] = None
+    venue: Optional[str] = None
+    matchday: Optional[int] = None
+    group_name: Optional[str] = None
+    stage: Optional[str] = None
+    home_team_id: Optional[str] = None
+    away_team_id: Optional[str] = None
+    status: Optional[str] = None
 
 class QuoteMealEntry(BaseModel):
     date: str            # YYYY-MM-DD
@@ -1023,6 +1039,28 @@ async def create_match(payload: MatchIn, _: dict = Depends(require_admin)):
     doc.pop("_id", None)
     return doc
 
+@api.put("/matches/{mid}")
+async def update_match(mid: str, payload: MatchUpdateIn, _: dict = Depends(require_admin)):
+    """Edición manual de un partido programado: fecha/hora, cancha, jornada, grupo, fase, equipos."""
+    updates = {k: v for k, v in payload.model_dump(exclude_unset=True).items() if v is not None}
+    if not updates:
+        raise HTTPException(status_code=400, detail="Nada que actualizar")
+    if "match_date" in updates and updates["match_date"]:
+        # Normalizamos: aceptamos "YYYY-MM-DDTHH:MM" o ISO completo.
+        try:
+            dt = datetime.fromisoformat(updates["match_date"])
+            updates["match_date"] = dt.isoformat()
+        except Exception:
+            raise HTTPException(status_code=400, detail="Formato de fecha/hora inválido")
+    if "home_team_id" in updates and "away_team_id" in updates and updates["home_team_id"] == updates["away_team_id"]:
+        raise HTTPException(status_code=400, detail="Local y visitante deben ser distintos")
+    res = await db.matches.update_one({"id": mid}, {"$set": updates})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Partido no encontrado")
+    m = await db.matches.find_one({"id": mid}, {"_id": 0})
+    return m
+
+
 @api.put("/matches/{mid}/result")
 async def update_match_result(mid: str, payload: MatchResultIn, _: dict = Depends(require_admin)):
     res = await db.matches.update_one(
@@ -1141,9 +1179,20 @@ async def generate_fixture(payload: FixtureGenerateIn, _: dict = Depends(require
 
     generated = []
     for r_idx, pairs in enumerate(rounds):
-        round_date = start + timedelta(days=r_idx * payload.days_between_rounds)
+        # Doble jornada: dos jornadas (r_idx) caen en el mismo día.
+        # day_index = r_idx // 2, y la jornada usa el slot[r_idx % len(slots)].
+        if payload.double_matchday:
+            day_index = r_idx // 2
+            jornada_slot = slots[r_idx % len(slots)] if slots else "10:00"
+        else:
+            day_index = r_idx
+            jornada_slot = None
+        round_date = start + timedelta(days=day_index * payload.days_between_rounds)
         for i, (home_id, away_id) in enumerate(pairs):
-            slot = slots[i % len(slots)]
+            if payload.double_matchday:
+                slot = jornada_slot
+            else:
+                slot = slots[i % len(slots)]
             venue = venues[i % len(venues)]
             try:
                 hh, mm = slot.split(":")

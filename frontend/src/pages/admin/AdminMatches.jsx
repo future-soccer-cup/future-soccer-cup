@@ -1,10 +1,23 @@
 import { useCallback, useEffect, useState } from "react";
 import api, { formatApiError } from "../../lib/api";
-import { Plus, Trash2, Edit3 } from "lucide-react";
+import { Plus, Trash2, Edit3, CalendarClock } from "lucide-react";
 import { toast } from "sonner";
 import { Modal, Field } from "./AdminTeams";
 
 const EMPTY = { tournament_id: "", home_team_id: "", away_team_id: "", match_date: "", venue: "", group_name: "", stage: "grupos", status: "programado", home_score: null, away_score: null };
+
+// Convierte ISO con zona a "YYYY-MM-DDTHH:MM" para inputs datetime-local sin desplazar horas.
+const toLocalInput = (iso) => {
+  if (!iso) return "";
+  // El backend almacena ISO sin offset (naive) o con offset; tomamos los primeros 16 chars del ISO local.
+  try {
+    const d = new Date(iso);
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  } catch {
+    return (iso || "").slice(0, 16);
+  }
+};
 
 export default function AdminMatches() {
   const [matches, setMatches] = useState([]);
@@ -12,6 +25,7 @@ export default function AdminMatches() {
   const [tournaments, setTournaments] = useState([]);
   const [editing, setEditing] = useState(null);
   const [scoring, setScoring] = useState(null);
+  const [manualEdit, setManualEdit] = useState(null);
 
   const load = useCallback(() => Promise.all([
     api.get("/matches"), api.get("/teams"), api.get("/tournaments")
@@ -66,6 +80,25 @@ export default function AdminMatches() {
     load();
   };
 
+  const saveManual = async (e) => {
+    e.preventDefault();
+    try {
+      const payload = {
+        match_date: manualEdit.match_date,
+        venue: manualEdit.venue || "",
+        matchday: manualEdit.matchday != null && manualEdit.matchday !== "" ? Number(manualEdit.matchday) : null,
+        group_name: manualEdit.group_name || "",
+        stage: manualEdit.stage || "grupos",
+      };
+      await api.put(`/matches/${manualEdit.id}`, payload);
+      toast.success("Partido actualizado");
+      setManualEdit(null);
+      load();
+    } catch (err) {
+      toast.error(formatApiError(err.response?.data?.detail));
+    }
+  };
+
   return (
     <div data-testid="admin-matches">
       <div className="flex items-center justify-between mb-6">
@@ -98,6 +131,14 @@ export default function AdminMatches() {
                 <td className="px-4 py-2"><span className="text-xs uppercase tracking-wider font-bold">{m.status}</span></td>
                 <td className="px-4 py-2 text-slate-500">{m.venue || "—"}</td>
                 <td className="px-4 py-2 text-right space-x-2">
+                  <button
+                    onClick={() => setManualEdit({ ...m, match_date: toLocalInput(m.match_date) })}
+                    className="text-slate-600 hover:text-blue-700"
+                    title="Editar fecha/hora/cancha"
+                    data-testid={`edit-match-${m.id}`}
+                  >
+                    <CalendarClock size={16}/>
+                  </button>
                   <button onClick={() => setScoring({ ...m, scorers: m.scorers || [] })} className="text-blue-700" data-testid={`score-match-${m.id}`}><Edit3 size={16}/></button>
                   <button onClick={() => remove(m.id)} className="text-red-600"><Trash2 size={16}/></button>
                 </td>
@@ -168,6 +209,63 @@ export default function AdminMatches() {
               </label>
             </div>
             <button className="fsc-btn-red w-full py-2 rounded-md" data-testid="save-result-btn">Guardar resultado</button>
+          </form>
+        </Modal>
+      )}
+      {manualEdit && (
+        <Modal onClose={() => setManualEdit(null)} title="Editar fecha y cancha">
+          <form onSubmit={saveManual} className="space-y-3" data-testid="manual-edit-form">
+            <div className="text-xs text-slate-500 border border-slate-200 rounded p-2 bg-slate-50">
+              <div className="font-semibold text-slate-700">{manualEdit.home_team_name} vs {manualEdit.away_team_name}</div>
+              <div>Jornada actual: F{manualEdit.matchday ?? "—"}</div>
+            </div>
+            <Field
+              label="Fecha y hora"
+              type="datetime-local"
+              required
+              value={manualEdit.match_date}
+              onChange={(v) => setManualEdit({ ...manualEdit, match_date: v })}
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <Field
+                label="Cancha"
+                value={manualEdit.venue || ""}
+                onChange={(v) => setManualEdit({ ...manualEdit, venue: v })}
+              />
+              <label className="block">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Jornada</span>
+                <input
+                  type="number"
+                  min="1"
+                  value={manualEdit.matchday ?? ""}
+                  onChange={(e) => setManualEdit({ ...manualEdit, matchday: e.target.value })}
+                  className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md"
+                  data-testid="manual-edit-matchday"
+                />
+              </label>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Field
+                label="Grupo"
+                value={manualEdit.group_name || ""}
+                onChange={(v) => setManualEdit({ ...manualEdit, group_name: v })}
+              />
+              <label className="block">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Fase</span>
+                <select
+                  value={manualEdit.stage || "grupos"}
+                  onChange={(e) => setManualEdit({ ...manualEdit, stage: e.target.value })}
+                  className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md"
+                >
+                  <option value="grupos">Grupos</option>
+                  <option value="octavos">Octavos</option>
+                  <option value="cuartos">Cuartos</option>
+                  <option value="semis">Semifinal</option>
+                  <option value="final">Final</option>
+                </select>
+              </label>
+            </div>
+            <button className="fsc-btn-primary w-full py-2 rounded-md" data-testid="manual-edit-save">Guardar cambios</button>
           </form>
         </Modal>
       )}
