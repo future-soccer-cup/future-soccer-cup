@@ -210,9 +210,7 @@ Audit `_record_audit` aplicado a teams/players/clubs/quotes/payments status endp
 
 Fixes aplicados al reporte de code review: `status` no inicializado en `get_checkout_status`, stale closures en 9 páginas admin (refactor a `useCallback`), empty catches con logging+toast, array index keys reemplazados por `_uid` en AdminMatches y `document` en MyTeam staff, AuthContext memoizado, console.error de AdminCarnets wrappeado con NODE_ENV. Lint frontend 0 issues; smoke E2E OK.
 
-## Iteration 18 (2026-05-19) — Inventario unificado con /cotizar (catálogo en MongoDB)
-
-**Problema:** `/admin/inventario` mostraba hoteles/transportes/tours demo desconectados del módulo `/cotizar` (que leía constantes Python hardcoded). Cualquier edición en inventario no afectaba las cotizaciones.
+## Iteration 18 (2026-05-19) — Inventario unificado con /cotizar (catálogo en MongoDB)**Problema:** `/admin/inventario` mostraba hoteles/transportes/tours demo desconectados del módulo `/cotizar` (que leía constantes Python hardcoded). Cualquier edición en inventario no afectaba las cotizaciones.
 
 ### Backend
 - **Nueva colección `db.pricing_catalog`** con documentos `{id, type, name, ...}`:
@@ -247,6 +245,48 @@ Fixes aplicados al reporte de code review: `status` no inicializado en `get_chec
 ### Verificación
 - 10/10 tests curl: catálogo seeded correctamente con valores del PDF, evento-types refleja edición, cotizar recalcula con nuevo precio (Sapphire 1.32M → 1.4M cambia subtotal 5.28M → 5.6M), CRUD completo, RBAC, auto-slug (`"Panaca"` → id `panaca`).
 - Smoke E2E Playwright: 4 pestañas renderizan, 19 inputs en lodging, 18 celdas en matriz comidas.
+
+
+## Iteration 19 (2026-05-19) — Tanda C: Fixture doble jornada + edición manual de partidos
+
+### Backend
+- **`FixtureGenerateIn.double_matchday: bool = False`** (nuevo). Cuando es `True`:
+  - `day_index = r_idx // 2` → jornadas pares e impares comparten la misma fecha.
+  - `jornada_slot = slots[r_idx % len(slots)]` → jornada 1 usa slot[0] (mañana), jornada 2 usa slot[1] (tarde), jornada 3 slot[0], etc.
+  - Cada equipo juega 2 veces el mismo día (mañana + tarde) — útil para torneos cortos.
+- **Nuevo endpoint `PUT /api/matches/{mid}`** (admin only) con modelo `MatchUpdateIn`:
+  - Campos opcionales: `match_date`, `venue`, `matchday` (gt=0), `group_name`, `stage` (Literal enum), `home_team_id`, `away_team_id`, `status` (Literal: programado/en_curso/finalizado/cancelado).
+  - Validaciones: body vacío → 400; `match_date` no ISO → 400; id inexistente → 404; `home_team_id == away_team_id` validado contra documento final (mezcla DB + updates) → 400.
+  - RBAC: solo admin (401/403 sin sesión válida / DT).
+- **No afecta** `PUT /api/matches/{mid}/result` (sigue funcionando igual).
+
+### Frontend
+- **`/admin/generador-fixture`**:
+  - Checkbox "Doble jornada (2 jornadas por día)" con testid `fg-double-matchday`.
+  - Validación cliente: al activarse requiere ≥ 2 horarios; toast "Doble jornada requiere al menos 2 horarios" si no.
+  - Envía `double_matchday` en el body de POST `/fixtures/generate`.
+- **`/admin/partidos`**:
+  - Nuevo botón `edit-match-{id}` (icono `CalendarClock`) en cada fila.
+  - Modal `manual-edit-form` con datetime-local + cancha + jornada (`manual-edit-matchday`) + grupo + fase.
+  - Submit `manual-edit-save` → `PUT /api/matches/{id}` → toast "Partido actualizado" → reload tabla.
+  - Helper `toLocalInput(iso)` convierte ISO a formato `YYYY-MM-DDTHH:MM` para inputs datetime-local sin desplazar horas.
+
+### Tests
+- `/app/backend/tests/test_iter11_double_matchday.py` — **11/11 PASS**:
+  - 3 tests doble jornada (true+2slots, true+1slot, false default).
+  - 7 tests edición manual (full, vacío, fecha inválida, 404, sin auth, DT 403, home==away).
+  - 1 test regresión PUT `/result`.
+- Frontend Playwright validó: checkbox doble jornada, toast de validación, preview con jornadas alternadas mismo día, edición manual end-to-end con reflejo en tabla.
+
+### Verificación E2E
+- 3 equipos Sub-12 + double=true + slots `["10:00","15:00"]` → F1 día 1 10:00, F2 día 1 15:00, F3 día 2 10:00 ✓
+- Editar partido: `matchday=9` + fecha=`2030-12-25T18:00` → persiste, toast OK, fila actualizada ✓
+
+## Backlog actualizado (P1/P2)
+- **P1**: Notificaciones email (Resend/SendGrid) en cambios de estado de teams/players/quotes/payments.
+- **P2**: Stripe webhook signature verification.
+- **P2**: Refactor `server.py` (>3250 líneas) → `/app/backend/routes/`.
+- **P3**: Limpieza de matches huérfanos (home_team_id que ya no existen en `db.teams`).
 
 
 

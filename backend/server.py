@@ -565,12 +565,12 @@ class MatchUpdateIn(BaseModel):
     """Edición manual de un partido programado (fecha, hora, cancha, etc.)."""
     match_date: Optional[str] = None
     venue: Optional[str] = None
-    matchday: Optional[int] = None
+    matchday: Optional[int] = Field(default=None, gt=0)
     group_name: Optional[str] = None
-    stage: Optional[str] = None
+    stage: Optional[Literal["grupos", "octavos", "cuartos", "semis", "final", "treintaidosavos"]] = None
     home_team_id: Optional[str] = None
     away_team_id: Optional[str] = None
-    status: Optional[str] = None
+    status: Optional[Literal["programado", "en_curso", "finalizado", "cancelado"]] = None
 
 class QuoteMealEntry(BaseModel):
     date: str            # YYYY-MM-DD
@@ -1052,8 +1052,15 @@ async def update_match(mid: str, payload: MatchUpdateIn, _: dict = Depends(requi
             updates["match_date"] = dt.isoformat()
         except Exception:
             raise HTTPException(status_code=400, detail="Formato de fecha/hora inválido")
-    if "home_team_id" in updates and "away_team_id" in updates and updates["home_team_id"] == updates["away_team_id"]:
-        raise HTTPException(status_code=400, detail="Local y visitante deben ser distintos")
+    # Validar home != away comparando contra el doc final (mezcla DB + updates).
+    if "home_team_id" in updates or "away_team_id" in updates:
+        current = await db.matches.find_one({"id": mid}, {"_id": 0})
+        if not current:
+            raise HTTPException(status_code=404, detail="Partido no encontrado")
+        final_home = updates.get("home_team_id", current.get("home_team_id"))
+        final_away = updates.get("away_team_id", current.get("away_team_id"))
+        if final_home == final_away:
+            raise HTTPException(status_code=400, detail="Local y visitante deben ser distintos")
     res = await db.matches.update_one({"id": mid}, {"$set": updates})
     if res.matched_count == 0:
         raise HTTPException(status_code=404, detail="Partido no encontrado")
