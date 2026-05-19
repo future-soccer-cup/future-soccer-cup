@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import api, { formatApiError } from "../../lib/api";
 import { Plus, Trash2, Edit3 } from "lucide-react";
 import { toast } from "sonner";
@@ -13,10 +13,10 @@ export default function AdminMatches() {
   const [editing, setEditing] = useState(null);
   const [scoring, setScoring] = useState(null);
 
-  const load = () => Promise.all([
+  const load = useCallback(() => Promise.all([
     api.get("/matches"), api.get("/teams"), api.get("/tournaments")
-  ]).then(([m, t, tr]) => { setMatches(m.data); setTeams(t.data); setTournaments(tr.data); });
-  useEffect(() => { load(); }, []);
+  ]).then(([m, t, tr]) => { setMatches(m.data); setTeams(t.data); setTournaments(tr.data); }), []);
+  useEffect(() => { load(); }, [load]);
 
   const save = async (e) => {
     e.preventDefault();
@@ -185,7 +185,7 @@ function ScorersEditor({ scoring, setScoring, teams }) {
   }, [scoring.home_team_id, scoring.away_team_id]);
 
   const addScorer = () => {
-    setScoring({ ...scoring, scorers: [...(scoring.scorers || []), { player_id: "", team_id: "", minute: 0 }] });
+    setScoring({ ...scoring, scorers: [...(scoring.scorers || []), { _uid: crypto.randomUUID(), player_id: "", team_id: "", minute: 0 }] });
   };
 
   const updateScorer = (i, field, val) => {
@@ -211,7 +211,7 @@ function ScorersEditor({ scoring, setScoring, teams }) {
         <button type="button" onClick={addScorer} className="text-xs font-bold text-blue-700">+ Agregar</button>
       </div>
       {(scoring.scorers || []).map((s, i) => (
-        <div key={i} className="grid grid-cols-12 gap-2 mb-2">
+        <div key={s._uid || `scorer-${i}`} className="grid grid-cols-12 gap-2 mb-2">
           <select value={s.player_id} onChange={(e) => updateScorer(i, "player_id", e.target.value)} className="col-span-8 px-2 py-1 border border-slate-200 rounded text-sm">
             <option value="">Jugador...</option>
             {players.map((p) => <option key={p.id} value={p.id}>{p.name} (#{p.jersey_number})</option>)}
@@ -236,7 +236,7 @@ function CardsEditor({ scoring, setScoring }) {
 
   const cards = scoring.cards || [];
   const addCard = (type) => {
-    setScoring({ ...scoring, cards: [...cards, { player_id: "", team_id: "", type, minute: 0 }] });
+    setScoring({ ...scoring, cards: [...cards, { _uid: crypto.randomUUID(), player_id: "", team_id: "", type, minute: 0 }] });
   };
   const updateCard = (i, field, val) => {
     const next = [...cards];
@@ -264,7 +264,7 @@ function CardsEditor({ scoring, setScoring }) {
       </div>
       {cards.length === 0 && <p className="text-xs text-slate-400 py-1">Sin tarjetas registradas</p>}
       {cards.map((c, i) => (
-        <div key={i} className="grid grid-cols-12 gap-2 mb-2 items-center">
+        <div key={c._uid || `card-${i}`} className="grid grid-cols-12 gap-2 mb-2 items-center">
           <span className={`col-span-1 inline-block w-3 h-4 rounded-sm ${c.type === "red" ? "bg-red-600" : "bg-yellow-400"}`} />
           <select value={c.player_id} onChange={(e) => updateCard(i, "player_id", e.target.value)} className="col-span-7 px-2 py-1 border border-slate-200 rounded text-sm">
             <option value="">Jugador...</option>

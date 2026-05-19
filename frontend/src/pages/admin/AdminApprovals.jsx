@@ -17,7 +17,7 @@ export default function AdminApprovals() {
   const [teams, setTeams] = useState([]);
   const [statusFilter, setStatusFilter] = useState("pendiente");
 
-  const load = async () => {
+  const load = useCallback(async () => {
     if (tab === "clubs") {
       const r = await api.get(`/clubs?status=${statusFilter}`);
       setItems(r.data);
@@ -32,9 +32,9 @@ export default function AdminApprovals() {
       setItems(pr.data);
       setTeams(tr.data);
     }
-  };
+  }, [tab, statusFilter]);
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [tab, statusFilter]);
+  useEffect(() => { load(); }, [load]);
 
   const tmap = Object.fromEntries(teams.map((t) => [t.id, t]));
 

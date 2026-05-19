@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import api, { formatApiError, imgSrc } from "../../lib/api";
 import { toast, Toaster } from "sonner";
 import { Plus, Pencil, Trash2, Hotel, Car, Map } from "lucide-react";
@@ -25,8 +25,8 @@ export default function AdminInventory() {
 
   const current = TABS.find((t) => t.id === tab);
 
-  const load = () => api.get(current.endpoint).then((r) => setItems(r.data));
-  useEffect(() => { load(); setEditing(null); /* eslint-disable-next-line */ }, [tab]);
+  const load = useCallback(() => api.get(current.endpoint).then((r) => setItems(r.data)), [current.endpoint]);
+  useEffect(() => { load(); setEditing(null); }, [tab, load]);
 
   const save = async (e) => {
     e.preventDefault();

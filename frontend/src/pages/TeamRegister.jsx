@@ -53,7 +53,10 @@ export default function TeamRegister() {
           fd.append("file", logoFile);
           const up = await api.post("/upload", fd, { headers: { "Content-Type": "multipart/form-data" } });
           await api.put(`/teams/${reg.data.team_id}`, { name: "_skip", logo_url: up.data.url });
-        } catch (e2) { /* non-fatal */ }
+        } catch (e2) {
+          console.error("[TeamRegister] logo upload failed (non-fatal)", e2);
+          toast.warning("El logo no se pudo subir. Podrás cargarlo más tarde desde 'Mi equipo'.");
+        }
       }
 
       toast.success("Club y equipo registrados. Paga la inscripción para completar.");

@@ -13,8 +13,8 @@ export default function AdminTeams() {
   const [teams, setTeams] = useState([]);
   const [editing, setEditing] = useState(null);
 
-  const load = () => api.get("/teams").then((r) => setTeams(r.data));
-  useEffect(() => { load(); }, []);
+  const load = useCallback(() => api.get("/teams").then((r) => setTeams(r.data)), []);
+  useEffect(() => { load(); }, [load]);
 
   const matchFn = useCallback((t, q) =>
     (t.name || "").toLowerCase().includes(q) ||

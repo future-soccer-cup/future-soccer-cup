@@ -2222,10 +2222,13 @@ async def get_checkout_status(session_id: str, user: dict = Depends(get_current_
     if not api_key:
         raise HTTPException(status_code=503, detail="Stripe no configurado")
     stripe = StripeCheckout(api_key=api_key, webhook_url="")
+    status = None
     try:
         status = await stripe.get_checkout_status(session_id)
     except Exception as e:
         logging.warning(f"Stripe status lookup failed for {session_id}: {e}")
+        raise HTTPException(status_code=404, detail="Sesión de pago no encontrada o expirada")
+    if status is None:
         raise HTTPException(status_code=404, detail="Sesión de pago no encontrada o expirada")
 
     tx = await db.payment_transactions.find_one({"session_id": session_id}, {"_id": 0})

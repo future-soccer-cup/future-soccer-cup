@@ -204,6 +204,45 @@ Reescritura completa del módulo `/cotizar` con precios oficiales 2026:
 
 ## Iteration 16 (2026-05-19) — Audit Trail (Ley 1581) + Validación de pagos manuales
 
+Audit `_record_audit` aplicado a teams/players/clubs/quotes/payments status endpoints. Nuevo endpoint `GET /api/admin/audit-log`. Validación de `receipt_url` (regex `/api/files/...` o `https?://...`) y tope `amount ≤ saldo` con helper `_pending_balance` en `POST /api/payments`. 7 tests curl PASS.
+
+## Iteration 17 (2026-05-19) — Code Quality (críticos del code review)
+
+### Backend
+- **`server.py:2230` get_checkout_status**: inicializa `status = None` defensivo + chequeo `if status is None` antes de usar, evitando posible `NameError` si la integración Stripe lanza una excepción inusual sin lanzar `HTTPException`.
+
+### Frontend — Stale closure fixes (`useCallback` + dependency-correct `useEffect`)
+Refactor de `const load = () => ...; useEffect(() => load(), [])` a `const load = useCallback(...); useEffect(() => load(), [load])` en:
+- `AdminTeams.jsx`, `AdminQuotes.jsx`, `AdminPlayers.jsx`, `AdminMatches.jsx`, `AdminPosts.jsx`, `AdminInventory.jsx`, `AdminApprovals.jsx`, `AdminPayments.jsx`, `AdminPasswordResets.jsx`.
+- Elimina los comentarios `eslint-disable-next-line` previos. Las dependencias de `load` (statusFilter/targetFilter/tab/etc.) ahora son explícitas, evitando capturas obsoletas de estado.
+
+### Frontend — Empty catches
+- `MyQuotes.jsx loadPayments`: ahora loggea + toast "No se pudieron cargar los abonos".
+- `MyTeam.jsx loadRegPayments`: igual.
+- `TeamRegister.jsx` (logo upload): ahora muestra warning "El logo no se pudo subir. Podrás cargarlo más tarde".
+
+### Frontend — Stable keys
+- `AdminMatches.jsx`: `ScorersEditor` y `CardsEditor` ahora generan `_uid` (crypto.randomUUID) por fila al hacer "+ Agregar". Las keys usan ese uid en vez del index → al eliminar una fila intermedia React ya no reusa erróneamente el DOM ni el estado interno de selects/inputs.
+- `MyTeam.jsx`: staff cards usan `key={s.document || ${s.name}-${idx}}` en lugar del index. Errores de bulk upload usan `prow-{row}-{i}` / `srow-{row}-{i}` (estables aunque la lista es read-only).
+- Inputs primitivos en `AdminFixtureGenerator` (venues/horarios) y previews read-only en `AdminBulkUpload` quedan con index keys (decisión consciente: cambio costoso para el caso de uso).
+
+### Frontend — Performance / React optimization
+- `AuthContext.jsx`: `login`, `register`, `logout` ahora son `useCallback`; el `value` del provider está envuelto en `useMemo([user, loading, login, register, logout])`. Evita re-render en cascada de **todos** los consumidores de `useAuth()` cada vez que cualquier ancestro del provider se renderiza.
+- `AdminCarnets.jsx`: `console.error` envuelto en `if (process.env.NODE_ENV !== "production")` para evitar fugas en producción.
+
+### No aplicado (false positives o costo > beneficio)
+- Comparaciones `is None` (líneas 1052/1071/1074): es la forma **correcta** en Python, no `is 0` literal. El reporte interpretó mal el patrón.
+- Refactor de `create_bracket` / `_calculate_quote` / `register_team` / `Cotizar.jsx` / `MyTeam.jsx` por "alta complejidad": son funciones largas pero correctas; se factoriza más adelante en el refactor de routes (P2 Sprint dedicado).
+- "Hardcoded secrets" en `tests/test_*.py`: son credenciales del seed de test conocidas, documentadas en `test_credentials.md`. No son secretos.
+
+### Verificación
+- Lint frontend (14 archivos modificados): 0 issues ✓
+- Lint backend (server.py): solo style warnings pre-existentes (E701/E702), 0 errores funcionales nuevos ✓
+- Smoke E2E: dashboard + 6 tablas admin (equipos, jugadores, cotizaciones, pagos, aprobaciones, partidos) renderizan correctamente; home pública OK ✓
+- Backend audit + payment validation tests (iter 16) siguen pasando ✓
+
+
+
 ### Audit Trail (compliance Ley 1581 — Habeas Data Colombia)
 - Helper `_record_audit(entity_type, entity_id, action, prev_status, new_status, user, note="")`:
   - Persiste entrada en `db.audit_log` con `id, entity_type, entity_id, action, previous_status, new_status, note, user_id/email/name, created_at`.

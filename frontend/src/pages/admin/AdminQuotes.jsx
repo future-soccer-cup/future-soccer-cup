@@ -10,8 +10,8 @@ export default function AdminQuotes() {
   const [quotes, setQuotes] = useState([]);
   const [filter, setFilter] = useState("");
 
-  const load = () => api.get("/quotes").then((r) => setQuotes(r.data));
-  useEffect(() => { load(); }, []);
+  const load = useCallback(() => api.get("/quotes").then((r) => setQuotes(r.data)), []);
+  useEffect(() => { load(); }, [load]);
 
   const setStatus = async (id, status) => {
     try {

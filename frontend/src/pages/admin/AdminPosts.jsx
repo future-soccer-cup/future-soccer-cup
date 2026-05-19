@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import api, { formatApiError, imgSrc } from "../../lib/api";
 import { toast, Toaster } from "sonner";
 import { Plus, Pencil, Trash2, Instagram } from "lucide-react";
@@ -14,8 +14,8 @@ export default function AdminPosts() {
   const [importUrl, setImportUrl] = useState("");
   const [importing, setImporting] = useState(false);
 
-  const load = () => api.get("/posts").then((r) => setPosts(r.data));
-  useEffect(() => { load(); }, []);
+  const load = useCallback(() => api.get("/posts").then((r) => setPosts(r.data)), []);
+  useEffect(() => { load(); }, [load]);
 
   const save = async (e) => {
     e.preventDefault();

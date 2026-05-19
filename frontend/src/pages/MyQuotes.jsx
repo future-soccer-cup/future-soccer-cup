@@ -33,8 +33,9 @@ export default function MyQuotes() {
     try {
       const r = await api.get(`/payments/by-target?target_type=quote&target_id=${qid}`);
       setPayments((prev) => ({ ...prev, [qid]: r.data }));
-    } catch {
-      // silent
+    } catch (err) {
+      console.error("[MyQuotes] loadPayments failed", err);
+      toast.error("No se pudieron cargar los abonos de la cotización");
     } finally {
       setLoadingPayments(null);
     }

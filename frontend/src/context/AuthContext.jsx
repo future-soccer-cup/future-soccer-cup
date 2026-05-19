@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import api from "../lib/api";
 
 const AuthContext = createContext(null);
@@ -25,25 +25,31 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
-  const login = async (email, password) => {
+  const login = useCallback(async (email, password) => {
     const res = await api.post("/auth/login", { email, password });
     setUser(res.data);
     return res.data;
-  };
+  }, []);
 
-  const register = async (name, email, password) => {
+  const register = useCallback(async (name, email, password) => {
     const res = await api.post("/auth/register", { name, email, password });
     setUser(res.data);
     return res.data;
-  };
+  }, []);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     await api.post("/auth/logout");
     setUser(false);
-  };
+  }, []);
+
+  // Memoize the context value to prevent unnecessary re-renders in consumers.
+  const value = useMemo(
+    () => ({ user, loading, login, register, logout, setUser }),
+    [user, loading, login, register, logout]
+  );
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, setUser }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

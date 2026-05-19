@@ -14,8 +14,8 @@ export default function AdminPlayers() {
   const [teams, setTeams] = useState([]);
   const [editing, setEditing] = useState(null);
 
-  const load = () => Promise.all([api.get("/players"), api.get("/teams")]).then(([p, t]) => { setPlayers(p.data); setTeams(t.data); });
-  useEffect(() => { load(); }, []);
+  const load = useCallback(() => Promise.all([api.get("/players"), api.get("/teams")]).then(([p, t]) => { setPlayers(p.data); setTeams(t.data); }), []);
+  useEffect(() => { load(); }, [load]);
   const tmap = Object.fromEntries(teams.map((t) => [t.id, t]));
 
   const matchFn = useCallback((p, q) => {

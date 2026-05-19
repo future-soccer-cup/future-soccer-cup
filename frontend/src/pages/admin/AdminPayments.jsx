@@ -34,7 +34,7 @@ export default function AdminPayments() {
   const [adminNote, setAdminNote] = useState("");
   const [savingStatus, setSavingStatus] = useState(null);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -47,9 +47,9 @@ export default function AdminPayments() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [statusFilter, targetFilter]);
 
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [statusFilter, targetFilter]);
+  useEffect(() => { load(); }, [load]);
 
   const matchFn = useCallback((p, q) =>
     (p.user_name || "").toLowerCase().includes(q) ||

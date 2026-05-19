@@ -179,7 +179,10 @@ export default function MyTeam() {
     try {
       const r = await api.get(`/payments/by-target?target_type=team_registration&target_id=${team.id}`);
       setRegPaymentsData(r.data);
-    } catch {/* silent */}
+    } catch (err) {
+      console.error("[MyTeam] loadRegPayments failed", err);
+      toast.error("No se pudieron cargar los abonos de la inscripción");
+    }
   };
   const toggleRegPayments = async () => {
     const next = !regPaymentsOpen;
@@ -386,7 +389,7 @@ export default function MyTeam() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {staff.length === 0 && <p className="col-span-full text-center text-slate-400 py-6">Aún no has agregado al cuerpo técnico.</p>}
           {staff.map((s, idx) => (
-            <div key={idx} className="bg-white border border-slate-200 rounded-lg p-4 flex items-center gap-3" data-testid={`staff-${idx}`}>
+            <div key={s.document || `${s.name}-${idx}`} className="bg-white border border-slate-200 rounded-lg p-4 flex items-center gap-3" data-testid={`staff-${idx}`}>
               <div className="h-12 w-12 rounded-full bg-red-100 text-red-700 flex items-center justify-center font-bold uppercase">{(s.name || "?")[0]}</div>
               <div className="flex-1 min-w-0">
                 <div className="font-semibold truncate">{s.name}</div>
@@ -467,7 +470,7 @@ export default function MyTeam() {
                   <details className="mt-2">
                     <summary className="text-xs text-red-600 cursor-pointer font-semibold">{bulkPreview.players.errors.length} errores</summary>
                     <ul className="text-[11px] text-red-700 mt-1 space-y-0.5 max-h-32 overflow-auto">
-                      {bulkPreview.players.errors.slice(0, 20).map((er, i) => <li key={i}>Fila {er.row}: {er.error}</li>)}
+                      {bulkPreview.players.errors.slice(0, 20).map((er, i) => <li key={`prow-${er.row}-${i}`}>Fila {er.row}: {er.error}</li>)}
                     </ul>
                   </details>
                 )}
@@ -479,7 +482,7 @@ export default function MyTeam() {
                   <details className="mt-2">
                     <summary className="text-xs text-red-600 cursor-pointer font-semibold">{bulkPreview.staff.errors.length} errores</summary>
                     <ul className="text-[11px] text-red-700 mt-1 space-y-0.5 max-h-32 overflow-auto">
-                      {bulkPreview.staff.errors.slice(0, 20).map((er, i) => <li key={i}>Fila {er.row}: {er.error}</li>)}
+                      {bulkPreview.staff.errors.slice(0, 20).map((er, i) => <li key={`srow-${er.row}-${i}`}>Fila {er.row}: {er.error}</li>)}
                     </ul>
                   </details>
                 )}

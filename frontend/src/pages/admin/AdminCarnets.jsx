@@ -88,7 +88,7 @@ export default function AdminCarnets() {
       pdf.save(`fsc-carnets-${teamLabel}.pdf`);
       toast.success(`PDF generado con ${cards.length} carnets`);
     } catch (e) {
-      console.error(e);
+      if (process.env.NODE_ENV !== "production") console.error("[AdminCarnets] PDF generation failed", e);
       toast.error("Error al generar PDF");
     } finally {
       setGenerating(false);

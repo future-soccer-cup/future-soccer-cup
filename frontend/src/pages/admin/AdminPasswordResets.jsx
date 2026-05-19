@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import api, { formatApiError } from "../../lib/api";
 import { toast, Toaster } from "sonner";
 import { Copy, KeyRound, Loader2, X } from "lucide-react";
@@ -8,7 +8,7 @@ export default function AdminPasswordResets() {
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(null);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const r = await api.get("/admin/password-resets");
@@ -18,9 +18,9 @@ export default function AdminPasswordResets() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [load]);
 
   const copy = (code, id) => {
     navigator.clipboard.writeText(code);
