@@ -516,9 +516,25 @@ class TournamentIn(BaseModel):
     category: str
     start_date: str
     end_date: str
+    # Tipo de torneo dentro de FSC (opcional)
+    event_type: Optional[str] = ""  # "festival" | "premier_par" | "premier_impar" | ""
+    # Formato del torneo
+    fmt: Optional[Literal["round_robin", "cuadrangular_x2", "eliminacion"]] = "round_robin"
+    # Marca torneos históricos / archivados (no entran al stats live por defecto)
+    archived: Optional[bool] = False
 
 class TournamentOut(TournamentIn):
     id: str
+
+class TournamentUpdateIn(BaseModel):
+    name: Optional[str] = None
+    season: Optional[str] = None
+    category: Optional[str] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    event_type: Optional[str] = None
+    fmt: Optional[Literal["round_robin", "cuadrangular_x2", "eliminacion"]] = None
+    archived: Optional[bool] = None
 
 class MatchIn(BaseModel):
     tournament_id: str
@@ -529,6 +545,8 @@ class MatchIn(BaseModel):
     group_name: Optional[str] = ""
     matchday: Optional[int] = None  # Jornada (Fecha 1, Fecha 2, ...)
     stage: Optional[str] = "grupos"  # grupos, octavos, cuartos, semis, final
+    # Tipo de partido (regular o intergrupos para garantizar 4 partidos en cuadrangulares)
+    match_type: Optional[Literal["regular", "intergrupo"]] = "regular"
     home_score: Optional[int] = None
     away_score: Optional[int] = None
     status: Optional[str] = "programado"  # programado, en_curso, finalizado
@@ -568,6 +586,7 @@ class MatchUpdateIn(BaseModel):
     matchday: Optional[int] = Field(default=None, gt=0)
     group_name: Optional[str] = None
     stage: Optional[Literal["grupos", "octavos", "cuartos", "semis", "final", "treintaidosavos"]] = None
+    match_type: Optional[Literal["regular", "intergrupo"]] = None
     home_team_id: Optional[str] = None
     away_team_id: Optional[str] = None
     status: Optional[Literal["programado", "en_curso", "finalizado", "cancelado"]] = None
@@ -992,8 +1011,16 @@ async def set_player_status(player_id: str, status: str, user: dict = Depends(re
 
 # -------------------- Tournaments --------------------
 @api.get("/tournaments", response_model=List[TournamentOut])
-async def list_tournaments():
-    items = await db.tournaments.find({}, {"_id": 0}).sort("start_date", -1).to_list(200)
+async def list_tournaments(archived: Optional[bool] = None):
+    q = {}
+    if archived is not None:
+        q["archived"] = archived
+    items = await db.tournaments.find(q, {"_id": 0}).sort("start_date", -1).to_list(200)
+    # Backfill defaults para torneos antiguos sin estos campos
+    for t in items:
+        t.setdefault("event_type", "")
+        t.setdefault("fmt", "round_robin")
+        t.setdefault("archived", False)
     return items
 
 @api.post("/tournaments", response_model=TournamentOut)
@@ -1003,6 +1030,20 @@ async def create_tournament(payload: TournamentIn, _: dict = Depends(require_adm
     await db.tournaments.insert_one(doc)
     doc.pop("_id", None)
     return doc
+
+@api.put("/tournaments/{tid}", response_model=TournamentOut)
+async def update_tournament(tid: str, payload: TournamentUpdateIn, _: dict = Depends(require_admin)):
+    updates = {k: v for k, v in payload.model_dump(exclude_unset=True).items() if v is not None}
+    if not updates:
+        raise HTTPException(status_code=400, detail="Nada que actualizar")
+    res = await db.tournaments.update_one({"id": tid}, {"$set": updates})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Torneo no encontrado")
+    t = await db.tournaments.find_one({"id": tid}, {"_id": 0})
+    t.setdefault("event_type", "")
+    t.setdefault("fmt", "round_robin")
+    t.setdefault("archived", False)
+    return t
 
 @api.delete("/tournaments/{tid}")
 async def delete_tournament(tid: str, _: dict = Depends(require_admin)):
@@ -1250,6 +1291,195 @@ async def generate_fixture(payload: FixtureGenerateIn, _: dict = Depends(require
         "byes_per_round": [{"round": k, "team_id": v, "team_name": tmap.get(v, {}).get("name", "")} for k, v in byes.items()],
         "saved": not payload.preview,
     }
+
+
+# -------------------- Intergrupos (garantiza 4 partidos en cuadrangulares x2) --------------------
+class IntergroupGenerateIn(BaseModel):
+    tournament_id: str
+    category: str
+    group_a: str  # ej. "Grupo A"
+    group_b: str  # ej. "Grupo B"
+    match_date: str  # YYYY-MM-DD
+    pairing: Literal["standings", "random", "seed"] = "standings"
+    venues: List[str] = []
+    time_slots: List[str] = []
+    preview: bool = False
+
+
+async def _group_team_order(tournament_id: str, category: str, group_name: str, mode: str) -> List[dict]:
+    """Devuelve los equipos del grupo ordenados según el modo:
+    - standings: orden actual de la tabla (Pts → FP → DG → GF).
+    - seed: orden de creación (insert order).
+    - random: aleatorio.
+    """
+    teams = await db.teams.find(
+        {"category": category, "group_name": group_name, "status": "aprobado"},
+        {"_id": 0},
+    ).to_list(100)
+    if mode == "random":
+        import random as _rnd
+        _rnd.shuffle(teams)
+        return teams
+    if mode == "seed":
+        return teams
+    # standings
+    rows = await standings(category=category, group_name=group_name, tournament_id=tournament_id)
+    tmap = {t["id"]: t for t in teams}
+    ordered = [tmap[r["team_id"]] for r in rows if r["team_id"] in tmap]
+    return ordered or teams
+
+
+@api.post("/fixtures/intergroup")
+async def generate_intergroup(payload: IntergroupGenerateIn, _: dict = Depends(require_admin)):
+    """Crea 1 partido intergrupos por equipo: 1°A vs 1°B, 2°A vs 2°B, etc. (según pairing)."""
+    if payload.category not in CATEGORIES:
+        raise HTTPException(status_code=400, detail=f"Categoría inválida. Use: {', '.join(CATEGORIES)}")
+    a = await _group_team_order(payload.tournament_id, payload.category, payload.group_a, payload.pairing)
+    b = await _group_team_order(payload.tournament_id, payload.category, payload.group_b, payload.pairing)
+    if not a or not b:
+        raise HTTPException(status_code=400, detail="Uno de los grupos no tiene equipos aprobados")
+    n = min(len(a), len(b))
+    if n < 1:
+        raise HTTPException(status_code=400, detail="Cada grupo debe tener al menos 1 equipo")
+    try:
+        base_dt = datetime.strptime(payload.match_date, "%Y-%m-%d")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Formato de fecha inválido (YYYY-MM-DD)")
+    venues = payload.venues or [""]
+    slots = payload.time_slots or ["10:00"]
+    generated = []
+    for i in range(n):
+        slot = slots[i % len(slots)]
+        venue = venues[i % len(venues)]
+        try:
+            hh, mm = slot.split(":")
+            mdt = base_dt.replace(hour=int(hh), minute=int(mm), second=0, microsecond=0)
+        except Exception:
+            mdt = base_dt
+        doc = {
+            "id": str(uuid.uuid4()),
+            "tournament_id": payload.tournament_id,
+            "home_team_id": a[i]["id"],
+            "away_team_id": b[i]["id"],
+            "match_date": mdt.isoformat(),
+            "venue": venue,
+            "group_name": f"{payload.group_a} vs {payload.group_b}",
+            "matchday": None,
+            "stage": "grupos",
+            "match_type": "intergrupo",
+            "status": "programado",
+            "home_score": None,
+            "away_score": None,
+        }
+        generated.append(doc)
+    if not payload.preview:
+        if generated:
+            await db.matches.insert_many(generated)
+    # enrich
+    enriched = []
+    for d, ha, hb in zip(generated, a[:n], b[:n]):
+        d.pop("_id", None)
+        enriched.append({**d, "home_team_name": ha.get("name", ""), "away_team_name": hb.get("name", "")})
+    return {"matches": enriched, "count": len(enriched), "saved": not payload.preview}
+
+
+# -------------------- Historical standings (datos archivados) --------------------
+class HistoricalStandingIn(BaseModel):
+    tournament_id: str
+    category: str
+    group_name: str
+    rank: int = Field(ge=1)
+    team_name: str
+    played: int = 0
+    won: int = 0
+    drawn: int = 0
+    lost: int = 0
+    gf: int = 0
+    ga: int = 0
+    gd: int = 0
+    fair_play: int = 0
+    points: int = 0
+
+
+@api.get("/historical/standings")
+async def list_historical_standings(tournament_id: Optional[str] = None, category: Optional[str] = None, group_name: Optional[str] = None):
+    q = {}
+    if tournament_id:
+        q["tournament_id"] = tournament_id
+    if category:
+        q["category"] = category
+    if group_name:
+        q["group_name"] = group_name
+    items = await db.historical_standings.find(q, {"_id": 0}).sort([("category", 1), ("group_name", 1), ("rank", 1)]).to_list(2000)
+    return items
+
+
+@api.post("/historical/standings", response_model=List[HistoricalStandingIn])
+async def bulk_create_historical_standings(rows: List[HistoricalStandingIn], _: dict = Depends(require_admin)):
+    """Carga masiva de standings históricos (lo usa el script de import)."""
+    if not rows:
+        return []
+    docs = []
+    for r in rows:
+        d = r.model_dump()
+        d["id"] = str(uuid.uuid4())
+        d["gd"] = d["gf"] - d["ga"] if d["gd"] == 0 else d["gd"]
+        docs.append(d)
+    await db.historical_standings.insert_many(docs)
+    return [{k: v for k, v in d.items() if k != "_id" and k != "id"} for d in docs]
+
+
+@api.delete("/historical/standings")
+async def delete_historical_standings(tournament_id: str, _: dict = Depends(require_admin)):
+    res = await db.historical_standings.delete_many({"tournament_id": tournament_id})
+    return {"deleted": res.deleted_count}
+
+
+# -------------------- Plantilla Excel estándar (matches) --------------------
+@api.get("/import/matches-template")
+async def download_matches_template(_: dict = Depends(require_admin)):
+    """Plantilla XLSX para cargar partidos de un torneo histórico."""
+    from openpyxl import Workbook
+    from io import BytesIO
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Partidos"
+    headers = [
+        "fecha (YYYY-MM-DD)",
+        "hora (HH:MM)",
+        "categoria",
+        "grupo",
+        "jornada",
+        "fase",
+        "match_type (regular|intergrupo)",
+        "local",
+        "visitante",
+        "marcador_local",
+        "marcador_visitante",
+        "fair_play_local",
+        "fair_play_visitante",
+        "cancha",
+    ]
+    ws.append(headers)
+    ws.append(["2025-12-15", "10:00", "Sub-12", "Grupo A", 1, "grupos", "regular", "JAGUARES", "FORTALEZA", 3, 1, 200, 180, "Cancha 1"])
+    # Style header
+    from openpyxl.styles import Font, PatternFill
+    bold = Font(bold=True, color="FFFFFF")
+    fill = PatternFill(start_color="1d4ed8", end_color="1d4ed8", fill_type="solid")
+    for col_idx in range(1, len(headers) + 1):
+        c = ws.cell(row=1, column=col_idx)
+        c.font = bold
+        c.fill = fill
+        ws.column_dimensions[c.column_letter].width = 20
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return StreamingResponse(
+        buf,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": 'attachment; filename="fsc_partidos_template.xlsx"'},
+    )
+
 
 # -------------------- Bracket (eliminación directa) --------------------
 BRACKET_SIZES = [4, 8, 16, 32]
@@ -1549,8 +1779,9 @@ async def standings(category: Optional[str] = None, group_name: Optional[str] = 
     rows = list(table.values())
     for r in rows:
         r["gd"] = r["gf"] - r["ga"]
-    # Tiebreakers: points -> gd -> gf -> fair_play
-    rows.sort(key=lambda r: (-r["points"], -r["gd"], -r["gf"], -r["fair_play"]))
+    # Tiebreakers: points -> fair_play -> gd -> gf
+    # Fair Play es el PRIMER ítem de desempate por reglamento FSC.
+    rows.sort(key=lambda r: (-r["points"], -r["fair_play"], -r["gd"], -r["gf"]))
     return rows
 
 @api.get("/stats/top-scorers")

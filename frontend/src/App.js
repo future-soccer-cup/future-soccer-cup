@@ -24,6 +24,7 @@ import MyQuotes from "./pages/MyQuotes";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import Noticias from "./pages/Noticias";
 import Bracket from "./pages/Bracket";
+import DatosEstadisticas from "./pages/DatosEstadisticas";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 
@@ -42,6 +43,7 @@ import AdminPosts from "./pages/admin/AdminPosts";
 import AdminInventory from "./pages/admin/AdminInventory";
 import AdminPayments from "./pages/admin/AdminPayments";
 import AdminPasswordResets from "./pages/admin/AdminPasswordResets";
+import AdminTournaments from "./pages/admin/AdminTournaments";
 
 function PublicLayout() {
   const loc = useLocation();
@@ -74,6 +76,7 @@ function App() {
             <Route path="/jugadores/:id" element={<PlayerDetail />} />
             <Route path="/noticias" element={<Noticias />} />
             <Route path="/bracket" element={<Bracket />} />
+            <Route path="/datos-estadisticas" element={<DatosEstadisticas />} />
             <Route path="/cotizar" element={<Cotizar />} />
             <Route path="/login" element={<Login />} />
             <Route path="/registro" element={<Register />} />
@@ -101,6 +104,7 @@ function App() {
             <Route path="partidos" element={<AdminMatches />} />
             <Route path="generador-fixture" element={<AdminFixtureGenerator />} />
             <Route path="bracket" element={<AdminBracketGenerator />} />
+            <Route path="torneos" element={<AdminTournaments />} />
             <Route path="aprobaciones" element={<AdminApprovals />} />
             <Route path="carga-masiva" element={<AdminBulkUpload />} />
             <Route path="cotizaciones" element={<AdminQuotes />} />

@@ -1,0 +1,42 @@
+{
+  "summary": "Tanda D — Datos y Estadísticas + Tournaments CRUD + Intergrupos + Historical + Plantilla XLSX. Backend: 20/20 PASS (new suite /app/backend/tests/test_iter12_tanda_d.py). Iter11 regression: 11/11 PASS. UI público verificado: Home (all testids, NO 'Crear cuenta familiar', NO link a /registro family), Navbar nav-datos-estadisticas → /datos-estadisticas, /datos-estadisticas con tournament-selector listando archivados con 📦 (2 archivados detectados) + tabs (posiciones/fixture/goleadores), /posiciones footnote 'Desempate: Puntos → Juego Limpio (J.L) → Diferencia de gol → Goles a favor' en orden correcto. TIE-BREAKER FP visual: en screenshot de /posiciones se observa TEST_FP_TEAM_ab27fb (FP=6, DG=-4) primero, superando a TEST_FP_TEAM_b77163 (FP=2, DG=+4) y TEST_FP_TEAM_6a6143 (FP=2, DG=0) → confirma que FP precede a DG. UI admin (/admin/torneos, /admin/partidos intergroup): no se logró login automated (selector timing en form de Login fuera de viewport tras 3 intentos — loop prevention); pero grep del código confirma todos los testids requeridos presentes en AdminTournaments.jsx (add-tournament-btn, tournament-form, edit-tour-*, archive-tour-*, delete-tour-*, download-matches-template), AdminMatches.jsx (open-intergroup-btn, intergroup-form, ig-tournament, ig-pairing, ig-preview-btn, ig-save-btn) y AdminLayout.jsx (admin-nav-torneos auto-generado desde /admin/torneos route).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/datos-estadisticas", "issues": ["React hydration warning: <span> dentro de <option> (option de tournament-selector con ícono 📦). Es un warning de hidratación visible en consola pero no rompe la funcionalidad. Sugerencia: extraer el 📦 al texto del option sin wrapper de span x-dynamic."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter12_tanda_d.py",
+    "/app/test_reports/pytest/iteration_12.xml"
+  ],
+  "action_items": [
+    "OPCIONAL P3: limpiar warning de hidratación en <option> del tournament-selector (envuelve el texto en un <span x-dynamic>). No bloquea UI."
+  ],
+  "critical_code_review_comments": [
+    "server.py llegó a 3490 líneas tras Tanda D. Sigue urgiendo split en routers (tournaments, matches, historical, fixtures, intergroup, import).",
+    "POST /api/historical/standings: la lógica 'd[gd] = gf-ga if gd==0 else gd' impide registrar manualmente un GD=0 cuando realmente debe ser 0; mejor exigir cliente o validar contra gf-ga directamente.",
+    "POST /api/fixtures/intergroup no valida que group_a != group_b (podría generar partidos del mismo grupo contra sí mismo). Sugerencia: 400 si payload.group_a == payload.group_b.",
+    "POST /api/fixtures/intergroup no valida que slot/venue listas no sean vacías cuando se pasan parcialmente; aplica fallback ['10:00'] / [''] pero no documenta.",
+    "DELETE /api/historical/standings borra por tournament_id sin validar que el torneo exista; podría devolver 404 si tournament_id no existe en db.tournaments (en lugar de {deleted: 0}). Decisión de UX.",
+    "GET /api/import/matches-template carga openpyxl dentro del handler; mover import al top para evitar costo en cada llamada."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter12_tanda_d.py (NEW — 20 tests, 6 clases: TieBreakerFP, Tournaments, Intergroup, Historical, MatchesTemplate, MatchTypeField)"
+  ],
+  "success_rate": {
+    "backend": "100% (20/20 pass en iter12 + 11/11 regression iter11)",
+    "frontend": "Público 100% (Home, Navbar, /datos-estadisticas, /posiciones tie-break footnote). Admin no validado UI automated por selector timing en login form (testids verificados por grep en código fuente)."
+  },
+  "test_credentials": "admin@futuresoccercup.com / FSCAdmin2025! (verificado via API). DT temporal generado por suite: TEST_iter12_dt_*@test.com / TeamPass2025!",
+  "seed_data_creation": "Suite crea: 3 equipos TEST_FP_TEAM_* aprobados en grupo TEST_FP_TBR + 3 partidos finalizados (resultados 1-0, 5-0, 5-0) para validar tie-break FP. 4 equipos TEST_IG_TEAM_* en grupos TEST_IG_A/TEST_IG_B + 2 intergroup matches persistidos en 2030-09-02. 2 equipos TEST_MT_TEAM_* en TEST_MT_GR + 1 match toggleado intergrupo↔regular. 1 tournament TEST_TOUR_* (queda en DB, archived=true). 2 historical_standings TEST_TEAM_X/Y (creados y luego eliminados). Torneo histórico 'Diciembre 2025 Impares (Histórico)' con 210 standings confirmado intacto.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Ejecutar: pytest /app/backend/tests/test_iter12_tanda_d.py /app/backend/tests/test_iter11_double_matchday.py -v. Para UI admin (no cubierta por Playwright esta vez), usar selectores robustos para login: [data-testid=login-email-input] + [data-testid=login-password-input], y antes de fill hacer await page.evaluate('window.scrollTo(0, document.body.scrollHeight)') porque el form de Login está debajo del hero. Testids confirmados en código: AdminTournaments.jsx (add-tournament-btn, tournament-form, download-matches-template, edit-tour-{id}, archive-tour-{id}, delete-tour-{id}), AdminMatches.jsx (open-intergroup-btn, intergroup-form, ig-tournament, ig-pairing, ig-preview-btn, ig-save-btn, ig-category provisto por CategorySelect), AdminLayout.jsx (admin-nav-torneos generado dinámicamente). Public UI 100% verificado.",
+  "rca of the issue": "N/A — Tanda D cerró sin issues HIGH/CRITICAL. (1) Tie-breaker corregido: rows.sort(key=lambda r: (-points, -fair_play, -gd, -gf)) en server.py línea 1784 + footnote actualizado en Standings.jsx línea 95. (2) Tournaments CRUD con backfill defaults para docs antiguos. (3) Intergroup endpoint valida grupos vacíos (400), fecha inválida (400) y RBAC admin. (4) Historical standings: 210 filas Diciembre 2025 precargadas + bulk POST/DELETE funcional. (5) Plantilla XLSX con exactamente 14 headers en orden esperado y hoja 'Partidos'. (6) match_type 'intergrupo' persiste vía POST/PUT. (7) Ningún endpoint nuevo filtra _id. UI público (Home, Datos, Posiciones) sin 'Crear cuenta familiar' y con todos los testids requeridos."
+}

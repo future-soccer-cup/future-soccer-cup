@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import api, { formatApiError } from "../../lib/api";
-import { Plus, Trash2, Edit3, CalendarClock } from "lucide-react";
+import { Plus, Trash2, Edit3, CalendarClock, Shuffle } from "lucide-react";
 import { toast } from "sonner";
+import CategorySelect from "../../components/CategorySelect";
 import { Modal, Field } from "./AdminTeams";
 
 const EMPTY = { tournament_id: "", home_team_id: "", away_team_id: "", match_date: "", venue: "", group_name: "", stage: "grupos", status: "programado", home_score: null, away_score: null };
@@ -26,6 +27,7 @@ export default function AdminMatches() {
   const [editing, setEditing] = useState(null);
   const [scoring, setScoring] = useState(null);
   const [manualEdit, setManualEdit] = useState(null);
+  const [intergroupOpen, setIntergroupOpen] = useState(false);
 
   const load = useCallback(() => Promise.all([
     api.get("/matches"), api.get("/teams"), api.get("/tournaments")
@@ -103,7 +105,19 @@ export default function AdminMatches() {
     <div data-testid="admin-matches">
       <div className="flex items-center justify-between mb-6">
         <h1 className="font-display text-4xl font-black uppercase tracking-tighter">Partidos</h1>
-        <button onClick={() => setEditing({ ...EMPTY })} className="fsc-btn-primary px-4 py-2 rounded-md text-sm flex items-center gap-2" data-testid="add-match-btn"><Plus size={16}/> Programar</button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIntergroupOpen(true)}
+            className="fsc-btn-primary px-4 py-2 rounded-md text-sm flex items-center gap-2"
+            data-testid="open-intergroup-btn"
+            title="Sortear intergrupos (cuadrangulares x2)"
+          >
+            <Shuffle size={16}/> Sortear intergrupos
+          </button>
+          <button onClick={() => setEditing({ ...EMPTY })} className="fsc-btn-red px-4 py-2 rounded-md text-sm flex items-center gap-2" data-testid="add-match-btn">
+            <Plus size={16}/> Programar
+          </button>
+        </div>
       </div>
 
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
@@ -269,7 +283,134 @@ export default function AdminMatches() {
           </form>
         </Modal>
       )}
+
+      {intergroupOpen && (
+        <IntergroupModal
+          tournaments={tournaments}
+          onClose={() => setIntergroupOpen(false)}
+          onDone={() => { setIntergroupOpen(false); load(); }}
+        />
+      )}
     </div>
+  );
+}
+
+function IntergroupModal({ tournaments, onClose, onDone }) {
+  const [form, setForm] = useState({
+    tournament_id: tournaments[0]?.id || "",
+    category: "",
+    group_a: "Grupo A",
+    group_b: "Grupo B",
+    match_date: "",
+    pairing: "standings",
+    venues: ["Cancha 1"],
+    time_slots: ["10:00"],
+  });
+  const [preview, setPreview] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const submit = async (saveIt) => {
+    if (!form.tournament_id || !form.category || !form.match_date) {
+      toast.error("Completa torneo, categoría y fecha");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await api.post("/fixtures/intergroup", { ...form, preview: !saveIt });
+      setPreview(res.data);
+      if (saveIt) {
+        toast.success(`Intergrupos guardados (${res.data.count} partidos)`);
+        onDone();
+      } else {
+        toast.success("Vista previa generada");
+      }
+    } catch (err) {
+      toast.error(formatApiError(err.response?.data?.detail));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Modal onClose={onClose} title="Sortear intergrupos (cuadrangulares × 2)">
+      <div className="space-y-3" data-testid="intergroup-form">
+        <label className="block">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Torneo</span>
+          <select
+            value={form.tournament_id}
+            onChange={(e) => setForm({ ...form, tournament_id: e.target.value })}
+            className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md"
+            data-testid="ig-tournament"
+          >
+            {tournaments.map((t) => <option key={t.id} value={t.id}>{t.name} · {t.season}</option>)}
+          </select>
+        </label>
+        <CategorySelect
+          value={form.category}
+          onChange={(v) => setForm({ ...form, category: v })}
+          testId="ig-category"
+        />
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Grupo A" value={form.group_a} onChange={(v) => setForm({ ...form, group_a: v })} />
+          <Field label="Grupo B" value={form.group_b} onChange={(v) => setForm({ ...form, group_b: v })} />
+        </div>
+        <Field label="Fecha del intergrupo" type="date" required value={form.match_date} onChange={(v) => setForm({ ...form, match_date: v })} />
+        <label className="block">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Emparejamiento</span>
+          <select
+            value={form.pairing}
+            onChange={(e) => setForm({ ...form, pairing: e.target.value })}
+            className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md"
+            data-testid="ig-pairing"
+          >
+            <option value="standings">Por posición en la tabla (1°A vs 1°B, 2°A vs 2°B...)</option>
+            <option value="seed">Por orden de inscripción</option>
+            <option value="random">Aleatorio (sorteo)</option>
+          </select>
+        </label>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="block">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Canchas (sep. coma)</span>
+            <input
+              value={form.venues.join(", ")}
+              onChange={(e) => setForm({ ...form, venues: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
+              className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md"
+            />
+          </label>
+          <label className="block">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Horarios (sep. coma)</span>
+            <input
+              value={form.time_slots.join(", ")}
+              onChange={(e) => setForm({ ...form, time_slots: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
+              className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md"
+            />
+          </label>
+        </div>
+        <div className="flex gap-2 pt-2">
+          <button onClick={() => submit(false)} disabled={loading} className="flex-1 fsc-btn-primary py-2 rounded-md text-sm disabled:opacity-50" data-testid="ig-preview-btn">
+            {loading ? "..." : "Vista previa"}
+          </button>
+          <button onClick={() => submit(true)} disabled={loading || !preview} className="flex-1 fsc-btn-red py-2 rounded-md text-sm disabled:opacity-50" data-testid="ig-save-btn">
+            Guardar partidos
+          </button>
+        </div>
+        {preview && (
+          <div className="mt-3 border-t border-slate-200 pt-3">
+            <div className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Cruces ({preview.count})</div>
+            <div className="space-y-1.5 max-h-64 overflow-y-auto">
+              {preview.matches.map((m) => (
+                <div key={m.id} className="flex items-center justify-between text-sm border-l-4 border-red-500 pl-3 py-1.5 bg-red-50">
+                  <span className="font-semibold">{m.home_team_name}</span>
+                  <span className="text-slate-400 text-xs">vs</span>
+                  <span className="font-semibold">{m.away_team_name}</span>
+                  <span className="text-xs text-slate-500">{m.venue || "—"} · {(m.match_date || "").slice(11, 16)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </Modal>
   );
 }
 

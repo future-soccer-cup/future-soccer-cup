@@ -92,7 +92,7 @@ export default function Standings() {
               </tbody>
             </table>
           </div>
-          <p className="mt-2 text-[11px] text-slate-400">Desempate: Puntos → Diferencia de gol → Goles a favor → Juego Limpio (J.L)</p>
+          <p className="mt-2 text-[11px] text-slate-400">Desempate: Puntos → <span className="text-emerald-700 font-semibold">Juego Limpio (J.L)</span> → Diferencia de gol → Goles a favor</p>
         </div>
 
         <div>
