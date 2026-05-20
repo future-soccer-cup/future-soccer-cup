@@ -479,3 +479,40 @@ Refactor de `const load = () => ...; useEffect(() => load(), [])` a `const load 
   - Navbar y rutas limpias: eliminados Bookings, MyBookings, AdminBookings, AdminInventory.
   - Rutas admin: agregada `/admin/noticias` (AdminPosts ya existente).
   - Formato numérico es-CO en Cotizar, MyQuotes, MyTeam y AdminQuotes.
+
+
+## Iteration 20 (2026-05-20) — Tanda D: Datos y Estadísticas + Tournaments CRUD + Intergrupos
+
+### Backend
+- **Tie-breaker corregido** (`/api/stats/standings`): orden ahora **Pts → Fair Play → DG → GF** (FP es el PRIMER criterio de desempate por reglamento FSC).
+- **Modelo `Tournament` extendido**: `event_type` (festival/premier_par/premier_impar), `fmt` (round_robin/cuadrangular_x2/eliminacion), `archived` (bool). Backfill de defaults en `GET /api/tournaments`.
+- **Nuevo endpoint** `PUT /api/tournaments/{tid}` con `TournamentUpdateIn` para actualización parcial.
+- **`MatchIn.match_type`** ahora es `Literal["regular", "intergrupo"]` (default "regular"). `MatchUpdateIn` también lo acepta.
+- **Nuevo endpoint `POST /api/fixtures/intergroup`**: genera N partidos cruzados entre 2 grupos. Pairing `standings`/`seed`/`random`. Valida `group_a != group_b`, grupos no vacíos, fecha YYYY-MM-DD, RBAC admin.
+- **Nueva colección `db.historical_standings`** + endpoints `GET /api/historical/standings`, `POST /api/historical/standings` (bulk), `DELETE /api/historical/standings?tournament_id=`.
+- **Nuevo endpoint `GET /api/import/matches-template`** (admin): descarga plantilla XLSX con hoja "Partidos" y 14 columnas estándar.
+- **Script `scripts/import_historical_dic2025.py`**: parsea `FIXTURE DICIEMBRE 2025 IMPARES.xls`, carga **210 standings** como torneo archivado "Diciembre 2025 Impares (Histórico)".
+
+### Frontend
+- **`/datos-estadisticas`** (público nuevo): selector de torneo (activos + archivados con `[Hist]`), tabs Posiciones/Fixture/Goleadores. Snapshot histórico para archivados, live para activos.
+- **`/admin/torneos`** (nuevo): CRUD completo + botón "Plantilla partidos (XLSX)".
+- **Modal sorteo intergrupos** en `/admin/partidos` (botón "Sortear intergrupos").
+- **Home rediseñada**: hero más profesional, barra DT, sección Plataforma, reglamento + 4 pills, CTA exclusivo DTs (sin "Crear cuenta familiar").
+- **Navbar**: nuevo link "Datos" → `/datos-estadisticas`.
+- **Admin sidenav**: nuevo link "Torneos" → `/admin/torneos`.
+- **`Standings.jsx`**: footnote "Desempate: Puntos → Juego Limpio (J.L) → Diferencia de gol → Goles a favor".
+
+### Verificación
+- Backend: `test_iter12_tanda_d.py` **20/20 PASS** (en DB limpia) + iter11 regression 11/11.
+- Frontend Playwright: Home, Navbar, /datos-estadisticas, /posiciones, tie-breaker visual confirmado. Admin UI verificado por grep de testids.
+- Fixes post-test: `group_a != group_b` → 400; hidratación `<option>` resuelta (texto plano `[Hist]`).
+
+## Backlog actualizado (P1/P2/P3)
+- **P1**: Notificaciones email (Resend/SendGrid) en cambios de estado.
+- **P2**: Stripe webhook signature verification.
+- **P2**: Refactor `server.py` (>3490 líneas) → `/app/backend/routes/`.
+- **P3**: POST /api/historical/standings — revisar `gd = gf - ga if gd == 0 else gd` (impide registrar GD=0 real).
+- **P3**: DELETE /api/historical/standings — validar existencia del torneo (404 vs {deleted:0}).
+- **P3**: GET /api/import/matches-template — mover imports de openpyxl al top-level.
+- **P3**: Tests iter11/iter12 no idempotentes — implementar cleanup en fixtures.
+- **P3**: Implementar POST /api/import/matches para importación masiva desde la plantilla estándar.

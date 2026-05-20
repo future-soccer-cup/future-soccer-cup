@@ -1334,6 +1334,8 @@ async def generate_intergroup(payload: IntergroupGenerateIn, _: dict = Depends(r
     """Crea 1 partido intergrupos por equipo: 1°A vs 1°B, 2°A vs 2°B, etc. (según pairing)."""
     if payload.category not in CATEGORIES:
         raise HTTPException(status_code=400, detail=f"Categoría inválida. Use: {', '.join(CATEGORIES)}")
+    if payload.group_a == payload.group_b:
+        raise HTTPException(status_code=400, detail="Los grupos A y B deben ser distintos")
     a = await _group_team_order(payload.tournament_id, payload.category, payload.group_a, payload.pairing)
     b = await _group_team_order(payload.tournament_id, payload.category, payload.group_b, payload.pairing)
     if not a or not b:

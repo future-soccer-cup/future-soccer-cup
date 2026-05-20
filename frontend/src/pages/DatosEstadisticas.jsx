@@ -86,7 +86,7 @@ export default function DatosEstadisticas() {
               {tournaments.length === 0 && <option value="">Sin torneos disponibles</option>}
               {tournaments.map((t) => (
                 <option key={t.id} value={t.id}>
-                  {t.archived ? "📦 " : ""}{t.name} · {t.season} · {t.category}
+                  {`${t.archived ? "[Hist] " : ""}${t.name} · ${t.season} · ${t.category}`}
                 </option>
               ))}
             </select>
