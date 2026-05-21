@@ -8,6 +8,7 @@ import ImageUpload from "../components/ImageUpload";
 import CategorySelect from "../components/CategorySelect";
 import PaymentForm from "../components/PaymentForm";
 import PaymentsList from "../components/PaymentsList";
+import CarnetSheet from "../components/CarnetSheet";
 
 const EMPTY_PLAYER = { name: "", team_id: "", jersey_number: 1, position: "Mediocampista", birth_date: "", photo_url: "", document_id: "", nickname: "", gender: "", eps: "", guardian_name: "", guardian_doc: "", guardian_relation: "", guardian_phone: "" };
 const EMPTY_STAFF = { name: "", document: "", role: "Director técnico", phone: "" };
@@ -513,6 +514,18 @@ export default function MyTeam() {
           ))}
         </div>
       </div>
+
+      {/* Carnets del equipo */}
+      <div className="mt-12 border-t border-slate-200 pt-10">
+        <CarnetSheet
+          players={players.filter((p) => !p.status || p.status === "aprobado")}
+          teams={team ? [team] : []}
+          lockedTeamId={teamId}
+          title="Carnets del equipo"
+          testIdPrefix="myteam-carnet"
+        />
+      </div>
+
 
       {editingTeam && (
         <Modal title="Editar equipo" onClose={() => setEditingTeam(false)}>

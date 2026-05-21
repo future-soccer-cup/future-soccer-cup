@@ -1,0 +1,40 @@
+{
+  "summary": "Tanda E (frontend-only): tested CarnetSheet refactor on /admin/carnets and /mi-equipo. All required testids present, selection/toggle/filter/tab-clear behaviour works as specified. Admin sees 6 approved players globally and filter narrows to 3 for Club de Prueba; DT sees exactly the 3 approved players of their own club and lockedTeamId hides the team filter as expected. No regressions detected on legacy testids.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/test_reports/iteration_13.json"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "CarnetSheet.jsx is well-scoped and reusable; props lockedTeamId effectively hides team filter and forces filtering. Good use of data-testid prefixing.",
+    "Minor noise: React DOM warning '<span> cannot be a child of <option>' originates from the preview tooling overlay injecting x-ve-dynamic spans into <option>, not from app source — no action needed.",
+    "Approved-players filter on /mi-equipo uses `!p.status || p.status === \"aprobado\"`, which works because /api/teams/{tid}/players returns players whose status field is null when approved by admin (verified empirically). Consider explicit status='aprobado' set on DB approve action for clarity.",
+    "AdminCarnets falls back to non-filtered fetch on error, masking actual API errors silently. Consider logging or surfacing the failure."
+  ],
+  "updated_files": [],
+  "success_rate": { "backend": "n/a", "frontend": "100%" },
+  "test_credentials": "Admin: admin@futuresoccercup.com / FSCAdmin2025!  |  DT: coach@test.com / Coach2025! (Club de Prueba team_id=a50cdb94-2ba5-441b-9ec3-5dd5b5efb2da, 3 approved players)",
+  "seed_data_creation": "Registered DT coach@test.com via /api/auth/register-team (manager_name, club_name, team_name, category=Sub-12, event_type=festival, data_consent=true, birth_year=2013). Approved team via PUT /api/teams/{id}/status?status=aprobado. Created 3 players (Test Player 1-3) and approved them via PUT /api/players/{id}/status?status=aprobado.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "DT user coach@test.com / Coach2025! and 3 approved test players exist on team a50cdb94-2ba5-441b-9ec3-5dd5b5efb2da (Club de Prueba 2013 Único). Reusable for any /mi-equipo or carnets follow-up tests. For DT auth on Playwright: scroll to bottom of /login (form is below hero) then fill email/password.",
+  "verifications_passed": {
+    "admin_carnets_rendered": true,
+    "all_required_testids_admin": ["admin-carnets","carnet-search","carnet-team-filter","carnet-tab-players","carnet-tab-staff","carnet-print-btn","carnet-pdf-btn","carnet-download-selected-btn","carnet-toggle-all","carnet-selected-count","carnet-individual-*","carnet-select-*"],
+    "download_selected_disabled_when_zero": true,
+    "download_selected_enabled_after_selection": true,
+    "toggle_all_selects_and_deselects": "6 -> 0",
+    "selection_cleared_on_tab_switch": true,
+    "selection_cleared_on_filter_change": true,
+    "team_filter_narrows_grid": "39 teams -> 3 carnets for Club de Prueba",
+    "individual_buttons_present": 6,
+    "myteam_carnet_rendered": true,
+    "all_required_testids_myteam": ["myteam-carnet","myteam-carnet-search","myteam-carnet-tab-players","myteam-carnet-tab-staff","myteam-carnet-toggle-all","myteam-carnet-download-selected-btn","myteam-carnet-pdf-btn","myteam-carnet-print-btn","myteam-carnet-select-*"],
+    "myteam_team_filter_absent": true,
+    "dt_sees_only_own_team_players": "3/3 (no cross-club leakage)",
+    "dt_toggle_all_works": "3 selected"
+  }
+}
