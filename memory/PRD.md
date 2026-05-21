@@ -516,3 +516,21 @@ Refactor de `const load = () => ...; useEffect(() => load(), [])` a `const load 
 - **P3**: GET /api/import/matches-template — mover imports de openpyxl al top-level.
 - **P3**: Tests iter11/iter12 no idempotentes — implementar cleanup en fixtures.
 - **P3**: Implementar POST /api/import/matches para importación masiva desde la plantilla estándar.
+
+## Iteration 21 (2026-05-21) — Tanda E: Carnets con selección por checkbox + reuso DT
+
+### Frontend
+- **Componente reutilizable `CarnetSheet.jsx`** (`/app/frontend/src/components/CarnetSheet.jsx`):
+  - Props: `players`, `teams`, `lockedTeamId` (oculta selector de equipo y filtra automáticamente), `title`, `testIdPrefix`.
+  - Checkbox de selección por carnet (siempre visible) + ring azul cuando seleccionado.
+  - Barra azul de selección con "Seleccionar todos / Quitar selección" + contador "X de N seleccionados" + botón "limpiar".
+  - Botones: "Descargar selección (N)" (PDF batch solo con seleccionados) + "Descargar todos" (lote completo) + "Vista impresión" + descarga individual al hover.
+  - Selección se limpia automáticamente al cambiar de tab (jugadores ↔ staff) o de filtro de equipo.
+- **`/admin/carnets`**: refactorizado a thin wrapper de `CarnetSheet` con `testIdPrefix="carnet"` (admin ve todos los jugadores aprobados + selector de equipo).
+- **`/mi-equipo`**: nueva sección "Carnets del equipo" usando `CarnetSheet` con `lockedTeamId={teamId}` y `testIdPrefix="myteam-carnet"`. El DT solo ve los jugadores aprobados de SU equipo, sin selector de equipo.
+
+### Verificación
+- `/app/test_reports/iteration_13.json` — **100% PASS** (frontend Playwright).
+- Confirmado: admin ve 6 jugadores → filtra a 3 con club; DT ve exactamente 3 jugadores propios; lockedTeamId oculta filter; toggle-all marca/desmarca todos; selección se limpia al cambiar tab/filter; "Descargar selección" deshabilitado con 0 seleccionados.
+- No regresiones en testids legacy (`admin-carnets`, `carnet-pdf-btn`, `carnet-search`, `carnet-individual-*`).
+
