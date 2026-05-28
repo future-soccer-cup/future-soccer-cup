@@ -534,3 +534,64 @@ Refactor de `const load = () => ...; useEffect(() => load(), [])` a `const load 
 - Confirmado: admin ve 6 jugadores → filtra a 3 con club; DT ve exactamente 3 jugadores propios; lockedTeamId oculta filter; toggle-all marca/desmarca todos; selección se limpia al cambiar tab/filter; "Descargar selección" deshabilitado con 0 seleccionados.
 - No regresiones en testids legacy (`admin-carnets`, `carnet-pdf-btn`, `carnet-search`, `carnet-individual-*`).
 
+
+## Iteration 22 (2026-05-28) — Tanda F: Identidad visual FSC + Home redesign + Cotizaciones esenciales (PDF Requerimientos v3)
+
+### Identidad visual (FSC_IdentidadVisual_v1)
+- Paleta: **Negro #1A1A1A / Dorado #C9A227 / Rojo #B51519 / Azul Noche #0A0A28**.
+- Fuentes: **Bebas Neue** (display), **Montserrat** (body), **Dancing Script** (cursive accent).
+- Tokens CSS en `/app/frontend/src/index.css` (`--fsc-negro`, `--fsc-dorado`, etc.) + `tailwind.config.js` con `fsc.*` palette y `font-{display,body,cursive}`.
+- Botones renovados: `.fsc-btn-primary` (dorado), `.fsc-btn-red`, `.fsc-btn-dark` (negro con borde dorado). Shadow estilo "neobrutalist" (4px+4px en negro).
+
+### Home rediseñado (FSC_Requerimientos_Emergent_v3)
+- Hero negro con grain + stripe + ticker dorado scrolleable "FUTURE SOCCER CUP · SOMOS MÁS QUE UN TORNEO".
+- Sección "Próximo Evento (Premier)": muestra el torneo `featured=true` o los datos estáticos del `home_settings.upcoming_*`.
+- Sección "Nosotros" con imagen + texto editable desde admin.
+- Sección "Eventos" con tarjetas dinámicas de los torneos activos.
+- Sección "Galería" con carrusel editable.
+- Footer dorado con tagline cursive "Somos más que un torneo" + redes sociales.
+- Navbar **fijo** con menú: Inicio · Nosotros · Eventos · Contacto + dropdown "Plataforma" (Fixture/Bracket/Datos/Posiciones/Clubes/Jugadores/Noticias/Cotizar) + Ingresar/Registrarse.
+
+### Nuevas páginas públicas
+- `/nosotros` (`Nosotros.jsx`) con misión y bloque contacto.
+- `/eventos` (`Eventos.jsx`) — torneos vigentes + archivo histórico.
+- `/contacto` (`Contacto.jsx`) con redes y CTA.
+
+### Backend nuevo
+- **Tournament extendido**: `featured`, `city`, `venue`, `cover_url` (backfill defaults en GET).
+- **`POST/PUT/DELETE /api/gallery`** + `GET /api/gallery` (público) — colección `gallery_images`.
+- **`GET/PUT /api/home-settings`** — colección `home_settings` (singleton). Public GET, admin-only PUT.
+- **`QuoteIn.extra_pax_entries`**: lista `{label, pax, nights}` para acompañantes con noches distintas. `_calculate_quote` suma `extra_pax_subtotal` (con `extra_pax_breakdown` por entry) al `lodging_subtotal`. Tier sin hospedaje (domicilio) → 0.
+- **`PUT /api/quotes/{qid}`** (nuevo): solo dueño o admin. Cualquier edición vuelve status a "pendiente" (re-aprobación). Owner no puede editar cotizaciones "pagada"; admin sí.
+- **`GET /api/quotes/{qid}`** (nuevo): cualquier usuario autenticado puede ver detalles.
+
+### Cotizaciones esenciales (PDF)
+- ❌ Eliminado campo "Días para comidas adicionales" (`meal_days` ya no se expone en UI).
+- ✅ Editor "Personas adicionales con noches distintas" (`extra-pax-editor`) en paso 2.
+- ✅ Botón "Editar cotización" en `/mis-cotizaciones` para todas las quotes no pagadas → abre `/cotizar?id={qid}` y al guardar llama `PUT /api/quotes/{id}`.
+- ✅ Detalles de cotización accesibles para CUALQUIER usuario autenticado (GET por id).
+
+### Login / Registro rediseñados
+- `Login.jsx`: layout 5-col (panel decorativo + form), paleta dorada, iconos en inputs, links "Volver al inicio" y "Registrar mi club".
+- `TeamRegister.jsx`: paleta dorada aplicada; campos eliminados: `club_email`, `club_website`, `club_country` (default Colombia oculto en estado). Sidebar resumen ahora con borde dorado.
+
+### Admin nuevo
+- `/admin/galeria` (`AdminGallery.jsx`): CRUD completo de imágenes con preview, título, caption, sort_order.
+- `/admin/home` (`AdminHomeSettings.jsx`): editor de hero, próximo evento, nosotros y contacto/redes con secciones.
+- `/admin/torneos`: nuevo toggle "destacado" (estrella) + campos ciudad/sede/cover_url al editar.
+
+### Verificación
+- `/app/test_reports/iteration_14.json` — **Backend 29/29 PASS · Frontend 100% testids verified**.
+- Regresiones intactas: iter11/12/13.
+- Fonts cargando: Bebas+Neue + Montserrat + Dancing+Script en `<link>` de index.html.
+
+## Backlog actualizado (P0/P1/P2)
+- **P0 (siguiente tanda)**: Separar roles `president` (cotiza+paga) y `team_manager` (DT — inscribe jugadores). Hoy ambos roles están fusionados en `team`. Cambio invasivo a auth/RBAC.
+- **P0**: Inscripciones — permitir múltiples categorías por club + edición post-guardado + múltiples servicios con cantidades y fechas (PDF p. 6-7).
+- **P1**: Notificaciones email (Resend/SendGrid) en cambios de estado.
+- **P1**: Slider del Hero editable (hoy es imagen única; el PDF pide carrusel).
+- **P2**: Logos de aliados en Footer.
+- **P2**: Stripe webhook signature verification.
+- **P2**: Refactor `server.py` (>3676 líneas) — testing agent también lo señaló.
+- **P3**: Sort_order de gallery con drag-and-drop nativo.
+
