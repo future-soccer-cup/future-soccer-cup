@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import api, { formatApiError } from "../../lib/api";
-import { Plus, Trash2, Edit3, Archive, ArchiveRestore, Download, Trophy } from "lucide-react";
+import { Plus, Trash2, Edit3, Archive, ArchiveRestore, Download, Trophy, Star } from "lucide-react";
 import { toast } from "sonner";
 import { Modal, Field } from "./AdminTeams";
 import CategorySelect from "../../components/CategorySelect";
+import ImageUpload from "../../components/ImageUpload";
 
 const EMPTY = {
   name: "",
@@ -14,6 +15,10 @@ const EMPTY = {
   event_type: "",
   fmt: "round_robin",
   archived: false,
+  featured: false,
+  city: "",
+  venue: "",
+  cover_url: "",
 };
 
 const FORMATS = [
@@ -69,6 +74,16 @@ export default function AdminTournaments() {
     try {
       await api.delete(`/tournaments/${id}`);
       toast.success("Torneo eliminado");
+      load();
+    } catch (err) {
+      toast.error(formatApiError(err.response?.data?.detail));
+    }
+  };
+
+  const toggleFeatured = async (t) => {
+    try {
+      await api.put(`/tournaments/${t.id}`, { featured: !t.featured });
+      toast.success(t.featured ? "Quitado de destacados" : "Marcado como destacado");
       load();
     } catch (err) {
       toast.error(formatApiError(err.response?.data?.detail));
@@ -150,6 +165,9 @@ export default function AdminTournaments() {
                     : <span className="text-[10px] uppercase tracking-wider font-bold bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded">Activo</span>}
                 </td>
                 <td className="px-4 py-2 text-right space-x-2">
+                  <button onClick={() => toggleFeatured(t)} className={t.featured ? "text-fsc-dorado" : "text-slate-300 hover:text-fsc-dorado"} title={t.featured ? "Quitar destacado" : "Marcar como destacado"} data-testid={`feature-tour-${t.id}`}>
+                    <Star size={16} fill={t.featured ? "currentColor" : "none"}/>
+                  </button>
                   <button onClick={() => setEditing({ ...t })} className="text-blue-700" title="Editar" data-testid={`edit-tour-${t.id}`}><Edit3 size={16}/></button>
                   <button onClick={() => toggleArchive(t)} className="text-slate-600" title={t.archived ? "Reactivar" : "Archivar"} data-testid={`archive-tour-${t.id}`}>
                     {t.archived ? <ArchiveRestore size={16}/> : <Archive size={16}/>}
@@ -200,6 +218,15 @@ export default function AdminTournaments() {
               <Field label="Inicio" type="date" required value={editing.start_date} onChange={(v) => setEditing({ ...editing, start_date: v })} />
               <Field label="Fin" type="date" required value={editing.end_date} onChange={(v) => setEditing({ ...editing, end_date: v })} />
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Ciudad" value={editing.city || ""} onChange={(v) => setEditing({ ...editing, city: v })} />
+              <Field label="Sede / Cancha" value={editing.venue || ""} onChange={(v) => setEditing({ ...editing, venue: v })} />
+            </div>
+            <ImageUpload value={editing.cover_url || ""} onChange={(v) => setEditing({ ...editing, cover_url: v })} label="Imagen de portada (Home / Eventos)" testId="tour-cover" />
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={!!editing.featured} onChange={(e) => setEditing({ ...editing, featured: e.target.checked })} data-testid="tour-featured" />
+              <span>Destacado — aparece como Próximo Evento Premier en el Home</span>
+            </label>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={!!editing.archived} onChange={(e) => setEditing({ ...editing, archived: e.target.checked })} data-testid="tour-archived" />
               <span>Archivado (histórico — no aparece como activo en datos en vivo)</span>

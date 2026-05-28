@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { formatApiError, FSC_LOGO } from "../lib/api";
 import { toast, Toaster } from "sonner";
+import { ArrowLeft, Mail, Lock } from "lucide-react";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -28,44 +29,106 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] grid md:grid-cols-2 bg-white" data-testid="login-page">
+    <div className="min-h-[calc(100vh-4rem)] grid lg:grid-cols-5 bg-white" data-testid="login-page">
       <Toaster position="top-right" />
-      <div className="hidden md:flex relative overflow-hidden bg-slate-900 fsc-stripe-blue items-center justify-center">
-        <div className="absolute inset-0 bg-cover bg-center opacity-30" style={{ backgroundImage: `url(https://images.pexels.com/photos/32694240/pexels-photo-32694240.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940)` }} />
-        <div className="absolute inset-0 bg-gradient-to-tr from-slate-900 via-slate-900/80 to-slate-900/30" />
-        <div className="relative text-center px-12">
-          <img src={FSC_LOGO} alt="FSC" className="h-32 mx-auto" />
-          <h2 className="mt-6 font-display text-5xl font-black uppercase text-white tracking-tighter">Vive el torneo</h2>
-          <p className="mt-3 text-slate-300 max-w-sm">Reserva tu estadía y sigue cada partido de tu equipo.</p>
+      {/* Panel decorativo izquierdo */}
+      <aside className="hidden lg:flex lg:col-span-2 relative overflow-hidden bg-fsc-negro items-center justify-center min-h-[600px]">
+        <div className="absolute inset-0 bg-cover bg-center opacity-25" style={{ backgroundImage: `url(https://images.pexels.com/photos/32694240/pexels-photo-32694240.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=1100&w=900)` }} />
+        <div className="absolute inset-0 bg-gradient-to-br from-fsc-negro via-fsc-negro/85 to-fsc-azul-noche/70" />
+        <div className="absolute inset-0 fsc-grain pointer-events-none opacity-50" />
+        <div className="relative text-center px-10 fsc-fade-up">
+          <div className="bg-fsc-negro border-2 border-fsc-dorado rounded-2xl p-8 inline-block">
+            <img src={FSC_LOGO} alt="FSC" className="h-28 w-28" />
+          </div>
+          <h2 className="mt-8 font-display text-5xl tracking-wider text-white">FUTURE SOCCER CUP</h2>
+          <div className="font-cursive text-2xl text-fsc-dorado mt-1">Somos más que un torneo</div>
+          <p className="mt-5 text-fsc-gris/90 max-w-sm mx-auto leading-relaxed">
+            La plataforma oficial para directores técnicos y presidentes de club.
+          </p>
         </div>
-      </div>
+        {/* Tira dorada inferior */}
+        <div className="absolute bottom-0 left-0 right-0 bg-fsc-dorado h-2" />
+      </aside>
 
-      <div className="flex items-center justify-center p-8">
-        <div className="w-full max-w-sm">
-          <h1 className="font-display text-4xl font-black uppercase tracking-tighter">Ingresar</h1>
-          <p className="text-sm text-slate-500 mt-1">Accede a tu cuenta para gestionar cotizaciones.</p>
+      {/* Form */}
+      <main className="lg:col-span-3 flex items-center justify-center p-6 sm:p-10 lg:p-16">
+        <div className="w-full max-w-md">
+          <Link to="/" className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-slate-500 hover:text-fsc-dorado-oscuro mb-6">
+            <ArrowLeft size={14}/> Volver al inicio
+          </Link>
 
-          <form onSubmit={submit} className="mt-6 space-y-4">
+          <div className="font-cursive text-2xl text-fsc-dorado-oscuro">bienvenido</div>
+          <h1 className="font-display text-5xl md:text-6xl tracking-wider text-fsc-negro">INGRESAR</h1>
+          <div className="h-1 w-16 bg-fsc-rojo mt-3 mb-7"/>
+
+          <p className="text-sm text-slate-600 mb-6">
+            Accede a tu cuenta para gestionar tu club, inscripciones y cotizaciones.
+          </p>
+
+          <form onSubmit={submit} className="space-y-5">
             <label className="block">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Correo</span>
-              <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1 w-full px-3 py-2.5 border border-slate-200 rounded-md focus:outline-none focus:border-blue-700" data-testid="login-email-input" />
+              <span className="text-xs font-bold uppercase tracking-[0.15em] text-slate-500">Correo electrónico</span>
+              <div className="relative mt-1">
+                <Mail size={16} className="absolute left-3 top-3.5 text-slate-400 pointer-events-none"/>
+                <input
+                  required
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="tu@correo.com"
+                  className="w-full pl-10 pr-3 py-3 border-2 border-slate-200 rounded-md focus:outline-none focus:border-fsc-dorado transition-colors"
+                  data-testid="login-email-input"
+                />
+              </div>
             </label>
             <label className="block">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Contraseña</span>
-              <input required type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1 w-full px-3 py-2.5 border border-slate-200 rounded-md focus:outline-none focus:border-blue-700" data-testid="login-password-input" />
+              <span className="text-xs font-bold uppercase tracking-[0.15em] text-slate-500">Contraseña</span>
+              <div className="relative mt-1">
+                <Lock size={16} className="absolute left-3 top-3.5 text-slate-400 pointer-events-none"/>
+                <input
+                  required
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full pl-10 pr-3 py-3 border-2 border-slate-200 rounded-md focus:outline-none focus:border-fsc-dorado transition-colors"
+                  data-testid="login-password-input"
+                />
+              </div>
+              <div className="text-right mt-2">
+                <Link to="/recuperar-clave" className="text-xs font-bold tracking-wider text-fsc-dorado-oscuro hover:text-fsc-rojo transition-colors uppercase" data-testid="forgot-password-link">
+                  ¿Olvidaste tu contraseña?
+                </Link>
+              </div>
             </label>
-            <button type="submit" disabled={loading} className="fsc-btn-primary w-full py-3 rounded-md disabled:opacity-50" data-testid="login-submit-btn">
+            <button
+              type="submit"
+              disabled={loading}
+              className="fsc-btn-primary w-full py-3.5 rounded-md disabled:opacity-50"
+              data-testid="login-submit-btn"
+            >
               {loading ? "Ingresando..." : "Ingresar"}
             </button>
-            <div className="text-right">
-              <Link to="/recuperar-clave" className="text-xs font-bold text-blue-700 hover:underline" data-testid="forgot-password-link">¿Olvidaste tu contraseña?</Link>
-            </div>
           </form>
 
-          <p className="mt-6 text-sm text-slate-500">¿Aún no tienes cuenta? <Link to="/registro-equipo" className="text-red-600 font-bold">Registrar equipo</Link></p>
-          <p className="mt-1 text-xs text-slate-400">El registro está reservado para directores técnicos y gerentes de club.</p>
+          <div className="my-6 flex items-center gap-3">
+            <div className="flex-1 h-px bg-slate-200" />
+            <span className="text-[10px] uppercase tracking-[0.3em] text-slate-400 font-bold">o</span>
+            <div className="flex-1 h-px bg-slate-200" />
+          </div>
+
+          <Link
+            to="/registro-equipo"
+            className="fsc-btn-dark w-full py-3 rounded-md flex items-center justify-center"
+            data-testid="login-to-register-btn"
+          >
+            Registrar mi club
+          </Link>
+          <p className="mt-3 text-xs text-slate-400 text-center">
+            Reservado para directores técnicos y presidentes de club.
+          </p>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

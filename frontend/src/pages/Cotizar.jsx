@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import api, { formatApiError } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import { toast, Toaster } from "sonner";
@@ -10,6 +10,8 @@ const fmt = (n) => `$${Number(n || 0).toLocaleString("es-CO")}`;
 export default function Cotizar() {
   const { user, loading: authLoading } = useAuth();
   const nav = useNavigate();
+  const [searchParams] = useSearchParams();
+  const editingId = searchParams.get("id");
   const [config, setConfig] = useState(null);
   const [myTeam, setMyTeam] = useState(null);
   const [form, setForm] = useState({
@@ -22,8 +24,8 @@ export default function Cotizar() {
     includes_breakfast: false,
     includes_lunch: false,
     includes_dinner: false,
-    meal_days: null,
     meal_entries: [],
+    extra_pax_entries: [], // PAX adicionales con sus propias noches (acompañantes)
     transport_routes: [],
     tour_entries: [],
     tour_ids: [],
@@ -43,6 +45,34 @@ export default function Cotizar() {
       });
     }
   }, [user]);
+
+  // Cargar cotización existente si viene ?id=
+  useEffect(() => {
+    if (!editingId) return;
+    api.get(`/quotes/${editingId}`).then((r) => {
+      const q = r.data || {};
+      setForm((f) => ({
+        ...f,
+        event_type: q.event_type ?? f.event_type,
+        birth_year: q.birth_year ?? f.birth_year,
+        lodging_tier: q.lodging_tier ?? f.lodging_tier,
+        pax: q.pax ?? f.pax,
+        nights: q.nights ?? f.nights,
+        days: q.days ?? f.days,
+        includes_breakfast: !!q.includes_breakfast,
+        includes_lunch: !!q.includes_lunch,
+        includes_dinner: !!q.includes_dinner,
+        meal_entries: q.meal_entries || [],
+        extra_pax_entries: q.extra_pax_entries || [],
+        transport_routes: q.transport_routes || [],
+        tour_entries: q.tour_entries || [],
+        tour_ids: q.tour_ids || [],
+        include_registration: q.include_registration !== false,
+        contact_phone: q.contact_phone || "",
+        notes: q.notes || "",
+      }));
+    }).catch(() => toast.error("No se pudo cargar la cotización"));
+  }, [editingId]);
 
   // Live recalculation
   useEffect(() => {
@@ -86,8 +116,14 @@ export default function Cotizar() {
     if (user.role !== "team" && user.role !== "admin") { toast.error("Solo los DT pueden cotizar"); return; }
     setSubmitting(true);
     try {
-      await api.post("/quotes", { ...form, birth_year: form.birth_year ? Number(form.birth_year) : null });
-      toast.success("Cotización enviada. El admin la revisará.");
+      const payload = { ...form, birth_year: form.birth_year ? Number(form.birth_year) : null };
+      if (editingId) {
+        await api.put(`/quotes/${editingId}`, payload);
+        toast.success("Cotización actualizada. Quedó pendiente de re-aprobación.");
+      } else {
+        await api.post("/quotes", payload);
+        toast.success("Cotización enviada. El admin la revisará.");
+      }
       nav("/mis-cotizaciones");
     } catch (err) {
       toast.error(formatApiError(err.response?.data?.detail));
@@ -172,7 +208,7 @@ export default function Cotizar() {
               </div>
             )}
 
-            <div className="grid sm:grid-cols-3 gap-3 mt-4">
+            <div className="grid sm:grid-cols-2 gap-3 mt-4">
               <label className="block">
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Personas (pax)</span>
                 <input type="number" min="1" value={form.pax} onChange={(e) => setForm({ ...form, pax: Number(e.target.value) || 1 })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="cotizar-pax" />
@@ -182,11 +218,14 @@ export default function Cotizar() {
                 <input type="number" min="1" disabled={isDomicilio} value={form.nights} onChange={(e) => setForm({ ...form, nights: Number(e.target.value) || 1 })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md disabled:bg-slate-100" data-testid="cotizar-nights" />
                 <span className="text-[10px] text-slate-400">Base 5n incluye 5 desayunos · 4 almuerzos · 5 cenas. Cada noche adicional ya incluye alimentación.</span>
               </label>
-              <label className="block">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Días para comidas adicionales</span>
-                <input type="number" min="0" disabled={isDomicilio} value={form.meal_days ?? form.days} onChange={(e) => setForm({ ...form, meal_days: Number(e.target.value) || 0 })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md disabled:bg-slate-100" data-testid="cotizar-meal-days" />
-              </label>
             </div>
+
+            {!isDomicilio && (
+              <ExtraPaxEditor
+                entries={form.extra_pax_entries || []}
+                onChange={(entries) => setForm({ ...form, extra_pax_entries: entries })}
+              />
+            )}
           </Section>
 
           {/* 3. Alimentación */}
@@ -428,3 +467,47 @@ function CotizarGate({ variant, team }) {
     </div>
   );
 }
+
+function ExtraPaxEditor({ entries, onChange }) {
+  const add = () => onChange([...entries, { label: "", pax: 1, nights: 5 }]);
+  const update = (i, k, v) => {
+    const next = [...entries];
+    next[i] = { ...next[i], [k]: k === "label" ? v : Number(v) || 0 };
+    onChange(next);
+  };
+  const remove = (i) => onChange(entries.filter((_, j) => j !== i));
+  return (
+    <div className="mt-5 border-t-2 border-dashed border-slate-200 pt-4" data-testid="extra-pax-editor">
+      <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
+        <div>
+          <div className="text-xs font-bold uppercase tracking-wider text-fsc-dorado-oscuro">Personas adicionales con noches distintas (opcional)</div>
+          <div className="text-[11px] text-slate-500">Útil para acompañantes que se quedan más o menos noches que el grupo principal.</div>
+        </div>
+        <button type="button" onClick={add} className="text-xs font-bold uppercase tracking-wider text-fsc-negro border-2 border-fsc-dorado bg-fsc-dorado/10 hover:bg-fsc-dorado/20 px-3 py-1.5 rounded" data-testid="extra-pax-add">+ Agregar grupo</button>
+      </div>
+      {entries.length === 0 && (
+        <div className="text-[11px] text-slate-400 italic">Aún no has agregado grupos adicionales.</div>
+      )}
+      <div className="space-y-2">
+        {entries.map((ep, i) => (
+          <div key={i} className="grid sm:grid-cols-12 gap-2 items-end bg-slate-50 rounded-md p-3 border border-slate-200" data-testid={`extra-pax-row-${i}`}>
+            <label className="sm:col-span-5 block">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Etiqueta (opcional)</span>
+              <input value={ep.label || ""} onChange={(e) => update(i, "label", e.target.value)} placeholder="Padres, fisioterapeuta..." className="mt-0.5 w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
+            </label>
+            <label className="sm:col-span-3 block">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Pax</span>
+              <input type="number" min="1" value={ep.pax} onChange={(e) => update(i, "pax", e.target.value)} className="mt-0.5 w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
+            </label>
+            <label className="sm:col-span-3 block">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Noches</span>
+              <input type="number" min="1" value={ep.nights} onChange={(e) => update(i, "nights", e.target.value)} className="mt-0.5 w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
+            </label>
+            <button type="button" onClick={() => remove(i)} className="sm:col-span-1 text-fsc-rojo text-xs font-bold uppercase tracking-wider py-1.5" data-testid={`extra-pax-remove-${i}`}>Quitar</button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+

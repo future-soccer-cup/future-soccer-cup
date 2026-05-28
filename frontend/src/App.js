@@ -25,6 +25,9 @@ import PaymentSuccess from "./pages/PaymentSuccess";
 import Noticias from "./pages/Noticias";
 import Bracket from "./pages/Bracket";
 import DatosEstadisticas from "./pages/DatosEstadisticas";
+import Nosotros from "./pages/Nosotros";
+import Eventos from "./pages/Eventos";
+import Contacto from "./pages/Contacto";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 
@@ -44,6 +47,8 @@ import AdminInventory from "./pages/admin/AdminInventory";
 import AdminPayments from "./pages/admin/AdminPayments";
 import AdminPasswordResets from "./pages/admin/AdminPasswordResets";
 import AdminTournaments from "./pages/admin/AdminTournaments";
+import AdminGallery from "./pages/admin/AdminGallery";
+import AdminHomeSettings from "./pages/admin/AdminHomeSettings";
 
 function PublicLayout() {
   const loc = useLocation();
@@ -52,7 +57,7 @@ function PublicLayout() {
     <div className="min-h-screen flex flex-col bg-white">
       <Navbar />
       <Toaster position="top-right" />
-      <main className="flex-1">
+      <main className="flex-1 pt-16 lg:pt-20">
         <Outlet />
       </main>
       {!hideChrome && <Footer />}
@@ -77,6 +82,9 @@ function App() {
             <Route path="/noticias" element={<Noticias />} />
             <Route path="/bracket" element={<Bracket />} />
             <Route path="/datos-estadisticas" element={<DatosEstadisticas />} />
+            <Route path="/nosotros" element={<Nosotros />} />
+            <Route path="/eventos" element={<Eventos />} />
+            <Route path="/contacto" element={<Contacto />} />
             <Route path="/cotizar" element={<Cotizar />} />
             <Route path="/login" element={<Login />} />
             <Route path="/registro" element={<Register />} />
@@ -105,6 +113,8 @@ function App() {
             <Route path="generador-fixture" element={<AdminFixtureGenerator />} />
             <Route path="bracket" element={<AdminBracketGenerator />} />
             <Route path="torneos" element={<AdminTournaments />} />
+            <Route path="galeria" element={<AdminGallery />} />
+            <Route path="home" element={<AdminHomeSettings />} />
             <Route path="aprobaciones" element={<AdminApprovals />} />
             <Route path="carga-masiva" element={<AdminBulkUpload />} />
             <Route path="cotizaciones" element={<AdminQuotes />} />

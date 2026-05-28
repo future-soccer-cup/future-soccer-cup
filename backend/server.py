@@ -522,6 +522,12 @@ class TournamentIn(BaseModel):
     fmt: Optional[Literal["round_robin", "cuadrangular_x2", "eliminacion"]] = "round_robin"
     # Marca torneos históricos / archivados (no entran al stats live por defecto)
     archived: Optional[bool] = False
+    # Torneo destacado en Home (solo uno a la vez idealmente, no enforced).
+    featured: Optional[bool] = False
+    # Ciudad / sede / cover_url para mostrar en Home
+    city: Optional[str] = ""
+    venue: Optional[str] = ""
+    cover_url: Optional[str] = ""
 
 class TournamentOut(TournamentIn):
     id: str
@@ -535,6 +541,10 @@ class TournamentUpdateIn(BaseModel):
     event_type: Optional[str] = None
     fmt: Optional[Literal["round_robin", "cuadrangular_x2", "eliminacion"]] = None
     archived: Optional[bool] = None
+    featured: Optional[bool] = None
+    city: Optional[str] = None
+    venue: Optional[str] = None
+    cover_url: Optional[str] = None
 
 class MatchIn(BaseModel):
     tournament_id: str
@@ -612,6 +622,9 @@ class QuoteIn(BaseModel):
     pax: int = Field(ge=1)
     nights: int = Field(default=5, ge=1)  # default 5 según PDF
     days: int = Field(default=6, ge=1)
+    # PAX adicionales con sus propias noches (acompañantes que se quedan más / menos)
+    # Cada entry: {label, pax, nights} → suma cargos hospedaje base_5 + extras a la cotización.
+    extra_pax_entries: Optional[List[dict]] = []
     # Alimentación incluida en el paquete: 5 desayunos + 4 almuerzos + 5 cenas.
     # Estos toggles agregan comidas **adicionales** (llegadas tempranas, días extra)
     # multiplicadas por `meal_days` cuando no se usa meal_entries.
@@ -1021,6 +1034,10 @@ async def list_tournaments(archived: Optional[bool] = None):
         t.setdefault("event_type", "")
         t.setdefault("fmt", "round_robin")
         t.setdefault("archived", False)
+        t.setdefault("featured", False)
+        t.setdefault("city", "")
+        t.setdefault("venue", "")
+        t.setdefault("cover_url", "")
     return items
 
 @api.post("/tournaments", response_model=TournamentOut)
@@ -1043,6 +1060,10 @@ async def update_tournament(tid: str, payload: TournamentUpdateIn, _: dict = Dep
     t.setdefault("event_type", "")
     t.setdefault("fmt", "round_robin")
     t.setdefault("archived", False)
+    t.setdefault("featured", False)
+    t.setdefault("city", "")
+    t.setdefault("venue", "")
+    t.setdefault("cover_url", "")
     return t
 
 @api.delete("/tournaments/{tid}")
@@ -2178,6 +2199,30 @@ def _calculate_quote(payload: QuoteIn, catalog: dict) -> dict:
     rate_per_person = base_5 + add_night * extra_nights
     lodging_total = rate_per_person * payload.pax
 
+    # PAX adicionales con noches propias (acompañantes): cada uno paga base_5 + add_night*(nights-5)
+    extra_pax_total = 0.0
+    extra_pax_breakdown = []
+    for ep in (payload.extra_pax_entries or []):
+        try:
+            ep_pax = int(ep.get("pax") or 0)
+            ep_nights = int(ep.get("nights") or 0)
+        except (TypeError, ValueError):
+            continue
+        if ep_pax <= 0 or ep_nights <= 0 or base_5 == 0:
+            continue
+        ep_extra = max(0, ep_nights - 5)
+        ep_rate = base_5 + add_night * ep_extra
+        ep_sub = ep_rate * ep_pax
+        extra_pax_total += ep_sub
+        extra_pax_breakdown.append({
+            "label": str(ep.get("label", "")),
+            "pax": ep_pax,
+            "nights": ep_nights,
+            "rate_per_person": ep_rate,
+            "subtotal": ep_sub,
+        })
+    lodging_total += extra_pax_total
+
     # Alimentación (por persona × día). 0 en MEAL_PLANS significa N/A para ese paquete.
     meal_plans = catalog["meals"] or {}
     breakfast_per_day = float((meal_plans.get("breakfast") or {}).get("per_day_by_tier", {}).get(payload.lodging_tier, 0) or 0)
@@ -2242,6 +2287,8 @@ def _calculate_quote(payload: QuoteIn, catalog: dict) -> dict:
 
     return {
         "lodging_subtotal": lodging_total,
+        "extra_pax_subtotal": extra_pax_total,
+        "extra_pax_breakdown": extra_pax_breakdown,
         "rate_per_person_total": rate_per_person,
         "rate_per_person_5nights": base_5,
         "rate_per_person_additional_night": add_night,
@@ -2295,10 +2342,44 @@ async def create_quote(payload: QuoteIn, user: dict = Depends(get_current_user))
     doc.pop("_id", None)
     return doc
 
+@api.put("/quotes/{qid}")
+async def update_quote(qid: str, payload: QuoteIn, user: dict = Depends(get_current_user)):
+    """El dueño (DT/presidente) o admin puede editar su cotización. Cualquier edición la deja en 'pendiente'."""
+    existing = await db.quotes.find_one({"id": qid}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Cotización no encontrada")
+    is_owner = existing.get("user_id") == user["id"]
+    is_admin = user.get("role") == "admin"
+    if not (is_owner or is_admin):
+        raise HTTPException(status_code=403, detail="No puedes editar esta cotización")
+    if existing.get("status") == "pagada" and not is_admin:
+        raise HTTPException(status_code=400, detail="No se puede editar una cotización pagada")
+    cat = await _load_catalog()
+    breakdown = _calculate_quote(payload, cat)
+    updates = {
+        **payload.model_dump(),
+        **breakdown,
+        "status": "pendiente",  # cualquier edición vuelve a pendiente para re-aprobación admin
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    actor = await _record_audit("quote", qid, "owner_edit", existing.get("status"), "pendiente", user)
+    updates.update(actor)
+    await db.quotes.update_one({"id": qid}, {"$set": updates})
+    doc = await db.quotes.find_one({"id": qid}, {"_id": 0})
+    return doc
+
 @api.get("/quotes/mine")
 async def my_quotes(user: dict = Depends(get_current_user)):
     items = await db.quotes.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(500)
     return items
+
+@api.get("/quotes/{qid}")
+async def get_quote_detail(qid: str, _: dict = Depends(get_current_user)):
+    """Detalles de cotización visibles para CUALQUIER usuario autenticado (admin, DT, presidente, etc.)."""
+    q = await db.quotes.find_one({"id": qid}, {"_id": 0})
+    if not q:
+        raise HTTPException(status_code=404, detail="Cotización no encontrada")
+    return q
 
 @api.get("/quotes")
 async def all_quotes(_: dict = Depends(require_admin)):
@@ -3316,6 +3397,109 @@ async def import_team_roster(file: UploadFile = File(...), preview: bool = False
         "staff": {"total": len(sheets.get(staff_sheet, [])) if staff_sheet else 0, "ok": len(staff_created), "errors": staff_errors},
         "saved": not preview,
     }
+
+# -------------------- Gallery (imágenes de ediciones pasadas) --------------------
+class GalleryImageIn(BaseModel):
+    title: Optional[str] = ""
+    image_url: str  # /api/files/... o https://...
+    caption: Optional[str] = ""
+    sort_order: Optional[int] = 0
+
+
+class GalleryImageOut(GalleryImageIn):
+    id: str
+    created_at: str
+
+
+@api.get("/gallery", response_model=List[GalleryImageOut])
+async def list_gallery():
+    items = await db.gallery_images.find({}, {"_id": 0}).sort([("sort_order", 1), ("created_at", -1)]).to_list(500)
+    for it in items:
+        it.setdefault("title", "")
+        it.setdefault("caption", "")
+        it.setdefault("sort_order", 0)
+    return items
+
+
+@api.post("/gallery", response_model=GalleryImageOut)
+async def add_gallery_image(payload: GalleryImageIn, _: dict = Depends(require_admin)):
+    if not payload.image_url:
+        raise HTTPException(status_code=400, detail="image_url es requerido")
+    doc = payload.model_dump()
+    doc["id"] = str(uuid.uuid4())
+    doc["created_at"] = datetime.now(timezone.utc).isoformat()
+    await db.gallery_images.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+
+@api.put("/gallery/{gid}", response_model=GalleryImageOut)
+async def update_gallery_image(gid: str, payload: GalleryImageIn, _: dict = Depends(require_admin)):
+    res = await db.gallery_images.update_one({"id": gid}, {"$set": payload.model_dump()})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Imagen no encontrada")
+    doc = await db.gallery_images.find_one({"id": gid}, {"_id": 0})
+    return doc
+
+
+@api.delete("/gallery/{gid}")
+async def delete_gallery_image(gid: str, _: dict = Depends(require_admin)):
+    res = await db.gallery_images.delete_one({"id": gid})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Imagen no encontrada")
+    return {"ok": True}
+
+
+# -------------------- Home Settings (contenido editable del home) --------------------
+HOME_SETTINGS_ID = "default"
+
+
+class HomeSettings(BaseModel):
+    # Hero
+    hero_title: Optional[str] = "Future Soccer Cup"
+    hero_subtitle: Optional[str] = "La cumbre del fútbol formativo infantil & juvenil."
+    hero_cta_label: Optional[str] = "Inscribe tu equipo"
+    hero_cta_url: Optional[str] = "/registro-equipo"
+    hero_image_url: Optional[str] = ""
+    # Próximo Evento (estático opcional, complementa el torneo featured)
+    upcoming_name: Optional[str] = ""
+    upcoming_city: Optional[str] = ""
+    upcoming_venue: Optional[str] = ""
+    upcoming_start_date: Optional[str] = ""
+    upcoming_end_date: Optional[str] = ""
+    upcoming_categories: Optional[str] = ""  # "Sub-8, Sub-10, ..."
+    upcoming_cover_url: Optional[str] = ""
+    # Nosotros
+    about_title: Optional[str] = "Somos más que un torneo"
+    about_body: Optional[str] = "Future Soccer Cup es una iniciativa del Grupo Empresarial Ancla para impulsar el talento del fútbol infantil y juvenil en Colombia."
+    about_image_url: Optional[str] = ""
+    # Contacto / Redes
+    contact_email: Optional[str] = "info@futuresoccercup.com"
+    contact_phone: Optional[str] = "+57 (000) 000-0000"
+    instagram: Optional[str] = "@FutureSoccerCup"
+    facebook: Optional[str] = ""
+    youtube: Optional[str] = ""
+
+
+@api.get("/home-settings", response_model=HomeSettings)
+async def get_home_settings():
+    doc = await db.home_settings.find_one({"id": HOME_SETTINGS_ID}, {"_id": 0})
+    if not doc:
+        return HomeSettings().model_dump()
+    return doc
+
+
+@api.put("/home-settings", response_model=HomeSettings)
+async def update_home_settings(payload: HomeSettings, _: dict = Depends(require_admin)):
+    data = payload.model_dump()
+    data["id"] = HOME_SETTINGS_ID
+    await db.home_settings.update_one(
+        {"id": HOME_SETTINGS_ID}, {"$set": data}, upsert=True,
+    )
+    doc = await db.home_settings.find_one({"id": HOME_SETTINGS_ID}, {"_id": 0})
+    return doc
+
+
 
 # -------------------- Startup --------------------
 async def seed_admin():

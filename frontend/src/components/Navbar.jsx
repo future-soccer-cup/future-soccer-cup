@@ -1,15 +1,22 @@
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { useState } from "react";
-import { Menu, X, LogOut, UserCircle2, Shield } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Menu, X, LogOut, UserCircle2, Shield, ChevronDown } from "lucide-react";
 import Logo from "./Logo";
 import { useAuth } from "../context/AuthContext";
 
 const NAV = [
+  { to: "/", label: "Inicio", end: true },
+  { to: "/nosotros", label: "Nosotros" },
+  { to: "/eventos", label: "Eventos" },
+  { to: "/contacto", label: "Contacto" },
+];
+
+const NAV_SECONDARY = [
   { to: "/fixture", label: "Fixture" },
   { to: "/bracket", label: "Bracket" },
   { to: "/datos-estadisticas", label: "Datos" },
   { to: "/posiciones", label: "Posiciones" },
-  { to: "/equipos", label: "Equipos" },
+  { to: "/equipos", label: "Clubes" },
   { to: "/jugadores", label: "Jugadores" },
   { to: "/noticias", label: "Noticias" },
   { to: "/cotizar", label: "Cotizar" },
@@ -18,126 +25,153 @@ const NAV = [
 export default function Navbar() {
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 12);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   const handleLogout = async () => {
     await logout();
+    setOpen(false);
     navigate("/");
   };
 
-  const myAreaLink =
-    user?.role === "team" ? { to: "/mi-equipo", label: "Mi equipo" } : { to: "/mis-cotizaciones", label: user?.name || "Cuenta" };
+  const linkClass = ({ isActive }) =>
+    `px-3 py-2 text-[13px] font-bold uppercase tracking-[0.18em] transition-colors ${
+      isActive ? "text-fsc-dorado" : "text-white hover:text-fsc-dorado"
+    }`;
 
   return (
-    <header className="sticky top-0 z-40 bg-white border-b border-slate-200" data-testid="main-navbar">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        <Link to="/" className="flex items-center" data-testid="logo-home-link">
-          <Logo className="h-10 w-10" showText />
-        </Link>
+    <header
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        scrolled ? "bg-fsc-negro/95 backdrop-blur-md shadow-lg" : "bg-fsc-negro/85 backdrop-blur-sm"
+      }`}
+      data-testid="navbar"
+    >
+      {/* línea dorada inferior */}
+      <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-fsc-dorado to-transparent opacity-60" />
 
-        <nav className="hidden md:flex items-center gap-1">
-          {NAV.map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              data-testid={`nav-${item.to.replace("/", "")}`}
-              className={({ isActive }) =>
-                `px-3 py-2 text-sm font-bold uppercase tracking-wide transition-colors ${
-                  isActive ? "text-blue-700" : "text-slate-700 hover:text-blue-700"
-                }`
-              }
-            >
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16 lg:h-20">
+          <Link to="/" className="flex items-center gap-3 group" data-testid="navbar-logo">
+            <div className="border-2 border-fsc-dorado rounded-md p-1 group-hover:border-fsc-dorado-claro transition-colors">
+              <Logo className="h-10 w-10" />
+            </div>
+            <div className="hidden sm:block leading-tight">
+              <div className="font-display text-lg tracking-widest text-white">FUTURE SOCCER CUP</div>
+              <div className="font-cursive text-xs text-fsc-dorado leading-none -mt-1">Somos más que un torneo</div>
+            </div>
+          </Link>
 
-        <div className="hidden md:flex items-center gap-2">
-          {user ? (
-            <>
-              {user.role === "admin" && (
-                <Link
-                  to="/admin"
-                  data-testid="admin-panel-link"
-                  className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold uppercase tracking-wide text-red-600 hover:text-red-700"
-                >
-                  <Shield size={16} /> Admin
-                </Link>
-              )}
-              <Link
-                to={myAreaLink.to}
-                data-testid="my-area-link"
-                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-700 hover:text-blue-700"
-              >
-                <UserCircle2 size={16} /> {myAreaLink.label}
-              </Link>
-              <button
-                onClick={handleLogout}
-                data-testid="logout-btn"
-                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-500 hover:text-slate-900"
-              >
-                <LogOut size={16} /> Salir
-              </button>
-            </>
-          ) : (
-            <>
-              <Link
-                to="/login"
-                data-testid="login-link"
-                className="px-4 py-2 text-sm font-bold uppercase tracking-wide text-slate-900 hover:text-blue-700"
-              >
-                Ingresar
-              </Link>
-              <Link
-                to="/registro-equipo"
-                data-testid="register-link"
-                className="fsc-btn-primary px-4 py-2 text-sm rounded-md"
-              >
-                Registrar equipo
-              </Link>
-            </>
-          )}
-        </div>
-
-        <button
-          className="md:hidden p-2 text-slate-700"
-          onClick={() => setOpen(!open)}
-          data-testid="mobile-menu-toggle"
-          aria-label="Menú"
-        >
-          {open ? <X /> : <Menu />}
-        </button>
-      </div>
-
-      {open && (
-        <div className="md:hidden border-t border-slate-200 bg-white">
-          <div className="px-4 py-3 flex flex-col gap-1">
-            {NAV.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                onClick={() => setOpen(false)}
-                className="px-3 py-2 text-sm font-bold uppercase tracking-wide text-slate-700"
-              >
-                {item.label}
+          <nav className="hidden lg:flex items-center gap-1">
+            {NAV.map((n) => (
+              <NavLink key={n.to} to={n.to} end={n.end} className={linkClass} data-testid={`nav-${n.label.toLowerCase()}`}>
+                {n.label}
               </NavLink>
             ))}
-            <div className="border-t border-slate-200 my-2" />
-            {user ? (
+            <div className="relative">
+              <button
+                onClick={() => setMoreOpen((v) => !v)}
+                onBlur={() => setTimeout(() => setMoreOpen(false), 150)}
+                className="px-3 py-2 text-[13px] font-bold uppercase tracking-[0.18em] text-white hover:text-fsc-dorado flex items-center gap-1"
+                data-testid="nav-more"
+              >
+                Plataforma <ChevronDown size={14} className={`transition-transform ${moreOpen ? "rotate-180" : ""}`}/>
+              </button>
+              {moreOpen && (
+                <div className="absolute top-full right-0 mt-1 w-56 bg-fsc-negro border-2 border-fsc-dorado rounded-md shadow-2xl py-2">
+                  {NAV_SECONDARY.map((n) => (
+                    <NavLink
+                      key={n.to}
+                      to={n.to}
+                      className={({ isActive }) =>
+                        `block px-4 py-2 text-[12px] font-bold uppercase tracking-[0.15em] transition-colors ${
+                          isActive ? "text-fsc-dorado bg-fsc-dorado/10" : "text-white hover:text-fsc-dorado hover:bg-fsc-dorado/10"
+                        }`
+                      }
+                      data-testid={`nav-${n.label.toLowerCase()}`}
+                    >
+                      {n.label}
+                    </NavLink>
+                  ))}
+                </div>
+              )}
+            </div>
+          </nav>
+
+          <div className="hidden lg:flex items-center gap-2">
+            {!user ? (
               <>
-                {user.role === "admin" && (
-                  <Link to="/admin" onClick={() => setOpen(false)} className="px-3 py-2 text-sm font-bold uppercase tracking-wide text-red-600">Admin</Link>
-                )}
-                <Link to={myAreaLink.to} onClick={() => setOpen(false)} className="px-3 py-2 text-sm font-bold uppercase tracking-wide text-slate-700">{myAreaLink.label}</Link>
-                <button onClick={handleLogout} className="text-left px-3 py-2 text-sm font-bold uppercase tracking-wide text-slate-500">Salir</button>
+                <Link to="/login" className="text-white hover:text-fsc-dorado text-[12px] font-bold uppercase tracking-[0.15em] px-4 py-2.5" data-testid="navbar-login">
+                  Ingresar
+                </Link>
+                <Link to="/registro-equipo" className="fsc-btn-primary px-5 py-2.5 rounded-md text-[12px]" data-testid="navbar-register">
+                  Registrarse
+                </Link>
               </>
             ) : (
               <>
-                <Link to="/login" onClick={() => setOpen(false)} className="px-3 py-2 text-sm font-bold uppercase tracking-wide text-slate-900">Ingresar</Link>
-                <Link to="/registro" onClick={() => setOpen(false)} className="fsc-btn-primary px-4 py-2 text-sm rounded-md text-center">Crear cuenta</Link>
+                {user.role === "admin" && (
+                  <Link to="/admin" className="text-fsc-dorado hover:text-fsc-dorado-claro text-[12px] font-bold uppercase tracking-[0.15em] px-3 py-2 flex items-center gap-1" data-testid="navbar-admin">
+                    <Shield size={14}/> Admin
+                  </Link>
+                )}
+                {user.role === "team" && (
+                  <Link to="/mi-equipo" className="text-fsc-dorado hover:text-fsc-dorado-claro text-[12px] font-bold uppercase tracking-[0.15em] px-3 py-2 flex items-center gap-1" data-testid="navbar-myteam">
+                    <UserCircle2 size={14}/> Mi equipo
+                  </Link>
+                )}
+                <button onClick={handleLogout} className="text-white hover:text-fsc-rojo text-[12px] font-bold uppercase tracking-[0.15em] px-3 py-2 flex items-center gap-1" data-testid="navbar-logout">
+                  <LogOut size={14}/> Salir
+                </button>
               </>
             )}
           </div>
+
+          <button onClick={() => setOpen((v) => !v)} className="lg:hidden text-white p-2" aria-label="Menu" data-testid="navbar-menu-toggle">
+            {open ? <X size={22}/> : <Menu size={22}/>}
+          </button>
+        </div>
+      </div>
+
+      {open && (
+        <div className="lg:hidden bg-fsc-negro border-t border-fsc-dorado/30 fsc-fade-up">
+          <nav className="max-w-7xl mx-auto px-4 py-4 grid gap-1">
+            {[...NAV, ...NAV_SECONDARY].map((n) => (
+              <NavLink
+                key={n.to}
+                to={n.to}
+                end={n.end}
+                onClick={() => setOpen(false)}
+                className={({ isActive }) =>
+                  `px-3 py-2.5 text-sm font-bold uppercase tracking-[0.15em] rounded-md ${
+                    isActive ? "text-fsc-dorado bg-fsc-dorado/10" : "text-white hover:bg-white/5"
+                  }`
+                }
+              >
+                {n.label}
+              </NavLink>
+            ))}
+            <div className="h-px bg-fsc-dorado/20 my-2" />
+            {!user ? (
+              <>
+                <Link to="/login" onClick={() => setOpen(false)} className="px-3 py-2.5 text-sm font-bold uppercase tracking-[0.15em] text-white rounded-md hover:bg-white/5">Ingresar</Link>
+                <Link to="/registro-equipo" onClick={() => setOpen(false)} className="fsc-btn-primary py-2.5 rounded-md text-sm text-center">Registrarse</Link>
+              </>
+            ) : (
+              <>
+                {user.role === "admin" && <Link to="/admin" onClick={() => setOpen(false)} className="px-3 py-2.5 text-sm font-bold uppercase tracking-[0.15em] text-fsc-dorado rounded-md hover:bg-fsc-dorado/10">Admin</Link>}
+                {user.role === "team" && <Link to="/mi-equipo" onClick={() => setOpen(false)} className="px-3 py-2.5 text-sm font-bold uppercase tracking-[0.15em] text-fsc-dorado rounded-md hover:bg-fsc-dorado/10">Mi equipo</Link>}
+                <button onClick={handleLogout} className="px-3 py-2.5 text-sm font-bold uppercase tracking-[0.15em] text-fsc-rojo rounded-md hover:bg-fsc-rojo/10 text-left">Salir</button>
+              </>
+            )}
+          </nav>
         </div>
       )}
     </header>

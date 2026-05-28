@@ -129,6 +129,15 @@ export default function MyQuotes() {
                   >
                     <ReceiptIcon size={12}/> Abonos {isOpen ? <ChevronUp size={12}/> : <ChevronDown size={12}/>}
                   </button>
+                  {q.status !== "pagada" && (
+                    <Link
+                      to={`/cotizar?id=${q.id}`}
+                      className="w-full text-xs font-bold uppercase tracking-wide text-fsc-dorado-oscuro hover:text-fsc-dorado flex items-center gap-1 justify-center"
+                      data-testid={`edit-quote-${q.id}`}
+                    >
+                      ✎ Editar cotización
+                    </Link>
+                  )}
                 </div>
               </div>
 

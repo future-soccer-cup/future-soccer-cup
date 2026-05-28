@@ -1,0 +1,82 @@
+{
+  "summary": "Tanda F (identidad visual + Home redesign + gallery/home-settings CRUD + cotizaciones extra_pax/edit/detail) fully tested. 29/29 backend tests pass and all critical frontend testids verified on production preview URL.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter14_tanda_f.py",
+    "/app/test_reports/pytest/iteration_14.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py is 3676 lines — should be split into modular routers (auth, tournaments, quotes, gallery, home_settings, admin) to improve maintainability.",
+    "Gallery POST validation returns 400 on empty image_url — confirmed working. Consider also validating max sort_order/title length consistently across PUT.",
+    "PUT /api/quotes/{qid} correctly forces status='pendiente' after edit and blocks owner editing pagada quotes (400). Admin can still edit pagada and resets to pendiente — matches spec.",
+    "extra_pax_breakdown properly filters pax=0/nights=0 entries and returns 0 subtotal for domicilio tier. Math verified: extra_pax_subtotal == sum(row.subtotal) and lodging_subtotal == rate*pax + extra_pax_subtotal.",
+    "GET /api/quotes/{qid} returns 404 for missing id and 401 for unauthenticated requests — correct.",
+    "Tournament fields featured/city/venue/cover_url are properly backfilled in list response and persist via PUT.",
+    "Home-settings GET is public and returns default keys when no doc exists. PUT requires admin (403 for unauth)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter14_tanda_f.py (new — 29 pytest tests)"
+  ],
+  "success_rate": {"backend": "100% (29/29)", "frontend": "100% on tested testids"},
+  "test_credentials": "Admin: admin@futuresoccercup.com / FSCAdmin2025! — verified working.",
+  "seed_data_creation": "Tests create TEST_-prefixed gallery items, tournaments, DT users (TEST_iter14_*), and quotes which are mostly self-cleaned. Some DT users + their quotes remain in DB after tests (no DELETE endpoint used for users/quotes by design).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend test file /app/backend/tests/test_iter14_tanda_f.py covers Tanda F end-to-end. To register a DT for quote tests, /api/auth/register-team requires fields: email, password, name, manager_name, club_name, team_name, category, birth_year (int), event_type, data_consent. After register-team, always do explicit /api/auth/login to ensure access_token httpOnly cookie is set in the requests.Session. The Tournament POST requires {name, year, season, category, start_date, end_date}. For frontend, testids tour-cover and tour-featured are conditional — they only render when the edit/new tournament form is open (when `editing` state is set). The per-row feature-tour-{id} button is always visible (4 found). Gallery section on Home is hidden if there are 0 gallery items (section_gallery-section was false during initial run because gallery was empty at test time).",
+  "frontend_testids_verified": {
+    "home_page": true,
+    "navbar_fixed": true,
+    "nav_links": ["nav-inicio","nav-nosotros","nav-eventos","nav-contacto","nav-more","navbar-login","navbar-register"],
+    "hero_buttons": ["hero-cta-btn","hero-events-btn"],
+    "home_sections": ["upcoming-section","about-section","events-section","about-more-btn"],
+    "gallery_section_on_home": "absent (no images at time of test — expected)",
+    "fonts_loaded": "Bebas+Neue + Montserrat + Dancing+Script confirmed via <link> in index.html",
+    "nosotros_page": true,
+    "eventos_page": true,
+    "eventos_cards_found": 4,
+    "contacto_page": true,
+    "login_page_testids": ["login-page","login-submit-btn","login-to-register-btn","forgot-password-link"],
+    "team_register_page": true,
+    "removed_fields_confirmed_absent": ["club_email","club_website","club_country"],
+    "admin_gallery_page": true,
+    "gallery_add_btn": true,
+    "admin_home_settings_page": true,
+    "home_settings_save_btn": true,
+    "tour_cover_present": "conditional (inside edit form only — by design)",
+    "tour_featured_toggle": "conditional (inside edit form only — by design)",
+    "feature_tour_buttons_count": 4,
+    "cotizar_meal_days_removed": true,
+    "extra_pax_editor_present": true,
+    "extra_pax_add_button_present": true,
+    "edit_quote_testid_in_myquotes": "exists in MyQuotes.jsx (line 136) for non-paid quotes",
+    "extra_pax_row_testid_in_cotizar": "exists in Cotizar.jsx (line 493)"
+  },
+  "backend_endpoints_tested": [
+    "GET /api/home-settings",
+    "PUT /api/home-settings",
+    "GET /api/gallery",
+    "POST /api/gallery (admin + auth + 400 empty)",
+    "PUT /api/gallery/{id} (+ 404)",
+    "DELETE /api/gallery/{id} (+ 404 + auth)",
+    "GET /api/tournaments (backfill featured/city/venue/cover_url)",
+    "POST + PUT /api/tournaments/{tid} (featured persists)",
+    "POST /api/quotes/calculate (extra_pax_breakdown + subtotal)",
+    "POST /api/quotes (extra_pax_entries persisted)",
+    "GET /api/quotes/{qid} (auth + 404)",
+    "PUT /api/quotes/{qid} (owner/admin/other-user/404/pagada)",
+    "PUT /api/quotes/{qid}/status (admin)",
+    "POST /api/auth/login (admin)",
+    "POST /api/auth/register-team + login (DT)",
+    "GET /api/auth/me"
+  ],
+  "rca of the issue": "N/A — no critical bugs found. Initial test failures were due to test-side issues (missing manager_name/club_name/birth_year on register-team payload and missing season/category on tournament POST). Once corrected, all 29 tests pass."
+}

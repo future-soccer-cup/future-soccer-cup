@@ -8,8 +8,8 @@ import { ConsentBlock } from "./Register";
 
 const EMPTY = {
   email: "", password: "", manager_name: "", manager_phone: "", manager_role: "Director técnico", manager_document: "",
-  club_name: "", club_country: "Colombia", club_city: "", club_phone: "", club_email: "", club_website: "",
-  color: "#1d4ed8", event_type: "", birth_year: "", designation: "Único", data_consent: false,
+  club_name: "", club_country: "Colombia", club_city: "", club_phone: "",
+  color: "#C9A227", event_type: "", birth_year: "", designation: "Único", data_consent: false,
 };
 
 const fmtCOP = (n) => `$${Number(n || 0).toLocaleString("es-CO")}`;
@@ -72,10 +72,11 @@ export default function TeamRegister() {
     <div className="min-h-[calc(100vh-4rem)] bg-white" data-testid="team-register-page">
       <Toaster position="top-right" />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <Link to="/login" className="text-xs uppercase tracking-widest font-bold text-blue-700">← Volver</Link>
-        <span className="block mt-4 text-xs font-bold uppercase tracking-[0.25em] text-red-600">Registro de club</span>
-        <h1 className="mt-1 font-display text-5xl md:text-6xl font-black uppercase tracking-tighter">Registra tu club</h1>
-        <p className="text-sm text-slate-500 mt-2 max-w-xl">Crea tu cuenta de director técnico, registra tu club y tu primer equipo. Después podrás agregar más equipos (otros años o A/B) desde "Mi equipo".</p>
+        <Link to="/login" className="text-xs uppercase tracking-widest font-bold text-fsc-dorado-oscuro hover:text-fsc-dorado">← Volver</Link>
+        <div className="mt-4 font-cursive text-2xl text-fsc-dorado-oscuro">crea tu cuenta</div>
+        <h1 className="mt-1 font-display text-5xl md:text-6xl tracking-wider text-fsc-negro">REGISTRA TU CLUB</h1>
+        <div className="h-1 w-16 bg-fsc-rojo mt-3 mb-4"/>
+        <p className="text-sm text-slate-600 mt-2 max-w-xl">Crea tu cuenta de director técnico, registra tu club y tu primer equipo. Después podrás agregar más equipos (otros años o A/B) desde "Mi equipo".</p>
 
         <form onSubmit={submit} className="mt-8 grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
@@ -104,24 +105,19 @@ export default function TeamRegister() {
               <div className="grid sm:grid-cols-2 gap-3">
                 <Field label="Nombre del club" required value={form.club_name} onChange={(v) => upd("club_name", v)} testId="tr-club-name" />
                 <Field label="Teléfono del club" value={form.club_phone} onChange={(v) => upd("club_phone", v)} testId="tr-club-phone" />
-                <Field label="País" value={form.club_country} onChange={(v) => upd("club_country", v)} />
-                <Field label="Ciudad" value={form.club_city} onChange={(v) => upd("club_city", v)} testId="tr-club-city" />
-                <Field label="Email del club" type="email" value={form.club_email} onChange={(v) => upd("club_email", v)} />
-                <Field label="Sitio web" value={form.club_website} onChange={(v) => upd("club_website", v)} placeholder="https://..." />
-              </div>
-              <div className="grid sm:grid-cols-3 gap-3 mt-3">
-                <div className="sm:col-span-2">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Logo / escudo del club</span>
-                  <button type="button" onClick={() => fileRef.current?.click()} className="mt-1 w-full border-2 border-dashed border-slate-300 hover:border-blue-700 rounded-md px-4 py-3 flex items-center gap-3 text-sm text-slate-600">
-                    <Upload size={16}/>
-                    {logoFile ? <span className="truncate">{logoFile.name}</span> : <span>Seleccionar imagen (PNG/JPG)</span>}
-                  </button>
-                  <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => setLogoFile(e.target.files?.[0] || null)} data-testid="tr-logo" />
-                </div>
+                <Field label="Ciudad" required value={form.club_city} onChange={(v) => upd("club_city", v)} testId="tr-club-city" />
                 <label className="block">
                   <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Color principal</span>
                   <input type="color" value={form.color} onChange={(e) => upd("color", e.target.value)} className="mt-1 w-full h-10 px-1 border border-slate-200 rounded-md" />
                 </label>
+              </div>
+              <div className="mt-3">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Logo / escudo del club</span>
+                <button type="button" onClick={() => fileRef.current?.click()} className="mt-1 w-full border-2 border-dashed border-slate-300 hover:border-fsc-dorado rounded-md px-4 py-3 flex items-center gap-3 text-sm text-slate-600">
+                  <Upload size={16}/>
+                  {logoFile ? <span className="truncate">{logoFile.name}</span> : <span>Seleccionar imagen (PNG/JPG)</span>}
+                </button>
+                <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => setLogoFile(e.target.files?.[0] || null)} data-testid="tr-logo" />
               </div>
             </Section>
 
@@ -130,7 +126,7 @@ export default function TeamRegister() {
               <span className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Evento</span>
               <div className="grid sm:grid-cols-3 gap-3">
                 {events.map((ev) => (
-                  <label key={ev.id} className={`cursor-pointer border-2 rounded-xl p-4 transition-colors ${form.event_type === ev.id ? "border-red-600 bg-red-50" : "border-slate-200 hover:border-slate-400"}`} data-testid={`event-option-${ev.id}`}>
+                  <label key={ev.id} className={`cursor-pointer border-2 rounded-xl p-4 transition-colors ${form.event_type === ev.id ? "border-fsc-dorado bg-fsc-dorado/10" : "border-slate-200 hover:border-slate-400"}`} data-testid={`event-option-${ev.id}`}>
                     <input type="radio" name="event_type" className="hidden" value={ev.id} checked={form.event_type === ev.id} onChange={() => setForm({ ...form, event_type: ev.id, birth_year: "" })} />
                     <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Evento</div>
                     <div className="font-display text-xl font-black uppercase tracking-tight">{ev.name}</div>
@@ -168,9 +164,9 @@ export default function TeamRegister() {
 
           {/* Side summary */}
           <aside className="lg:col-span-1">
-            <div className="sticky top-6 bg-slate-900 text-white rounded-2xl p-6 fsc-stripe-blue">
-              <img src={FSC_LOGO} alt="FSC" className="h-16 bg-white rounded-xl p-1.5" />
-              <div className="mt-4 text-xs uppercase tracking-[0.25em] text-blue-200">Resumen</div>
+            <div className="sticky top-24 bg-fsc-negro text-white rounded-2xl p-6 border-2 border-fsc-dorado">
+              <img src={FSC_LOGO} alt="FSC" className="h-16 bg-fsc-negro border border-fsc-dorado rounded-xl p-1.5" />
+              <div className="mt-4 text-xs uppercase tracking-[0.25em] text-fsc-dorado">Resumen</div>
               <div className="mt-2 space-y-2 text-sm">
                 <Row k="Club" v={form.club_name || "—"} />
                 <Row k="DT" v={form.manager_name || "—"} />
@@ -179,9 +175,9 @@ export default function TeamRegister() {
                 <Row k="Designación" v={form.designation || "—"} />
               </div>
               {form.birth_year && selectedEvent && (
-                <div className="mt-5 pt-4 border-t border-white/10">
-                  <div className="text-xs uppercase tracking-widest text-slate-400">Inscripción</div>
-                  <div className="font-display text-3xl font-black text-red-400 tabular-nums">{fmtCOP(feeForYear(form.birth_year))}<span className="text-xs text-slate-400 font-bold ml-1">COP</span></div>
+                <div className="mt-5 pt-4 border-t border-fsc-dorado/30">
+                  <div className="text-xs uppercase tracking-widest text-fsc-gris">Inscripción</div>
+                  <div className="font-display text-3xl tracking-wider text-fsc-dorado tabular-nums">{fmtCOP(feeForYear(form.birth_year))}<span className="text-xs text-fsc-gris ml-1">COP</span></div>
                 </div>
               )}
             </div>
