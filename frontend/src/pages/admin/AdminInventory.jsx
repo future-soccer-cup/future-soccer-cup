@@ -12,6 +12,9 @@ const TYPES = [
   { id: "tour", label: "Tours", icon: Map },
 ];
 
+const CLASSIFICATIONS = ["ESMERALD", "SAPPHIRE", "DIAMOND", "GOLD", "SILVER", "BRONZE"];
+const ACCOMMODATION_TYPES = ["Múltiple", "Triple", "Doble"];
+
 export default function AdminInventory() {
   const [tab, setTab] = useState("lodging");
   const [rows, setRows] = useState([]);
@@ -50,8 +53,13 @@ export default function AdminInventory() {
           additional_night: Number(row.additional_night || 0),
           available: row.available !== false,
           no_lodging: !!row.no_lodging,
+          classification: row.classification || "",
+          accommodation_type: row.accommodation_type || "",
         }),
-        ...(row.type === "meal" && { per_day_by_tier: row.per_day_by_tier || {} }),
+        ...(row.type === "meal" && {
+          per_day_by_tier: row.per_day_by_tier || {},
+          classification: row.classification || "",
+        }),
         ...(row.type === "transport" || row.type === "tour" ? { price: Number(row.price || 0) } : {}),
       };
       await api.put(`/admin/catalog/${row.type}/${row.id}`, body);
@@ -108,7 +116,7 @@ export default function AdminInventory() {
         ))}
       </div>
 
-      {tab === "lodging" && <LodgingTab rows={byType.lodging} onChange={patchLocal} onSave={persist} onDelete={remove} saving={saving} onAdd={() => setCreating({ type: "lodging", body: { name: "", description: "", base_5_nights: 0, additional_night: 0, available: true, no_lodging: false } })} />}
+      {tab === "lodging" && <LodgingTab rows={byType.lodging} onChange={patchLocal} onSave={persist} onDelete={remove} saving={saving} onAdd={() => setCreating({ type: "lodging", body: { name: "", description: "", base_5_nights: 0, additional_night: 0, available: true, no_lodging: false, classification: "", accommodation_type: "" } })} />}
       {tab === "meal" && <MealTab rows={byType.meal} tiers={byType.lodging} onChange={patchLocal} onSave={persist} saving={saving} />}
       {tab === "transport" && <SimpleTab type="transport" label="Transporte" rows={byType.transport} onChange={patchLocal} onSave={persist} onDelete={remove} saving={saving} onAdd={() => setCreating({ type: "transport", body: { name: "", price: 0 } })} />}
       {tab === "tour" && <SimpleTab type="tour" label="Tour" rows={byType.tour} onChange={patchLocal} onSave={persist} onDelete={remove} saving={saving} onAdd={() => setCreating({ type: "tour", body: { name: "", price: 0 } })} />}
@@ -140,6 +148,33 @@ function LodgingTab({ rows, onChange, onSave, onDelete, saving, onAdd }) {
                 </div>
               </div>
               <textarea value={r.description || ""} onChange={(e) => onChange(r.id, "lodging", { description: e.target.value })} rows={2} className="w-full text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded p-2" placeholder="Descripción..." />
+              <div className="grid grid-cols-2 gap-2 mt-3">
+                <label className="block">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Clasificación</span>
+                  <select
+                    value={r.classification || ""}
+                    onChange={(e) => onChange(r.id, "lodging", { classification: e.target.value })}
+                    className="mt-1 w-full px-2 py-1 border border-slate-200 rounded text-sm"
+                    data-testid={`inv-lodging-class-${r.id}`}
+                  >
+                    <option value="">— Sin clasificación —</option>
+                    {CLASSIFICATIONS.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Acomodación</span>
+                  <select
+                    value={r.accommodation_type || ""}
+                    onChange={(e) => onChange(r.id, "lodging", { accommodation_type: e.target.value })}
+                    className="mt-1 w-full px-2 py-1 border border-slate-200 rounded text-sm"
+                    data-testid={`inv-lodging-acc-${r.id}`}
+                    disabled={r.no_lodging}
+                  >
+                    <option value="">— Selecciona —</option>
+                    {ACCOMMODATION_TYPES.map((a) => <option key={a} value={a}>{a}</option>)}
+                  </select>
+                </label>
+              </div>
               <div className="grid grid-cols-2 gap-2 mt-3">
                 <label className="block">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Base 5 noches (COP)</span>
@@ -182,6 +217,7 @@ function MealTab({ rows, tiers, onChange, onSave, saving }) {
           <thead className="bg-blue-50 text-xs uppercase tracking-wider">
             <tr>
               <th className="text-left px-3 py-2">Comida</th>
+              <th className="text-left px-3 py-2">Clasificación</th>
               {tiers.map((t) => <th key={t.id} className="text-right px-3 py-2">{t.name}</th>)}
               <th className="px-3 py-2 w-16"></th>
             </tr>
@@ -192,6 +228,17 @@ function MealTab({ rows, tiers, onChange, onSave, saving }) {
               return (
                 <tr key={r.id} className="border-t border-slate-100" data-testid={`inv-meal-${r.id}`}>
                   <td className="px-3 py-2 font-display font-black">{r.name}</td>
+                  <td className="px-3 py-2">
+                    <select
+                      value={r.classification || ""}
+                      onChange={(e) => onChange(r.id, "meal", { classification: e.target.value })}
+                      className="px-2 py-1 border border-slate-200 rounded text-xs"
+                      data-testid={`inv-meal-class-${r.id}`}
+                    >
+                      <option value="">—</option>
+                      {CLASSIFICATIONS.map((c) => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </td>
                   {tiers.map((t) => (
                     <td key={t.id} className="px-2 py-1 text-right">
                       <input
@@ -275,6 +322,22 @@ function CreateModal({ creating, setCreating, onSubmit, tiers }) {
               <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Descripción</span>
               <textarea value={creating.body.description || ""} onChange={(e) => setBody({ description: e.target.value })} rows={2} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" />
             </label>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Clasificación</span>
+                <select value={creating.body.classification || ""} onChange={(e) => setBody({ classification: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="inv-new-classification">
+                  <option value="">— Sin clasificación —</option>
+                  {CLASSIFICATIONS.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </label>
+              <label className="block">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Acomodación</span>
+                <select value={creating.body.accommodation_type || ""} onChange={(e) => setBody({ accommodation_type: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="inv-new-accommodation">
+                  <option value="">— Selecciona —</option>
+                  {ACCOMMODATION_TYPES.map((a) => <option key={a} value={a}>{a}</option>)}
+                </select>
+              </label>
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <label className="block">
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Base 5 noches</span>

@@ -1,0 +1,41 @@
+{
+  "summary": "Iteration 16 - Tested public contact form + admin inbox, tournament categories list, lodging classification/accommodation_type and meal classification on catalog. Backend pytest: 15/15 passed. Frontend Playwright: all 7 flows verified (Contacto submit + toast, sidebar renames 'EVENTOS'/'PAQUETES'/'MENSAJES' visible, AdminInventory lodging persist SAPPHIRE+Doble, MealTab classification persist GOLD, CreateModal lodging creation persisted, CategoriesFeesEditor renders+edits, admin messages mark-read & delete actions work).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/tournaments/{id}", "issue": "No single-tournament GET endpoint exists (returns 405). UI/clients must filter the list. Consider adding for parity."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "AdminLayout sidebar", "issues": ["Sidebar nav labels are rendered uppercase via CSS (text-transform); source already says 'Eventos'/'Paquetes'. Rendered output reads 'EVENTOS', 'PAQUETES', 'MENSAJES' — matches spec."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter16_contact_categories_paquetes.py",
+    "/app/test_reports/pytest/iteration_16.xml"
+  ],
+  "action_items": [
+    "(Optional) Add GET /api/tournaments/{id} endpoint for symmetry with PUT/DELETE — currently only list endpoint exists."
+  ],
+  "critical_code_review_comments": [
+    "server.py is 3769 lines — consider splitting into routers (catalog, tournaments, contact, auth) for maintainability.",
+    "_validate_catalog_row correctly auto-uppercases classification for lodging and meal; verified through both POST and PUT.",
+    "Contact messages endpoint correctly enforces auth for GET/PUT/DELETE while POST remains public.",
+    "TournamentIn.categories accepts list[{name, fee}] and persists round-trip; UI CategoriesFeesEditor wired correctly.",
+    "AdminInventory uses data-testid pattern consistently (inv-lodging-class-*, inv-lodging-acc-*, inv-meal-class-*, inv-new-classification, inv-new-accommodation) — robust for testing.",
+    "AdminMessages exposes per-row mark-read-{id} and delete-message-{id} testids — good."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter16_contact_categories_paquetes.py"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "Admin: admin@futuresoccercup.com / FSCAdmin2025! (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "Created TEST_iter16 contact message, tournament with categories list, lodging row, modified an existing meal classification — all cleaned up after tests (idempotent).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All iter-16 features (contact messages, tournament categories list, lodging classification+accommodation_type, meal classification) are working end-to-end backend+frontend. Public contact form persists, admin inbox manages reads/deletes. No GET-by-id endpoint for tournaments — tests should filter list. Sidebar 'Eventos' and 'Paquetes' renders correctly (uppercased via CSS).",
+  "rca of the issue": "N/A - no defects found in scope."
+}

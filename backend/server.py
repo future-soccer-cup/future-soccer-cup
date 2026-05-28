@@ -2015,6 +2015,12 @@ def _validate_catalog_row(t: str, body: dict) -> dict:
         out["additional_night"] = max(0.0, float(body.get("additional_night", 0) or 0))
         out["available"] = bool(body.get("available", True))
         out["no_lodging"] = bool(body.get("no_lodging", False))
+        # Clasificación oficial FSC (Esmerald / Sapphire / Diamond / Gold / Silver / Bronze).
+        # Tipo de acomodación (Múltiple / Triple / Doble) y descripción larga del paquete.
+        if "classification" in body:
+            out["classification"] = (body.get("classification") or "").strip().upper()
+        if "accommodation_type" in body:
+            out["accommodation_type"] = (body.get("accommodation_type") or "").strip()
         if "includes" in body:
             inc = body.get("includes") or []
             if isinstance(inc, str):
@@ -2023,6 +2029,9 @@ def _validate_catalog_row(t: str, body: dict) -> dict:
     elif t == "meal":
         per_day = body.get("per_day_by_tier") or {}
         out["per_day_by_tier"] = {k: max(0.0, float(v or 0)) for k, v in per_day.items()}
+        # Las comidas también pueden estar asociadas a una clasificación FSC.
+        if "classification" in body:
+            out["classification"] = (body.get("classification") or "").strip().upper()
     elif t in ("transport", "tour"):
         out["price"] = max(0.0, float(body.get("price", 0) or 0))
     return out
