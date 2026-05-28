@@ -513,7 +513,9 @@ class PlayerOut(PlayerIn):
 class TournamentIn(BaseModel):
     name: str
     season: str  # e.g., 2025
-    category: str
+    category: str  # categoría principal (compat). Para múltiples usar `categories`.
+    # Lista de categorías con su costo de inscripción independiente
+    categories: Optional[List[dict]] = []  # [{name: "Sub-12", fee: 250000}, ...]
     start_date: str
     end_date: str
     # Tipo de torneo dentro de FSC (opcional)
@@ -536,6 +538,7 @@ class TournamentUpdateIn(BaseModel):
     name: Optional[str] = None
     season: Optional[str] = None
     category: Optional[str] = None
+    categories: Optional[List[dict]] = None
     start_date: Optional[str] = None
     end_date: Optional[str] = None
     event_type: Optional[str] = None
@@ -1042,6 +1045,7 @@ async def list_tournaments(archived: Optional[bool] = None):
         t.setdefault("city", "")
         t.setdefault("venue", "")
         t.setdefault("cover_url", "")
+        t.setdefault("categories", [])
     return items
 
 @api.post("/tournaments", response_model=TournamentOut)
@@ -1068,6 +1072,7 @@ async def update_tournament(tid: str, payload: TournamentUpdateIn, _: dict = Dep
     t.setdefault("city", "")
     t.setdefault("venue", "")
     t.setdefault("cover_url", "")
+    t.setdefault("categories", [])
     return t
 
 @api.delete("/tournaments/{tid}")
@@ -3478,6 +3483,7 @@ HOME_SETTINGS_ID = "default"
 
 class HomeSettings(BaseModel):
     # Hero
+    hero_edition: Optional[str] = ""  # Ej. "Edición 2026" / "Premier Diciembre 2025"
     hero_title: Optional[str] = "Future Soccer Cup"
     hero_subtitle: Optional[str] = "La cumbre del fútbol formativo infantil & juvenil."
     hero_cta_label: Optional[str] = "Inscribe tu equipo"
@@ -3520,6 +3526,62 @@ async def update_home_settings(payload: HomeSettings, _: dict = Depends(require_
     )
     doc = await db.home_settings.find_one({"id": HOME_SETTINGS_ID}, {"_id": 0})
     return doc
+
+
+# -------------------- Contact Messages (buzón admin) --------------------
+class ContactMessageIn(BaseModel):
+    name: str = Field(min_length=2)
+    email: EmailStr
+    phone: Optional[str] = ""
+    message: str = Field(min_length=5)
+
+
+class ContactMessageOut(BaseModel):
+    id: str
+    name: str
+    email: str
+    phone: Optional[str] = ""
+    message: str
+    is_read: bool
+    created_at: str
+
+
+@api.post("/contact-messages", response_model=ContactMessageOut)
+async def create_contact_message(payload: ContactMessageIn):
+    """Endpoint PÚBLICO para envío de mensajes desde la página de Contacto."""
+    doc = {
+        "id": str(uuid.uuid4()),
+        "name": payload.name.strip(),
+        "email": payload.email,
+        "phone": (payload.phone or "").strip(),
+        "message": payload.message.strip(),
+        "is_read": False,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.contact_messages.insert_one(doc)
+    return {k: v for k, v in doc.items() if k != "_id"}
+
+
+@api.get("/contact-messages", response_model=List[ContactMessageOut])
+async def list_contact_messages(_: dict = Depends(require_admin)):
+    items = await db.contact_messages.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    return items
+
+
+@api.put("/contact-messages/{mid}/read")
+async def mark_contact_message_read(mid: str, _: dict = Depends(require_admin)):
+    res = await db.contact_messages.update_one({"id": mid}, {"$set": {"is_read": True}})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Mensaje no encontrado")
+    return {"ok": True}
+
+
+@api.delete("/contact-messages/{mid}")
+async def delete_contact_message(mid: str, _: dict = Depends(require_admin)):
+    res = await db.contact_messages.delete_one({"id": mid})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Mensaje no encontrado")
+    return {"ok": True}
 
 
 

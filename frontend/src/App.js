@@ -49,6 +49,7 @@ import AdminPasswordResets from "./pages/admin/AdminPasswordResets";
 import AdminTournaments from "./pages/admin/AdminTournaments";
 import AdminGallery from "./pages/admin/AdminGallery";
 import AdminHomeSettings from "./pages/admin/AdminHomeSettings";
+import AdminMessages from "./pages/admin/AdminMessages";
 
 function PublicLayout() {
   const loc = useLocation();
@@ -115,6 +116,7 @@ function App() {
             <Route path="torneos" element={<AdminTournaments />} />
             <Route path="galeria" element={<AdminGallery />} />
             <Route path="home" element={<AdminHomeSettings />} />
+            <Route path="mensajes" element={<AdminMessages />} />
             <Route path="aprobaciones" element={<AdminApprovals />} />
             <Route path="carga-masiva" element={<AdminBulkUpload />} />
             <Route path="cotizaciones" element={<AdminQuotes />} />

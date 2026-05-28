@@ -41,13 +41,14 @@ export default function Footer() {
         </div>
 
         <div>
-          <h4 className="font-display tracking-widest text-white mb-4 text-base">Plataforma</h4>
+          <h4 className="font-display tracking-widest text-white mb-4 text-base">Navegación</h4>
           <ul className="space-y-2.5 text-sm">
             <li><a href="/" className="hover:text-fsc-dorado transition-colors">Inicio</a></li>
             <li><a href="/nosotros" className="hover:text-fsc-dorado transition-colors">Nosotros</a></li>
-            <li><a href="/fixture" className="hover:text-fsc-dorado transition-colors">Fixture</a></li>
-            <li><a href="/datos-estadisticas" className="hover:text-fsc-dorado transition-colors">Datos y Estadísticas</a></li>
-            <li><a href="/cotizar" className="hover:text-fsc-dorado transition-colors">Cotizar</a></li>
+            <li><a href="/eventos" className="hover:text-fsc-dorado transition-colors">Eventos</a></li>
+            <li><a href="/datos-estadisticas" className="hover:text-fsc-dorado transition-colors">Estadísticas</a></li>
+            <li><a href="/noticias" className="hover:text-fsc-dorado transition-colors">Noticias</a></li>
+            <li><a href="/contacto" className="hover:text-fsc-dorado transition-colors">Contacto</a></li>
           </ul>
         </div>
 

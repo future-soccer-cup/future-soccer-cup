@@ -27,7 +27,13 @@ export default function Home() {
       const ts = (t.data || []).filter((x) => !x.archived);
       setFeatured(ts.find((x) => x.featured) || ts[0] || null);
       setEvents(ts);
-      setGallery(g.data || []);
+      // Galería en orden aleatorio en cada carga
+      const gImgs = [...(g.data || [])];
+      for (let i = gImgs.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [gImgs[i], gImgs[j]] = [gImgs[j], gImgs[i]];
+      }
+      setGallery(gImgs);
     }).catch(() => {});
     return () => { alive = false; };
   }, []);
@@ -64,8 +70,8 @@ export default function Home() {
 
         <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 grid lg:grid-cols-12 gap-10 items-center">
           <div className="lg:col-span-7 fsc-fade-up">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded border-2 border-fsc-dorado text-fsc-dorado text-[10px] font-bold uppercase tracking-[0.3em]">
-              <Trophy size={11}/> Edición {new Date().getFullYear()}
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded border-2 border-fsc-dorado text-fsc-dorado text-[10px] font-bold uppercase tracking-[0.3em]" data-testid="hero-edition">
+              <Trophy size={11}/> {settings.hero_edition || `Edición ${new Date().getFullYear()}`}
             </div>
 
             <h1 className="mt-6 font-display text-6xl sm:text-7xl md:text-8xl lg:text-[110px] leading-[0.85] text-white tracking-wider">
@@ -190,7 +196,7 @@ export default function Home() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-end justify-between mb-10 flex-wrap gap-4">
               <div>
-                <div className="font-cursive text-2xl text-fsc-dorado">temporada {new Date().getFullYear()}</div>
+                <div className="font-cursive text-2xl text-fsc-dorado">nuestros</div>
                 <h2 className="font-display text-5xl md:text-6xl tracking-wider text-fsc-negro">EVENTOS</h2>
                 <div className="h-1 w-20 bg-fsc-rojo mt-3" />
               </div>

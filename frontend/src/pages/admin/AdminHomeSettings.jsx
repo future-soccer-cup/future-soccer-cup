@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import ImageUpload from "../../components/ImageUpload";
 
 const EMPTY = {
+  hero_edition: "",
   hero_title: "Future Soccer Cup",
   hero_subtitle: "Somos más que un torneo",
   hero_cta_label: "Inscribe tu equipo",
@@ -69,6 +70,7 @@ export default function AdminHomeSettings() {
 
       <Section title="Hero" icon={<HomeIcon size={18}/>}>
         <div className="grid md:grid-cols-2 gap-4">
+          <Field label="Edición (badge superior)" v={s.hero_edition} onChange={(v) => upd("hero_edition", v)} placeholder="Edición Diciembre 2026" />
           <Field label="Título del Hero" v={s.hero_title} onChange={(v) => upd("hero_title", v)} />
           <Field label="Subtítulo (cursive dorado)" v={s.hero_subtitle} onChange={(v) => upd("hero_subtitle", v)} />
           <Field label="CTA — texto del botón" v={s.hero_cta_label} onChange={(v) => upd("hero_cta_label", v)} />

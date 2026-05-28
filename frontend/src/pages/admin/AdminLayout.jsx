@@ -18,6 +18,7 @@ import {
   ListChecks,
   Image as ImageIcon,
   Home as HomeIcon,
+  Inbox,
 } from "lucide-react";
 import Logo from "../../components/Logo";
 import { useAuth } from "../../context/AuthContext";
@@ -26,8 +27,9 @@ const NAV = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, end: true },
   { to: "/admin/home", label: "Home", icon: HomeIcon },
   { to: "/admin/galeria", label: "Galería", icon: ImageIcon },
+  { to: "/admin/mensajes", label: "Mensajes", icon: Inbox },
   { to: "/admin/aprobaciones", label: "Aprobaciones", icon: CheckSquare },
-  { to: "/admin/torneos", label: "Torneos", icon: ListChecks },
+  { to: "/admin/torneos", label: "Eventos", icon: ListChecks },
   { to: "/admin/equipos", label: "Equipos", icon: Shirt },
   { to: "/admin/jugadores", label: "Jugadores", icon: Users },
   { to: "/admin/carga-masiva", label: "Carga masiva", icon: FileUp },
@@ -36,7 +38,7 @@ const NAV = [
   { to: "/admin/bracket", label: "Bracket", icon: Trophy },
   { to: "/admin/cotizaciones", label: "Cotizaciones", icon: Receipt },
   { to: "/admin/pagos", label: "Pagos", icon: Wallet },
-  { to: "/admin/inventario", label: "Inventario", icon: Hotel },
+  { to: "/admin/inventario", label: "Paquetes", icon: Hotel },
   { to: "/admin/noticias", label: "Noticias", icon: Newspaper },
   { to: "/admin/recuperaciones", label: "Recuperar clave", icon: KeyRound },
   { to: "/admin/carnets", label: "Carnets", icon: IdCard },

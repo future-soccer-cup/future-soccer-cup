@@ -45,7 +45,7 @@ export default function AdminTournaments() {
       const res = await api.get("/tournaments");
       setItems(res.data);
     } catch (err) {
-      toast.error(formatApiError(err.response?.data?.detail) || "Error cargando torneos");
+      toast.error(formatApiError(err.response?.data?.detail) || "Error cargando eventos");
     } finally {
       setLoading(false);
     }
@@ -57,10 +57,10 @@ export default function AdminTournaments() {
     try {
       if (editing.id) {
         await api.put(`/tournaments/${editing.id}`, editing);
-        toast.success("Torneo actualizado");
+        toast.success("Evento actualizado");
       } else {
         await api.post("/tournaments", editing);
-        toast.success("Torneo creado");
+        toast.success("Evento creado");
       }
       setEditing(null);
       load();
@@ -70,10 +70,10 @@ export default function AdminTournaments() {
   };
 
   const remove = async (id) => {
-    if (!window.confirm("¿Eliminar torneo? (No borra los partidos asociados)")) return;
+    if (!window.confirm("¿Eliminar evento? (No borra los partidos asociados)")) return;
     try {
       await api.delete(`/tournaments/${id}`);
-      toast.success("Torneo eliminado");
+      toast.success("Evento eliminado");
       load();
     } catch (err) {
       toast.error(formatApiError(err.response?.data?.detail));
@@ -118,15 +118,15 @@ export default function AdminTournaments() {
     <div data-testid="admin-tournaments">
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div>
-          <h1 className="font-display text-4xl font-black uppercase tracking-tighter">Torneos</h1>
-          <p className="text-sm text-slate-500 mt-1">Gestiona los torneos del calendario FSC y archiva los históricos.</p>
+          <h1 className="font-display text-4xl font-black uppercase tracking-tighter">Eventos</h1>
+          <p className="text-sm text-slate-500 mt-1">Gestiona los eventos del calendario FSC y archiva los históricos.</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={downloadTemplate} className="fsc-btn-primary px-4 py-2 rounded-md text-sm flex items-center gap-2" data-testid="download-matches-template">
             <Download size={16}/> Plantilla partidos (XLSX)
           </button>
           <button onClick={() => setEditing({ ...EMPTY })} className="fsc-btn-red px-4 py-2 rounded-md text-sm flex items-center gap-2" data-testid="add-tournament-btn">
-            <Plus size={16}/> Nuevo torneo
+            <Plus size={16}/> Nuevo evento
           </button>
         </div>
       </div>
@@ -146,7 +146,7 @@ export default function AdminTournaments() {
           </thead>
           <tbody>
             {loading && <tr><td colSpan="7" className="text-center py-12 text-slate-400">Cargando...</td></tr>}
-            {!loading && items.length === 0 && <tr><td colSpan="7" className="text-center py-12 text-slate-400">Sin torneos. Crea el primero.</td></tr>}
+            {!loading && items.length === 0 && <tr><td colSpan="7" className="text-center py-12 text-slate-400">Sin eventos. Crea el primero.</td></tr>}
             {items.map((t) => (
               <tr key={t.id} className="border-t border-slate-100 hover:bg-slate-50" data-testid={`tour-row-${t.id}`}>
                 <td className="px-4 py-2 font-semibold flex items-center gap-2">
@@ -181,7 +181,7 @@ export default function AdminTournaments() {
       </div>
 
       {editing && (
-        <Modal onClose={() => setEditing(null)} title={editing.id ? "Editar torneo" : "Nuevo torneo"}>
+        <Modal onClose={() => setEditing(null)} title={editing.id ? "Editar evento" : "Nuevo evento"}>
           <form onSubmit={save} className="space-y-3" data-testid="tournament-form">
             <Field label="Nombre" required value={editing.name} onChange={(v) => setEditing({ ...editing, name: v })} />
             <div className="grid grid-cols-2 gap-3">
@@ -202,6 +202,10 @@ export default function AdminTournaments() {
               onChange={(v) => setEditing({ ...editing, category: v })}
               required
               testId="tour-category"
+            />
+            <CategoriesFeesEditor
+              categories={editing.categories || []}
+              onChange={(cats) => setEditing({ ...editing, categories: cats })}
             />
             <label className="block">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Formato</span>
@@ -232,11 +236,56 @@ export default function AdminTournaments() {
               <span>Archivado (histórico — no aparece como activo en datos en vivo)</span>
             </label>
             <button className="fsc-btn-primary w-full py-2 rounded-md" data-testid="save-tournament-btn">
-              {editing.id ? "Guardar cambios" : "Crear torneo"}
+              {editing.id ? "Guardar cambios" : "Crear evento"}
             </button>
           </form>
         </Modal>
       )}
+    </div>
+  );
+}
+
+
+const CATEGORY_OPTIONS = ["Sub-8", "Sub-10", "Sub-12", "Sub-14", "Sub-16", "Sub-18", "Femenino"];
+
+function CategoriesFeesEditor({ categories, onChange }) {
+  const add = () => onChange([...categories, { name: "", fee: 0 }]);
+  const update = (i, k, v) => {
+    const next = [...categories];
+    next[i] = { ...next[i], [k]: k === "fee" ? Number(v) || 0 : v };
+    onChange(next);
+  };
+  const remove = (i) => onChange(categories.filter((_, j) => j !== i));
+  return (
+    <div className="border-2 border-dashed border-slate-200 rounded-lg p-3 mt-2" data-testid="categories-fees-editor">
+      <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+        <div>
+          <div className="text-xs font-bold uppercase tracking-wider text-fsc-dorado-oscuro">Categorías inscritas al evento</div>
+          <div className="text-[11px] text-slate-500">Cada categoría puede tener un costo de inscripción distinto.</div>
+        </div>
+        <button type="button" onClick={add} className="text-xs font-bold uppercase tracking-wider text-fsc-negro border-2 border-fsc-dorado bg-fsc-dorado/10 hover:bg-fsc-dorado/20 px-3 py-1.5 rounded" data-testid="add-category-fee">+ Agregar categoría</button>
+      </div>
+      {categories.length === 0 && <p className="text-[11px] italic text-slate-400">Aún no hay categorías. La categoría principal del evento (arriba) se usará si dejas esta lista vacía.</p>}
+      <div className="space-y-2">
+        {categories.map((c, i) => (
+          <div key={i} className="grid grid-cols-12 gap-2 items-end" data-testid={`category-fee-row-${i}`}>
+            <label className="col-span-6 sm:col-span-5 block">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Categoría</span>
+              <select value={c.name} onChange={(e) => update(i, "name", e.target.value)} className="mt-0.5 w-full px-2 py-1.5 border border-slate-300 rounded text-sm">
+                <option value="">Selecciona...</option>
+                {CATEGORY_OPTIONS.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+              </select>
+            </label>
+            <label className="col-span-5 sm:col-span-6 block">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Inscripción (COP)</span>
+              <input type="number" min="0" value={c.fee} onChange={(e) => update(i, "fee", e.target.value)} className="mt-0.5 w-full px-2 py-1.5 border border-slate-300 rounded text-sm tabular-nums" data-testid={`category-fee-input-${i}`} />
+            </label>
+            <button type="button" onClick={() => remove(i)} className="col-span-1 text-fsc-rojo hover:bg-red-50 p-1.5 rounded" data-testid={`remove-category-fee-${i}`}>
+              <Trash2 size={14}/>
+            </button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
