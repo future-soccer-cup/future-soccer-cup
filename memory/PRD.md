@@ -659,3 +659,40 @@ Refactor de `const load = () => ...; useEffect(() => load(), [])` a `const load 
 - 🟢 **P2** — Refactor `server.py` (>3700 líneas) → `/app/backend/routes/`.
 - 🟢 **P3** — Gallery drag-and-drop, importación masiva XLSX de matches.
 
+
+
+## Iteration 24 (2026-05-28) — Clasificación de Paquetes + Contact + Categorías Inscritas
+
+### Backend (`server.py`)
+- **`_validate_catalog_row` extendido**:
+  - `lodging`: ahora acepta `classification` (string opcional, auto-upper) y `accommodation_type` (Múltiple/Triple/Doble, free-text).
+  - `meal`: ahora acepta `classification` (auto-upper). `description` ya existía vía bloque común.
+- **`TournamentIn.categories`**: lista `[{name, fee}]` para inscripciones diferenciadas por categoría dentro del mismo evento (ya estaba modelado; ahora con UI conectada).
+- **Contact messages** (`/api/contact-messages`): POST público + GET/PUT/DELETE admin. Sin cambios en este sprint.
+
+### Frontend
+- **`/admin/inventario`** (Paquetes):
+  - `LodgingTab`: nuevos selects "Clasificación" (ESMERALD/SAPPHIRE/DIAMOND/GOLD/SILVER/BRONZE) y "Acomodación" (Múltiple/Triple/Doble) por paquete; persistidos en PUT `/admin/catalog/lodging/{id}`.
+  - `MealTab`: nueva columna "Clasificación" para etiquetar cada comida.
+  - `CreateModal`: incluye los nuevos campos cuando se crea un paquete de hospedaje (`inv-new-classification`, `inv-new-accommodation`).
+- **`/admin/eventos`**: `CategoriesFeesEditor` integrado al modal de creación/edición — permite definir N categorías con su fee de inscripción independiente.
+
+### Testids agregados
+- `inv-lodging-class-{id}`, `inv-lodging-acc-{id}`, `inv-meal-class-{id}`, `inv-new-classification`, `inv-new-accommodation`.
+- `categories-fees-editor`, `category-fee-row-{i}`, `category-fee-input-{i}`, `add-category-fee`, `remove-category-fee-{i}`.
+
+### Verificación
+- `/app/test_reports/iteration_16.json` — **Backend 15/15 PASS · Frontend 7/7 flows PASS**.
+- Backend pytest: `test_iter16_contact_categories_paquetes.py`.
+- Casos validados: classification auto-upper ('sapphire'→'SAPPHIRE'), accommodation_type round-trip, categories list persistido, contact form público + admin inbox CRUD.
+
+## Backlog actualizado (P0/P1/P2)
+- 🔴 **P0** — Separar roles `president` (cotiza+paga) y `team_manager` (DT — inscribe jugadores). Flujo del PDF FSC_Requerimientos_Emergent_v3 (registro DT selecciona club existente → admin aprueba → DT registra cuerpo técnico + jugadores).
+- 🔴 **P0** — Cotizar evento+múltiples categorías: selector abierto + checkboxes para inscribir varias categorías a la vez con fee por cada una.
+- 🟡 **P1** — Notificaciones email (Resend/SendGrid) cambios de estado (teams/players/quotes/payments).
+- 🟡 **P1** — Slider del Hero editable (carrusel) — hoy es imagen única.
+- 🟢 **P2** — `GET /api/tournaments/{id}` para simetría con PUT/DELETE (sugerencia testing iter16).
+- 🟢 **P2** — Logos de aliados en Footer + Testimonios.
+- 🟢 **P2** — Stripe webhook signature verification.
+- 🟢 **P2** — Refactor `server.py` (>3769 líneas) → `/app/backend/routes/{auth,catalog,tournaments,quotes,payments,contact}.py`.
+- 🟢 **P3** — Gallery drag-and-drop, importación masiva XLSX de matches.
