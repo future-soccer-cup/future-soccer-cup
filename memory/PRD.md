@@ -595,3 +595,67 @@ Refactor de `const load = () => ...; useEffect(() => load(), [])` a `const load 
 - **P2**: Refactor `server.py` (>3676 líneas) — testing agent también lo señaló.
 - **P3**: Sort_order de gallery con drag-and-drop nativo.
 
+
+## Iteration 23 (2026-05-28) — Tanda G: Refinamiento UI/UX según feedback usuario
+
+### Navbar simplificado
+- ❌ Eliminado dropdown "Plataforma" (con sus 8 links secundarios).
+- ✅ Menú principal: **INICIO · NOSOTROS · EVENTOS · ESTADÍSTICAS · NOTICIAS · CONTACTO** + INGRESAR + REGISTRARSE.
+- Logo navbar ahora renderiza correctamente (border dorado + Logo SVG inline).
+
+### Registro DT (`/registro-equipo`)
+- ❌ Eliminada sección "Primer equipo a registrar" (campos birth_year, designation pasan al panel post-aprobación).
+- ✅ Toast: "Club registrado. Espera la aprobación del administrador para acceder al panel."
+- Sidebar resumen ya no muestra inscripción (queda al flujo post-aprobación admin).
+
+### Login (`/login`)
+- ✅ Layout **flip**: formulario a la izquierda + panel decorativo a la derecha.
+- Implementado con flexbox `lg:flex-row` + `flex-[3] / flex-[2]` (más confiable que grid + col-span).
+
+### Cotizar (`/cotizar`)
+- **Personas adicionales (`extra-pax-editor`)**: ahora 5 columnas — Etiqueta, **Cantidad** (no "pax"), Noches, **Desde** (fecha), **Hasta** (fecha).
+- **Alimentación**: el editor avanzado `meal_entries` (fecha + tipo + personas) ahora se muestra SIEMPRE (no solo en domicilio). Banner amber recuerda paquete incluido (5 desayunos / 4 almuerzos / 5 cenas).
+- **Transporte**: nuevo editor `transport-entries` con filas {ruta, cantidad, fecha} y botón "Agregar transporte". Reemplaza el grid de checkboxes anterior. Mantiene compat con `transport_routes` legacy.
+- **Resumen sidebar**:
+  - Renderiza SIEMPRE (no condicional), con $0 hasta que el usuario interactúa.
+  - Flag `userTouched` + wrapper `setFormUser` evita cálculo hasta el primer cambio.
+  - Botón "Enviar cotización" deshabilitado cuando `total_amount === 0`.
+
+### Backend
+- **`QuoteIn.transport_entries`**: nuevo campo `List[{route_id, pax, date}]`.
+- `_calculate_quote`: si `transport_entries` está presente, calcula `sum(price × qty)` por entry y devuelve `transport_entries_breakdown` además del `transport_subtotal` y `transport_routes_applied` (uniques). Compatible con flujo legacy `transport_routes`.
+
+### AdminQuotes — Detalle expandido
+- Nuevo botón `view-quote-{id}` (icono Eye) en cada fila.
+- Modal `quote-detail-modal` con:
+  - Grid de datos (estado, evento, categoría, año, pax, noches, hospedaje, teléfono).
+  - Resumen económico (KV grid: tarifa/pax, hospedaje, adicionales, alimentación, transporte, tours, inscripción, **TOTAL** resaltado en rojo).
+  - Tabla "Personas adicionales" con `extra_pax_breakdown`.
+  - Tabla "Alimentación adicional" con `meal_entries` (fecha, tipo, personas).
+  - Tabla "Transporte" con `transport_entries_breakdown` (ruta, personas, fecha, subtotal) — fallback a `transport_routes_applied` si no hay entries detalladas.
+  - Tabla "Tours" con `tour_entries`.
+  - Notas.
+- Botón cerrar `quote-detail-close`.
+
+### Verificación
+- `/app/test_reports/iteration_15.json` — **6/6 nuevos backend PASS · 29/29 regresión PASS · 8/8 frontend flows verified**.
+- Login flip confirmado: `main.x < aside.x` con bounding boxes.
+
+## Backlog actualizado (P0/P1/P2/P3)
+- 🔴 **P0** — **Separar roles `president` (cotiza+paga) y `team_manager` (DT — inscribe jugadores)**. Flujo del PDF:
+  1. DT se registra y SELECCIONA su club (existente).
+  2. Sistema notifica al admin.
+  3. Admin aprueba/rechaza.
+  4. Aprobado → DT accede al panel técnico.
+  5. DT registra cuerpo técnico (nombre, rol, doc) por evento y categoría.
+  6. DT registra jugadores (nombre, posición, doc, fnac) por categoría inscrita.
+  7. Sistema valida edad vs categoría.
+- 🔴 **P0** — **Cotizar evento+múltiples categorías**: selector de evento abierto + checkbox múltiple de categorías inscritas.
+- 🔴 **P0** — Admin CRUD masivo de paquetes/tours/transporte/alimentación (parcial: `/admin/inventario` ya existe; falta validar ergonomía y agregar campos faltantes).
+- 🟡 **P1** — Notificaciones email (Resend/SendGrid) — incluiría el "Sistema notifica al admin" del flujo DT.
+- 🟡 **P1** — Slider del Hero editable (carrusel).
+- 🟢 **P2** — Logos de aliados en footer + Testimonios.
+- 🟢 **P2** — Stripe webhook signature verification.
+- 🟢 **P2** — Refactor `server.py` (>3700 líneas) → `/app/backend/routes/`.
+- 🟢 **P3** — Gallery drag-and-drop, importación masiva XLSX de matches.
+
