@@ -632,6 +632,10 @@ class QuoteIn(BaseModel):
     includes_lunch: bool = False
     includes_dinner: bool = False
     meal_days: Optional[int] = None  # defaults to days
+    # Para conservar compat: lista de rutas seleccionadas (ids).
+    transport_routes: Optional[List[str]] = []
+    # Nuevo: rutas con cantidad y fecha (toma precedencia si está presente).
+    transport_entries: Optional[List[dict]] = []  # [{route_id, pax, date}]
     # Para Domicilio: alimentación específica por fecha + pax (más granular que pax × days).
     meal_entries: Optional[List[QuoteMealEntry]] = []
     # Transporte
@@ -2247,16 +2251,33 @@ def _calculate_quote(payload: QuoteIn, catalog: dict) -> dict:
         dinner_total    = dinner_per_day    * payload.pax * meal_days if payload.includes_dinner    and dinner_per_day    > 0 else 0
     meals_total = breakfast_total + lunch_total + dinner_total
 
-    # Transporte (rutas múltiples × pax). Compat con bandera legacy.
-    transport_total = sum(
-        (catalog["transport"].get(r, {}) or {}).get("price", 0) * payload.pax for r in (payload.transport_routes or [])
-    )
-    transport_routes = list(payload.transport_routes or [])
-    if payload.includes_transport and not transport_routes:
-        transport_routes = ["airport_to_hotel", "hotel_to_airport"]
+    # Transporte: nuevo modelo (transport_entries con cantidad+fecha por ruta). Compat con transport_routes legacy.
+    transport_entries_calc = []
+    if payload.transport_entries:
+        for te in payload.transport_entries:
+            rid = (te or {}).get("route_id")
+            qty = int((te or {}).get("pax") or 0)
+            if not rid or qty <= 0:
+                continue
+            price = (catalog["transport"].get(rid, {}) or {}).get("price", 0)
+            transport_entries_calc.append({
+                "route_id": rid,
+                "pax": qty,
+                "date": (te or {}).get("date", ""),
+                "subtotal": price * qty,
+            })
+        transport_total = sum(t["subtotal"] for t in transport_entries_calc)
+        transport_routes = [t["route_id"] for t in transport_entries_calc]
+    else:
         transport_total = sum(
-            (catalog["transport"].get(r, {}) or {}).get("price", 0) * payload.pax for r in transport_routes
+            (catalog["transport"].get(r, {}) or {}).get("price", 0) * payload.pax for r in (payload.transport_routes or [])
         )
+        transport_routes = list(payload.transport_routes or [])
+        if payload.includes_transport and not transport_routes:
+            transport_routes = ["airport_to_hotel", "hotel_to_airport"]
+            transport_total = sum(
+                (catalog["transport"].get(r, {}) or {}).get("price", 0) * payload.pax for r in transport_routes
+            )
 
     # Tours: nuevo modelo (tour_entries con pax independiente). Compat con tour_ids legacy.
     tour_subtotals = []
@@ -2299,6 +2320,7 @@ def _calculate_quote(payload: QuoteIn, catalog: dict) -> dict:
         "dinner_subtotal": dinner_total,
         "transport_subtotal": transport_total,
         "transport_routes_applied": transport_routes,
+        "transport_entries_breakdown": transport_entries_calc,
         "tours_subtotal": tours_total,
         "tour_subtotals": tour_subtotals,
         "tour_ids_applied": tour_ids_applied,

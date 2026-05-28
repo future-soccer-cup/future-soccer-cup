@@ -3,12 +3,15 @@ import api from "../../lib/api";
 import { toast, Toaster } from "sonner";
 import { usePagedSearch, SearchBar, Pagination } from "../../components/PagedTable";
 import ExportCsvButton from "../../components/ExportCsvButton";
+import { Eye, X } from "lucide-react";
 
 const STATUSES = ["pendiente", "aprobada", "rechazada", "pagada"];
+const fmt = (n) => `$${Number(n || 0).toLocaleString("es-CO")}`;
 
 export default function AdminQuotes() {
   const [quotes, setQuotes] = useState([]);
   const [filter, setFilter] = useState("");
+  const [detail, setDetail] = useState(null);
 
   const load = useCallback(() => api.get("/quotes").then((r) => setQuotes(r.data)), []);
   useEffect(() => { load(); }, [load]);
@@ -109,7 +112,22 @@ export default function AdminQuotes() {
                 <td className="px-4 py-2">
                   <span className="text-xs font-bold uppercase tracking-wider">{q.status}</span>
                 </td>
-                <td className="px-4 py-2 text-right">
+                <td className="px-4 py-2 text-right space-x-1">
+                  <button
+                    onClick={async () => {
+                      try {
+                        const r = await api.get(`/quotes/${q.id}`);
+                        setDetail(r.data);
+                      } catch {
+                        toast.error("Error al cargar detalle");
+                      }
+                    }}
+                    className="text-fsc-dorado-oscuro hover:text-fsc-dorado p-1"
+                    title="Ver detalle completo"
+                    data-testid={`view-quote-${q.id}`}
+                  >
+                    <Eye size={16}/>
+                  </button>
                   <select value={q.status} onChange={(e) => setStatus(q.id, e.target.value)} className="text-xs px-2 py-1 border border-slate-200 rounded" data-testid={`quote-status-${q.id}`}>
                     {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
                   </select>
@@ -121,6 +139,160 @@ export default function AdminQuotes() {
       </div>
 
       <Pagination page={page} totalPages={totalPages} onPage={setPage} testIdPrefix="quotes" />
+
+      {detail && <QuoteDetailModal q={detail} onClose={() => setDetail(null)} />}
+    </div>
+  );
+}
+
+function QuoteDetailModal({ q, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={onClose} data-testid="quote-detail-modal">
+      <div className="bg-white max-w-4xl w-full max-h-[90vh] overflow-y-auto rounded-2xl border-2 border-fsc-dorado" onClick={(e) => e.stopPropagation()}>
+        <div className="sticky top-0 bg-fsc-negro text-white px-6 py-4 flex items-center justify-between">
+          <div>
+            <div className="font-cursive text-xl text-fsc-dorado">cotización</div>
+            <div className="font-display text-2xl tracking-wider">{q.user_name} · {q.lodging_name}</div>
+            <div className="text-xs text-fsc-gris mt-0.5">{q.user_email} · {new Date(q.created_at).toLocaleString("es-CO")}</div>
+          </div>
+          <button onClick={onClose} className="text-white hover:text-fsc-dorado" data-testid="quote-detail-close"><X size={22}/></button>
+        </div>
+        <div className="p-6 space-y-5 text-sm">
+          <DetailGrid items={[
+            ["Estado", q.status],
+            ["Evento", q.event_name],
+            ["Categoría", q.category],
+            ["Año nac.", q.birth_year],
+            ["PAX base", q.pax],
+            ["Noches", q.nights],
+            ["Hospedaje", q.lodging_name],
+            ["Teléfono contacto", q.contact_phone || "—"],
+          ]} />
+
+          <DetailSection title="Resumen económico">
+            <div className="grid grid-cols-2 gap-2">
+              <KV k="Tarifa por persona" v={fmt(q.rate_per_person_total)} />
+              <KV k="Hospedaje subtotal" v={fmt(q.lodging_subtotal)} />
+              <KV k="Personas adicionales" v={fmt(q.extra_pax_subtotal || 0)} />
+              <KV k="Alimentación" v={fmt((q.breakfast_subtotal || 0) + (q.lunch_subtotal || 0) + (q.dinner_subtotal || 0))} />
+              <KV k="Transporte" v={fmt(q.transport_subtotal)} />
+              <KV k="Tours" v={fmt(q.tours_subtotal)} />
+              <KV k="Inscripción" v={fmt(q.registration_fee)} />
+              <KV k="TOTAL" v={fmt(q.total_amount)} highlight />
+            </div>
+          </DetailSection>
+
+          {q.extra_pax_breakdown?.length > 0 && (
+            <DetailSection title={`Personas adicionales (${q.extra_pax_breakdown.length})`}>
+              <table className="w-full text-xs">
+                <thead className="text-left text-slate-500 uppercase tracking-widest"><tr>
+                  <th className="py-1">Etiqueta</th><th>Cantidad</th><th>Noches</th><th className="text-right">Subtotal</th>
+                </tr></thead>
+                <tbody>
+                  {q.extra_pax_breakdown.map((ep, i) => (
+                    <tr key={i} className="border-t border-slate-100">
+                      <td className="py-1">{ep.label || "—"}</td><td>{ep.pax}</td><td>{ep.nights}</td>
+                      <td className="text-right tabular-nums">{fmt(ep.subtotal)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </DetailSection>
+          )}
+
+          {q.meal_entries?.length > 0 && (
+            <DetailSection title={`Alimentación adicional (${q.meal_entries.length})`}>
+              <table className="w-full text-xs">
+                <thead className="text-left text-slate-500 uppercase tracking-widest"><tr>
+                  <th className="py-1">Fecha</th><th>Comida</th><th className="text-right">Personas</th>
+                </tr></thead>
+                <tbody>
+                  {q.meal_entries.map((m, i) => (
+                    <tr key={i} className="border-t border-slate-100">
+                      <td className="py-1">{m.date || "—"}</td><td>{m.meal_type || "—"}</td><td className="text-right">{m.pax}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </DetailSection>
+          )}
+
+          {q.transport_entries_breakdown?.length > 0 ? (
+            <DetailSection title={`Transporte (${q.transport_entries_breakdown.length})`}>
+              <table className="w-full text-xs">
+                <thead className="text-left text-slate-500 uppercase tracking-widest"><tr>
+                  <th className="py-1">Ruta</th><th>Personas</th><th>Fecha</th><th className="text-right">Subtotal</th>
+                </tr></thead>
+                <tbody>
+                  {q.transport_entries_breakdown.map((t, i) => (
+                    <tr key={i} className="border-t border-slate-100">
+                      <td className="py-1">{t.route_id}</td><td>{t.pax}</td><td>{t.date || "—"}</td>
+                      <td className="text-right tabular-nums">{fmt(t.subtotal)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </DetailSection>
+          ) : q.transport_routes_applied?.length > 0 && (
+            <DetailSection title="Transporte (rutas)">
+              <ul className="text-xs">{q.transport_routes_applied.map((r) => <li key={r}>· {r}</li>)}</ul>
+            </DetailSection>
+          )}
+
+          {q.tour_entries?.length > 0 && (
+            <DetailSection title={`Tours (${q.tour_entries.length})`}>
+              <table className="w-full text-xs">
+                <thead className="text-left text-slate-500 uppercase tracking-widest"><tr>
+                  <th className="py-1">Tour</th><th className="text-right">Personas</th>
+                </tr></thead>
+                <tbody>
+                  {q.tour_entries.map((t, i) => (
+                    <tr key={i} className="border-t border-slate-100">
+                      <td className="py-1">{t.tour_id}</td><td className="text-right">{t.pax}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </DetailSection>
+          )}
+
+          {q.notes && (
+            <DetailSection title="Notas">
+              <p className="text-xs text-slate-700 whitespace-pre-wrap">{q.notes}</p>
+            </DetailSection>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DetailGrid({ items }) {
+  return (
+    <div className="grid sm:grid-cols-4 gap-3">
+      {items.map(([k, v]) => (
+        <div key={k} className="border border-slate-200 rounded p-2">
+          <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">{k}</div>
+          <div className="text-sm font-semibold">{v || "—"}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function DetailSection({ title, children }) {
+  return (
+    <div className="border-t border-slate-100 pt-4">
+      <div className="font-display text-lg tracking-wider text-fsc-negro mb-2">{title.toUpperCase()}</div>
+      {children}
+    </div>
+  );
+}
+
+function KV({ k, v, highlight }) {
+  return (
+    <div className={`flex justify-between border-b border-slate-100 py-1 ${highlight ? "font-bold text-fsc-rojo border-fsc-dorado pt-2 mt-2 border-t-2" : ""}`}>
+      <span>{k}</span><span className="tabular-nums">{v}</span>
     </div>
   );
 }

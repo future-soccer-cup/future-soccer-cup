@@ -27,6 +27,7 @@ export default function Cotizar() {
     meal_entries: [],
     extra_pax_entries: [], // PAX adicionales con sus propias noches (acompañantes)
     transport_routes: [],
+    transport_entries: [], // {route_id, pax, date}
     tour_entries: [],
     tour_ids: [],
     include_registration: true,
@@ -65,6 +66,7 @@ export default function Cotizar() {
         meal_entries: q.meal_entries || [],
         extra_pax_entries: q.extra_pax_entries || [],
         transport_routes: q.transport_routes || [],
+        transport_entries: q.transport_entries || [],
         tour_entries: q.tour_entries || [],
         tour_ids: q.tour_ids || [],
         include_registration: q.include_registration !== false,
@@ -104,12 +106,6 @@ export default function Cotizar() {
   const ev = config.events.find((e) => e.id === form.event_type);
   const tier = config.lodging_tiers.find((t) => t.id === form.lodging_tier);
   const isDomicilio = form.lodging_tier === "domicilio";
-
-  const toggleRoute = (id) => {
-    const set = new Set(form.transport_routes);
-    if (set.has(id)) set.delete(id); else set.add(id);
-    setForm({ ...form, transport_routes: Array.from(set) });
-  };
 
   const submit = async () => {
     if (!user) { toast.error("Inicia sesión como director técnico"); nav("/login"); return; }
@@ -231,50 +227,28 @@ export default function Cotizar() {
           {/* 3. Alimentación */}
           <Section icon={Utensils} title="3) Alimentación adicional" testId="block-meals" subtitle="Para llegadas tempranas o días extra fuera de las comidas ya incluidas en el paquete.">
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-900" data-testid="meals-banner">
-              <strong>Importante:</strong> el paquete ya incluye <strong>5 desayunos, 4 almuerzos y 5 cenas</strong>. Si el equipo llega antes del registro al hotel o necesita más comidas en días extra, agrégalas aquí (precio por persona × día, según paquete).
+              <strong>Importante:</strong> el paquete ya incluye <strong>5 desayunos, 4 almuerzos y 5 cenas</strong>. Agrega aquí comidas adicionales con su fecha y cantidad de personas.
             </div>
-            {!isDomicilio ? (
-              <div className="grid sm:grid-cols-3 gap-3 mt-4">
-                {config.meal_plans.map((m) => {
-                  const price = m.per_day_by_tier[form.lodging_tier] || 0;
-                  const key = `includes_${m.id}`;
-                  const available = price > 0;
-                  return (
-                    <label key={m.id} className={`border-2 rounded-xl p-4 ${!available ? "opacity-50 cursor-not-allowed bg-slate-50" : "cursor-pointer"} ${form[key] && available ? "border-emerald-600 bg-emerald-50" : "border-slate-200 hover:border-slate-400"}`} data-testid={`meal-${m.id}`}>
-                      <div className="flex items-center gap-2">
-                        <input type="checkbox" checked={form[key] && available} disabled={!available} onChange={(e) => setForm({ ...form, [key]: e.target.checked })} className="h-4 w-4 accent-emerald-600" />
-                        <span className="font-display text-lg font-black uppercase tracking-tight">{m.name}</span>
-                      </div>
-                      <div className="mt-1 text-xs text-slate-500">
-                        {available ? `${fmt(price)} / persona / día` : <span className="italic">No disponible en este paquete</span>}
-                      </div>
-                    </label>
-                  );
-                })}
-              </div>
-            ) : (
-              <DomicilioMealsEditor
-                entries={form.meal_entries || []}
-                mealPlans={config.meal_plans}
-                tier={form.lodging_tier}
-                onChange={(entries) => setForm({ ...form, meal_entries: entries })}
-              />
-            )}
+            <DomicilioMealsEditor
+              entries={form.meal_entries || []}
+              mealPlans={config.meal_plans}
+              tier={form.lodging_tier}
+              onChange={(entries) => setForm({ ...form, meal_entries: entries })}
+            />
           </Section>
 
           {/* 4. Transporte */}
-          <Section icon={Bus} title="4) Transporte" testId="block-transport" subtitle="Rutas por persona — selección múltiple">
-            <div className="grid sm:grid-cols-2 gap-3">
-              {config.transport_routes.map((r) => (
-                <label key={r.id} className={`cursor-pointer border-2 rounded-xl p-4 ${form.transport_routes.includes(r.id) ? "border-blue-700 bg-blue-50" : "border-slate-200 hover:border-slate-400"}`} data-testid={`transport-${r.id}`}>
-                  <div className="flex items-center gap-2">
-                    <input type="checkbox" checked={form.transport_routes.includes(r.id)} onChange={() => toggleRoute(r.id)} className="h-4 w-4 accent-blue-700" />
-                    <span className="font-bold">{r.name}</span>
-                  </div>
-                  <div className="text-xs text-slate-500 mt-1">{r.price > 0 ? `${fmt(r.price)} / persona` : "Incluido"}</div>
-                </label>
-              ))}
-            </div>
+          <Section icon={Bus} title="4) Transporte" testId="block-transport" subtitle="Agrega cada traslado indicando cantidad de personas y fecha.">
+            <TransportEntriesEditor
+              entries={form.transport_entries || []}
+              routes={config.transport_routes}
+              defaultPax={form.pax}
+              onChange={(entries) => setForm({
+                ...form,
+                transport_entries: entries,
+                transport_routes: Array.from(new Set(entries.map((e) => e.route_id))),
+              })}
+            />
           </Section>
 
           {/* 5. Tours */}
@@ -304,32 +278,28 @@ export default function Cotizar() {
 
         {/* Sticky summary */}
         <aside className="lg:col-span-1">
-          <div className="sticky top-6 bg-slate-900 text-white rounded-2xl p-6 fsc-stripe-blue">
-            <div className="text-xs uppercase tracking-[0.25em] text-blue-200">Resumen en vivo</div>
-            <div className="font-display text-2xl font-black uppercase tracking-tight">Tu paquete</div>
-            {!estimate && <p className="mt-4 text-sm text-slate-300">Completa los bloques para ver el total.</p>}
-            {estimate && (
-              <div className="mt-4 space-y-2 text-sm" data-testid="cotizar-summary">
-                <Row k="Evento" v={estimate.event_name} />
-                <Row k="Paquete" v={estimate.lodging_name} />
-                {estimate.rate_per_person_total > 0 && <Row k="Tarifa/pax" v={fmt(estimate.rate_per_person_total)} />}
-                {estimate.extra_nights > 0 && <Row k="Noches extra" v={`${estimate.extra_nights} × ${fmt(estimate.rate_per_person_additional_night)}`} />}
-                {estimate.lodging_subtotal > 0 && <Row k={`Hospedaje (${estimate.pax}×${estimate.nights}n)`} v={fmt(estimate.lodging_subtotal)} />}
-                {estimate.breakfast_subtotal > 0 && <Row k="Desayunos" v={fmt(estimate.breakfast_subtotal)} />}
-                {estimate.lunch_subtotal > 0 && <Row k="Almuerzos" v={fmt(estimate.lunch_subtotal)} />}
-                {estimate.dinner_subtotal > 0 && <Row k="Cenas" v={fmt(estimate.dinner_subtotal)} />}
-                {estimate.transport_subtotal > 0 && <Row k={`Transporte (${estimate.transport_routes_applied?.length || 0} rutas)`} v={fmt(estimate.transport_subtotal)} />}
-                {estimate.tours_subtotal > 0 && <Row k={`Tours (${estimate.tour_ids_applied?.length || 0})`} v={fmt(estimate.tours_subtotal)} />}
-                {estimate.registration_fee > 0 && <Row k="Inscripción" v={fmt(estimate.registration_fee)} />}
-                <div className="border-t border-white/10 pt-3 mt-3">
-                  <div className="flex items-baseline justify-between">
-                    <span className="text-xs uppercase tracking-widest text-slate-300">Total</span>
-                    <span className="font-display text-3xl font-black text-red-400 tabular-nums" data-testid="cotizar-total">{fmt(estimate.total_amount)}<span className="text-xs text-slate-400 font-bold ml-1">COP</span></span>
-                  </div>
+          <div className="sticky top-24 bg-fsc-negro text-white rounded-2xl p-6 border-2 border-fsc-dorado">
+            <div className="text-xs uppercase tracking-[0.25em] text-fsc-dorado">Resumen en vivo</div>
+            <div className="font-display text-2xl tracking-wider">Tu paquete</div>
+            <div className="mt-4 space-y-2 text-sm" data-testid="cotizar-summary">
+              <Row k="Evento" v={estimate?.event_name || "—"} />
+              <Row k="Paquete" v={estimate?.lodging_name || "—"} />
+              {estimate?.rate_per_person_total > 0 && <Row k="Tarifa/pax" v={fmt(estimate.rate_per_person_total)} />}
+              {estimate?.extra_nights > 0 && <Row k="Noches extra" v={`${estimate.extra_nights} × ${fmt(estimate.rate_per_person_additional_night || 0)}`} />}
+              <Row k={`Hospedaje (${estimate?.pax || 0}×${estimate?.nights || 0}n)`} v={fmt(estimate?.lodging_subtotal || 0)} />
+              {estimate?.extra_pax_subtotal > 0 && <Row k="Adicionales" v={fmt(estimate.extra_pax_subtotal)} />}
+              <Row k="Alimentación" v={fmt((estimate?.breakfast_subtotal || 0) + (estimate?.lunch_subtotal || 0) + (estimate?.dinner_subtotal || 0))} />
+              <Row k="Transporte" v={fmt(estimate?.transport_subtotal || 0)} />
+              <Row k="Tours" v={fmt(estimate?.tours_subtotal || 0)} />
+              {estimate?.registration_fee > 0 && <Row k="Inscripción" v={fmt(estimate.registration_fee)} />}
+              <div className="border-t border-fsc-dorado/30 pt-3 mt-3">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-xs uppercase tracking-widest text-fsc-gris">Total</span>
+                  <span className="font-display text-3xl tracking-wider text-fsc-dorado tabular-nums" data-testid="cotizar-total">{fmt(estimate?.total_amount || 0)}<span className="text-xs text-fsc-gris ml-1">COP</span></span>
                 </div>
               </div>
-            )}
-            <button onClick={submit} disabled={submitting || !estimate} className="mt-5 fsc-btn-red w-full py-3 rounded-md flex items-center justify-center gap-2 disabled:opacity-50" data-testid="cotizar-submit">
+            </div>
+            <button onClick={submit} disabled={submitting || !estimate || (estimate?.total_amount || 0) === 0} className="mt-5 fsc-btn-red w-full py-3 rounded-md flex items-center justify-center gap-2 disabled:opacity-50" data-testid="cotizar-submit">
               {submitting ? "Enviando..." : (<>Enviar cotización <ArrowRight size={16}/></>)}
             </button>
           </div>
@@ -469,10 +439,10 @@ function CotizarGate({ variant, team }) {
 }
 
 function ExtraPaxEditor({ entries, onChange }) {
-  const add = () => onChange([...entries, { label: "", pax: 1, nights: 5 }]);
+  const add = () => onChange([...entries, { label: "", pax: 1, nights: 5, start_date: "", end_date: "" }]);
   const update = (i, k, v) => {
     const next = [...entries];
-    next[i] = { ...next[i], [k]: k === "label" ? v : Number(v) || 0 };
+    next[i] = { ...next[i], [k]: (k === "label" || k === "start_date" || k === "end_date") ? v : Number(v) || 0 };
     onChange(next);
   };
   const remove = (i) => onChange(entries.filter((_, j) => j !== i));
@@ -480,33 +450,83 @@ function ExtraPaxEditor({ entries, onChange }) {
     <div className="mt-5 border-t-2 border-dashed border-slate-200 pt-4" data-testid="extra-pax-editor">
       <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
         <div>
-          <div className="text-xs font-bold uppercase tracking-wider text-fsc-dorado-oscuro">Personas adicionales con noches distintas (opcional)</div>
-          <div className="text-[11px] text-slate-500">Útil para acompañantes que se quedan más o menos noches que el grupo principal.</div>
+          <div className="text-xs font-bold uppercase tracking-wider text-fsc-dorado-oscuro">Personas adicionales</div>
+          <div className="text-[11px] text-slate-500">Acompañantes con noches/fechas distintas al grupo principal.</div>
         </div>
-        <button type="button" onClick={add} className="text-xs font-bold uppercase tracking-wider text-fsc-negro border-2 border-fsc-dorado bg-fsc-dorado/10 hover:bg-fsc-dorado/20 px-3 py-1.5 rounded" data-testid="extra-pax-add">+ Agregar grupo</button>
+        <button type="button" onClick={add} className="text-xs font-bold uppercase tracking-wider text-fsc-negro border-2 border-fsc-dorado bg-fsc-dorado/10 hover:bg-fsc-dorado/20 px-3 py-1.5 rounded" data-testid="extra-pax-add">+ Agregar</button>
       </div>
       {entries.length === 0 && (
-        <div className="text-[11px] text-slate-400 italic">Aún no has agregado grupos adicionales.</div>
+        <div className="text-[11px] text-slate-400 italic">Aún no has agregado personas adicionales.</div>
       )}
       <div className="space-y-2">
         {entries.map((ep, i) => (
           <div key={i} className="grid sm:grid-cols-12 gap-2 items-end bg-slate-50 rounded-md p-3 border border-slate-200" data-testid={`extra-pax-row-${i}`}>
-            <label className="sm:col-span-5 block">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Etiqueta (opcional)</span>
-              <input value={ep.label || ""} onChange={(e) => update(i, "label", e.target.value)} placeholder="Padres, fisioterapeuta..." className="mt-0.5 w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
+            <label className="sm:col-span-4 block">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Etiqueta</span>
+              <input value={ep.label || ""} onChange={(e) => update(i, "label", e.target.value)} placeholder="Padres, fisio..." className="mt-0.5 w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
             </label>
-            <label className="sm:col-span-3 block">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Pax</span>
+            <label className="sm:col-span-2 block">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Cantidad</span>
               <input type="number" min="1" value={ep.pax} onChange={(e) => update(i, "pax", e.target.value)} className="mt-0.5 w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
             </label>
-            <label className="sm:col-span-3 block">
+            <label className="sm:col-span-2 block">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Noches</span>
               <input type="number" min="1" value={ep.nights} onChange={(e) => update(i, "nights", e.target.value)} className="mt-0.5 w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
+            </label>
+            <label className="sm:col-span-2 block">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Desde</span>
+              <input type="date" value={ep.start_date || ""} onChange={(e) => update(i, "start_date", e.target.value)} className="mt-0.5 w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
+            </label>
+            <label className="sm:col-span-1 block">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Hasta</span>
+              <input type="date" value={ep.end_date || ""} onChange={(e) => update(i, "end_date", e.target.value)} className="mt-0.5 w-full px-2 py-1.5 border border-slate-300 rounded text-sm" />
             </label>
             <button type="button" onClick={() => remove(i)} className="sm:col-span-1 text-fsc-rojo text-xs font-bold uppercase tracking-wider py-1.5" data-testid={`extra-pax-remove-${i}`}>Quitar</button>
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+
+// ----- Transport entries editor (route + qty + date) -----
+function TransportEntriesEditor({ entries, routes, defaultPax, onChange }) {
+  const fmtMoney = (n) => `$${Number(n || 0).toLocaleString("es-CO")}`;
+  const add = () => {
+    if (routes.length === 0) return;
+    onChange([...entries, { route_id: routes[0].id, pax: defaultPax || 1, date: "" }]);
+  };
+  const update = (idx, patch) => onChange(entries.map((e, i) => (i === idx ? { ...e, ...patch } : e)));
+  const remove = (idx) => onChange(entries.filter((_, i) => i !== idx));
+  const priceOf = (rid) => routes.find((r) => r.id === rid)?.price || 0;
+  return (
+    <div className="space-y-2" data-testid="transport-entries">
+      {entries.length === 0 && <p className="text-xs italic text-slate-400">Sin transportes agregados. Pulsa "Agregar transporte".</p>}
+      {entries.map((e, idx) => (
+        <div key={`${e.route_id}-${idx}`} className="grid grid-cols-12 gap-2 items-end bg-blue-50 border border-blue-200 rounded-md p-2" data-testid={`transport-row-${idx}`}>
+          <label className="col-span-5 block">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Ruta</span>
+            <select value={e.route_id} onChange={(ev) => update(idx, { route_id: ev.target.value })} className="w-full mt-1 px-2 py-1 border border-slate-200 rounded text-xs bg-white">
+              {routes.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+            </select>
+            <span className="text-[10px] text-slate-500">{priceOf(e.route_id) > 0 ? `${fmtMoney(priceOf(e.route_id))} / persona` : "Incluido"}</span>
+          </label>
+          <label className="col-span-2 block">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Cantidad</span>
+            <input type="number" min="1" value={e.pax} onChange={(ev) => update(idx, { pax: Number(ev.target.value) || 1 })} className="w-full mt-1 px-2 py-1 border border-slate-200 rounded text-xs tabular-nums" data-testid={`transport-pax-${idx}`} />
+          </label>
+          <label className="col-span-3 block">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Fecha</span>
+            <input type="date" value={e.date || ""} onChange={(ev) => update(idx, { date: ev.target.value })} className="w-full mt-1 px-2 py-1 border border-slate-200 rounded text-xs" />
+          </label>
+          <div className="col-span-1 text-right text-xs font-bold tabular-nums text-blue-700 pb-1">{fmtMoney(priceOf(e.route_id) * (e.pax || 0))}</div>
+          <button type="button" onClick={() => remove(idx)} className="col-span-1 text-red-600 hover:bg-red-50 p-1 rounded justify-self-end" aria-label="Quitar"><X size={14}/></button>
+        </div>
+      ))}
+      <button type="button" onClick={add} className="text-xs font-bold uppercase tracking-wide text-fsc-dorado-oscuro hover:underline flex items-center gap-1" data-testid="transport-add">
+        <Plus size={12}/> Agregar transporte
+      </button>
     </div>
   );
 }

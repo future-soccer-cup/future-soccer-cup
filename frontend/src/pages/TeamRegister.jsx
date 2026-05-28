@@ -39,11 +39,10 @@ export default function TeamRegister() {
   const submit = async (e) => {
     e.preventDefault();
     if (!form.event_type) return toast.error("Selecciona el evento");
-    if (!form.birth_year) return toast.error("Selecciona el año de nacimiento");
     if (!form.data_consent) return toast.error("Debes aceptar la política de datos");
     setLoading(true);
     try {
-      const payload = { ...form, birth_year: Number(form.birth_year) };
+      const payload = { ...form, birth_year: form.birth_year ? Number(form.birth_year) : (selectedEvent?.birth_years?.[0] || null) };
       const reg = await api.post("/auth/register-team", payload);
       setUser(reg.data);
 
@@ -59,7 +58,7 @@ export default function TeamRegister() {
         }
       }
 
-      toast.success("Club y equipo registrados. Paga la inscripción para completar.");
+      toast.success("Club registrado. Espera la aprobación del administrador para acceder al panel.");
       nav("/mi-equipo");
     } catch (err) {
       toast.error(formatApiError(err.response?.data?.detail) || "Error al registrar");
@@ -122,43 +121,24 @@ export default function TeamRegister() {
             </Section>
 
             {/* Evento + primer equipo */}
-            <Section title="Primer equipo a registrar" testId="section-team">
-              <span className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Evento</span>
+            <Section title="Evento" testId="section-event">
+              <p className="text-xs text-slate-500 mb-3">Indica el evento principal al que se inscribirá tu club. Los equipos y categorías se gestionan desde el panel después de la aprobación admin.</p>
               <div className="grid sm:grid-cols-3 gap-3">
                 {events.map((ev) => (
                   <label key={ev.id} className={`cursor-pointer border-2 rounded-xl p-4 transition-colors ${form.event_type === ev.id ? "border-fsc-dorado bg-fsc-dorado/10" : "border-slate-200 hover:border-slate-400"}`} data-testid={`event-option-${ev.id}`}>
-                    <input type="radio" name="event_type" className="hidden" value={ev.id} checked={form.event_type === ev.id} onChange={() => setForm({ ...form, event_type: ev.id, birth_year: "" })} />
+                    <input type="radio" name="event_type" className="hidden" value={ev.id} checked={form.event_type === ev.id} onChange={() => setForm({ ...form, event_type: ev.id, birth_year: ev.birth_years?.[0] || "" })} />
                     <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Evento</div>
-                    <div className="font-display text-xl font-black uppercase tracking-tight">{ev.name}</div>
+                    <div className="font-display text-xl tracking-wider">{ev.name}</div>
                     <div className="text-[10px] text-slate-500 mt-1">{ev.dates}</div>
-                    <div className="text-[10px] text-slate-500 mt-1">Años: {ev.birth_years.join(", ")}</div>
                   </label>
                 ))}
               </div>
-
-              {selectedEvent && (
-                <div className="grid sm:grid-cols-2 gap-3 mt-4">
-                  <label className="block">
-                    <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Año de nacimiento</span>
-                    <select required value={form.birth_year} onChange={(e) => upd("birth_year", e.target.value)} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="tr-birth-year">
-                      <option value="">Seleccionar...</option>
-                      {allowedYears.map((y) => <option key={y} value={y}>{y} — {fmtCOP(feeForYear(y))} COP</option>)}
-                    </select>
-                  </label>
-                  <label className="block">
-                    <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Designación</span>
-                    <select value={form.designation} onChange={(e) => upd("designation", e.target.value)} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="tr-designation">
-                      {designations.map((d) => <option key={d} value={d}>{d}</option>)}
-                    </select>
-                  </label>
-                </div>
-              )}
             </Section>
 
             <ConsentBlock checked={form.data_consent} onChange={(v) => upd("data_consent", v)} testId="tr-consent" />
 
             <button type="submit" disabled={loading || !form.data_consent} className="fsc-btn-red w-full py-3 rounded-md flex items-center justify-center gap-2 disabled:opacity-50" data-testid="tr-submit">
-              {loading ? "Registrando..." : (<>Registrar club y equipo <ArrowRight size={16}/></>)}
+              {loading ? "Registrando..." : (<>Solicitar registro de club <ArrowRight size={16}/></>)}
             </button>
           </div>
 
@@ -169,17 +149,12 @@ export default function TeamRegister() {
               <div className="mt-4 text-xs uppercase tracking-[0.25em] text-fsc-dorado">Resumen</div>
               <div className="mt-2 space-y-2 text-sm">
                 <Row k="Club" v={form.club_name || "—"} />
-                <Row k="DT" v={form.manager_name || "—"} />
+                <Row k="Director" v={form.manager_name || "—"} />
                 <Row k="Evento" v={selectedEvent?.name || "—"} />
-                <Row k="Año" v={form.birth_year || "—"} />
-                <Row k="Designación" v={form.designation || "—"} />
               </div>
-              {form.birth_year && selectedEvent && (
-                <div className="mt-5 pt-4 border-t border-fsc-dorado/30">
-                  <div className="text-xs uppercase tracking-widest text-fsc-gris">Inscripción</div>
-                  <div className="font-display text-3xl tracking-wider text-fsc-dorado tabular-nums">{fmtCOP(feeForYear(form.birth_year))}<span className="text-xs text-fsc-gris ml-1">COP</span></div>
-                </div>
-              )}
+              <div className="mt-5 pt-4 border-t border-fsc-dorado/30 text-xs text-fsc-gris/80 leading-relaxed">
+                Después de aprobar tu cuenta, podrás registrar tus equipos y categorías desde el panel.
+              </div>
             </div>
           </aside>
         </form>

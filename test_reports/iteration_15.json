@@ -1,0 +1,29 @@
+{
+  "summary": "Tanda G (iter 15) full validation. Backend: 6/6 new pytest cases for transport_entries (calc, override legacy, persist on POST/PUT, breakdown on GET) + extra_pax dates pass. Regression iter14 (29/29) intact. Frontend Playwright: Navbar (no Plataforma, 6 nav-* testids), Login flip (main.x=0 < aside.x=1203), TeamRegister (no tr-birth-year/tr-designation/sidebar fees), Cotizar (summary always-on, extra-pax 5 cols w/ 2 date inputs, transport-entries editor w/ add/row/pax/date, no legacy checkbox), AdminQuotes (view-quote-{id} opens modal with Resumen económico section, quote-detail-close works).",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Cotizar /cotizar (coach@test.com con equipo aprobado)", "issues": ["El sidebar inicia con total NO en $0 porque el equipo del DT pre-rellena event_type/birth_year y el calculate corre apenas se monta. El spec literal pedía 'iniciando en $0 y actualizándose al seleccionar paquete/pax/extras'. Funcionalmente correcto (submit deshabilitado si total=0), pero si se desea estrictamente arrancar en 0 habría que esperar interacción del usuario antes de hacer el primer calculate."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter15_tanda_g.py",
+    "/app/test_reports/pytest/iteration_15.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Cotizar.jsx (533 líneas) está acercándose al umbral de 700 — considerar extraer ExtraPaxEditor, TransportEntriesEditor, TourEntriesEditor, DomicilioMealsEditor y CotizarGate a sus propios archivos.",
+    "AdminQuotes.jsx mezcla la tabla y el QuoteDetailModal (~300 líneas) — extraer modal a componente separado mejora reuso.",
+    "El sidebar de /cotizar muestra estimate inmediatamente cuando team_id pre-rellena event_type. Si el requerimiento es 'siempre en $0 al entrar', habilitar el debounce solo tras primera interacción del usuario.",
+    "TransportEntriesEditor sincroniza transport_routes a un Array.from(new Set(...)) — bien; pero el backend ya ignora transport_routes cuando transport_entries existe (validado), así que podría eliminarse del payload para mantener limpieza."
+  ],
+  "updated_files": [],
+  "success_rate": { "backend": "100% (6/6 nuevo + 29/29 regresión)", "frontend": "100% (8/8 flows)" },
+  "test_credentials": "admin@futuresoccercup.com / FSCAdmin2025! ; coach@test.com / Coach2025!",
+  "seed_data_creation": "Test creó cotizaciones con notes 'TEST_iter15_persist' y 'TEST_iter15_update_after' como DT coach@test.com. No se hizo cleanup explícito (siguen visibles en /admin/cotizaciones).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Tanda G validada end-to-end. Para próxima tanda: si se agregan roles president/team_manager o cotizar multi-categoría, validar que el flujo actual sigue funcionando para DT 'team' role. Para cleanup, considerar endpoint DELETE /quotes/{id} (no probado aquí)."
+}

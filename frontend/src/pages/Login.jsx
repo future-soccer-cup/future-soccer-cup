@@ -29,29 +29,10 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] grid lg:grid-cols-5 bg-white" data-testid="login-page">
+    <div className="min-h-[calc(100vh-4rem)] flex flex-col lg:flex-row bg-white" data-testid="login-page">
       <Toaster position="top-right" />
-      {/* Panel decorativo izquierdo */}
-      <aside className="hidden lg:flex lg:col-span-2 relative overflow-hidden bg-fsc-negro items-center justify-center min-h-[600px]">
-        <div className="absolute inset-0 bg-cover bg-center opacity-25" style={{ backgroundImage: `url(https://images.pexels.com/photos/32694240/pexels-photo-32694240.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=1100&w=900)` }} />
-        <div className="absolute inset-0 bg-gradient-to-br from-fsc-negro via-fsc-negro/85 to-fsc-azul-noche/70" />
-        <div className="absolute inset-0 fsc-grain pointer-events-none opacity-50" />
-        <div className="relative text-center px-10 fsc-fade-up">
-          <div className="bg-fsc-negro border-2 border-fsc-dorado rounded-2xl p-8 inline-block">
-            <img src={FSC_LOGO} alt="FSC" className="h-28 w-28" />
-          </div>
-          <h2 className="mt-8 font-display text-5xl tracking-wider text-white">FUTURE SOCCER CUP</h2>
-          <div className="font-cursive text-2xl text-fsc-dorado mt-1">Somos más que un torneo</div>
-          <p className="mt-5 text-fsc-gris/90 max-w-sm mx-auto leading-relaxed">
-            La plataforma oficial para directores técnicos y presidentes de club.
-          </p>
-        </div>
-        {/* Tira dorada inferior */}
-        <div className="absolute bottom-0 left-0 right-0 bg-fsc-dorado h-2" />
-      </aside>
-
-      {/* Form */}
-      <main className="lg:col-span-3 flex items-center justify-center p-6 sm:p-10 lg:p-16">
+      {/* Form (izquierda) */}
+      <main className="flex-1 lg:flex-[3] flex items-center justify-center p-6 sm:p-10 lg:p-16 min-w-0">
         <div className="w-full max-w-md">
           <Link to="/" className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-slate-500 hover:text-fsc-dorado-oscuro mb-6">
             <ArrowLeft size={14}/> Volver al inicio
@@ -125,10 +106,28 @@ export default function Login() {
             Registrar mi club
           </Link>
           <p className="mt-3 text-xs text-slate-400 text-center">
-            Reservado para directores técnicos y presidentes de club.
+            Reservado para directores y directores técnicos de club.
           </p>
         </div>
       </main>
+
+      {/* Panel decorativo (derecha) */}
+      <aside className="hidden lg:flex lg:flex-[2] relative overflow-hidden bg-fsc-negro items-center justify-center min-h-[600px] min-w-0">
+        <div className="absolute inset-0 bg-cover bg-center opacity-25" style={{ backgroundImage: `url(https://images.pexels.com/photos/32694240/pexels-photo-32694240.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=1100&w=900)` }} />
+        <div className="absolute inset-0 bg-gradient-to-bl from-fsc-negro via-fsc-negro/85 to-fsc-azul-noche/70" />
+        <div className="absolute inset-0 fsc-grain pointer-events-none opacity-50" />
+        <div className="relative text-center px-10 fsc-fade-up">
+          <div className="bg-fsc-negro border-2 border-fsc-dorado rounded-2xl p-8 inline-block">
+            <img src={FSC_LOGO} alt="FSC" className="h-28 w-28" />
+          </div>
+          <h2 className="mt-8 font-display text-5xl tracking-wider text-white">FUTURE SOCCER CUP</h2>
+          <div className="font-cursive text-2xl text-fsc-dorado mt-1">Somos más que un torneo</div>
+          <p className="mt-5 text-fsc-gris/90 max-w-sm mx-auto leading-relaxed">
+            La plataforma oficial para directores de club y directores técnicos.
+          </p>
+        </div>
+        <div className="absolute bottom-0 left-0 right-0 bg-fsc-dorado h-2" />
+      </aside>
     </div>
   );
 }

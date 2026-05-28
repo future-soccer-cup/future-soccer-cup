@@ -1,6 +1,6 @@
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { Menu, X, LogOut, UserCircle2, Shield, ChevronDown } from "lucide-react";
+import { Menu, X, LogOut, UserCircle2, Shield } from "lucide-react";
 import Logo from "./Logo";
 import { useAuth } from "../context/AuthContext";
 
@@ -8,24 +8,14 @@ const NAV = [
   { to: "/", label: "Inicio", end: true },
   { to: "/nosotros", label: "Nosotros" },
   { to: "/eventos", label: "Eventos" },
-  { to: "/contacto", label: "Contacto" },
-];
-
-const NAV_SECONDARY = [
-  { to: "/fixture", label: "Fixture" },
-  { to: "/bracket", label: "Bracket" },
-  { to: "/datos-estadisticas", label: "Datos" },
-  { to: "/posiciones", label: "Posiciones" },
-  { to: "/equipos", label: "Clubes" },
-  { to: "/jugadores", label: "Jugadores" },
+  { to: "/datos-estadisticas", label: "Estadísticas" },
   { to: "/noticias", label: "Noticias" },
-  { to: "/cotizar", label: "Cotizar" },
+  { to: "/contacto", label: "Contacto" },
 ];
 
 export default function Navbar() {
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const navigate = useNavigate();
 
@@ -75,34 +65,6 @@ export default function Navbar() {
                 {n.label}
               </NavLink>
             ))}
-            <div className="relative">
-              <button
-                onClick={() => setMoreOpen((v) => !v)}
-                onBlur={() => setTimeout(() => setMoreOpen(false), 150)}
-                className="px-3 py-2 text-[13px] font-bold uppercase tracking-[0.18em] text-white hover:text-fsc-dorado flex items-center gap-1"
-                data-testid="nav-more"
-              >
-                Plataforma <ChevronDown size={14} className={`transition-transform ${moreOpen ? "rotate-180" : ""}`}/>
-              </button>
-              {moreOpen && (
-                <div className="absolute top-full right-0 mt-1 w-56 bg-fsc-negro border-2 border-fsc-dorado rounded-md shadow-2xl py-2">
-                  {NAV_SECONDARY.map((n) => (
-                    <NavLink
-                      key={n.to}
-                      to={n.to}
-                      className={({ isActive }) =>
-                        `block px-4 py-2 text-[12px] font-bold uppercase tracking-[0.15em] transition-colors ${
-                          isActive ? "text-fsc-dorado bg-fsc-dorado/10" : "text-white hover:text-fsc-dorado hover:bg-fsc-dorado/10"
-                        }`
-                      }
-                      data-testid={`nav-${n.label.toLowerCase()}`}
-                    >
-                      {n.label}
-                    </NavLink>
-                  ))}
-                </div>
-              )}
-            </div>
           </nav>
 
           <div className="hidden lg:flex items-center gap-2">
@@ -143,7 +105,7 @@ export default function Navbar() {
       {open && (
         <div className="lg:hidden bg-fsc-negro border-t border-fsc-dorado/30 fsc-fade-up">
           <nav className="max-w-7xl mx-auto px-4 py-4 grid gap-1">
-            {[...NAV, ...NAV_SECONDARY].map((n) => (
+            {NAV.map((n) => (
               <NavLink
                 key={n.to}
                 to={n.to}
