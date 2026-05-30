@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from "react";
 import api, { formatApiError } from "../../lib/api";
 import { Plus, Trash2, Save, Calendar } from "lucide-react";
 import { toast, Toaster } from "sonner";
-import CurrencyInput from "../../components/CurrencyInput";
 
 export default function AdminEventTypes() {
   const [items, setItems] = useState([]);
@@ -26,7 +25,6 @@ export default function AdminEventTypes() {
     try {
       await api.put(`/admin/event-types/${c.id}`, {
         name: c.name, description: c.description, month: c.month,
-        registration_fee_per_team: Number(c.registration_fee_per_team || 0),
         sort_order: c.sort_order,
       });
       toast.success("Guardado");
@@ -67,7 +65,7 @@ export default function AdminEventTypes() {
           <h1 className="font-display text-4xl font-black uppercase tracking-tighter flex items-center gap-2"><Calendar/> Tipos de Evento</h1>
           <p className="text-sm text-slate-500 mt-1">Configura los tipos de evento (Festival, Premier, etc.) que pueden seleccionarse al crear un Evento.</p>
         </div>
-        <button onClick={() => setCreating({ name: "", description: "", month: "", registration_fee_per_team: 0, sort_order: items.length })} className="fsc-btn-red px-4 py-2 rounded-md text-sm flex items-center gap-2" data-testid="add-event-type-btn">
+        <button onClick={() => setCreating({ name: "", description: "", month: "", sort_order: items.length })} className="fsc-btn-red px-4 py-2 rounded-md text-sm flex items-center gap-2" data-testid="add-event-type-btn">
           <Plus size={16}/> Nuevo tipo de evento
         </button>
       </div>
@@ -79,13 +77,12 @@ export default function AdminEventTypes() {
               <th className="text-left px-4 py-2">Nombre</th>
               <th className="text-left px-4 py-2">Descripción</th>
               <th className="text-left px-4 py-2 w-32">Mes</th>
-              <th className="text-right px-4 py-2 w-44">Inscripción base (COP)</th>
               <th className="text-right px-4 py-2 w-32">Acciones</th>
             </tr>
           </thead>
           <tbody>
-            {loading && <tr><td colSpan="5" className="text-center py-10 text-slate-400">Cargando...</td></tr>}
-            {!loading && items.length === 0 && <tr><td colSpan="5" className="text-center py-10 text-slate-400">Sin tipos. Agrega el primero.</td></tr>}
+            {loading && <tr><td colSpan="4" className="text-center py-10 text-slate-400">Cargando...</td></tr>}
+            {!loading && items.length === 0 && <tr><td colSpan="4" className="text-center py-10 text-slate-400">Sin tipos. Agrega el primero.</td></tr>}
             {items.map((c) => (
               <tr key={c.id} className="border-t border-slate-100" data-testid={`event-type-row-${c.id}`}>
                 <td className="px-4 py-2">
@@ -96,9 +93,6 @@ export default function AdminEventTypes() {
                 </td>
                 <td className="px-4 py-2">
                   <input value={c.month || ""} onChange={(e) => patchLocal(c.id, { month: e.target.value })} className="w-full px-2 py-1 border border-slate-200 rounded text-xs" placeholder="Ej: Octubre" />
-                </td>
-                <td className="px-4 py-2 text-right">
-                  <CurrencyInput value={c.registration_fee_per_team} onChange={(v) => patchLocal(c.id, { registration_fee_per_team: v })} className="w-36 text-sm" data-testid={`evt-fee-${c.id}`} />
                 </td>
                 <td className="px-4 py-2 text-right space-x-2">
                   <button onClick={() => save(c)} className="text-fsc-azul" data-testid={`evt-save-${c.id}`}><Save size={16}/></button>
@@ -123,13 +117,9 @@ export default function AdminEventTypes() {
               <textarea value={creating.description} onChange={(e) => setCreating({ ...creating, description: e.target.value })} rows={2} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" />
             </label>
             <div className="grid grid-cols-2 gap-3">
-              <label className="block">
+              <label className="block col-span-2">
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Mes</span>
                 <input value={creating.month} onChange={(e) => setCreating({ ...creating, month: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" placeholder="Octubre" />
-              </label>
-              <label className="block">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Inscripción base (COP)</span>
-                <CurrencyInput value={creating.registration_fee_per_team} onChange={(v) => setCreating({ ...creating, registration_fee_per_team: v })} className="w-full" data-testid="evt-new-fee" />
               </label>
             </div>
             <div className="flex justify-end gap-2 pt-2">

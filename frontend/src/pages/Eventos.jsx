@@ -16,9 +16,9 @@ export default function Eventos() {
       <section className="bg-fsc-negro text-white relative overflow-hidden">
         <div className="absolute inset-0 fsc-stripe opacity-30 pointer-events-none"/>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
-          <div className="font-cursive text-2xl text-fsc-dorado">temporada {new Date().getFullYear()}</div>
+          <div className="font-cursive text-2xl text-fsc-azul">temporada {new Date().getFullYear()}</div>
           <h1 className="font-display text-6xl md:text-8xl tracking-wider mt-1">EVENTOS</h1>
-          <div className="h-1 w-24 bg-fsc-dorado mt-4"/>
+          <div className="h-1 w-24 bg-fsc-azul mt-4"/>
           <p className="text-fsc-gris mt-6 max-w-2xl text-lg">
             Conoce todos los torneos del calendario FSC y revive las ediciones pasadas.
           </p>
@@ -61,18 +61,18 @@ function EventCard({ ev, historical }) {
             <img src={FSC_LOGO} alt="" className="h-24 w-24 opacity-80" />
           </div>
         )}
-        {ev.featured && <span className="absolute top-3 right-3 bg-fsc-dorado text-fsc-negro text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded">Destacado</span>}
+        {ev.featured && <span className="absolute top-3 right-3 bg-fsc-azul text-fsc-negro text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded">Destacado</span>}
         {historical && <span className="absolute top-3 left-3 bg-slate-800 text-white text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded">Histórico</span>}
       </div>
       <div className="p-5">
-        <div className="font-cursive text-xl text-fsc-dorado-oscuro">edición {ev.season || ""}</div>
+        <div className="font-cursive text-xl text-fsc-azul-oscuro">edición {ev.season || ""}</div>
         <h3 className="font-display text-2xl tracking-wider text-fsc-negro mt-1">{ev.name}</h3>
         <div className="mt-3 flex flex-wrap gap-3 text-xs text-slate-600">
           {ev.start_date && <span className="flex items-center gap-1"><Calendar size={12}/> {ev.start_date}</span>}
           {ev.city && <span className="flex items-center gap-1"><MapPin size={12}/> {ev.city}</span>}
           {ev.category && <span className="font-bold uppercase flex items-center gap-1"><Trophy size={12}/> {ev.category}</span>}
         </div>
-        <div className="mt-4 text-xs font-bold uppercase tracking-widest text-fsc-dorado flex items-center gap-1 group-hover:gap-2 transition-all">
+        <div className="mt-4 text-xs font-bold uppercase tracking-widest text-fsc-azul flex items-center gap-1 group-hover:gap-2 transition-all">
           Ver detalles <ArrowRight size={12}/>
         </div>
       </div>

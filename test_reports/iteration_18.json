@@ -1,0 +1,34 @@
+{
+  "summary": "Iteration 18 — Sub-tanda A (visual/UX) validated for both backend and frontend. Backend: 6/6 pytest tests pass (club_name in /api/quotes, admin guard 401/403, lodging POST regression, meal_addon synthetic-name POST + empty-name rejection, PUT event-type without registration_fee_per_team). Frontend (admin auth via API + cookies): Home hero is light with FSC shield watermark at opacity 0.06; EventCards show ALL categories (Sub-8/Sub-10/Sub-12 visible on one card); /admin/cotizaciones has new Club column with 15 quote-club-* cells populated; /admin/inventario lodging tab shows clasificación as title (SAPPHIRE/ESMERALD) with 0 Nombre inputs and Add modal also without Nombre input; meal_addon tab headers = ['Comida','Clasificación','Costo (COP)',''] with 0 Nombre columns and 0 Nombre input in Nuevo modal; /admin/tipos-evento headers = ['Nombre','Descripción','Mes','Acciones'] with no Inscripción base column, Nuevo modal has 0 evt-new-fee testids. Grep confirms `fsc-dorado*` only survives as 3 backward-compat CSS variable aliases in /app/frontend/src/index.css — no JSX usage remains.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/admin/inventario — meal_addon Add modal", "issues": ["Modal title reads 'Nuevo Meal Addon' (English/Spanglish). For consistency with Spanish UX (other modals use 'Nuevo tipo de evento', 'Nuevo paquete', etc.) consider renaming to 'Nueva alimentación adicional'. Cosmetic only — not a functional defect."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter18_tanda_a.py",
+    "/app/test_reports/pytest/iteration_18.xml"
+  ],
+  "action_items": [
+    "Optional: rename meal_addon CreateModal title from 'Nuevo Meal Addon' to 'Nueva alimentación adicional' for Spanish consistency.",
+    "Optional: clean up the 3 legacy CSS variable aliases (--fsc-dorado, --fsc-dorado-claro, --fsc-dorado-oscuro) in /app/frontend/src/index.css once it is confirmed no third-party or external stylesheet references them. They currently re-point to fsc-azul* so are harmless but dead weight."
+  ],
+  "critical_code_review_comments": [
+    "/app/backend/server.py — all_quotes: enrichment loop correctly handles missing user_id and missing team_id via .get(..., '') fallbacks so club_name is always a string. Good. Minor: when there are no quotes with user_id at all (user_ids list is empty), the enrichment block is skipped and items never receive the club_name key. With current backend it does not happen because the for-loop on `items` always runs and the early `users_map = {}` path falls through; but the explicit assignment is inside the second loop. Recommend always defaulting q['club_name'] = '' before any conditional lookup to be defensive.",
+    "/app/frontend/src/pages/admin/AdminInventory.jsx — meal_addon and lodging CreateModal: defaults look correct, but the modal title hard-codes 'Nuevo Meal Addon' / 'Nuevo Lodging' (English) instead of localized strings — minor UX inconsistency vs other admin modals.",
+    "Suggestion: Add a backend unit test to assert /api/admin/event-types still seeds `registration_fee_per_team` automatically (so the field, while hidden in UI, never goes null in DB) — protects against future model changes."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter18_tanda_a.py"
+  ],
+  "success_rate": {"backend": "100% (6/6)", "frontend": "100% (5/5 visual+UX checks)"},
+  "test_credentials": "admin@futuresoccercup.com / FSCAdmin2025! (from /app/memory/test_credentials.md). Login via /api/auth/login returns 200 and sets session cookie. UI form login worked via screenshot but Playwright locator could not consistently find the email input — workaround: in-page fetch() for /api/auth/login which sets the cookie for subsequent admin route navigation.",
+  "seed_data_creation": "Temporary meal_addon ('ALMUERZO · GOLD'), lodging ('SAPPHIRE'), and event-type ('TEST_iter18_*') created by pytest and immediately deleted in teardown. One additional meal_addon was created via in-browser fetch during frontend test and then deleted in the same call.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Sub-tanda A is fully verified. For the upcoming Sub-tanda B (refactor jerárquico de Clubes con aprobaciones en cascada), reuse /app/backend/tests/test_iter18_tanda_a.py::TestQuotesClubName as a regression guard that club_name stays populated end-to-end after the club hierarchy refactor. The Playwright login-via-locator path is flaky (input not picked up via placeholder/type selector despite being visible in DOM screenshot) — prefer the in-page `fetch('/api/auth/login', {credentials:'include'})` pattern used here to establish admin session for UI-level admin route tests.",
+  "rca of the issue": "N/A — no defects found in Sub-tanda A scope."
+}

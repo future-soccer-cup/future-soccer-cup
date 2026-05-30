@@ -287,8 +287,8 @@ export default function Cotizar() {
 
         {/* Sticky summary */}
         <aside className="lg:col-span-1">
-          <div className="sticky top-24 bg-fsc-negro text-white rounded-2xl p-6 border-2 border-fsc-dorado">
-            <div className="text-xs uppercase tracking-[0.25em] text-fsc-dorado">Resumen en vivo</div>
+          <div className="sticky top-24 bg-fsc-negro text-white rounded-2xl p-6 border-2 border-fsc-azul">
+            <div className="text-xs uppercase tracking-[0.25em] text-fsc-azul">Resumen en vivo</div>
             <div className="font-display text-2xl tracking-wider">Tu paquete</div>
             <div className="mt-4 space-y-2 text-sm" data-testid="cotizar-summary">
               <Row k="Evento" v={estimate?.event_name || "—"} />
@@ -301,10 +301,10 @@ export default function Cotizar() {
               <Row k="Transporte" v={fmt(estimate?.transport_subtotal || 0)} />
               <Row k="Tours" v={fmt(estimate?.tours_subtotal || 0)} />
               {estimate?.registration_fee > 0 && <Row k="Inscripción" v={fmt(estimate.registration_fee)} />}
-              <div className="border-t border-fsc-dorado/30 pt-3 mt-3">
+              <div className="border-t border-fsc-azul/30 pt-3 mt-3">
                 <div className="flex items-baseline justify-between">
                   <span className="text-xs uppercase tracking-widest text-fsc-gris">Total</span>
-                  <span className="font-display text-3xl tracking-wider text-fsc-dorado tabular-nums" data-testid="cotizar-total">{fmt(estimate?.total_amount || 0)}<span className="text-xs text-fsc-gris ml-1">COP</span></span>
+                  <span className="font-display text-3xl tracking-wider text-fsc-azul tabular-nums" data-testid="cotizar-total">{fmt(estimate?.total_amount || 0)}<span className="text-xs text-fsc-gris ml-1">COP</span></span>
                 </div>
               </div>
             </div>
@@ -459,10 +459,10 @@ function ExtraPaxEditor({ entries, onChange }) {
     <div className="mt-5 border-t-2 border-dashed border-slate-200 pt-4" data-testid="extra-pax-editor">
       <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
         <div>
-          <div className="text-xs font-bold uppercase tracking-wider text-fsc-dorado-oscuro">Personas adicionales</div>
+          <div className="text-xs font-bold uppercase tracking-wider text-fsc-azul-oscuro">Personas adicionales</div>
           <div className="text-[11px] text-slate-500">Acompañantes con noches/fechas distintas al grupo principal.</div>
         </div>
-        <button type="button" onClick={add} className="text-xs font-bold uppercase tracking-wider text-fsc-negro border-2 border-fsc-dorado bg-fsc-dorado/10 hover:bg-fsc-dorado/20 px-3 py-1.5 rounded" data-testid="extra-pax-add">+ Agregar</button>
+        <button type="button" onClick={add} className="text-xs font-bold uppercase tracking-wider text-fsc-negro border-2 border-fsc-azul bg-fsc-azul/10 hover:bg-fsc-azul/20 px-3 py-1.5 rounded" data-testid="extra-pax-add">+ Agregar</button>
       </div>
       {entries.length === 0 && (
         <div className="text-[11px] text-slate-400 italic">Aún no has agregado personas adicionales.</div>
@@ -533,7 +533,7 @@ function TransportEntriesEditor({ entries, routes, defaultPax, onChange }) {
           <button type="button" onClick={() => remove(idx)} className="col-span-1 text-red-600 hover:bg-red-50 p-1 rounded justify-self-end" aria-label="Quitar"><X size={14}/></button>
         </div>
       ))}
-      <button type="button" onClick={add} className="text-xs font-bold uppercase tracking-wide text-fsc-dorado-oscuro hover:underline flex items-center gap-1" data-testid="transport-add">
+      <button type="button" onClick={add} className="text-xs font-bold uppercase tracking-wide text-fsc-azul-oscuro hover:underline flex items-center gap-1" data-testid="transport-add">
         <Plus size={12}/> Agregar transporte
       </button>
     </div>

@@ -82,7 +82,7 @@ export default function AdminHomeSettings() {
       </Section>
 
       <Section title="Próximo evento (Premier)" icon={<Trophy size={18}/>}>
-        <p className="text-xs text-slate-500 mb-3">Si dejas estos campos vacíos, el Home mostrará automáticamente el torneo marcado como "destacado" en <a href="/admin/torneos" className="underline text-fsc-dorado-oscuro">Torneos</a>.</p>
+        <p className="text-xs text-slate-500 mb-3">Si dejas estos campos vacíos, el Home mostrará automáticamente el torneo marcado como "destacado" en <a href="/admin/torneos" className="underline text-fsc-azul-oscuro">Torneos</a>.</p>
         <div className="grid md:grid-cols-2 gap-4">
           <Field label="Nombre" v={s.upcoming_name} onChange={(v) => upd("upcoming_name", v)} />
           <Field label="Categorías (lista)" v={s.upcoming_categories} onChange={(v) => upd("upcoming_categories", v)} placeholder="Sub-8, Sub-10, Sub-12" />
@@ -127,7 +127,7 @@ function Section({ title, icon, children }) {
   return (
     <div className="bg-white border-2 border-slate-200 rounded-xl p-5 mb-6">
       <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-100">
-        <div className="text-fsc-dorado-oscuro">{icon}</div>
+        <div className="text-fsc-azul-oscuro">{icon}</div>
         <div className="font-display text-2xl tracking-wider text-fsc-negro">{title.toUpperCase()}</div>
       </div>
       {children}

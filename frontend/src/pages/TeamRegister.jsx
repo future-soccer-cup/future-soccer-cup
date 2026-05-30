@@ -9,7 +9,7 @@ import { ConsentBlock } from "./Register";
 const EMPTY = {
   email: "", password: "", manager_name: "", manager_phone: "", manager_role: "Director técnico", manager_document: "",
   club_name: "", club_country: "Colombia", club_city: "", club_phone: "",
-  color: "#C9A227", event_type: "", birth_year: "", designation: "Único", data_consent: false,
+  color: "#0640c8", event_type: "", birth_year: "", designation: "Único", data_consent: false,
 };
 
 const fmtCOP = (n) => `$${Number(n || 0).toLocaleString("es-CO")}`;
@@ -71,8 +71,8 @@ export default function TeamRegister() {
     <div className="min-h-[calc(100vh-4rem)] bg-white" data-testid="team-register-page">
       <Toaster position="top-right" />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <Link to="/login" className="text-xs uppercase tracking-widest font-bold text-fsc-dorado-oscuro hover:text-fsc-dorado">← Volver</Link>
-        <div className="mt-4 font-cursive text-2xl text-fsc-dorado-oscuro">crea tu cuenta</div>
+        <Link to="/login" className="text-xs uppercase tracking-widest font-bold text-fsc-azul-oscuro hover:text-fsc-azul">← Volver</Link>
+        <div className="mt-4 font-cursive text-2xl text-fsc-azul-oscuro">crea tu cuenta</div>
         <h1 className="mt-1 font-display text-5xl md:text-6xl tracking-wider text-fsc-negro">REGISTRA TU CLUB</h1>
         <div className="h-1 w-16 bg-fsc-rojo mt-3 mb-4"/>
         <p className="text-sm text-slate-600 mt-2 max-w-xl">Crea tu cuenta de director técnico, registra tu club y tu primer equipo. Después podrás agregar más equipos (otros años o A/B) desde "Mi equipo".</p>
@@ -112,7 +112,7 @@ export default function TeamRegister() {
               </div>
               <div className="mt-3">
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Logo / escudo del club</span>
-                <button type="button" onClick={() => fileRef.current?.click()} className="mt-1 w-full border-2 border-dashed border-slate-300 hover:border-fsc-dorado rounded-md px-4 py-3 flex items-center gap-3 text-sm text-slate-600">
+                <button type="button" onClick={() => fileRef.current?.click()} className="mt-1 w-full border-2 border-dashed border-slate-300 hover:border-fsc-azul rounded-md px-4 py-3 flex items-center gap-3 text-sm text-slate-600">
                   <Upload size={16}/>
                   {logoFile ? <span className="truncate">{logoFile.name}</span> : <span>Seleccionar imagen (PNG/JPG)</span>}
                 </button>
@@ -125,7 +125,7 @@ export default function TeamRegister() {
               <p className="text-xs text-slate-500 mb-3">Indica el evento principal al que se inscribirá tu club. Los equipos y categorías se gestionan desde el panel después de la aprobación admin.</p>
               <div className="grid sm:grid-cols-3 gap-3">
                 {events.map((ev) => (
-                  <label key={ev.id} className={`cursor-pointer border-2 rounded-xl p-4 transition-colors ${form.event_type === ev.id ? "border-fsc-dorado bg-fsc-dorado/10" : "border-slate-200 hover:border-slate-400"}`} data-testid={`event-option-${ev.id}`}>
+                  <label key={ev.id} className={`cursor-pointer border-2 rounded-xl p-4 transition-colors ${form.event_type === ev.id ? "border-fsc-azul bg-fsc-azul/10" : "border-slate-200 hover:border-slate-400"}`} data-testid={`event-option-${ev.id}`}>
                     <input type="radio" name="event_type" className="hidden" value={ev.id} checked={form.event_type === ev.id} onChange={() => setForm({ ...form, event_type: ev.id, birth_year: ev.birth_years?.[0] || "" })} />
                     <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Evento</div>
                     <div className="font-display text-xl tracking-wider">{ev.name}</div>
@@ -144,15 +144,15 @@ export default function TeamRegister() {
 
           {/* Side summary */}
           <aside className="lg:col-span-1">
-            <div className="sticky top-24 bg-fsc-negro text-white rounded-2xl p-6 border-2 border-fsc-dorado">
-              <img src={FSC_LOGO} alt="FSC" className="h-16 bg-fsc-negro border border-fsc-dorado rounded-xl p-1.5" />
-              <div className="mt-4 text-xs uppercase tracking-[0.25em] text-fsc-dorado">Resumen</div>
+            <div className="sticky top-24 bg-fsc-negro text-white rounded-2xl p-6 border-2 border-fsc-azul">
+              <img src={FSC_LOGO} alt="FSC" className="h-16 bg-fsc-negro border border-fsc-azul rounded-xl p-1.5" />
+              <div className="mt-4 text-xs uppercase tracking-[0.25em] text-fsc-azul">Resumen</div>
               <div className="mt-2 space-y-2 text-sm">
                 <Row k="Club" v={form.club_name || "—"} />
                 <Row k="Director" v={form.manager_name || "—"} />
                 <Row k="Evento" v={selectedEvent?.name || "—"} />
               </div>
-              <div className="mt-5 pt-4 border-t border-fsc-dorado/30 text-xs text-fsc-gris/80 leading-relaxed">
+              <div className="mt-5 pt-4 border-t border-fsc-azul/30 text-xs text-fsc-gris/80 leading-relaxed">
                 Después de aprobar tu cuenta, podrás registrar tus equipos y categorías desde el panel.
               </div>
             </div>

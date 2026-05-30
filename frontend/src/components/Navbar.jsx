@@ -34,7 +34,7 @@ export default function Navbar() {
 
   const linkClass = ({ isActive }) =>
     `px-3 py-2 text-[13px] font-bold uppercase tracking-[0.18em] transition-colors ${
-      isActive ? "text-fsc-dorado" : "text-white hover:text-fsc-dorado"
+      isActive ? "text-fsc-azul" : "text-white hover:text-fsc-azul"
     }`;
 
   return (
@@ -45,17 +45,17 @@ export default function Navbar() {
       data-testid="navbar"
     >
       {/* línea dorada inferior */}
-      <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-fsc-dorado to-transparent opacity-60" />
+      <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-fsc-azul to-transparent opacity-60" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 lg:h-20">
           <Link to="/" className="flex items-center gap-3 group" data-testid="navbar-logo">
-            <div className="border-2 border-fsc-dorado rounded-md p-1 group-hover:border-fsc-dorado-claro transition-colors">
+            <div className="border-2 border-fsc-azul rounded-md p-1 group-hover:border-fsc-azul transition-colors">
               <Logo className="h-10 w-10" />
             </div>
             <div className="hidden sm:block leading-tight">
               <div className="font-display text-lg tracking-widest text-white">FUTURE SOCCER CUP</div>
-              <div className="font-cursive text-xs text-fsc-dorado leading-none -mt-1">Somos más que un torneo</div>
+              <div className="font-cursive text-xs text-fsc-azul leading-none -mt-1">Somos más que un torneo</div>
             </div>
           </Link>
 
@@ -70,7 +70,7 @@ export default function Navbar() {
           <div className="hidden lg:flex items-center gap-2">
             {!user ? (
               <>
-                <Link to="/login" className="text-white hover:text-fsc-dorado text-[12px] font-bold uppercase tracking-[0.15em] px-4 py-2.5" data-testid="navbar-login">
+                <Link to="/login" className="text-white hover:text-fsc-azul text-[12px] font-bold uppercase tracking-[0.15em] px-4 py-2.5" data-testid="navbar-login">
                   Ingresar
                 </Link>
                 <Link to="/registro-equipo" className="fsc-btn-primary px-5 py-2.5 rounded-md text-[12px]" data-testid="navbar-register">
@@ -80,12 +80,12 @@ export default function Navbar() {
             ) : (
               <>
                 {user.role === "admin" && (
-                  <Link to="/admin" className="text-fsc-dorado hover:text-fsc-dorado-claro text-[12px] font-bold uppercase tracking-[0.15em] px-3 py-2 flex items-center gap-1" data-testid="navbar-admin">
+                  <Link to="/admin" className="text-fsc-azul hover:text-fsc-azul text-[12px] font-bold uppercase tracking-[0.15em] px-3 py-2 flex items-center gap-1" data-testid="navbar-admin">
                     <Shield size={14}/> Admin
                   </Link>
                 )}
                 {user.role === "team" && (
-                  <Link to="/mi-equipo" className="text-fsc-dorado hover:text-fsc-dorado-claro text-[12px] font-bold uppercase tracking-[0.15em] px-3 py-2 flex items-center gap-1" data-testid="navbar-myteam">
+                  <Link to="/mi-equipo" className="text-fsc-azul hover:text-fsc-azul text-[12px] font-bold uppercase tracking-[0.15em] px-3 py-2 flex items-center gap-1" data-testid="navbar-myteam">
                     <UserCircle2 size={14}/> Mi equipo
                   </Link>
                 )}
@@ -103,7 +103,7 @@ export default function Navbar() {
       </div>
 
       {open && (
-        <div className="lg:hidden bg-fsc-negro border-t border-fsc-dorado/30 fsc-fade-up">
+        <div className="lg:hidden bg-fsc-negro border-t border-fsc-azul/30 fsc-fade-up">
           <nav className="max-w-7xl mx-auto px-4 py-4 grid gap-1">
             {NAV.map((n) => (
               <NavLink
@@ -113,14 +113,14 @@ export default function Navbar() {
                 onClick={() => setOpen(false)}
                 className={({ isActive }) =>
                   `px-3 py-2.5 text-sm font-bold uppercase tracking-[0.15em] rounded-md ${
-                    isActive ? "text-fsc-dorado bg-fsc-dorado/10" : "text-white hover:bg-white/5"
+                    isActive ? "text-fsc-azul bg-fsc-azul/10" : "text-white hover:bg-white/5"
                   }`
                 }
               >
                 {n.label}
               </NavLink>
             ))}
-            <div className="h-px bg-fsc-dorado/20 my-2" />
+            <div className="h-px bg-fsc-azul/20 my-2" />
             {!user ? (
               <>
                 <Link to="/login" onClick={() => setOpen(false)} className="px-3 py-2.5 text-sm font-bold uppercase tracking-[0.15em] text-white rounded-md hover:bg-white/5">Ingresar</Link>
@@ -128,8 +128,8 @@ export default function Navbar() {
               </>
             ) : (
               <>
-                {user.role === "admin" && <Link to="/admin" onClick={() => setOpen(false)} className="px-3 py-2.5 text-sm font-bold uppercase tracking-[0.15em] text-fsc-dorado rounded-md hover:bg-fsc-dorado/10">Admin</Link>}
-                {user.role === "team" && <Link to="/mi-equipo" onClick={() => setOpen(false)} className="px-3 py-2.5 text-sm font-bold uppercase tracking-[0.15em] text-fsc-dorado rounded-md hover:bg-fsc-dorado/10">Mi equipo</Link>}
+                {user.role === "admin" && <Link to="/admin" onClick={() => setOpen(false)} className="px-3 py-2.5 text-sm font-bold uppercase tracking-[0.15em] text-fsc-azul rounded-md hover:bg-fsc-azul/10">Admin</Link>}
+                {user.role === "team" && <Link to="/mi-equipo" onClick={() => setOpen(false)} className="px-3 py-2.5 text-sm font-bold uppercase tracking-[0.15em] text-fsc-azul rounded-md hover:bg-fsc-azul/10">Mi equipo</Link>}
                 <button onClick={handleLogout} className="px-3 py-2.5 text-sm font-bold uppercase tracking-[0.15em] text-fsc-rojo rounded-md hover:bg-fsc-rojo/10 text-left">Salir</button>
               </>
             )}

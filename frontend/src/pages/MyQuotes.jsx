@@ -132,7 +132,7 @@ export default function MyQuotes() {
                   {q.status !== "pagada" && (
                     <Link
                       to={`/cotizar?id=${q.id}`}
-                      className="w-full text-xs font-bold uppercase tracking-wide text-fsc-dorado-oscuro hover:text-fsc-dorado flex items-center gap-1 justify-center"
+                      className="w-full text-xs font-bold uppercase tracking-wide text-fsc-azul-oscuro hover:text-fsc-azul flex items-center gap-1 justify-center"
                       data-testid={`edit-quote-${q.id}`}
                     >
                       ✎ Editar cotización

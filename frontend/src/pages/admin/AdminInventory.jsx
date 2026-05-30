@@ -69,7 +69,17 @@ export default function AdminInventory() {
   const createNew = async (e) => {
     e.preventDefault();
     try {
-      await api.post(`/admin/catalog/${creating.type}`, creating.body);
+      const body = { ...creating.body };
+      if (creating.type === "lodging") {
+        body.name = (body.classification || "").toUpperCase() || "PAQUETE";
+        body.classification = (body.classification || "").toUpperCase();
+      }
+      if (creating.type === "meal_addon") {
+        body.meal_type = (body.meal_type || "").toUpperCase();
+        body.classification = (body.classification || "").toUpperCase();
+        body.name = [body.meal_type, body.classification].filter(Boolean).join(" · ") || "ALIMENTACIÓN";
+      }
+      await api.post(`/admin/catalog/${creating.type}`, body);
       toast.success("Creado");
       setCreating(null);
       await load();
@@ -112,22 +122,28 @@ export default function AdminInventory() {
 
 function buildBody(row) {
   if (row.type === "lodging") {
+    // El nombre del paquete = clasificación (Esmerald/Sapphire/...). Si está vacía, se conserva el name actual.
+    const cls = (row.classification || "").toUpperCase();
     return {
-      name: row.name,
+      name: cls || row.name || "PAQUETE",
       description: row.description || "",
       base_5_nights: Number(row.base_5_nights || 0),
       additional_night: Number(row.additional_night || 0),
       available: row.available !== false,
       no_lodging: !!row.no_lodging,
-      classification: row.classification || "",
+      classification: cls,
       accommodation_type: row.accommodation_type || "",
     };
   }
   if (row.type === "meal_addon") {
+    // El "nombre" se reemplaza por la combinación COMIDA/CLASIFICACIÓN.
+    const mt = (row.meal_type || "").toUpperCase();
+    const cls = (row.classification || "").toUpperCase();
+    const composedName = [mt, cls].filter(Boolean).join(" · ") || row.name || "ALIMENTACIÓN";
     return {
-      name: row.name,
-      meal_type: row.meal_type || "",
-      classification: row.classification || "",
+      name: composedName,
+      meal_type: mt,
+      classification: cls,
       cost: Number(row.cost || 0),
     };
   }
@@ -150,7 +166,9 @@ function LodgingTab({ rows, onChange, onSave, onDelete, saving, onAdd }) {
           return (
             <div key={r.id} className="bg-white border border-slate-200 rounded-xl p-4" data-testid={`inv-lodging-${r.id}`}>
               <div className="flex items-center justify-between mb-2">
-                <input value={r.name} onChange={(e) => onChange(r.id, "lodging", { name: e.target.value })} className="font-display text-xl font-black uppercase tracking-tight bg-transparent border-b-2 border-transparent focus:border-fsc-azul outline-none" />
+                <div className="font-display text-xl font-black uppercase tracking-tight text-fsc-azul" data-testid={`inv-lodging-title-${r.id}`}>
+                  {(r.classification || "").toUpperCase() || r.name || "—"}
+                </div>
                 <div className="flex gap-1">
                   <button onClick={() => onSave(r)} disabled={isSaving} className="text-fsc-azul disabled:opacity-50 p-1" data-testid={`inv-save-lodging-${r.id}`}><Save size={14}/></button>
                   <button onClick={() => onDelete(r)} className="text-fsc-rojo p-1" data-testid={`inv-delete-lodging-${r.id}`}><Trash2 size={14}/></button>
@@ -212,7 +230,6 @@ function MealAddonTab({ rows, onChange, onSave, onDelete, saving, onAdd }) {
         <table className="w-full text-sm" data-testid="inv-meal_addon-list">
           <thead className="bg-fsc-azul/10 text-xs uppercase tracking-wider">
             <tr>
-              <th className="text-left px-3 py-2">Nombre</th>
               <th className="text-left px-3 py-2">Comida</th>
               <th className="text-left px-3 py-2">Clasificación</th>
               <th className="text-right px-3 py-2">Costo (COP)</th>
@@ -220,14 +237,11 @@ function MealAddonTab({ rows, onChange, onSave, onDelete, saving, onAdd }) {
             </tr>
           </thead>
           <tbody>
-            {rows.length === 0 && <tr><td colSpan="5" className="text-center text-slate-400 py-8">Sin registros. Agrega la primera fila.</td></tr>}
+            {rows.length === 0 && <tr><td colSpan="4" className="text-center text-slate-400 py-8">Sin registros. Agrega la primera fila.</td></tr>}
             {rows.map((r) => {
               const isSaving = saving === `meal_addon:${r.id}`;
               return (
                 <tr key={r.id} className="border-t border-slate-100" data-testid={`inv-meal_addon-${r.id}`}>
-                  <td className="px-3 py-2">
-                    <input value={r.name || ""} onChange={(e) => onChange(r.id, "meal_addon", { name: e.target.value })} className="w-full px-2 py-1 border border-slate-200 rounded text-sm" placeholder="Ej: Desayuno extra" data-testid={`inv-meal_addon-name-${r.id}`} />
-                  </td>
                   <td className="px-3 py-2">
                     <select value={r.meal_type || ""} onChange={(e) => onChange(r.id, "meal_addon", { meal_type: e.target.value })} className="px-2 py-1 border border-slate-200 rounded text-xs" data-testid={`inv-meal_addon-type-${r.id}`}>
                       <option value="">—</option>
@@ -342,10 +356,12 @@ function CreateModal({ creating, setCreating, onSubmit }) {
     <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4" onClick={() => setCreating(null)} data-testid="inv-create-modal">
       <form onClick={(e) => e.stopPropagation()} onSubmit={onSubmit} className="bg-white rounded-2xl max-w-md w-full p-6 space-y-3">
         <h2 className="font-display text-2xl font-black uppercase tracking-tight">Nuevo {creating.type.replace("_", " ")}</h2>
-        <label className="block">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Nombre</span>
-          <input required value={creating.body.name} onChange={(e) => setBody({ name: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="inv-new-name" />
-        </label>
+        {!isLodging && !isMealAddon && (
+          <label className="block">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Nombre</span>
+            <input required value={creating.body.name} onChange={(e) => setBody({ name: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="inv-new-name" />
+          </label>
+        )}
 
         {isLodging && (
           <>

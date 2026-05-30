@@ -76,27 +76,33 @@ export default function Home() {
   } : null;
 
   return (
-    <div data-testid="home-page" className="bg-white">
+    <div data-testid="home-page" className="bg-fsc-gris/20">
       {/* ============= HERO ============= */}
-      <section className="relative overflow-hidden bg-fsc-negro min-h-[88vh] flex items-center">
-        <div className="absolute inset-0 bg-cover bg-center opacity-40" style={{ backgroundImage: `url(${heroImg})` }} />
-        <div className="absolute inset-0 bg-gradient-to-br from-fsc-negro via-fsc-negro/85 to-fsc-azul-noche/70" />
-        <div className="absolute inset-0 fsc-grain pointer-events-none opacity-50" />
+      <section className="relative overflow-hidden min-h-[88vh] flex items-center bg-gradient-to-br from-white via-fsc-gris/40 to-white">
+        {/* Marca de agua: escudo FSC suave */}
+        <div className="absolute inset-0 flex items-center justify-end pr-[-10%] pointer-events-none" aria-hidden="true">
+          <img src={FSC_LOGO} alt="" className="h-[120%] w-auto opacity-[0.06] select-none" />
+        </div>
+        {/* Imagen de fondo opcional, muy sutil */}
+        {settings.hero_image_url && (
+          <div className="absolute inset-0 bg-cover bg-center opacity-15" style={{ backgroundImage: `url(${heroImg})` }} />
+        )}
+        <div className="absolute inset-0 fsc-grain pointer-events-none opacity-30" />
 
         <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 grid lg:grid-cols-12 gap-10 items-center">
           <div className="lg:col-span-7 fsc-fade-up">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded border-2 border-fsc-dorado text-fsc-dorado text-[10px] font-bold uppercase tracking-[0.3em]" data-testid="hero-edition">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded border-2 border-fsc-azul text-fsc-azul text-[10px] font-bold uppercase tracking-[0.3em]" data-testid="hero-edition">
               <Trophy size={11}/> {settings.hero_edition || `Edición ${new Date().getFullYear()}`}
             </div>
 
-            <h1 className="mt-6 font-display text-6xl sm:text-7xl md:text-8xl lg:text-[110px] leading-[0.85] text-white tracking-wider">
+            <h1 className="mt-6 font-display text-6xl sm:text-7xl md:text-8xl lg:text-[110px] leading-[0.85] text-fsc-negro tracking-wider">
               {settings.hero_title || "FUTURE\nSOCCER CUP"}
             </h1>
-            <p className="font-cursive text-3xl sm:text-4xl text-fsc-dorado mt-3">
+            <p className="font-cursive text-3xl sm:text-4xl text-fsc-rojo mt-3">
               {settings.hero_subtitle || "Somos más que un torneo"}
             </p>
 
-            <p className="mt-8 text-lg text-fsc-gris max-w-2xl leading-relaxed">
+            <p className="mt-8 text-lg text-slate-700 max-w-2xl leading-relaxed">
               La copa oficial del fútbol formativo infantil y juvenil de Colombia.
               Una iniciativa del Grupo Empresarial Ancla.
             </p>
@@ -114,8 +120,8 @@ export default function Home() {
 
           <div className="lg:col-span-5 hidden lg:block fsc-slide-in">
             <div className="relative">
-              <div className="absolute -inset-6 bg-gradient-to-br from-fsc-dorado/40 via-fsc-rojo/20 to-fsc-dorado/40 rounded-3xl blur-2xl" />
-              <div className="relative bg-fsc-negro border-2 border-fsc-dorado p-12 rounded-2xl">
+              <div className="absolute -inset-6 bg-gradient-to-br from-fsc-azul/40 via-fsc-rojo/20 to-fsc-azul/40 rounded-3xl blur-2xl" />
+              <div className="relative bg-fsc-negro border-2 border-fsc-azul p-12 rounded-2xl">
                 <img src={FSC_LOGO} alt="Future Soccer Cup" className="w-full max-w-sm mx-auto" />
               </div>
             </div>
@@ -123,7 +129,7 @@ export default function Home() {
         </div>
 
         {/* Tira inferior dorada con texto */}
-        <div className="absolute bottom-0 left-0 right-0 bg-fsc-dorado text-fsc-negro py-2 overflow-hidden">
+        <div className="absolute bottom-0 left-0 right-0 bg-fsc-azul text-fsc-negro py-2 overflow-hidden">
           <div className="flex gap-12 whitespace-nowrap font-display text-sm tracking-[0.3em] animate-[scroll_30s_linear_infinite]">
             {Array.from({ length: 8 }).map((_, i) => (
               <span key={i}>FUTURE SOCCER CUP · SOMOS MÁS QUE UN TORNEO · COLOMBIA ·</span>
@@ -134,28 +140,28 @@ export default function Home() {
 
       {/* ============= PRÓXIMO EVENTO ============= */}
       {upcoming && (
-        <section className="bg-white py-20 border-t-4 border-fsc-dorado" data-testid="upcoming-section">
+        <section className="bg-white py-20 border-t-4 border-fsc-azul" data-testid="upcoming-section">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12">
               <div className="inline-block">
-                <div className="font-cursive text-3xl text-fsc-dorado">próximo evento</div>
+                <div className="font-cursive text-3xl text-fsc-azul">próximo evento</div>
                 <h2 className="font-display text-5xl md:text-6xl tracking-wider text-fsc-negro">PREMIER FSC</h2>
                 <div className="h-1 w-24 bg-fsc-rojo mx-auto mt-3" />
               </div>
             </div>
 
-            <div className="grid lg:grid-cols-12 gap-8 items-center bg-fsc-negro rounded-2xl overflow-hidden border-2 border-fsc-dorado fsc-card-shadow">
+            <div className="grid lg:grid-cols-12 gap-8 items-center bg-fsc-negro rounded-2xl overflow-hidden border-2 border-fsc-azul fsc-card-shadow">
               <div className="lg:col-span-5 relative aspect-square lg:aspect-auto lg:h-full min-h-[400px]">
                 <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${upcoming.cover_url || heroImg})` }} />
                 <div className="absolute inset-0 bg-gradient-to-tr from-fsc-negro via-fsc-negro/50 to-transparent" />
                 <div className="absolute top-4 left-4 right-4 flex items-center justify-between">
                   <img src={FSC_LOGO} alt="" className="h-16 w-16" />
-                  <span className="font-display text-fsc-dorado text-2xl tracking-wider">FSC {new Date().getFullYear()}</span>
+                  <span className="font-display text-fsc-azul text-2xl tracking-wider">FSC {new Date().getFullYear()}</span>
                 </div>
               </div>
 
               <div className="lg:col-span-7 p-8 lg:p-12 text-white">
-                <h3 className="font-display text-4xl md:text-5xl tracking-wider text-fsc-dorado leading-tight">
+                <h3 className="font-display text-4xl md:text-5xl tracking-wider text-fsc-azul leading-tight">
                   {upcoming.name}
                 </h3>
                 <div className="mt-6 grid sm:grid-cols-2 gap-4">
@@ -185,10 +191,10 @@ export default function Home() {
         <div className="absolute inset-0 fsc-stripe opacity-30 pointer-events-none" />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid lg:grid-cols-2 gap-12 items-center">
           <div className="fsc-fade-up">
-            <div className="font-cursive text-2xl text-fsc-dorado">conócenos</div>
+            <div className="font-cursive text-2xl text-fsc-azul">conócenos</div>
             <h2 className="font-display text-5xl md:text-6xl tracking-wider mt-1">NOSOTROS</h2>
-            <div className="h-1 w-20 bg-fsc-dorado mt-3 mb-7" />
-            <h3 className="font-display text-2xl md:text-3xl text-fsc-dorado tracking-wider mb-4">
+            <div className="h-1 w-20 bg-fsc-azul mt-3 mb-7" />
+            <h3 className="font-display text-2xl md:text-3xl text-fsc-azul tracking-wider mb-4">
               {settings.about_title || "Somos más que un torneo"}
             </h3>
             <p className="text-fsc-gris/90 leading-relaxed whitespace-pre-line">
@@ -199,8 +205,8 @@ export default function Home() {
             </Link>
           </div>
           <div className="relative">
-            <div className="absolute -inset-2 bg-fsc-dorado rounded-2xl rotate-2" />
-            <img src={aboutImg} alt="" className="relative rounded-2xl w-full h-[460px] object-cover border-2 border-fsc-dorado" />
+            <div className="absolute -inset-2 bg-fsc-azul rounded-2xl rotate-2" />
+            <img src={aboutImg} alt="" className="relative rounded-2xl w-full h-[460px] object-cover border-2 border-fsc-azul" />
           </div>
         </div>
       </section>
@@ -211,11 +217,11 @@ export default function Home() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-end justify-between mb-10 flex-wrap gap-4">
               <div>
-                <div className="font-cursive text-2xl text-fsc-dorado">nuestros</div>
+                <div className="font-cursive text-2xl text-fsc-azul">nuestros</div>
                 <h2 className="font-display text-5xl md:text-6xl tracking-wider text-fsc-negro">EVENTOS</h2>
                 <div className="h-1 w-20 bg-fsc-rojo mt-3" />
               </div>
-              <Link to="/eventos" className="text-fsc-negro hover:text-fsc-dorado font-bold uppercase text-sm tracking-widest flex items-center gap-2">
+              <Link to="/eventos" className="text-fsc-negro hover:text-fsc-azul font-bold uppercase text-sm tracking-widest flex items-center gap-2">
                 Ver todos <ArrowRight size={14}/>
               </Link>
             </div>
@@ -230,13 +236,17 @@ export default function Home() {
 
       {/* ============= GALERÍA ============= */}
       {gallery.length > 0 && (
-        <section className="py-20 bg-fsc-negro text-white relative" data-testid="gallery-section">
-          <div className="absolute inset-0 fsc-stripe opacity-20 pointer-events-none" />
+        <section className="py-20 bg-fsc-gris/30 text-fsc-negro relative" data-testid="gallery-section">
+          <div className="absolute inset-0 fsc-stripe opacity-30 pointer-events-none" />
+          {/* Marca de agua del escudo */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none" aria-hidden="true">
+            <img src={FSC_LOGO} alt="" className="h-[80%] w-auto opacity-[0.04] select-none" />
+          </div>
           <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-10">
-              <div className="font-cursive text-2xl text-fsc-dorado">recuerdos</div>
-              <h2 className="font-display text-5xl md:text-6xl tracking-wider">GALERÍA</h2>
-              <div className="h-1 w-20 bg-fsc-dorado mx-auto mt-3" />
+              <div className="font-cursive text-2xl text-fsc-rojo">recuerdos</div>
+              <h2 className="font-display text-5xl md:text-6xl tracking-wider text-fsc-negro">GALERÍA</h2>
+              <div className="h-1 w-20 bg-fsc-azul mx-auto mt-3" />
             </div>
             <GalleryCarousel images={gallery} idx={galleryIdx} setIdx={setGalleryIdx} />
           </div>
@@ -248,8 +258,8 @@ export default function Home() {
 
 function InfoChip({ icon, label, value }) {
   return (
-    <div className="border border-fsc-dorado/40 rounded-md p-3 bg-white/5">
-      <div className="flex items-center gap-2 text-fsc-dorado text-[10px] font-bold uppercase tracking-widest">
+    <div className="border border-fsc-azul/40 rounded-md p-3 bg-white/5">
+      <div className="flex items-center gap-2 text-fsc-azul text-[10px] font-bold uppercase tracking-widest">
         {icon} {label}
       </div>
       <div className="mt-1 text-base font-semibold text-white">{value}</div>
@@ -269,17 +279,29 @@ function EventCard({ ev }) {
           </div>
         )}
         {ev.featured && (
-          <span className="absolute top-3 right-3 bg-fsc-dorado text-fsc-negro text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded">Destacado</span>
+          <span className="absolute top-3 right-3 bg-fsc-azul text-fsc-negro text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded">Destacado</span>
         )}
       </div>
       <div className="p-5">
-        <div className="font-cursive text-xl text-fsc-dorado-oscuro">edición {ev.season || ""}</div>
+        <div className="font-cursive text-xl text-fsc-azul-oscuro">edición {ev.season || ""}</div>
         <h3 className="font-display text-2xl tracking-wider text-fsc-negro mt-1">{ev.name}</h3>
-        <div className="mt-3 flex flex-wrap gap-3 text-xs text-slate-600">
+        <div className="mt-3 flex flex-wrap gap-1.5 text-xs text-slate-600">
           {ev.start_date && <span className="flex items-center gap-1"><Calendar size={12}/> {ev.start_date}</span>}
           {ev.city && <span className="flex items-center gap-1"><MapPin size={12}/> {ev.city}</span>}
-          {ev.category && <span className="font-bold uppercase">{ev.category}</span>}
         </div>
+        {/* Todas las categorías inscritas — chips */}
+        {((ev.categories && ev.categories.length > 0) || ev.category) && (
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {(ev.categories && ev.categories.length > 0
+              ? ev.categories.map((c) => c.name).filter(Boolean)
+              : [ev.category]
+            ).map((cat) => (
+              <span key={cat} className="text-[10px] font-bold uppercase tracking-widest bg-fsc-azul/10 text-fsc-azul-oscuro border border-fsc-azul/30 px-2 py-0.5 rounded">
+                {cat}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
     </Link>
   );
@@ -294,22 +316,22 @@ function GalleryCarousel({ images, idx, setIdx }) {
         <div className="flex gap-4 transition-transform duration-500" style={{ transform: `translateX(-${idx * (100 / visible)}%)` }}>
           {images.map((g, i) => (
             <div key={g.id} className="flex-none w-full sm:w-1/2 lg:w-1/3 group" data-testid={`gallery-slide-${i}`} data-active={i === idx ? "1" : "0"}>
-              <div className="aspect-[4/3] rounded-lg overflow-hidden border-2 border-fsc-dorado/30 group-hover:border-fsc-dorado transition-colors">
+              <div className="aspect-[4/3] rounded-lg overflow-hidden border-2 border-fsc-azul/30 group-hover:border-fsc-azul transition-colors">
                 <img src={imgSrc(g.image_url)} alt={g.title || ""} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
               </div>
-              {g.title && <div className="mt-3 font-display text-lg tracking-wider text-fsc-dorado">{g.title}</div>}
-              {g.caption && <div className="text-xs text-fsc-gris/80">{g.caption}</div>}
+              {g.title && <div className="mt-3 font-display text-lg tracking-wider text-fsc-azul">{g.title}</div>}
+              {g.caption && <div className="text-xs text-slate-600">{g.caption}</div>}
             </div>
           ))}
         </div>
       </div>
       {images.length > visible && (
         <div className="mt-6 flex items-center justify-center gap-3">
-          <button onClick={() => setIdx(Math.max(0, idx - 1))} className="h-10 w-10 rounded-full border-2 border-fsc-dorado text-fsc-dorado hover:bg-fsc-dorado hover:text-fsc-negro transition-colors flex items-center justify-center disabled:opacity-30" disabled={idx === 0} data-testid="gallery-prev">
+          <button onClick={() => setIdx(Math.max(0, idx - 1))} className="h-10 w-10 rounded-full border-2 border-fsc-azul text-fsc-azul hover:bg-fsc-azul hover:text-fsc-negro transition-colors flex items-center justify-center disabled:opacity-30" disabled={idx === 0} data-testid="gallery-prev">
             <ChevronLeft size={18}/>
           </button>
           <span className="text-xs font-bold uppercase tracking-widest text-fsc-gris">{idx + 1} / {max + 1}</span>
-          <button onClick={() => setIdx(Math.min(max, idx + 1))} className="h-10 w-10 rounded-full border-2 border-fsc-dorado text-fsc-dorado hover:bg-fsc-dorado hover:text-fsc-negro transition-colors flex items-center justify-center disabled:opacity-30" disabled={idx === max} data-testid="gallery-next">
+          <button onClick={() => setIdx(Math.min(max, idx + 1))} className="h-10 w-10 rounded-full border-2 border-fsc-azul text-fsc-azul hover:bg-fsc-azul hover:text-fsc-negro transition-colors flex items-center justify-center disabled:opacity-30" disabled={idx === max} data-testid="gallery-next">
             <ChevronRight size={18}/>
           </button>
         </div>

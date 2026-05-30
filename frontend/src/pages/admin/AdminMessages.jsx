@@ -46,7 +46,7 @@ export default function AdminMessages() {
       <div className="mb-6 flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="font-display text-4xl tracking-wider text-fsc-negro flex items-center gap-3">
-            <Inbox size={32} className="text-fsc-dorado-oscuro"/> BUZÓN DE MENSAJES
+            <Inbox size={32} className="text-fsc-azul-oscuro"/> BUZÓN DE MENSAJES
           </h1>
           <p className="text-sm text-slate-500 mt-1">
             Mensajes recibidos desde el formulario público de contacto.
@@ -69,19 +69,19 @@ export default function AdminMessages() {
         {items.map((m) => (
           <div
             key={m.id}
-            className={`bg-white rounded-xl p-5 fsc-card-shadow border-2 ${m.is_read ? "border-slate-200" : "border-fsc-dorado"}`}
+            className={`bg-white rounded-xl p-5 fsc-card-shadow border-2 ${m.is_read ? "border-slate-200" : "border-fsc-azul"}`}
             data-testid={`message-${m.id}`}
           >
             <div className="flex items-start justify-between flex-wrap gap-3">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-display text-xl tracking-wider text-fsc-negro flex items-center gap-2">
-                    <User size={16} className="text-fsc-dorado-oscuro"/> {m.name}
+                    <User size={16} className="text-fsc-azul-oscuro"/> {m.name}
                   </span>
                   {!m.is_read && <span className="text-[9px] font-bold uppercase tracking-widest bg-fsc-rojo text-white px-2 py-0.5 rounded">Nuevo</span>}
                 </div>
                 <div className="mt-2 grid sm:grid-cols-2 gap-1 text-sm text-slate-600">
-                  <a href={`mailto:${m.email}`} className="flex items-center gap-2 hover:text-fsc-dorado-oscuro"><Mail size={13}/> {m.email}</a>
+                  <a href={`mailto:${m.email}`} className="flex items-center gap-2 hover:text-fsc-azul-oscuro"><Mail size={13}/> {m.email}</a>
                   {m.phone && <span className="flex items-center gap-2"><Phone size={13}/> {m.phone}</span>}
                 </div>
                 <p className="mt-3 text-sm text-slate-800 leading-relaxed whitespace-pre-wrap">{m.message}</p>

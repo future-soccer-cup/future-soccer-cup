@@ -31,6 +31,7 @@ export default function AdminQuotes() {
   const matchFn = useCallback((q, term) =>
     (q.user_name || "").toLowerCase().includes(term) ||
     (q.user_email || "").toLowerCase().includes(term) ||
+    (q.club_name || "").toLowerCase().includes(term) ||
     (q.event_name || "").toLowerCase().includes(term) ||
     (q.category || "").toLowerCase().includes(term) ||
     (q.lodging_name || "").toLowerCase().includes(term)
@@ -42,6 +43,7 @@ export default function AdminQuotes() {
   const exportColumns = [
     { key: "user_name", label: "Cliente" },
     { key: "user_email", label: "Email" },
+    { key: "club_name", label: "Club" },
     { key: "event_name", label: "Evento" },
     { key: "category", label: "Categoría" },
     { key: "lodging_name", label: "Hospedaje" },
@@ -85,6 +87,7 @@ export default function AdminQuotes() {
           <thead className="bg-blue-50 text-xs uppercase tracking-wider">
             <tr>
               <th className="text-left px-4 py-2">Cliente</th>
+              <th className="text-left px-4 py-2">Club</th>
               <th className="text-left px-4 py-2">Evento</th>
               <th className="text-left px-4 py-2">Cat.</th>
               <th className="text-left px-4 py-2">Hospedaje</th>
@@ -96,12 +99,15 @@ export default function AdminQuotes() {
             </tr>
           </thead>
           <tbody>
-            {pageItems.length === 0 && <tr><td colSpan="9" className="text-center py-12 text-slate-400">{quotes.length === 0 ? "Sin cotizaciones" : "Sin resultados"}</td></tr>}
+            {pageItems.length === 0 && <tr><td colSpan="10" className="text-center py-12 text-slate-400">{quotes.length === 0 ? "Sin cotizaciones" : "Sin resultados"}</td></tr>}
             {pageItems.map((q) => (
               <tr key={q.id} className="border-t border-slate-100" data-testid={`admin-quote-${q.id}`}>
                 <td className="px-4 py-2">
                   <div className="font-semibold">{q.user_name}</div>
                   <div className="text-xs text-slate-500">{q.user_email}</div>
+                </td>
+                <td className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-fsc-azul" data-testid={`quote-club-${q.id}`}>
+                  {q.club_name || <span className="text-slate-400 italic">—</span>}
                 </td>
                 <td className="px-4 py-2">{q.event_name}</td>
                 <td className="px-4 py-2">{q.category}</td>
@@ -122,7 +128,7 @@ export default function AdminQuotes() {
                         toast.error("Error al cargar detalle");
                       }
                     }}
-                    className="text-fsc-dorado-oscuro hover:text-fsc-dorado p-1"
+                    className="text-fsc-azul-oscuro hover:text-fsc-azul p-1"
                     title="Ver detalle completo"
                     data-testid={`view-quote-${q.id}`}
                   >
@@ -148,14 +154,14 @@ export default function AdminQuotes() {
 function QuoteDetailModal({ q, onClose }) {
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={onClose} data-testid="quote-detail-modal">
-      <div className="bg-white max-w-4xl w-full max-h-[90vh] overflow-y-auto rounded-2xl border-2 border-fsc-dorado" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white max-w-4xl w-full max-h-[90vh] overflow-y-auto rounded-2xl border-2 border-fsc-azul" onClick={(e) => e.stopPropagation()}>
         <div className="sticky top-0 bg-fsc-negro text-white px-6 py-4 flex items-center justify-between">
           <div>
-            <div className="font-cursive text-xl text-fsc-dorado">cotización</div>
+            <div className="font-cursive text-xl text-fsc-azul">cotización</div>
             <div className="font-display text-2xl tracking-wider">{q.user_name} · {q.lodging_name}</div>
             <div className="text-xs text-fsc-gris mt-0.5">{q.user_email} · {new Date(q.created_at).toLocaleString("es-CO")}</div>
           </div>
-          <button onClick={onClose} className="text-white hover:text-fsc-dorado" data-testid="quote-detail-close"><X size={22}/></button>
+          <button onClick={onClose} className="text-white hover:text-fsc-azul" data-testid="quote-detail-close"><X size={22}/></button>
         </div>
         <div className="p-6 space-y-5 text-sm">
           <DetailGrid items={[
@@ -291,7 +297,7 @@ function DetailSection({ title, children }) {
 
 function KV({ k, v, highlight }) {
   return (
-    <div className={`flex justify-between border-b border-slate-100 py-1 ${highlight ? "font-bold text-fsc-rojo border-fsc-dorado pt-2 mt-2 border-t-2" : ""}`}>
+    <div className={`flex justify-between border-b border-slate-100 py-1 ${highlight ? "font-bold text-fsc-rojo border-fsc-azul pt-2 mt-2 border-t-2" : ""}`}>
       <span>{k}</span><span className="tabular-nums">{v}</span>
     </div>
   );

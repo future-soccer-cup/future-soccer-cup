@@ -2550,6 +2550,20 @@ async def get_quote_detail(qid: str, _: dict = Depends(get_current_user)):
 @api.get("/quotes")
 async def all_quotes(_: dict = Depends(require_admin)):
     items = await db.quotes.find({}, {"_id": 0}).sort("created_at", -1).to_list(2000)
+    # Enriquecer cada cotización con el nombre del club asociado al user (rol team) o user.name.
+    user_ids = list({q.get("user_id") for q in items if q.get("user_id")})
+    if user_ids:
+        users = await db.users.find({"id": {"$in": user_ids}}, {"_id": 0, "id": 1, "team_id": 1}).to_list(len(user_ids))
+        user_to_team = {u["id"]: u.get("team_id") for u in users if u.get("team_id")}
+        team_ids = list({tid for tid in user_to_team.values() if tid})
+        team_to_club = {}
+        if team_ids:
+            teams = await db.teams.find({"id": {"$in": team_ids}}, {"_id": 0, "id": 1, "club_name": 1, "name": 1}).to_list(len(team_ids))
+            team_to_club = {t["id"]: (t.get("club_name") or t.get("name") or "") for t in teams}
+        for q in items:
+            uid = q.get("user_id")
+            tid = user_to_team.get(uid)
+            q["club_name"] = team_to_club.get(tid, "")
     return items
 
 @api.put("/quotes/{qid}/status")

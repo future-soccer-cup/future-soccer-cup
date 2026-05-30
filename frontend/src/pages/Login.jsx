@@ -34,11 +34,11 @@ export default function Login() {
       {/* Form (izquierda) */}
       <main className="flex-1 lg:flex-[3] flex items-center justify-center p-6 sm:p-10 lg:p-16 min-w-0">
         <div className="w-full max-w-md">
-          <Link to="/" className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-slate-500 hover:text-fsc-dorado-oscuro mb-6">
+          <Link to="/" className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-slate-500 hover:text-fsc-azul-oscuro mb-6">
             <ArrowLeft size={14}/> Volver al inicio
           </Link>
 
-          <div className="font-cursive text-2xl text-fsc-dorado-oscuro">bienvenido</div>
+          <div className="font-cursive text-2xl text-fsc-azul-oscuro">bienvenido</div>
           <h1 className="font-display text-5xl md:text-6xl tracking-wider text-fsc-negro">INGRESAR</h1>
           <div className="h-1 w-16 bg-fsc-rojo mt-3 mb-7"/>
 
@@ -57,7 +57,7 @@ export default function Login() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="tu@correo.com"
-                  className="w-full pl-10 pr-3 py-3 border-2 border-slate-200 rounded-md focus:outline-none focus:border-fsc-dorado transition-colors"
+                  className="w-full pl-10 pr-3 py-3 border-2 border-slate-200 rounded-md focus:outline-none focus:border-fsc-azul transition-colors"
                   data-testid="login-email-input"
                 />
               </div>
@@ -72,12 +72,12 @@ export default function Login() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full pl-10 pr-3 py-3 border-2 border-slate-200 rounded-md focus:outline-none focus:border-fsc-dorado transition-colors"
+                  className="w-full pl-10 pr-3 py-3 border-2 border-slate-200 rounded-md focus:outline-none focus:border-fsc-azul transition-colors"
                   data-testid="login-password-input"
                 />
               </div>
               <div className="text-right mt-2">
-                <Link to="/recuperar-clave" className="text-xs font-bold tracking-wider text-fsc-dorado-oscuro hover:text-fsc-rojo transition-colors uppercase" data-testid="forgot-password-link">
+                <Link to="/recuperar-clave" className="text-xs font-bold tracking-wider text-fsc-azul-oscuro hover:text-fsc-rojo transition-colors uppercase" data-testid="forgot-password-link">
                   ¿Olvidaste tu contraseña?
                 </Link>
               </div>
@@ -117,16 +117,16 @@ export default function Login() {
         <div className="absolute inset-0 bg-gradient-to-bl from-fsc-negro via-fsc-negro/85 to-fsc-azul-noche/70" />
         <div className="absolute inset-0 fsc-grain pointer-events-none opacity-50" />
         <div className="relative text-center px-10 fsc-fade-up">
-          <div className="bg-fsc-negro border-2 border-fsc-dorado rounded-2xl p-8 inline-block">
+          <div className="bg-fsc-negro border-2 border-fsc-azul rounded-2xl p-8 inline-block">
             <img src={FSC_LOGO} alt="FSC" className="h-28 w-28" />
           </div>
           <h2 className="mt-8 font-display text-5xl tracking-wider text-white">FUTURE SOCCER CUP</h2>
-          <div className="font-cursive text-2xl text-fsc-dorado mt-1">Somos más que un torneo</div>
+          <div className="font-cursive text-2xl text-fsc-azul mt-1">Somos más que un torneo</div>
           <p className="mt-5 text-fsc-gris/90 max-w-sm mx-auto leading-relaxed">
             La plataforma oficial para directores de club y directores técnicos.
           </p>
         </div>
-        <div className="absolute bottom-0 left-0 right-0 bg-fsc-dorado h-2" />
+        <div className="absolute bottom-0 left-0 right-0 bg-fsc-azul h-2" />
       </aside>
     </div>
   );

@@ -110,7 +110,7 @@ export default function AdminGallery() {
               <div className="flex items-center gap-2">
                 <GripVertical size={14} className="text-slate-400" />
                 <input type="number" value={g.sort_order ?? 0} onChange={(e) => setItems(items.map((x) => x.id === g.id ? { ...x, sort_order: e.target.value } : x))} className="flex-1 px-2 py-1.5 border border-slate-200 rounded text-xs" />
-                <button onClick={() => update(g)} className="text-fsc-dorado-oscuro hover:text-fsc-dorado" title="Guardar" data-testid={`gallery-save-${g.id}`}><Save size={16}/></button>
+                <button onClick={() => update(g)} className="text-fsc-azul-oscuro hover:text-fsc-azul" title="Guardar" data-testid={`gallery-save-${g.id}`}><Save size={16}/></button>
                 <button onClick={() => remove(g)} className="text-fsc-rojo" title="Eliminar" data-testid={`gallery-delete-${g.id}`}><Trash2 size={16}/></button>
               </div>
             </div>
