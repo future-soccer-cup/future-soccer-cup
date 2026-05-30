@@ -8,22 +8,26 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        display: ['Bebas Neue', 'Impact', 'sans-serif'],
-        body: ['Montserrat', 'sans-serif'],
-        cursive: ['Dancing Script', 'cursive'],
+        display: ['Bebas Neue', 'Exo 2', 'Impact', 'sans-serif'],
+        body: ['Exo 2', 'Montserrat', 'sans-serif'],
+        cursive: ['Allura', 'Dancing Script', 'cursive'],
       },
       colors: {
-        // FSC brand palette (FSC_IdentidadVisual_v1)
+        // FSC brand palette v2 (2026-05-28) — paleta solicitada por el usuario
         fsc: {
           negro: '#1A1A1A',
+          rojo: '#e31f27',
+          'rojo-oscuro': '#a8141a',
+          azul: '#0640c8',
+          'azul-oscuro': '#042a87',
+          gris: '#dedfe0',
+          'gris-oscuro': '#9a9b9c',
+          blanco: '#FFFFFF',
+          // Legacy (mantener para no romper componentes existentes)
           dorado: '#C9A227',
           'dorado-claro': '#DCB825',
           'dorado-oscuro': '#B08E1E',
-          rojo: '#B51519',
-          'rojo-oscuro': '#7A0000',
           'azul-noche': '#0A0A28',
-          blanco: '#FFFFFF',
-          gris: '#C8C8C8',
         },
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',

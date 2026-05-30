@@ -2,28 +2,35 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ===== FSC BRAND TOKENS (FSC_IdentidadVisual_v1) ===== */
+/* ===== FSC BRAND TOKENS v2 (paleta 2026-05-28) ===== */
 :root {
+    /* Paleta nueva solicitada por el usuario */
     --fsc-negro: #1A1A1A;
-    --fsc-dorado: #C9A227;
-    --fsc-dorado-claro: #DCB825;
-    --fsc-dorado-oscuro: #B08E1E;
-    --fsc-rojo: #B51519;
-    --fsc-rojo-oscuro: #7A0000;
-    --fsc-azul-noche: #0A0A28;
+    --fsc-rojo: #e31f27;
+    --fsc-rojo-oscuro: #a8141a;
+    --fsc-azul: #0640c8;
+    --fsc-azul-oscuro: #042a87;
+    --fsc-gris: #dedfe0;
+    --fsc-gris-oscuro: #9a9b9c;
     --fsc-blanco: #FFFFFF;
-    --fsc-gris: #C8C8C8;
 
-    /* Tokens semánticos (compat con código existente) */
+    /* Legacy alias (mantener para no romper componentes existentes) */
+    --fsc-dorado: var(--fsc-azul);
+    --fsc-dorado-claro: var(--fsc-azul);
+    --fsc-dorado-oscuro: var(--fsc-azul-oscuro);
+    --fsc-azul-noche: var(--fsc-azul-oscuro);
+
+    /* Tokens semánticos */
     --fsc-ink: var(--fsc-negro);
-    --fsc-blue: var(--fsc-azul-noche);
-    --fsc-blue-dark: var(--fsc-negro);
+    --fsc-blue: var(--fsc-azul);
+    --fsc-blue-dark: var(--fsc-azul-oscuro);
     --fsc-red: var(--fsc-rojo);
     --fsc-red-dark: var(--fsc-rojo-oscuro);
 
-    --font-titulo: 'Bebas Neue', 'Impact', sans-serif;
-    --font-cuerpo: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    --font-cursiva: 'Dancing Script', cursive;
+    /* Fuentes (Google Fonts fallback equivalentes a Neo Sans / Natura Script) */
+    --font-titulo: 'Bebas Neue', 'Exo 2', 'Impact', sans-serif;
+    --font-cuerpo: 'Exo 2', 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-cursiva: 'Allura', 'Dancing Script', cursive;
 
     --fs-hero: clamp(48px, 8vw, 96px);
     --fs-h1: clamp(36px, 5vw, 56px);
@@ -90,8 +97,8 @@ html, body {
 
 /* ===== Buttons ===== */
 .fsc-btn-primary {
-    background: var(--fsc-dorado);
-    color: var(--fsc-negro);
+    background: var(--fsc-azul);
+    color: var(--fsc-blanco);
     font-family: var(--font-cuerpo);
     font-weight: 700;
     text-transform: uppercase;
@@ -100,7 +107,7 @@ html, body {
     transition: all 0.18s ease;
 }
 .fsc-btn-primary:hover {
-    background: var(--fsc-dorado-claro);
+    background: var(--fsc-azul-oscuro);
     transform: translate(2px, 2px);
     box-shadow: 2px 2px 0 0 var(--fsc-negro);
 }
@@ -123,17 +130,17 @@ html, body {
 
 .fsc-btn-dark {
     background: var(--fsc-negro);
-    color: var(--fsc-dorado);
+    color: var(--fsc-gris);
     font-family: var(--font-cuerpo);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    border: 2px solid var(--fsc-dorado);
+    border: 2px solid var(--fsc-azul);
     transition: all 0.18s ease;
 }
 .fsc-btn-dark:hover {
-    background: var(--fsc-dorado);
-    color: var(--fsc-negro);
+    background: var(--fsc-azul);
+    color: var(--fsc-blanco);
 }
 
 /* ===== Animations ===== */

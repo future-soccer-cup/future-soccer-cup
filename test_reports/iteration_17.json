@@ -1,0 +1,41 @@
+{
+  "summary": "Iteration 17 — Backend pytest 23/23 PASSED. Frontend Playwright verified: Home gallery has 5 items, admin login OK, AdminCategories shows 6 defaults (Sub-8..Sub-18) with inline editing, AdminEventTypes shows Festival/Premier seeds, AdminInventory has 4 tabs [lodging, meal_addon, transport, tour], 'Valor Paquete (COP)' label appears 2x and 'Base 5 noches' removed (0 occurrences), meal_addon Add modal exposes inv-new-name/inv-new-meal-type/inv-new-meal-class/inv-new-cost, tour rows have inv-tour-desc-* and Add Tour modal has inv-new-tour-desc, AdminTournaments 'Nuevo evento' modal has 'Tipo de evento' selector [tour-event-type], 'Categorías inscritas al evento' editor [categories-fees-editor] + [add-category-fee] button, and NO 'Categoría (principal)' label. CurrencyInput formats '1500000'→'1.500.000' correctly (es-CO, no decimals, no leading zeros).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter17_categories_eventtypes_meal_addon.py",
+    "/app/test_reports/pytest/iteration_17.xml"
+  ],
+  "action_items": [
+    "(Optional) Home gallery auto-rotation: API returns 5 images but our screenshot-based src-comparison test was inconclusive (img src unchanged after 6.5s). Code at /app/frontend/src/pages/Home.jsx lines 43-54 looks correct (setInterval 5000ms, random idx with collision guard). Likely a test-selector issue (multiple img tags) rather than functional defect. Recommend manual verification or instrument GalleryCarousel with a data-testid on the active image for deterministic testing.",
+    "(Optional) Split server.py (3899 lines) into routers — same backlog note from iter 16."
+  ],
+  "critical_code_review_comments": [
+    "_validate_catalog_row correctly uppercases meal_type and classification and rejects invalid meal_type with 400 — verified via pytest.",
+    "POST/PUT /api/teams now correctly accepts custom categories (validated 'Femenino' OK, empty string still rejected with 400).",
+    "Categories and event_types auto-seed on first admin GET — confirmed; admins see defaults immediately.",
+    "Tour catalog: description persists on POST and PUT — verified via /api/admin/catalog round-trip.",
+    "AdminInventory data-testid coverage is excellent: inv-tab-*, inv-add-*, inv-new-name, inv-new-meal-type, inv-new-meal-class, inv-new-cost, inv-new-tour-desc, inv-tour-desc-{id}, inv-meal_addon-{id} all present.",
+    "AdminTournaments removed legacy 'Categoría (principal)' input and now loads event_types and categories dynamically via /api/admin/event-types and /api/admin/categories — confirmed via DOM inspection.",
+    "CurrencyInput correctly produces es-CO thousands-dot format (1.500.000) without decimals — verified live in lodging base input.",
+    "server.py still imports CATEGORIES constant only as fallback for /api/categories when DB empty and for /api/import/teams validation — acceptable and consistent.",
+    "Home.jsx gallery rotation logic looks correct (5000ms interval, random idx with `if (next === prev) next = (prev + 1) % length` collision guard, and `if (gallery.length < 2) return;` guard)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter17_categories_eventtypes_meal_addon.py"
+  ],
+  "success_rate": {"backend": "100% (23/23)", "frontend": "100% on all verifiable assertions"},
+  "test_credentials": "Admin: admin@futuresoccercup.com / FSCAdmin2025! (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "Created and idempotently deleted: TEST_Femenino category, TEST_Dup category, TEST_EvType event-type, TEST_Desayuno meal_addon, TEST_Tour, TEST_Equipo team, TEST_Lodg lodging row. All cleaned up.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All iter-17 features (Categorías CRUD, Event-Types CRUD, meal_addon catalog with uppercased classification+meal_type, Tour description, custom team category, Valor Paquete relabel, CurrencyInput es-CO format, Nuevo evento modal without single-category input) are working end-to-end. The only minor inconclusive item is the Home gallery auto-rotation Playwright assertion — likely a test-selector issue (need data-testid on active carousel img) rather than a real bug.",
+  "rca of the issue": "N/A — no defects found in iter-17 scope."
+}

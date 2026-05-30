@@ -38,6 +38,21 @@ export default function Home() {
     return () => { alive = false; };
   }, []);
 
+  // Auto-rotación aleatoria de la galería cada 5 segundos.
+  useEffect(() => {
+    if (gallery.length < 2) return;
+    const t = setInterval(() => {
+      setGalleryIdx((prev) => {
+        if (gallery.length <= 1) return 0;
+        let next = Math.floor(Math.random() * gallery.length);
+        // Evitar repetir el mismo índice 2 veces consecutivas.
+        if (next === prev) next = (prev + 1) % gallery.length;
+        return next;
+      });
+    }, 5000);
+    return () => clearInterval(t);
+  }, [gallery.length]);
+
   const heroImg = settings.hero_image_url ? imgSrc(settings.hero_image_url) : HERO_DEFAULT;
   const aboutImg = settings.about_image_url ? imgSrc(settings.about_image_url) : ABOUT_DEFAULT;
   // Próximo evento: estático en settings (si tiene nombre) o torneo destacado/primero

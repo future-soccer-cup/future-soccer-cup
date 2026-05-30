@@ -50,6 +50,8 @@ import AdminTournaments from "./pages/admin/AdminTournaments";
 import AdminGallery from "./pages/admin/AdminGallery";
 import AdminHomeSettings from "./pages/admin/AdminHomeSettings";
 import AdminMessages from "./pages/admin/AdminMessages";
+import AdminCategories from "./pages/admin/AdminCategories";
+import AdminEventTypes from "./pages/admin/AdminEventTypes";
 
 function PublicLayout() {
   const loc = useLocation();
@@ -123,6 +125,8 @@ function App() {
             <Route path="pagos" element={<AdminPayments />} />
             <Route path="noticias" element={<AdminPosts />} />
             <Route path="inventario" element={<AdminInventory />} />
+            <Route path="categorias" element={<AdminCategories />} />
+            <Route path="tipos-evento" element={<AdminEventTypes />} />
             <Route path="recuperaciones" element={<AdminPasswordResets />} />
             <Route path="carnets" element={<AdminCarnets />} />
           </Route>

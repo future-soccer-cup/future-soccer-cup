@@ -2,18 +2,18 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import api, { formatApiError } from "../../lib/api";
 import { toast, Toaster } from "sonner";
 import { Plus, Save, Trash2, Hotel, Utensils, Bus, Map, RefreshCw } from "lucide-react";
-
-const fmt = (n) => `$${Number(n || 0).toLocaleString("es-CO")}`;
+import CurrencyInput from "../../components/CurrencyInput";
 
 const TYPES = [
   { id: "lodging", label: "Paquetes hospedaje", icon: Hotel },
-  { id: "meal", label: "Comidas (matriz por paquete)", icon: Utensils },
+  { id: "meal_addon", label: "Alimentación adicional", icon: Utensils },
   { id: "transport", label: "Transporte", icon: Bus },
   { id: "tour", label: "Tours", icon: Map },
 ];
 
 const CLASSIFICATIONS = ["ESMERALD", "SAPPHIRE", "DIAMOND", "GOLD", "SILVER", "BRONZE"];
 const ACCOMMODATION_TYPES = ["Múltiple", "Triple", "Doble"];
+const MEAL_TYPES = ["DESAYUNO", "ALMUERZO", "CENA"];
 
 export default function AdminInventory() {
   const [tab, setTab] = useState("lodging");
@@ -32,12 +32,11 @@ export default function AdminInventory() {
   useEffect(() => { load(); }, [load]);
 
   const byType = useMemo(() => {
-    const m = { lodging: [], meal: [], transport: [], tour: [] };
+    const m = { lodging: [], meal: [], meal_addon: [], transport: [], tour: [] };
     rows.forEach((r) => m[r.type]?.push(r));
     return m;
   }, [rows]);
 
-  // Helpers to update a row locally (controlled inputs).
   const patchLocal = (id, type, patch) => {
     setRows((rs) => rs.map((r) => (r.id === id && r.type === type ? { ...r, ...patch } : r)));
   };
@@ -45,23 +44,7 @@ export default function AdminInventory() {
   const persist = async (row) => {
     setSaving(`${row.type}:${row.id}`);
     try {
-      const body = {
-        name: row.name,
-        description: row.description || "",
-        ...(row.type === "lodging" && {
-          base_5_nights: Number(row.base_5_nights || 0),
-          additional_night: Number(row.additional_night || 0),
-          available: row.available !== false,
-          no_lodging: !!row.no_lodging,
-          classification: row.classification || "",
-          accommodation_type: row.accommodation_type || "",
-        }),
-        ...(row.type === "meal" && {
-          per_day_by_tier: row.per_day_by_tier || {},
-          classification: row.classification || "",
-        }),
-        ...(row.type === "transport" || row.type === "tour" ? { price: Number(row.price || 0) } : {}),
-      };
+      const body = buildBody(row);
       await api.put(`/admin/catalog/${row.type}/${row.id}`, body);
       toast.success("Guardado");
       await load();
@@ -86,8 +69,7 @@ export default function AdminInventory() {
   const createNew = async (e) => {
     e.preventDefault();
     try {
-      const body = creating.body;
-      await api.post(`/admin/catalog/${creating.type}`, body);
+      await api.post(`/admin/catalog/${creating.type}`, creating.body);
       toast.success("Creado");
       setCreating(null);
       await load();
@@ -101,15 +83,15 @@ export default function AdminInventory() {
       <Toaster position="top-right" />
       <div className="flex items-end justify-between mb-4 flex-wrap gap-3">
         <div>
-          <h1 className="font-display text-4xl font-black uppercase tracking-tighter">Inventario / Catálogo</h1>
-          <p className="text-sm text-slate-500 mt-1">Paquetes, comidas, transporte y tours que aparecen en <span className="font-semibold">/cotizar</span>. Los cambios se reflejan en vivo.</p>
+          <h1 className="font-display text-4xl font-black uppercase tracking-tighter">Paquetes / Catálogo</h1>
+          <p className="text-sm text-slate-500 mt-1">Paquetes, alimentación, transporte y tours que aparecen en <span className="font-semibold">/cotizar</span>. Los cambios se reflejan en vivo.</p>
         </div>
         <button onClick={load} className="text-xs font-bold uppercase tracking-wide px-3 py-2 border border-slate-200 rounded-md flex items-center gap-2 hover:bg-slate-50" data-testid="inv-refresh"><RefreshCw size={12}/> Recargar</button>
       </div>
 
       <div className="flex flex-wrap gap-2 mb-6">
         {TYPES.map((t) => (
-          <button key={t.id} onClick={() => setTab(t.id)} className={`px-4 py-2 text-xs font-bold uppercase tracking-wide rounded-md border-2 flex items-center gap-2 ${tab === t.id ? "bg-blue-700 text-white border-blue-700" : "bg-white border-slate-200 text-slate-700"}`} data-testid={`inv-tab-${t.id}`}>
+          <button key={t.id} onClick={() => setTab(t.id)} className={`px-4 py-2 text-xs font-bold uppercase tracking-wide rounded-md border-2 flex items-center gap-2 ${tab === t.id ? "bg-fsc-azul text-white border-fsc-azul" : "bg-white border-slate-200 text-slate-700"}`} data-testid={`inv-tab-${t.id}`}>
             <t.icon size={14}/> {t.label}
             <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] bg-white/20 tabular-nums">{byType[t.id]?.length || 0}</span>
           </button>
@@ -117,22 +99,49 @@ export default function AdminInventory() {
       </div>
 
       {tab === "lodging" && <LodgingTab rows={byType.lodging} onChange={patchLocal} onSave={persist} onDelete={remove} saving={saving} onAdd={() => setCreating({ type: "lodging", body: { name: "", description: "", base_5_nights: 0, additional_night: 0, available: true, no_lodging: false, classification: "", accommodation_type: "" } })} />}
-      {tab === "meal" && <MealTab rows={byType.meal} tiers={byType.lodging} onChange={patchLocal} onSave={persist} saving={saving} />}
+      {tab === "meal_addon" && <MealAddonTab rows={byType.meal_addon} onChange={patchLocal} onSave={persist} onDelete={remove} saving={saving} onAdd={() => setCreating({ type: "meal_addon", body: { name: "", meal_type: "", classification: "", cost: 0 } })} />}
       {tab === "transport" && <SimpleTab type="transport" label="Transporte" rows={byType.transport} onChange={patchLocal} onSave={persist} onDelete={remove} saving={saving} onAdd={() => setCreating({ type: "transport", body: { name: "", price: 0 } })} />}
-      {tab === "tour" && <SimpleTab type="tour" label="Tour" rows={byType.tour} onChange={patchLocal} onSave={persist} onDelete={remove} saving={saving} onAdd={() => setCreating({ type: "tour", body: { name: "", price: 0 } })} />}
+      {tab === "tour" && <TourTab rows={byType.tour} onChange={patchLocal} onSave={persist} onDelete={remove} saving={saving} onAdd={() => setCreating({ type: "tour", body: { name: "", description: "", price: 0 } })} />}
 
       {creating && (
-        <CreateModal creating={creating} setCreating={setCreating} onSubmit={createNew} tiers={byType.lodging} />
+        <CreateModal creating={creating} setCreating={setCreating} onSubmit={createNew} />
       )}
     </div>
   );
+}
+
+function buildBody(row) {
+  if (row.type === "lodging") {
+    return {
+      name: row.name,
+      description: row.description || "",
+      base_5_nights: Number(row.base_5_nights || 0),
+      additional_night: Number(row.additional_night || 0),
+      available: row.available !== false,
+      no_lodging: !!row.no_lodging,
+      classification: row.classification || "",
+      accommodation_type: row.accommodation_type || "",
+    };
+  }
+  if (row.type === "meal_addon") {
+    return {
+      name: row.name,
+      meal_type: row.meal_type || "",
+      classification: row.classification || "",
+      cost: Number(row.cost || 0),
+    };
+  }
+  if (row.type === "tour") {
+    return { name: row.name, description: row.description || "", price: Number(row.price || 0) };
+  }
+  return { name: row.name, price: Number(row.price || 0) };
 }
 
 function LodgingTab({ rows, onChange, onSave, onDelete, saving, onAdd }) {
   return (
     <div>
       <div className="flex justify-between items-center mb-3">
-        <p className="text-xs text-slate-500">Precio <span className="font-bold">por persona</span>: base 5 noches + valor por noche adicional.</p>
+        <p className="text-xs text-slate-500">Precio <span className="font-bold">por persona</span>: valor del paquete + valor por noche adicional.</p>
         <button onClick={onAdd} className="fsc-btn-red px-3 py-1.5 rounded-md text-xs flex items-center gap-2" data-testid="inv-add-lodging"><Plus size={12}/> Nuevo paquete</button>
       </div>
       <div className="grid lg:grid-cols-2 gap-3" data-testid="inv-lodging-list">
@@ -141,35 +150,24 @@ function LodgingTab({ rows, onChange, onSave, onDelete, saving, onAdd }) {
           return (
             <div key={r.id} className="bg-white border border-slate-200 rounded-xl p-4" data-testid={`inv-lodging-${r.id}`}>
               <div className="flex items-center justify-between mb-2">
-                <input value={r.name} onChange={(e) => onChange(r.id, "lodging", { name: e.target.value })} className="font-display text-xl font-black uppercase tracking-tight bg-transparent border-b-2 border-transparent focus:border-blue-700 outline-none" />
+                <input value={r.name} onChange={(e) => onChange(r.id, "lodging", { name: e.target.value })} className="font-display text-xl font-black uppercase tracking-tight bg-transparent border-b-2 border-transparent focus:border-fsc-azul outline-none" />
                 <div className="flex gap-1">
-                  <button onClick={() => onSave(r)} disabled={isSaving} className="text-blue-700 disabled:opacity-50 p-1" data-testid={`inv-save-lodging-${r.id}`}><Save size={14}/></button>
-                  <button onClick={() => onDelete(r)} className="text-red-600 p-1" data-testid={`inv-delete-lodging-${r.id}`}><Trash2 size={14}/></button>
+                  <button onClick={() => onSave(r)} disabled={isSaving} className="text-fsc-azul disabled:opacity-50 p-1" data-testid={`inv-save-lodging-${r.id}`}><Save size={14}/></button>
+                  <button onClick={() => onDelete(r)} className="text-fsc-rojo p-1" data-testid={`inv-delete-lodging-${r.id}`}><Trash2 size={14}/></button>
                 </div>
               </div>
               <textarea value={r.description || ""} onChange={(e) => onChange(r.id, "lodging", { description: e.target.value })} rows={2} className="w-full text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded p-2" placeholder="Descripción..." />
               <div className="grid grid-cols-2 gap-2 mt-3">
                 <label className="block">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Clasificación</span>
-                  <select
-                    value={r.classification || ""}
-                    onChange={(e) => onChange(r.id, "lodging", { classification: e.target.value })}
-                    className="mt-1 w-full px-2 py-1 border border-slate-200 rounded text-sm"
-                    data-testid={`inv-lodging-class-${r.id}`}
-                  >
+                  <select value={r.classification || ""} onChange={(e) => onChange(r.id, "lodging", { classification: e.target.value })} className="mt-1 w-full px-2 py-1 border border-slate-200 rounded text-sm" data-testid={`inv-lodging-class-${r.id}`}>
                     <option value="">— Sin clasificación —</option>
                     {CLASSIFICATIONS.map((c) => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </label>
                 <label className="block">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Acomodación</span>
-                  <select
-                    value={r.accommodation_type || ""}
-                    onChange={(e) => onChange(r.id, "lodging", { accommodation_type: e.target.value })}
-                    className="mt-1 w-full px-2 py-1 border border-slate-200 rounded text-sm"
-                    data-testid={`inv-lodging-acc-${r.id}`}
-                    disabled={r.no_lodging}
-                  >
+                  <select value={r.accommodation_type || ""} onChange={(e) => onChange(r.id, "lodging", { accommodation_type: e.target.value })} className="mt-1 w-full px-2 py-1 border border-slate-200 rounded text-sm" data-testid={`inv-lodging-acc-${r.id}`} disabled={r.no_lodging}>
                     <option value="">— Selecciona —</option>
                     {ACCOMMODATION_TYPES.map((a) => <option key={a} value={a}>{a}</option>)}
                   </select>
@@ -177,19 +175,17 @@ function LodgingTab({ rows, onChange, onSave, onDelete, saving, onAdd }) {
               </div>
               <div className="grid grid-cols-2 gap-2 mt-3">
                 <label className="block">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Base 5 noches (COP)</span>
-                  <input type="number" min="0" value={r.base_5_nights || 0} onChange={(e) => onChange(r.id, "lodging", { base_5_nights: Number(e.target.value) })} className="mt-1 w-full px-2 py-1 border border-slate-200 rounded text-sm tabular-nums" data-testid={`inv-lodging-base-${r.id}`} disabled={r.no_lodging} />
-                  <span className="text-[10px] text-slate-400">{fmt(r.base_5_nights || 0)}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Valor Paquete (COP)</span>
+                  <CurrencyInput value={r.base_5_nights} onChange={(v) => onChange(r.id, "lodging", { base_5_nights: v })} disabled={r.no_lodging} className="w-full text-sm" data-testid={`inv-lodging-base-${r.id}`} />
                 </label>
                 <label className="block">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Noche adicional (COP)</span>
-                  <input type="number" min="0" value={r.additional_night || 0} onChange={(e) => onChange(r.id, "lodging", { additional_night: Number(e.target.value) })} className="mt-1 w-full px-2 py-1 border border-slate-200 rounded text-sm tabular-nums" data-testid={`inv-lodging-add-${r.id}`} disabled={r.no_lodging} />
-                  <span className="text-[10px] text-slate-400">{fmt(r.additional_night || 0)}</span>
+                  <CurrencyInput value={r.additional_night} onChange={(v) => onChange(r.id, "lodging", { additional_night: v })} disabled={r.no_lodging} className="w-full text-sm" data-testid={`inv-lodging-add-${r.id}`} />
                 </label>
               </div>
               <div className="flex gap-3 mt-3 text-xs">
                 <label className="flex items-center gap-1 cursor-pointer">
-                  <input type="checkbox" checked={r.available !== false} onChange={(e) => onChange(r.id, "lodging", { available: e.target.checked })} className="accent-blue-700" />
+                  <input type="checkbox" checked={r.available !== false} onChange={(e) => onChange(r.id, "lodging", { available: e.target.checked })} className="accent-fsc-azul" />
                   <span>Disponible</span>
                 </label>
                 <label className="flex items-center gap-1 cursor-pointer">
@@ -205,53 +201,51 @@ function LodgingTab({ rows, onChange, onSave, onDelete, saving, onAdd }) {
   );
 }
 
-function MealTab({ rows, tiers, onChange, onSave, saving }) {
-  // Matrix: rows = meal types, cols = lodging tiers
+function MealAddonTab({ rows, onChange, onSave, onDelete, saving, onAdd }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-      <div className="p-4 border-b border-slate-200">
-        <p className="text-xs text-slate-500">Precio <span className="font-bold">por persona × día</span>. Usa <span className="font-bold">0</span> para indicar que la combinación no está disponible (ej.: Silver no incluye almuerzo).</p>
+    <div>
+      <div className="flex justify-between items-center mb-3">
+        <p className="text-xs text-slate-500">Tabla de alimentación adicional: comida × clasificación × costo (COP por persona).</p>
+        <button onClick={onAdd} className="fsc-btn-red px-3 py-1.5 rounded-md text-xs flex items-center gap-2" data-testid="inv-add-meal_addon"><Plus size={12}/> Nueva alimentación</button>
       </div>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm" data-testid="inv-meals-matrix">
-          <thead className="bg-blue-50 text-xs uppercase tracking-wider">
+      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <table className="w-full text-sm" data-testid="inv-meal_addon-list">
+          <thead className="bg-fsc-azul/10 text-xs uppercase tracking-wider">
             <tr>
+              <th className="text-left px-3 py-2">Nombre</th>
               <th className="text-left px-3 py-2">Comida</th>
               <th className="text-left px-3 py-2">Clasificación</th>
-              {tiers.map((t) => <th key={t.id} className="text-right px-3 py-2">{t.name}</th>)}
-              <th className="px-3 py-2 w-16"></th>
+              <th className="text-right px-3 py-2">Costo (COP)</th>
+              <th className="px-3 py-2 w-24"></th>
             </tr>
           </thead>
           <tbody>
+            {rows.length === 0 && <tr><td colSpan="5" className="text-center text-slate-400 py-8">Sin registros. Agrega la primera fila.</td></tr>}
             {rows.map((r) => {
-              const isSaving = saving === `meal:${r.id}`;
+              const isSaving = saving === `meal_addon:${r.id}`;
               return (
-                <tr key={r.id} className="border-t border-slate-100" data-testid={`inv-meal-${r.id}`}>
-                  <td className="px-3 py-2 font-display font-black">{r.name}</td>
+                <tr key={r.id} className="border-t border-slate-100" data-testid={`inv-meal_addon-${r.id}`}>
                   <td className="px-3 py-2">
-                    <select
-                      value={r.classification || ""}
-                      onChange={(e) => onChange(r.id, "meal", { classification: e.target.value })}
-                      className="px-2 py-1 border border-slate-200 rounded text-xs"
-                      data-testid={`inv-meal-class-${r.id}`}
-                    >
+                    <input value={r.name || ""} onChange={(e) => onChange(r.id, "meal_addon", { name: e.target.value })} className="w-full px-2 py-1 border border-slate-200 rounded text-sm" placeholder="Ej: Desayuno extra" data-testid={`inv-meal_addon-name-${r.id}`} />
+                  </td>
+                  <td className="px-3 py-2">
+                    <select value={r.meal_type || ""} onChange={(e) => onChange(r.id, "meal_addon", { meal_type: e.target.value })} className="px-2 py-1 border border-slate-200 rounded text-xs" data-testid={`inv-meal_addon-type-${r.id}`}>
+                      <option value="">—</option>
+                      {MEAL_TYPES.map((m) => <option key={m} value={m}>{m}</option>)}
+                    </select>
+                  </td>
+                  <td className="px-3 py-2">
+                    <select value={r.classification || ""} onChange={(e) => onChange(r.id, "meal_addon", { classification: e.target.value })} className="px-2 py-1 border border-slate-200 rounded text-xs" data-testid={`inv-meal_addon-class-${r.id}`}>
                       <option value="">—</option>
                       {CLASSIFICATIONS.map((c) => <option key={c} value={c}>{c}</option>)}
                     </select>
                   </td>
-                  {tiers.map((t) => (
-                    <td key={t.id} className="px-2 py-1 text-right">
-                      <input
-                        type="number" min="0"
-                        value={(r.per_day_by_tier || {})[t.id] || 0}
-                        onChange={(e) => onChange(r.id, "meal", { per_day_by_tier: { ...(r.per_day_by_tier || {}), [t.id]: Number(e.target.value) } })}
-                        className="w-24 px-2 py-1 border border-slate-200 rounded text-right text-xs tabular-nums"
-                        data-testid={`inv-meal-${r.id}-${t.id}`}
-                      />
-                    </td>
-                  ))}
-                  <td className="px-2 py-1 text-right">
-                    <button onClick={() => onSave(r)} disabled={isSaving} className="text-blue-700 disabled:opacity-50 p-1" data-testid={`inv-save-meal-${r.id}`}><Save size={14}/></button>
+                  <td className="px-3 py-2 text-right">
+                    <CurrencyInput value={r.cost} onChange={(v) => onChange(r.id, "meal_addon", { cost: v })} className="w-32 text-sm" data-testid={`inv-meal_addon-cost-${r.id}`} />
+                  </td>
+                  <td className="px-3 py-2 text-right">
+                    <button onClick={() => onSave(r)} disabled={isSaving} className="text-fsc-azul disabled:opacity-50 p-1" data-testid={`inv-save-meal_addon-${r.id}`}><Save size={14}/></button>
+                    <button onClick={() => onDelete(r)} className="text-fsc-rojo p-1 ml-1" data-testid={`inv-delete-meal_addon-${r.id}`}><Trash2 size={14}/></button>
                   </td>
                 </tr>
               );
@@ -272,7 +266,7 @@ function SimpleTab({ type, label, rows, onChange, onSave, onDelete, saving, onAd
       </div>
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
         <table className="w-full text-sm" data-testid={`inv-${type}-list`}>
-          <thead className="bg-blue-50 text-xs uppercase tracking-wider">
+          <thead className="bg-fsc-azul/10 text-xs uppercase tracking-wider">
             <tr>
               <th className="text-left px-3 py-2">Nombre</th>
               <th className="text-right px-3 py-2">Precio (COP)</th>
@@ -287,12 +281,11 @@ function SimpleTab({ type, label, rows, onChange, onSave, onDelete, saving, onAd
                 <tr key={r.id} className="border-t border-slate-100" data-testid={`inv-${type}-${r.id}`}>
                   <td className="px-3 py-2"><input value={r.name} onChange={(e) => onChange(r.id, type, { name: e.target.value })} className="w-full px-2 py-1 border border-slate-200 rounded text-sm" /></td>
                   <td className="px-3 py-2 text-right">
-                    <input type="number" min="0" value={r.price || 0} onChange={(e) => onChange(r.id, type, { price: Number(e.target.value) })} className="w-32 px-2 py-1 border border-slate-200 rounded text-right text-sm tabular-nums" data-testid={`inv-price-${r.id}`} />
-                    <div className="text-[10px] text-slate-400 mt-0.5">{fmt(r.price || 0)}</div>
+                    <CurrencyInput value={r.price} onChange={(v) => onChange(r.id, type, { price: v })} className="w-32 text-sm" data-testid={`inv-price-${r.id}`} />
                   </td>
                   <td className="px-3 py-2 text-right">
-                    <button onClick={() => onSave(r)} disabled={isSaving} className="text-blue-700 disabled:opacity-50 p-1" data-testid={`inv-save-${type}-${r.id}`}><Save size={14}/></button>
-                    <button onClick={() => onDelete(r)} className="text-red-600 p-1 ml-1" data-testid={`inv-delete-${type}-${r.id}`}><Trash2 size={14}/></button>
+                    <button onClick={() => onSave(r)} disabled={isSaving} className="text-fsc-azul disabled:opacity-50 p-1" data-testid={`inv-save-${type}-${r.id}`}><Save size={14}/></button>
+                    <button onClick={() => onDelete(r)} className="text-fsc-rojo p-1 ml-1" data-testid={`inv-delete-${type}-${r.id}`}><Trash2 size={14}/></button>
                   </td>
                 </tr>
               );
@@ -304,18 +297,56 @@ function SimpleTab({ type, label, rows, onChange, onSave, onDelete, saving, onAd
   );
 }
 
-function CreateModal({ creating, setCreating, onSubmit, tiers }) {
+function TourTab({ rows, onChange, onSave, onDelete, saving, onAdd }) {
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-3">
+        <p className="text-xs text-slate-500">Tours opcionales con nombre, descripción y precio por persona.</p>
+        <button onClick={onAdd} className="fsc-btn-red px-3 py-1.5 rounded-md text-xs flex items-center gap-2" data-testid="inv-add-tour"><Plus size={12}/> Nuevo tour</button>
+      </div>
+      <div className="grid lg:grid-cols-2 gap-3" data-testid="inv-tour-list">
+        {rows.length === 0 && <div className="col-span-full text-center text-slate-400 py-8 bg-white border border-slate-200 rounded-xl">Sin registros. Agrega el primero.</div>}
+        {rows.map((r) => {
+          const isSaving = saving === `tour:${r.id}`;
+          return (
+            <div key={r.id} className="bg-white border border-slate-200 rounded-xl p-4" data-testid={`inv-tour-${r.id}`}>
+              <div className="flex items-center justify-between mb-2">
+                <input value={r.name} onChange={(e) => onChange(r.id, "tour", { name: e.target.value })} className="font-display text-xl font-black uppercase tracking-tight bg-transparent border-b-2 border-transparent focus:border-fsc-azul outline-none flex-1" />
+                <div className="flex gap-1 ml-2">
+                  <button onClick={() => onSave(r)} disabled={isSaving} className="text-fsc-azul disabled:opacity-50 p-1" data-testid={`inv-save-tour-${r.id}`}><Save size={14}/></button>
+                  <button onClick={() => onDelete(r)} className="text-fsc-rojo p-1" data-testid={`inv-delete-tour-${r.id}`}><Trash2 size={14}/></button>
+                </div>
+              </div>
+              <label className="block mb-3">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Descripción</span>
+                <textarea value={r.description || ""} onChange={(e) => onChange(r.id, "tour", { description: e.target.value })} rows={3} className="mt-1 w-full text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded p-2" placeholder="¿Qué incluye este tour?" data-testid={`inv-tour-desc-${r.id}`} />
+              </label>
+              <label className="block">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Precio (COP por persona)</span>
+                <CurrencyInput value={r.price} onChange={(v) => onChange(r.id, "tour", { price: v })} className="w-full text-sm" data-testid={`inv-price-${r.id}`} />
+              </label>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function CreateModal({ creating, setCreating, onSubmit }) {
   const isLodging = creating.type === "lodging";
-  const isMeal = creating.type === "meal";
+  const isMealAddon = creating.type === "meal_addon";
+  const isTour = creating.type === "tour";
   const setBody = (patch) => setCreating({ ...creating, body: { ...creating.body, ...patch } });
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4" onClick={() => setCreating(null)} data-testid="inv-create-modal">
       <form onClick={(e) => e.stopPropagation()} onSubmit={onSubmit} className="bg-white rounded-2xl max-w-md w-full p-6 space-y-3">
-        <h2 className="font-display text-2xl font-black uppercase tracking-tight">Nuevo {creating.type}</h2>
+        <h2 className="font-display text-2xl font-black uppercase tracking-tight">Nuevo {creating.type.replace("_", " ")}</h2>
         <label className="block">
           <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Nombre</span>
           <input required value={creating.body.name} onChange={(e) => setBody({ name: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="inv-new-name" />
         </label>
+
         {isLodging && (
           <>
             <label className="block">
@@ -340,12 +371,12 @@ function CreateModal({ creating, setCreating, onSubmit, tiers }) {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <label className="block">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Base 5 noches</span>
-                <input type="number" min="0" value={creating.body.base_5_nights || 0} onChange={(e) => setBody({ base_5_nights: Number(e.target.value) })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md tabular-nums" />
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Valor Paquete (COP)</span>
+                <CurrencyInput value={creating.body.base_5_nights || 0} onChange={(v) => setBody({ base_5_nights: v })} className="w-full" data-testid="inv-new-base" />
               </label>
               <label className="block">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Noche adicional</span>
-                <input type="number" min="0" value={creating.body.additional_night || 0} onChange={(e) => setBody({ additional_night: Number(e.target.value) })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md tabular-nums" />
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Noche adicional (COP)</span>
+                <CurrencyInput value={creating.body.additional_night || 0} onChange={(v) => setBody({ additional_night: v })} className="w-full" data-testid="inv-new-add" />
               </label>
             </div>
             <label className="flex items-center gap-2 cursor-pointer text-sm">
@@ -354,12 +385,50 @@ function CreateModal({ creating, setCreating, onSubmit, tiers }) {
             </label>
           </>
         )}
-        {!isLodging && !isMeal && (
+
+        {isMealAddon && (
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Comida</span>
+              <select value={creating.body.meal_type || ""} onChange={(e) => setBody({ meal_type: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="inv-new-meal-type">
+                <option value="">—</option>
+                {MEAL_TYPES.map((m) => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </label>
+            <label className="block">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Clasificación</span>
+              <select value={creating.body.classification || ""} onChange={(e) => setBody({ classification: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="inv-new-meal-class">
+                <option value="">—</option>
+                {CLASSIFICATIONS.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </label>
+            <label className="block col-span-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Costo (COP por persona)</span>
+              <CurrencyInput value={creating.body.cost || 0} onChange={(v) => setBody({ cost: v })} className="w-full" data-testid="inv-new-cost" />
+            </label>
+          </div>
+        )}
+
+        {isTour && (
+          <>
+            <label className="block">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Descripción</span>
+              <textarea value={creating.body.description || ""} onChange={(e) => setBody({ description: e.target.value })} rows={3} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="inv-new-tour-desc" placeholder="¿Qué incluye este tour?" />
+            </label>
+            <label className="block">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Precio (COP por persona)</span>
+              <CurrencyInput value={creating.body.price || 0} onChange={(v) => setBody({ price: v })} className="w-full" data-testid="inv-new-price" />
+            </label>
+          </>
+        )}
+
+        {!isLodging && !isMealAddon && !isTour && (
           <label className="block">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Precio (COP por persona)</span>
-            <input type="number" min="0" required value={creating.body.price || 0} onChange={(e) => setBody({ price: Number(e.target.value) })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md tabular-nums" data-testid="inv-new-price" />
+            <CurrencyInput value={creating.body.price || 0} onChange={(v) => setBody({ price: v })} className="w-full" data-testid="inv-new-price" />
           </label>
         )}
+
         <div className="flex justify-end gap-2 pt-2">
           <button type="button" onClick={() => setCreating(null)} className="px-4 py-2 text-xs font-bold uppercase tracking-wide text-slate-600">Cancelar</button>
           <button type="submit" className="fsc-btn-primary px-4 py-2 rounded-md text-xs" data-testid="inv-new-submit">Crear</button>

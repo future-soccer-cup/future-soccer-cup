@@ -895,8 +895,8 @@ async def get_team(team_id: str):
 
 @api.post("/teams", response_model=TeamOut)
 async def create_team(payload: TeamIn, _: dict = Depends(require_admin)):
-    if payload.category not in CATEGORIES:
-        raise HTTPException(status_code=400, detail=f"Categoría inválida. Use: {', '.join(CATEGORIES)}")
+    if not (payload.category or '').strip():
+        raise HTTPException(status_code=400, detail="La categoría es obligatoria")
     doc = payload.model_dump()
     doc["id"] = str(uuid.uuid4())
     doc["status"] = "aprobado"  # Admin-created teams are auto-approved
@@ -912,8 +912,8 @@ async def update_team(team_id: str, payload: TeamIn, user: dict = Depends(get_cu
             raise HTTPException(status_code=403, detail="Solo puedes editar tu propio equipo")
     elif user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="No autorizado")
-    if payload.category not in CATEGORIES:
-        raise HTTPException(status_code=400, detail=f"Categoría inválida. Use: {', '.join(CATEGORIES)}")
+    if not (payload.category or '').strip():
+        raise HTTPException(status_code=400, detail="La categoría es obligatoria")
     res = await db.teams.update_one({"id": team_id}, {"$set": payload.model_dump()})
     if res.matched_count == 0:
         raise HTTPException(status_code=404, detail="Equipo no encontrado")
@@ -1217,8 +1217,8 @@ def _byes_per_round(team_ids: List[str]) -> dict:
 
 @api.post("/fixtures/generate")
 async def generate_fixture(payload: FixtureGenerateIn, _: dict = Depends(require_admin)):
-    if payload.category not in CATEGORIES:
-        raise HTTPException(status_code=400, detail=f"Categoría inválida. Use: {', '.join(CATEGORIES)}")
+    if not (payload.category or '').strip():
+        raise HTTPException(status_code=400, detail="La categoría es obligatoria")
     if len(payload.team_ids) < 2:
         raise HTTPException(status_code=400, detail="Se requieren al menos 2 equipos")
     teams = await db.teams.find({"id": {"$in": payload.team_ids}}, {"_id": 0}).to_list(500)
@@ -1362,8 +1362,8 @@ async def _group_team_order(tournament_id: str, category: str, group_name: str, 
 @api.post("/fixtures/intergroup")
 async def generate_intergroup(payload: IntergroupGenerateIn, _: dict = Depends(require_admin)):
     """Crea 1 partido intergrupos por equipo: 1°A vs 1°B, 2°A vs 2°B, etc. (según pairing)."""
-    if payload.category not in CATEGORIES:
-        raise HTTPException(status_code=400, detail=f"Categoría inválida. Use: {', '.join(CATEGORIES)}")
+    if not (payload.category or '').strip():
+        raise HTTPException(status_code=400, detail="La categoría es obligatoria")
     if payload.group_a == payload.group_b:
         raise HTTPException(status_code=400, detail="Los grupos A y B deben ser distintos")
     a = await _group_team_order(payload.tournament_id, payload.category, payload.group_a, payload.pairing)
@@ -1928,7 +1928,129 @@ async def root():
 
 @api.get("/categories")
 async def list_categories():
-    return CATEGORIES
+    """Return categories from DB (admin-editable). Falls back to seed constants if empty."""
+    rows = await db.categories.find({}, {"_id": 0}).sort([("sort_order", 1), ("name", 1)]).to_list(200)
+    if not rows:
+        return CATEGORIES
+    return [r["name"] for r in rows]
+
+
+@api.get("/admin/categories")
+async def admin_list_categories(_: dict = Depends(require_admin)):
+    rows = await db.categories.find({}, {"_id": 0}).sort([("sort_order", 1), ("name", 1)]).to_list(200)
+    # Seed defaults on first call so admin sees the existing list immediately.
+    if not rows:
+        for i, n in enumerate(CATEGORIES):
+            await db.categories.insert_one({"id": str(uuid.uuid4()), "name": n, "sort_order": i, "created_at": datetime.now(timezone.utc).isoformat()})
+        rows = await db.categories.find({}, {"_id": 0}).sort([("sort_order", 1), ("name", 1)]).to_list(200)
+    return rows
+
+
+@api.post("/admin/categories")
+async def admin_create_category(body: dict, user: dict = Depends(require_admin)):
+    name = (body.get("name") or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="El nombre es obligatorio")
+    if await db.categories.find_one({"name": name}):
+        raise HTTPException(status_code=400, detail="Ya existe una categoría con ese nombre")
+    last = await db.categories.find({}, {"_id": 0, "sort_order": 1}).sort("sort_order", -1).limit(1).to_list(1)
+    doc = {"id": str(uuid.uuid4()), "name": name, "sort_order": int(body.get("sort_order", (last[0]["sort_order"] + 1) if last else 0)), "created_at": datetime.now(timezone.utc).isoformat()}
+    await db.categories.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+
+@api.put("/admin/categories/{cid}")
+async def admin_update_category(cid: str, body: dict, _: dict = Depends(require_admin)):
+    update = {}
+    if "name" in body:
+        n = (body.get("name") or "").strip()
+        if not n:
+            raise HTTPException(status_code=400, detail="El nombre es obligatorio")
+        update["name"] = n
+    if "sort_order" in body:
+        try: update["sort_order"] = int(body["sort_order"])
+        except Exception: pass
+    if not update:
+        raise HTTPException(status_code=400, detail="Nada para actualizar")
+    res = await db.categories.update_one({"id": cid}, {"$set": update})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Categoría no encontrada")
+    return {"ok": True, **update}
+
+
+@api.delete("/admin/categories/{cid}")
+async def admin_delete_category(cid: str, _: dict = Depends(require_admin)):
+    res = await db.categories.delete_one({"id": cid})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Categoría no encontrada")
+    return {"ok": True}
+
+
+# ----------------- Event Types CRUD (admin) -----------------
+@api.get("/admin/event-types")
+async def admin_list_event_types(_: dict = Depends(require_admin)):
+    rows = await db.event_types.find({}, {"_id": 0}).sort([("sort_order", 1), ("name", 1)]).to_list(200)
+    if not rows:
+        # Seed from in-memory constants on first access.
+        for i, (key, ev) in enumerate(EVENT_TYPES.items()):
+            await db.event_types.insert_one({
+                "id": key, "name": ev.get("name", key), "description": ev.get("description", ""),
+                "registration_fee_per_team": float(ev.get("registration_fee_per_team", 0) or 0),
+                "month": ev.get("month", ""), "sort_order": i,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            })
+        rows = await db.event_types.find({}, {"_id": 0}).sort([("sort_order", 1), ("name", 1)]).to_list(200)
+    return rows
+
+
+@api.post("/admin/event-types")
+async def admin_create_event_type(body: dict, _: dict = Depends(require_admin)):
+    name = (body.get("name") or "").strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="El nombre es obligatorio")
+    rid = body.get("id") or _slugify(name)
+    if await db.event_types.find_one({"id": rid}):
+        raise HTTPException(status_code=400, detail="Ya existe un tipo de evento con ese id")
+    last = await db.event_types.find({}, {"_id": 0, "sort_order": 1}).sort("sort_order", -1).limit(1).to_list(1)
+    doc = {
+        "id": rid, "name": name, "description": (body.get("description") or "").strip(),
+        "registration_fee_per_team": float(body.get("registration_fee_per_team", 0) or 0),
+        "month": (body.get("month") or "").strip(),
+        "sort_order": int(body.get("sort_order", (last[0]["sort_order"] + 1) if last else 0)),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.event_types.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+
+@api.put("/admin/event-types/{eid}")
+async def admin_update_event_type(eid: str, body: dict, _: dict = Depends(require_admin)):
+    update = {}
+    for k in ("name", "description", "month"):
+        if k in body:
+            update[k] = (body.get(k) or "").strip()
+    if "registration_fee_per_team" in body:
+        try: update["registration_fee_per_team"] = max(0.0, float(body["registration_fee_per_team"] or 0))
+        except Exception: pass
+    if "sort_order" in body:
+        try: update["sort_order"] = int(body["sort_order"])
+        except Exception: pass
+    if not update:
+        raise HTTPException(status_code=400, detail="Nada para actualizar")
+    res = await db.event_types.update_one({"id": eid}, {"$set": update})
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Tipo de evento no encontrado")
+    return {"ok": True, **update}
+
+
+@api.delete("/admin/event-types/{eid}")
+async def admin_delete_event_type(eid: str, _: dict = Depends(require_admin)):
+    res = await db.event_types.delete_one({"id": eid})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Tipo de evento no encontrado")
+    return {"ok": True}
 
 async def _load_catalog() -> dict:
     """Load pricing catalog from MongoDB and shape it like the legacy in-memory dicts.
@@ -1987,7 +2109,7 @@ async def list_event_types():
 # ============================================================
 # Pricing catalog (lodging / meal / transport / tour) — admin
 # ============================================================
-CATALOG_TYPES = {"lodging", "meal", "transport", "tour"}
+CATALOG_TYPES = {"lodging", "meal", "meal_addon", "transport", "tour"}
 
 
 def _slugify(name: str) -> str:
@@ -2032,6 +2154,14 @@ def _validate_catalog_row(t: str, body: dict) -> dict:
         # Las comidas también pueden estar asociadas a una clasificación FSC.
         if "classification" in body:
             out["classification"] = (body.get("classification") or "").strip().upper()
+    elif t == "meal_addon":
+        # Alimentación adicional: {meal_type, classification, cost}.
+        mt = (body.get("meal_type") or "").strip().upper()
+        if mt and mt not in ("DESAYUNO", "ALMUERZO", "CENA"):
+            raise HTTPException(status_code=400, detail="meal_type debe ser DESAYUNO, ALMUERZO o CENA")
+        out["meal_type"] = mt
+        out["classification"] = (body.get("classification") or "").strip().upper()
+        out["cost"] = max(0.0, float(body.get("cost", 0) or 0))
     elif t in ("transport", "tour"):
         out["price"] = max(0.0, float(body.get("price", 0) or 0))
     return out
