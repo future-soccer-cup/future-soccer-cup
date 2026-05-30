@@ -289,11 +289,11 @@ function GalleryCarousel({ images, idx, setIdx }) {
   const visible = 3;
   const max = Math.max(0, images.length - visible);
   return (
-    <div className="relative">
+    <div className="relative" data-testid="gallery-carousel" data-active-idx={idx}>
       <div className="overflow-hidden">
         <div className="flex gap-4 transition-transform duration-500" style={{ transform: `translateX(-${idx * (100 / visible)}%)` }}>
-          {images.map((g) => (
-            <div key={g.id} className="flex-none w-full sm:w-1/2 lg:w-1/3 group">
+          {images.map((g, i) => (
+            <div key={g.id} className="flex-none w-full sm:w-1/2 lg:w-1/3 group" data-testid={`gallery-slide-${i}`} data-active={i === idx ? "1" : "0"}>
               <div className="aspect-[4/3] rounded-lg overflow-hidden border-2 border-fsc-dorado/30 group-hover:border-fsc-dorado transition-colors">
                 <img src={imgSrc(g.image_url)} alt={g.title || ""} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
               </div>

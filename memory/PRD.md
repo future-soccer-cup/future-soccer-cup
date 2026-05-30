@@ -696,3 +696,55 @@ Refactor de `const load = () => ...; useEffect(() => load(), [])` a `const load 
 - 🟢 **P2** — Stripe webhook signature verification.
 - 🟢 **P2** — Refactor `server.py` (>3769 líneas) → `/app/backend/routes/{auth,catalog,tournaments,quotes,payments,contact}.py`.
 - 🟢 **P3** — Gallery drag-and-drop, importación masiva XLSX de matches.
+
+
+## Iteration 25 (2026-05-30) — Catálogos dinámicos + Paleta v2 + CurrencyInput + Auto-galería
+
+### Backend (`server.py`)
+- **CRUD `/admin/categories`** (lista, crear, actualizar, eliminar). `GET /api/categories` público ahora lee de `db.categories` (auto-seed desde constante en el primer GET admin).
+- **CRUD `/admin/event-types`** (lista, crear con `_slugify`, actualizar, eliminar). Auto-seed desde `EVENT_TYPES` constante en el primer GET admin.
+- **`_validate_catalog_row` acepta tipo nuevo `meal_addon`** con campos: `meal_type` (DESAYUNO/ALMUERZO/CENA — auto-upper, validado), `classification` (auto-upper) y `cost`.
+- **Validación de category relajada** en `POST /teams`, `PUT /teams`, `POST /players`, `PUT /players`: ya no se valida contra constante `CATEGORIES`, solo no-vacío. Permite categorías custom creadas por el admin.
+
+### Frontend
+- **Paleta v2 (`tailwind.config.js` + `index.css`)**:
+  - `#e31f27` rojo (`fsc-rojo`), `#0640c8` azul (`fsc-azul`), `#dedfe0` gris (`fsc-gris`) + variantes `-oscuro`.
+  - `fsc-btn-primary` ahora azul; `fsc-btn-red` mantiene rojo; `fsc-btn-dark` con borde azul.
+  - Alias legacy de `fsc-dorado*` → apuntan al azul para compat con componentes existentes.
+  - **Fuentes Google Fonts equivalentes**: Bebas Neue (display) + **Exo 2** (body, sustituto Neo Sans Std) + **Allura** (cursive, sustituto Natura Script) cargadas vía `<link>`.
+- **`CurrencyInput.jsx`** (nuevo): input formateado es-CO (1.500.000), sin decimales, sin ceros a la izquierda, devuelve Number. Aplicado en AdminInventory (todos los precios), AdminTournaments (fee de categorías), AdminEventTypes (registration_fee).
+- **`AdminInventory.jsx` reescrito**:
+  - Lodging label "Valor Paquete (COP)" (antes "Base 5 noches (COP)").
+  - Tab **Alimentación adicional** (tipo `meal_addon`): tabla CRUD con columnas Nombre / Comida / Clasificación / Costo. Modal "Nueva alimentación" con selects desplegables.
+  - Tab **Tours**: ahora con campo `descripción` (textarea) editable inline + modal "Nuevo tour" con descripción.
+- **`AdminTournaments.jsx` reescrito**:
+  - Eliminado el input "Categoría (principal)" único (junto con `CategorySelect`).
+  - `Tipo de evento` ahora es selector dinámico poblado desde `/admin/event-types` + link "Gestionar tipos de evento".
+  - `CategoriesFeesEditor` usa catálogo dinámico desde `/admin/categories` + link "Gestionar catálogo de categorías".
+  - Backend compat: al guardar, se setea `category = categories[0].name` para no romper el modelo Pydantic legacy.
+- **Nuevas páginas admin**:
+  - `/admin/categorias` (`AdminCategories.jsx`): tabla con inline edit + modal de creación.
+  - `/admin/tipos-evento` (`AdminEventTypes.jsx`): tabla con CurrencyInput para fee.
+  - Sidebar agrega "Tipos de evento" y "Categorías".
+- **`Home.jsx` galería auto-rotación**: `setInterval(5000)` selecciona índice aleatorio con guard anti-repetición. `GalleryCarousel` expone `data-testid="gallery-carousel"` con `data-active-idx={idx}` para testabilidad.
+
+### Testids agregados
+- `inv-tab-meal_addon`, `inv-add-meal_addon`, `inv-meal_addon-{id}`, `inv-meal_addon-name-{id}`, `inv-meal_addon-type-{id}`, `inv-meal_addon-class-{id}`, `inv-meal_addon-cost-{id}`, `inv-new-meal-type`, `inv-new-meal-class`, `inv-new-cost`, `inv-new-tour-desc`, `inv-tour-desc-{id}`.
+- `tour-event-type`, `add-category-btn`, `cat-name-{id}`, `cat-save-{id}`, `cat-delete-{id}`, `cat-new-name`, `cat-new-submit`.
+- `add-event-type-btn`, `evt-name-{id}`, `evt-fee-{id}`, `evt-save-{id}`, `evt-delete-{id}`, `evt-new-name`, `evt-new-fee`, `evt-new-submit`.
+- `gallery-carousel` con `data-active-idx`, `gallery-slide-{i}` con `data-active`.
+
+### Verificación
+- `/app/test_reports/iteration_17.json` — **Backend pytest 23/23 PASS · Frontend Playwright 100%**.
+- Auto-rotación de galería confirmada manualmente: idx 0 → 1 después de 6.5s.
+- CurrencyInput: '1500000' → '1.500.000' OK.
+
+## Backlog actualizado (P0/P1/P2)
+- 🔴 **P0** — Separar roles `president` (cotiza/paga) vs `team_manager` (inscribe jugadores).
+- 🔴 **P0** — Cotizar evento+múltiples categorías a la vez con fee por cada una.
+- 🟡 **P1** — Notificaciones email (Resend/SendGrid) cambios de estado.
+- 🟡 **P1** — Slider del Hero editable (carrusel).
+- 🟢 **P2** — Aplicar `CurrencyInput` también en `/cotizar` y otros formularios de pago manual (hoy solo admin).
+- 🟢 **P2** — Aplicar paleta v2 + Exo 2 a páginas legacy con clases `fsc-dorado*` directas (Home/Eventos secundarios) para coherencia visual total.
+- 🟢 **P2** — `GET /api/tournaments/{id}`, Stripe webhook signature, refactor `server.py` (>3899 líneas) → `/app/backend/routes/`.
+- 🟢 **P3** — Migración de `meal` (matriz por tier) → unificar todo en `meal_addon` (hoy coexisten).
