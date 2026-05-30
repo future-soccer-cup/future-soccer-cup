@@ -33,7 +33,7 @@ const NAV = [
   { to: "/admin/torneos", label: "Eventos", icon: ListChecks },
   { to: "/admin/tipos-evento", label: "Tipos de evento", icon: Calendar },
   { to: "/admin/categorias", label: "Categorías", icon: Tag },
-  { to: "/admin/equipos", label: "Equipos", icon: Shirt },
+  { to: "/admin/clubes", label: "Clubes", icon: Shirt },
   { to: "/admin/jugadores", label: "Jugadores", icon: Users },
   { to: "/admin/carga-masiva", label: "Carga masiva", icon: FileUp },
   { to: "/admin/partidos", label: "Partidos", icon: Calendar },

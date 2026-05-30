@@ -34,6 +34,7 @@ export default function MyTeam() {
   const [events, setEvents] = useState([]);
   const [showAddTeam, setShowAddTeam] = useState(false);
   const [newTeam, setNewTeam] = useState({ event_type: "", birth_year: "", designation: "Único" });
+  const [club, setClub] = useState(null);
 
   const teamId = user?.team_id;
 
@@ -44,10 +45,14 @@ export default function MyTeam() {
     setTeamForm(t.data);
     const p = await api.get(`/players?team_id=${teamId}`);
     setPlayers(p.data);
-    // Load other teams in same club
+    // Load other teams in same club + the club itself (status)
     if (t.data.club_id) {
-      const ct = await api.get(`/clubs/${t.data.club_id}/teams`).catch(() => ({ data: [] }));
+      const [ct, cl] = await Promise.all([
+        api.get(`/clubs/${t.data.club_id}/teams`).catch(() => ({ data: [] })),
+        api.get(`/clubs/${t.data.club_id}`).catch(() => ({ data: null })),
+      ]);
       setClubTeams(ct.data);
+      setClub(cl.data);
     }
   };
 
@@ -220,6 +225,17 @@ export default function MyTeam() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12" data-testid="my-team-page">
       <Toaster position="top-right" />
+
+      {/* Banner de estado del club */}
+      {club && (club.status || "pendiente") !== "aprobado" && (
+        <div className={`mb-4 rounded-xl border-2 p-4 flex items-start gap-3 ${club.status === "rechazado" ? "bg-rose-50 border-rose-300 text-rose-900" : "bg-amber-50 border-amber-300 text-amber-900"}`} data-testid="club-status-banner">
+          <AlertCircle size={28} className="shrink-0" />
+          <div>
+            <div className="font-bold uppercase tracking-wider text-sm">Tu club <strong>{club.name}</strong> está en estado: {club.status || "pendiente"}</div>
+            <p className="text-xs mt-1">Hasta que el administrador apruebe tu club, no podrás <strong>realizar cotizaciones</strong> ni <strong>inscribir nuevos equipos a eventos</strong>. Sí puedes seguir editando tu plantilla y cuerpo técnico.</p>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white border border-slate-200 rounded-2xl p-6 flex items-center gap-6">
         <div className="h-24 w-24 rounded-2xl flex items-center justify-center text-4xl font-display font-black overflow-hidden" style={{ background: team.color || "#1d4ed8", color: "#fff" }}>
@@ -523,6 +539,7 @@ export default function MyTeam() {
           lockedTeamId={teamId}
           title="Carnets del equipo"
           testIdPrefix="myteam-carnet"
+          readonly={true}
         />
       </div>
 

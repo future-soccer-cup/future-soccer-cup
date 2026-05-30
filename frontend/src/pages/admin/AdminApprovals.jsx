@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import api, { imgSrc } from "../../lib/api";
 import { toast, Toaster } from "sonner";
-import { Check, X, Clock, Shirt, Users, Building2 } from "lucide-react";
+import { Check, X, Clock, Shirt, Users, Building2, ChevronDown, ChevronRight, Mail } from "lucide-react";
 import { usePagedSearch, SearchBar, Pagination } from "../../components/PagedTable";
 import ExportCsvButton from "../../components/ExportCsvButton";
 
@@ -149,29 +149,12 @@ export default function AdminApprovals() {
 
       <div className="space-y-3">
         {tab === "clubs" && pageItems.map((c) => (
-          <div key={c.id} className="bg-white border border-slate-200 rounded-lg p-4 grid md:grid-cols-12 gap-3 items-center" data-testid={`approval-club-${c.id}`}>
-            <div className="md:col-span-1">
-              <div className="h-12 w-12 rounded flex items-center justify-center text-sm font-display font-black text-white" style={{ background: c.color || "#1d4ed8" }}>
-                {c.logo_url ? <img src={imgSrc(c.logo_url)} alt="" className="h-full w-full object-contain p-0.5" /> : c.name[0]}
-              </div>
-            </div>
-            <div className="md:col-span-4">
-              <div className="font-display text-lg font-black uppercase tracking-tight">{c.name}</div>
-              <div className="text-xs text-slate-500">{c.city || "—"} · {c.country || "—"}</div>
-            </div>
-            <div className="md:col-span-3 text-xs text-slate-600">
-              {c.phone && <div>📞 {c.phone}</div>}
-              {c.email && <div className="truncate">✉ {c.email}</div>}
-              {c.website && <div className="truncate">🌐 {c.website}</div>}
-            </div>
-            <div className="md:col-span-2">
-              <StatusBadge status={c.status || "pendiente"} />
-            </div>
-            <div className="md:col-span-2 flex gap-2 justify-end">
-              {c.status !== "aprobado" && <button onClick={() => setStatus(c.id, "aprobado")} className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded text-xs font-bold uppercase tracking-wide flex items-center gap-1" data-testid={`approve-club-${c.id}`}><Check size={14}/> Aprobar</button>}
-              {c.status !== "rechazado" && <button onClick={() => setStatus(c.id, "rechazado")} className="bg-slate-100 hover:bg-red-50 text-red-600 px-3 py-1.5 rounded text-xs font-bold uppercase tracking-wide flex items-center gap-1" data-testid={`reject-club-${c.id}`}><X size={14}/> Rechazar</button>}
-            </div>
-          </div>
+          <ApprovalClubCard
+            key={c.id}
+            club={c}
+            onApprove={() => setStatus(c.id, "aprobado")}
+            onReject={() => setStatus(c.id, "rechazado")}
+          />
         ))}
 
         {tab === "teams" && pageItems.map((t) => (
@@ -242,4 +225,72 @@ function StatusBadge({ status }) {
     rechazado: "bg-red-100 text-red-800",
   };
   return <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${map[status] || map.pendiente}`}>{status}</span>;
+}
+
+
+function ApprovalClubCard({ club: c, onApprove, onReject }) {
+  const [open, setOpen] = useState(false);
+  const [users, setUsers] = useState(null);
+  const loadUsers = async () => {
+    if (users !== null) return;
+    try {
+      const r = await api.get(`/admin/clubs/${c.id}/users`);
+      setUsers(r.data || []);
+    } catch {
+      setUsers([]);
+    }
+  };
+  const toggle = () => {
+    setOpen((o) => !o);
+    if (!open) loadUsers();
+  };
+  return (
+    <div className="bg-white border border-slate-200 rounded-lg overflow-hidden" data-testid={`approval-club-${c.id}`}>
+      <div className="p-4 grid md:grid-cols-12 gap-3 items-center">
+        <button onClick={toggle} className="md:col-span-1 flex items-center gap-1 text-slate-500" data-testid={`approval-club-toggle-${c.id}`}>
+          {open ? <ChevronDown size={14}/> : <ChevronRight size={14}/>}
+          <div className="h-10 w-10 rounded flex items-center justify-center text-sm font-display font-black text-white" style={{ background: c.color || "#0640c8" }}>
+            {c.logo_url ? <img src={imgSrc(c.logo_url)} alt="" className="h-full w-full object-contain p-0.5" /> : c.name[0]}
+          </div>
+        </button>
+        <div className="md:col-span-4">
+          <div className="font-display text-lg font-black uppercase tracking-tight">{c.name}</div>
+          <div className="text-xs text-slate-500">{c.city || "—"} · {c.country || "—"}</div>
+        </div>
+        <div className="md:col-span-3 text-xs text-slate-600">
+          {c.phone && <div>📞 {c.phone}</div>}
+          {c.email && <div className="truncate">✉ {c.email}</div>}
+          {c.website && <div className="truncate">🌐 {c.website}</div>}
+        </div>
+        <div className="md:col-span-2">
+          <StatusBadge status={c.status || "pendiente"} />
+        </div>
+        <div className="md:col-span-2 flex gap-2 justify-end">
+          {c.status !== "aprobado" && <button onClick={onApprove} className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded text-xs font-bold uppercase tracking-wide flex items-center gap-1" data-testid={`approve-club-${c.id}`}><Check size={14}/> Aprobar</button>}
+          {c.status !== "rechazado" && <button onClick={onReject} className="bg-slate-100 hover:bg-red-50 text-red-600 px-3 py-1.5 rounded text-xs font-bold uppercase tracking-wide flex items-center gap-1" data-testid={`reject-club-${c.id}`}><X size={14}/> Rechazar</button>}
+        </div>
+      </div>
+      {open && (
+        <div className="border-t border-slate-100 bg-slate-50/60 p-4">
+          <div className="text-xs font-bold uppercase tracking-wider text-fsc-azul mb-2 flex items-center gap-2"><Users size={12}/> Usuarios registrados al club</div>
+          {users === null && <div className="text-xs text-slate-400 italic">Cargando...</div>}
+          {users && users.length === 0 && <div className="text-xs text-slate-400 italic">Sin usuarios asociados a este club.</div>}
+          {users && users.length > 0 && (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2" data-testid={`approval-club-users-${c.id}`}>
+              {users.map((u) => (
+                <div key={u.id} className="bg-white border border-slate-200 rounded-md p-2 text-xs flex items-start gap-2">
+                  <div className="h-7 w-7 bg-fsc-azul/10 text-fsc-azul rounded-full flex items-center justify-center font-bold text-[11px]">{(u.name || "?").charAt(0).toUpperCase()}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold truncate">{u.name || u.email}</div>
+                    <div className="text-slate-500 flex items-center gap-1 truncate"><Mail size={10}/> {u.email}</div>
+                    <div className="text-[10px] uppercase tracking-wider text-fsc-azul font-bold">{u.role}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }

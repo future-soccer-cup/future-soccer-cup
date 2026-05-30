@@ -18,7 +18,7 @@ export default function AdminCarnets() {
   return (
     <div data-testid="admin-carnets">
       <Toaster position="top-right" />
-      <CarnetSheet players={players} teams={teams} title="Carnets" testIdPrefix="carnet" />
+      <CarnetSheet players={players} teams={teams} title="Carnets" testIdPrefix="carnet" showClubFilter={true} />
     </div>
   );
 }

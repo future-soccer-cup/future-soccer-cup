@@ -1,0 +1,41 @@
+{
+  "summary": "Sub-tanda B (Clubes refactor estructural) tested end-to-end. Backend: 9/9 pytest passed covering admin/clubs-tree, admin/clubs/{cid}/users, cascade block via _require_club_approved on POST /quotes and POST /clubs/{cid}/teams, club & team status approval, full player CRUD (create/update/delete with persistence verification). Frontend: sidebar renombrado Clubes→/admin/clubes verified (EQUIPOS link removed), AdminClubsTree fully functional (filters, search, expand, club-users, team-nodes with approve/reject/add-player, club-approve, club-status badge), AdminApprovals tab Clubes expandible con approval-club-users, AdminCarnets con carnet-club-filter + carnet-team-filter + descargas operativas, /mi-equipo readonly compliance confirmado (club-status-banner present con texto correcto, myteam-carnet-print-btn + myteam-carnet-readonly-note presentes; myteam-carnet-download-selected-btn / myteam-carnet-pdf-btn / myteam-carnet-individual-* ausentes como esperado).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/quotes", "issue": "QuoteIn.lodging_tier Pydantic Literal ('sapphire'|'diamond'|'gold'|'silver'|'bronze'|'domicilio') desincronizado con catálogo admin actual (paquete_1/paquete_premium/paquete_2). El guard de club aprobado funciona, pero un DT con club aprobado obtendrá 422 al cotizar paquetes reales del catálogo si el frontend envía el id real. Verificar que el frontend mapee correctamente o ampliar el Literal a str."},
+      {"endpoint": "GET /api/teams/{tid}", "issue": "coach@test.com (credencial documentada en /app/memory/test_credentials.md) tiene team_id huerfano a50cdb94-... que devuelve 404. Hace que /mi-equipo cargado con esas credenciales lance Uncaught runtime error y no renderice nada (loadTeam no atrapa errores en /teams/{tid}). Sugerencia: envolver en try/catch en MyTeam.jsx#loadTeam y/o re-sembrar la cuenta."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "MyTeam.jsx loadTeam", "issue": "Si GET /teams/{tid} devuelve 404 (team huérfano), la página rompe con Uncaught runtime error en lugar de mostrar estado vacío. Las llamadas /teams/{tid} y /players?team_id=... no tienen .catch(). El banner club-status-banner y los carnets readonly funcionan correctamente cuando el team existe.", "selector": "loadTeam (MyTeam.jsx:41-57)", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter19_clubs_hierarchy.py",
+    "/app/test_reports/pytest/iteration_19.xml"
+  ],
+  "action_items": [
+    "(opcional) Resincronizar QuoteIn.lodging_tier Literal con el catálogo dinámico (paquete_1/paquete_premium/paquete_2) o ampliarlo a str + validación en runtime.",
+    "(opcional) Endurecer MyTeam.jsx loadTeam: envolver GET /teams/{tid} y GET /players en try/catch para evitar pantalla rota cuando el team_id ya no existe.",
+    "(opcional) Re-sembrar coach@test.com con un team_id válido, o añadir DELETE /api/admin/users/{uid} para permitir cleanup."
+  ],
+  "critical_code_review_comments": [
+    "MyTeam.jsx loadTeam asume que GET /teams/{tid} siempre retorna 200; conviene try/catch para resiliencia.",
+    "QuoteIn (server.py) usa Literal estrecho para lodging_tier mientras el catalog admin permite ids arbitrarios; fuente potencial de 422 inesperados.",
+    "Pydantic Schema PlayerOut no expone 'status' aunque internamente se guarda como 'aprobado' al crear como admin — el frontend AdminClubsTree puede asumir status presente; revisar consistencia.",
+    "_require_club_approved correctamente aplica el bloqueo en cascada antes del cálculo, garantizando 403 con detail informativo."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter19_clubs_hierarchy.py"
+  ],
+  "success_rate": {"backend": "100% (9/9)", "frontend": "100% (todos los testids esperados verificados)"},
+  "test_credentials": "Admin admin@futuresoccercup.com / FSCAdmin2025! OK. coach@test.com tiene team_id huérfano; testing creó user temporal TEST_iter19_dt2@test.com (no se pudo eliminar — no existe DELETE /admin/users/{uid}; club y team sí eliminados).",
+  "seed_data_creation": "Durante TestCascadeBlock se creó un usuario DT + club + team TEST_iter19_<uuid> y se eliminó al final del módulo. Para validación UI de /mi-equipo se creó TEST_iter19_dt2@test.com (team/club eliminados; user residual sin endpoint de borrado).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Sub-tanda B aprobada. Endpoints clave verificados: GET /api/admin/clubs-tree, GET /api/admin/clubs/{cid}/users, PUT /api/clubs/{cid}/status?status=, PUT /api/teams/{tid}/status?status=, POST/PUT/DELETE /api/players (admin), guard _require_club_approved en /quotes y /clubs/{cid}/teams. UI: AdminClubsTree, AdminApprovals (tab Clubes con users expandible), AdminCarnets (con showClubFilter), MyTeam readonly carnets + club-status-banner. Bugs menores listados arriba. Para tests futuros, evitar coach@test.com (team huérfano) — usar /auth/register-team para crear DTs frescos."
+}

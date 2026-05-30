@@ -16,9 +16,10 @@ import { toast } from "sonner";
  *   - title: título mostrado arriba (default "Carnets")
  *   - testIdPrefix: prefijo para los data-testid (default "carnet")
  */
-export default function CarnetSheet({ players, teams, lockedTeamId = null, title = "Carnets", testIdPrefix = "carnet" }) {
+export default function CarnetSheet({ players, teams, lockedTeamId = null, title = "Carnets", testIdPrefix = "carnet", readonly = false, showClubFilter = false }) {
   const [q, setQ] = useState("");
   const [team, setTeam] = useState(lockedTeamId || "");
+  const [club, setClub] = useState("");
   const [tab, setTab] = useState("players"); // "players" | "staff"
   const [selected, setSelected] = useState(new Set());
   const [generating, setGenerating] = useState(false);
@@ -27,14 +28,28 @@ export default function CarnetSheet({ players, teams, lockedTeamId = null, title
 
   const effectiveTeamFilter = lockedTeamId || team;
   const tmap = useMemo(() => Object.fromEntries(teams.map((t) => [t.id, t])), [teams]);
+  const clubs = useMemo(() => {
+    const seen = new Set();
+    return teams
+      .map((t) => t.club_name || "")
+      .filter((c) => c && !seen.has(c) && seen.add(c))
+      .sort();
+  }, [teams]);
+
+  // Filtro de teams visibles para selector y staff: respeta club si está seteado.
+  const visibleTeams = useMemo(() => teams.filter((t) => !club || t.club_name === club), [teams, club]);
 
   const filteredPlayers = useMemo(() => players.filter((p) => {
     if (effectiveTeamFilter && p.team_id !== effectiveTeamFilter) return false;
+    if (club) {
+      const t = tmap[p.team_id];
+      if (!t || t.club_name !== club) return false;
+    }
     if (q && !p.name?.toLowerCase().includes(q.toLowerCase())) return false;
     return true;
-  }), [players, effectiveTeamFilter, q]);
+  }), [players, effectiveTeamFilter, club, tmap, q]);
 
-  const staffList = useMemo(() => teams
+  const staffList = useMemo(() => visibleTeams
     .filter((t) => !effectiveTeamFilter || t.id === effectiveTeamFilter)
     .flatMap((t) => (t.cuerpo_tecnico || []).map((s, idx) => ({
       ...s,
@@ -45,7 +60,7 @@ export default function CarnetSheet({ players, teams, lockedTeamId = null, title
       photo_url: s.photo_url || "",
     })))
     .filter((s) => !q || s.name?.toLowerCase().includes(q.toLowerCase()) || s.role?.toLowerCase().includes(q.toLowerCase())),
-  [teams, effectiveTeamFilter, q]);
+  [visibleTeams, effectiveTeamFilter, q]);
 
   const items = tab === "players" ? filteredPlayers : staffList;
   const getUid = (it) => it._staff_uid || it.id;
@@ -179,19 +194,26 @@ export default function CarnetSheet({ players, teams, lockedTeamId = null, title
           <button onClick={() => window.print()} className="px-4 py-2 border-2 border-slate-900 text-slate-900 hover:bg-slate-900 hover:text-white rounded-md text-xs font-bold uppercase tracking-wide flex items-center gap-2" data-testid={`${testIdPrefix}-print-btn`}>
             <FileText size={14}/> Vista impresión
           </button>
-          <button
-            onClick={downloadSelected}
-            disabled={generating || selectedCount === 0}
-            className="fsc-btn-primary px-4 py-2 rounded-md text-sm flex items-center gap-2 disabled:opacity-50"
-            data-testid={`${testIdPrefix}-download-selected-btn`}
-          >
-            {generating ? <Loader2 size={16} className="animate-spin"/> : <Download size={16}/>}
-            Descargar selección {selectedCount > 0 && `(${selectedCount})`}
-          </button>
-          <button onClick={downloadAll} disabled={generating || items.length === 0} className="fsc-btn-red px-4 py-2 rounded-md text-sm flex items-center gap-2 disabled:opacity-50" data-testid={`${testIdPrefix}-pdf-btn`}>
-            {generating ? <Loader2 size={16} className="animate-spin"/> : <Download size={16}/>}
-            {generating ? "Generando..." : "Descargar todos"}
-          </button>
+          {!readonly && (
+            <>
+              <button
+                onClick={downloadSelected}
+                disabled={generating || selectedCount === 0}
+                className="fsc-btn-primary px-4 py-2 rounded-md text-sm flex items-center gap-2 disabled:opacity-50"
+                data-testid={`${testIdPrefix}-download-selected-btn`}
+              >
+                {generating ? <Loader2 size={16} className="animate-spin"/> : <Download size={16}/>}
+                Descargar selección {selectedCount > 0 && `(${selectedCount})`}
+              </button>
+              <button onClick={downloadAll} disabled={generating || items.length === 0} className="fsc-btn-red px-4 py-2 rounded-md text-sm flex items-center gap-2 disabled:opacity-50" data-testid={`${testIdPrefix}-pdf-btn`}>
+                {generating ? <Loader2 size={16} className="animate-spin"/> : <Download size={16}/>}
+                {generating ? "Generando..." : "Descargar todos"}
+              </button>
+            </>
+          )}
+          {readonly && (
+            <span className="text-xs text-slate-500 italic px-3 py-2 bg-fsc-gris/40 rounded" data-testid={`${testIdPrefix}-readonly-note`}>Vista de solo lectura — solo el administrador puede descargar los carnets.</span>
+          )}
         </div>
       </div>
 
@@ -204,20 +226,26 @@ export default function CarnetSheet({ players, teams, lockedTeamId = null, title
         </button>
       </div>
 
-      <div className={`grid ${lockedTeamId ? "sm:grid-cols-2" : "sm:grid-cols-3"} gap-3 mb-4`}>
+      <div className={`grid ${lockedTeamId ? "sm:grid-cols-2" : showClubFilter ? "sm:grid-cols-4" : "sm:grid-cols-3"} gap-3 mb-4`}>
         <div className={`${lockedTeamId ? "sm:col-span-2" : "sm:col-span-2"} relative`}>
           <Search size={16} className="absolute left-3 top-3 text-slate-400" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={tab === "players" ? "Buscar jugador..." : "Buscar nombre o rol..."} className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-md" data-testid={`${testIdPrefix}-search`} />
         </div>
+        {showClubFilter && !lockedTeamId && (
+          <select value={club} onChange={(e) => { setClub(e.target.value); setTeam(""); clearSelection(); }} className="px-3 py-2 border border-slate-200 rounded-md" data-testid={`${testIdPrefix}-club-filter`}>
+            <option value="">Todos los clubes</option>
+            {clubs.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        )}
         {!lockedTeamId && (
           <select value={team} onChange={(e) => { setTeam(e.target.value); clearSelection(); }} className="px-3 py-2 border border-slate-200 rounded-md" data-testid={`${testIdPrefix}-team-filter`}>
             <option value="">Todos los equipos</option>
-            {teams.map((t) => <option key={t.id} value={t.id}>{t.name} — {t.category}</option>)}
+            {visibleTeams.map((t) => <option key={t.id} value={t.id}>{t.club_name ? `${t.club_name} · ` : ""}{t.name} — {t.category}</option>)}
           </select>
         )}
       </div>
 
-      {items.length > 0 && (
+      {!readonly && items.length > 0 && (
         <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-md px-4 py-2 mb-4">
           <button
             onClick={toggleAll}
@@ -262,8 +290,9 @@ export default function CarnetSheet({ players, teams, lockedTeamId = null, title
                 selected={selected.has(uid)}
                 onToggle={() => toggleOne(uid)}
                 busy={individualBusy === uid}
-                onDownload={() => downloadIndividual(uid, p.name)}
+                onDownload={readonly ? null : () => downloadIndividual(uid, p.name)}
                 testIdPrefix={testIdPrefix}
+                readonly={readonly}
               />
             </div>
           );
@@ -279,8 +308,9 @@ export default function CarnetSheet({ players, teams, lockedTeamId = null, title
                 selected={selected.has(uid)}
                 onToggle={() => toggleOne(uid)}
                 busy={individualBusy === uid}
-                onDownload={() => downloadIndividual(uid, `${s.name}-${s.role}`)}
+                onDownload={readonly ? null : () => downloadIndividual(uid, `${s.name}-${s.role}`)}
                 testIdPrefix={testIdPrefix}
+                readonly={readonly}
               />
             </div>
           );
@@ -290,7 +320,7 @@ export default function CarnetSheet({ players, teams, lockedTeamId = null, title
   );
 }
 
-function CarnetItem({ player, team, staffRole, selected, onToggle, busy, onDownload, testIdPrefix }) {
+function CarnetItem({ player, team, staffRole, selected, onToggle, busy, onDownload, testIdPrefix, readonly = false }) {
   const qrValue = staffRole
     ? `${window.location.origin}/staff/${team?.id}/${player.document || player.name}`
     : `${window.location.origin}/jugadores/${player.id}`;
@@ -301,28 +331,32 @@ function CarnetItem({ player, team, staffRole, selected, onToggle, busy, onDownl
   const uid = player._staff_uid || player.id;
   return (
     <div className={`relative group rounded-lg ring-2 transition-all ${selected ? "ring-blue-700 shadow-lg" : "ring-transparent"}`}>
-      {/* Checkbox selector — siempre visible */}
-      <button
-        type="button"
-        onClick={onToggle}
-        className={`absolute top-2 left-2 z-10 h-7 w-7 rounded-md flex items-center justify-center transition-colors ${selected ? "bg-blue-700 text-white" : "bg-white/90 text-slate-700 border border-slate-300 hover:bg-white"}`}
-        data-testid={`${testIdPrefix}-select-${uid}`}
-        aria-label={selected ? "Deseleccionar" : "Seleccionar"}
-      >
-        {selected ? <CheckSquare size={16}/> : <Square size={16}/>}
-      </button>
+      {/* Checkbox selector — solo si NO readonly */}
+      {!readonly && (
+        <button
+          type="button"
+          onClick={onToggle}
+          className={`absolute top-2 left-2 z-10 h-7 w-7 rounded-md flex items-center justify-center transition-colors ${selected ? "bg-blue-700 text-white" : "bg-white/90 text-slate-700 border border-slate-300 hover:bg-white"}`}
+          data-testid={`${testIdPrefix}-select-${uid}`}
+          aria-label={selected ? "Deseleccionar" : "Seleccionar"}
+        >
+          {selected ? <CheckSquare size={16}/> : <Square size={16}/>}
+        </button>
+      )}
       <div data-carnet-card>
         <Carnet player={merged} team={tmerged} qrValue={qrValue} staffRole={staffRole} />
       </div>
-      <button
-        onClick={onDownload}
-        disabled={busy}
-        className="absolute top-2 right-2 bg-white/90 hover:bg-white text-slate-900 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 disabled:opacity-100"
-        data-testid={`${testIdPrefix}-individual-${uid}`}
-        title="Descargar este carnet individualmente"
-      >
-        {busy ? <Loader2 size={10} className="animate-spin"/> : <Download size={10}/>} PDF
-      </button>
+      {!readonly && onDownload && (
+        <button
+          onClick={onDownload}
+          disabled={busy}
+          className="absolute top-2 right-2 bg-white/90 hover:bg-white text-slate-900 px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 disabled:opacity-100"
+          data-testid={`${testIdPrefix}-individual-${uid}`}
+          title="Descargar este carnet individualmente"
+        >
+          {busy ? <Loader2 size={10} className="animate-spin"/> : <Download size={10}/>} PDF
+        </button>
+      )}
     </div>
   );
 }

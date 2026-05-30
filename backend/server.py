@@ -2283,6 +2283,12 @@ async def add_team_to_club(cid: str, payload: TeamAddIn, user: dict = Depends(ge
         raise HTTPException(status_code=404, detail="Club no encontrado")
     if user.get("role") != "admin" and club.get("manager_user_id") != user["id"]:
         raise HTTPException(status_code=403, detail="No autorizado")
+    # Bloqueo: si el club no está aprobado, el DT no puede inscribir más equipos.
+    if user.get("role") != "admin" and (club.get("status") or "pendiente") != "aprobado":
+        raise HTTPException(
+            status_code=403,
+            detail=f"Tu club '{club.get('name','')}' está en estado '{club.get('status','pendiente')}'. Espera la aprobación del administrador para inscribir equipos a eventos.",
+        )
     event = EVENT_TYPES.get(payload.event_type)
     if payload.birth_year not in event["birth_years"]:
         raise HTTPException(status_code=400, detail=f"El año {payload.birth_year} no aplica al {event['name']}")
@@ -2328,6 +2334,87 @@ async def add_team_to_club(cid: str, payload: TeamAddIn, user: dict = Depends(ge
 async def list_club_teams(cid: str):
     items = await db.teams.find({"club_id": cid}, {"_id": 0}).sort("birth_year", 1).to_list(500)
     return items
+
+
+async def _require_club_approved(user: dict, *, action: str = "esta acción"):
+    """Raise 403 si el usuario es DT (rol=team) y su club aún no fue aprobado.
+    Admins y otros roles pasan sin restricción."""
+    if user.get("role") != "team":
+        return
+    team_id = user.get("team_id")
+    if not team_id:
+        return
+    team = await db.teams.find_one({"id": team_id}, {"_id": 0, "club_id": 1})
+    if not team:
+        return
+    cid = team.get("club_id")
+    if not cid:
+        return
+    club = await db.clubs.find_one({"id": cid}, {"_id": 0, "status": 1, "name": 1})
+    if not club:
+        return
+    status = club.get("status") or "pendiente"
+    if status != "aprobado":
+        raise HTTPException(
+            status_code=403,
+            detail=f"Tu club '{club.get('name','')}' aún está en estado '{status}'. No puedes realizar {action} hasta que el administrador lo apruebe.",
+        )
+
+
+@api.get("/admin/clubs/{cid}/users")
+async def list_club_users(cid: str, _: dict = Depends(require_admin)):
+    """Lista los usuarios registrados asociados a un club (manager + cualquier user con teams del club)."""
+    # 1) Manager directo del club
+    club = await db.clubs.find_one({"id": cid}, {"_id": 0})
+    if not club:
+        raise HTTPException(status_code=404, detail="Club no encontrado")
+    manager_id = club.get("manager_user_id")
+    # 2) Usuarios con team_id apuntando a equipos del club
+    team_ids = [t["id"] async for t in db.teams.find({"club_id": cid}, {"_id": 0, "id": 1})]
+    user_ids = set()
+    if manager_id:
+        user_ids.add(manager_id)
+    if team_ids:
+        async for u in db.users.find({"team_id": {"$in": team_ids}}, {"_id": 0, "id": 1}):
+            user_ids.add(u["id"])
+    if not user_ids:
+        return []
+    users = await db.users.find(
+        {"id": {"$in": list(user_ids)}},
+        {"_id": 0, "id": 1, "name": 1, "email": 1, "role": 1, "team_id": 1, "created_at": 1}
+    ).to_list(200)
+    return users
+
+
+@api.get("/admin/clubs-tree")
+async def admin_clubs_tree(_: dict = Depends(require_admin)):
+    """Vista jerárquica: cada club con sus equipos agrupados por (event_type, category).
+    Incluye jugadores y cuerpo técnico de cada equipo."""
+    clubs = await db.clubs.find({}, {"_id": 0}).sort("name", 1).to_list(500)
+    if not clubs:
+        return []
+    club_ids = [c["id"] for c in clubs]
+    teams = await db.teams.find({"club_id": {"$in": club_ids}}, {"_id": 0}).to_list(2000)
+    team_ids = [t["id"] for t in teams]
+    players = []
+    if team_ids:
+        players = await db.players.find({"team_id": {"$in": team_ids}}, {"_id": 0}).to_list(5000)
+    # Group players by team_id
+    players_by_team = {}
+    for p in players:
+        players_by_team.setdefault(p["team_id"], []).append(p)
+    # Group teams by club_id
+    teams_by_club = {}
+    for t in teams:
+        teams_by_club.setdefault(t["club_id"], []).append(t)
+    result = []
+    for c in clubs:
+        c_teams = teams_by_club.get(c["id"], [])
+        for t in c_teams:
+            t["players"] = players_by_team.get(t["id"], [])
+        c["teams"] = c_teams
+        result.append(c)
+    return result
 
 # -------------------- Quotes (Cotizaciones) --------------------
 def _calculate_quote(payload: QuoteIn, catalog: dict) -> dict:
@@ -2490,6 +2577,7 @@ async def calculate_quote(payload: QuoteIn):
 async def create_quote(payload: QuoteIn, user: dict = Depends(get_current_user)):
     if user.get("role") not in ("team", "admin"):
         raise HTTPException(status_code=403, detail="Solo los directores técnicos pueden enviar cotizaciones")
+    await _require_club_approved(user, action="cotizaciones")
     cat = await _load_catalog()
     breakdown = _calculate_quote(payload, cat)
     doc = {
