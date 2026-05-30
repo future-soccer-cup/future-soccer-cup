@@ -780,3 +780,45 @@ Refactor de `const load = () => ...; useEffect(() => load(), [])` a `const load 
 - 🔴 P0: Carnets admin agrupados Club > Evento > Equipo; DT/usuarios ven sin descargar.
 - 🔴 P0: Aprobaciones muestra usuarios registrados por club.
 
+
+## Iteration 27 (2026-05-30) — Sub-tanda B: Refactor Clubes + Aprobación en cascada
+
+### Backend (`server.py`)
+- **Helper `_require_club_approved(user, *, action)`**: lanza 403 si user.role=='team' y su club no está `aprobado`. Aplicado en:
+  - `POST /api/quotes` (acción "cotizaciones")
+  - `POST /api/clubs/{cid}/teams` (creación de equipos por DT)
+- **`GET /api/admin/clubs-tree`** (admin): devuelve cada club con `teams[]` enriquecidos con `players[]` (sin _id), agrupables en frontend por (event_type, category).
+- **`GET /api/admin/clubs/{cid}/users`** (admin): lista usuarios asociados al club (manager + cualquier user con `team_id` en equipos del club).
+
+### Frontend
+- **`AdminLayout.jsx`**: sidebar item "Equipos" renombrado a "Clubes" apuntando a `/admin/clubes`.
+- **`AdminClubsTree.jsx` (nuevo)**: vista jerárquica con `ClubNode` → `TeamNode` → jugadores/staff. Filtros por status (Todos/Pendiente/Aprobado/Rechazado) + search. Acciones admin: aprobar/rechazar club (`PUT /clubs/{id}/status`), aprobar/rechazar equipo, agregar/editar/eliminar jugadores con `PlayerEditModal`.
+- **`AdminApprovals.jsx`**: tab "Clubes" usa nuevo `ApprovalClubCard` expandible que muestra `[data-testid=approval-club-users-{id}]` con la lista de usuarios registrados al club.
+- **`CarnetSheet.jsx`**: nuevas props `readonly` (oculta toggle-all, descargas, checkboxes y botón individual) y `showClubFilter` (selector adicional [`carnet-club-filter`] que filtra teams visibles por `club_name`).
+- **`AdminCarnets.jsx`**: pasa `showClubFilter={true}`.
+- **`MyTeam.jsx`**:
+  - `loadTeam` resiliente a 404 (team huérfano) — no rompe la página.
+  - Carga `club` via `GET /clubs/{cid}` y muestra banner [`club-status-banner`] cuando el club no está aprobado, advirtiendo el bloqueo de cotizaciones e inscripciones.
+  - `CarnetSheet readonly={true}` — DTs ven sus carnets pero no descargan.
+- **`App.js`**: route `clubes` → `AdminClubsTree`.
+
+### Testids agregados
+- `admin-clubs-tree`, `clubs-refresh`, `clubs-search`, `clubs-filter-{status|all}`, `clubs-count`, `club-node-{id}`, `club-toggle-{id}`, `club-status-{id}`, `club-approve-{id}`, `club-reject-{id}`, `club-users-{id}`.
+- `team-node-{id}`, `team-toggle-{id}`, `team-approve-{id}`, `team-reject-{id}`, `team-add-player-{id}`, `player-row-{id}`, `player-edit-{id}`, `player-delete-{id}`.
+- `player-edit-modal`, `player-name`, `player-save`.
+- `approval-club-toggle-{id}`, `approval-club-users-{id}`.
+- `carnet-club-filter`, `myteam-carnet-readonly-note`, `club-status-banner`.
+
+### Verificación
+- `/app/test_reports/iteration_19.json` — **Backend pytest 9/9 PASS · Frontend 100%**.
+- Issue medium "MyTeam rompe con team huérfano" **resuelto** (try/catch + estado vacío).
+- Cascada validada: DT con club pendiente recibe 403 informativo; al aprobar, mismo POST → 200.
+
+## Backlog actualizado (P0/P1/P2)
+- 🟢 **P2** — Resincronizar `QuoteIn.lodging_tier` (Literal estrecho) con el catálogo dinámico actual o ampliarlo a `str` (issue minor iter19).
+- 🟢 **P2** — Agregar `DELETE /api/admin/users/{uid}` para limpieza idempotente de test users.
+- 🟡 **P1** — Notificaciones email (Resend/SendGrid) en cambios de estado de club/team/quote/payment.
+- 🟡 **P1** — Slider del Hero editable.
+- 🟢 **P2** — `CurrencyInput` en `/cotizar` y formularios de pago manual del DT.
+- 🟢 **P2** — `GET /api/tournaments/{id}`, Stripe webhook signature, refactor `server.py` (>3937 líneas) → `/app/backend/routes/`.
+

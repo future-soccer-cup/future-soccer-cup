@@ -40,16 +40,26 @@ export default function MyTeam() {
 
   const loadTeam = async () => {
     if (!teamId) return;
-    const t = await api.get(`/teams/${teamId}`);
-    setTeam(t.data);
-    setTeamForm(t.data);
-    const p = await api.get(`/players?team_id=${teamId}`);
-    setPlayers(p.data);
+    let tdata = null;
+    try {
+      const t = await api.get(`/teams/${teamId}`);
+      tdata = t.data;
+      setTeam(tdata);
+      setTeamForm(tdata);
+    } catch (err) {
+      // Team huérfano (404) o cualquier otro error: mantenemos team=null y mostramos estado vacío.
+      setTeam(null);
+      return;
+    }
+    try {
+      const p = await api.get(`/players?team_id=${teamId}`);
+      setPlayers(p.data);
+    } catch { /* silent */ }
     // Load other teams in same club + the club itself (status)
-    if (t.data.club_id) {
+    if (tdata && tdata.club_id) {
       const [ct, cl] = await Promise.all([
-        api.get(`/clubs/${t.data.club_id}/teams`).catch(() => ({ data: [] })),
-        api.get(`/clubs/${t.data.club_id}`).catch(() => ({ data: null })),
+        api.get(`/clubs/${tdata.club_id}/teams`).catch(() => ({ data: [] })),
+        api.get(`/clubs/${tdata.club_id}`).catch(() => ({ data: null })),
       ]);
       setClubTeams(ct.data);
       setClub(cl.data);
