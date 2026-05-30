@@ -748,3 +748,35 @@ Refactor de `const load = () => ...; useEffect(() => load(), [])` a `const load 
 - 🟢 **P2** — Aplicar paleta v2 + Exo 2 a páginas legacy con clases `fsc-dorado*` directas (Home/Eventos secundarios) para coherencia visual total.
 - 🟢 **P2** — `GET /api/tournaments/{id}`, Stripe webhook signature, refactor `server.py` (>3899 líneas) → `/app/backend/routes/`.
 - 🟢 **P3** — Migración de `meal` (matriz por tier) → unificar todo en `meal_addon` (hoy coexisten).
+
+## Iteration 26 (2026-05-30) — Sub-tanda A: Limpieza visual + Club en cotizaciones
+
+### Backend
+- **`GET /api/quotes` enriquece con `club_name`**: lookup `user.team_id` → `team.club_name` (fallback a `team.name`). `setdefault('club_name','')` defensivo.
+
+### Frontend
+- **`fsc-dorado*` eliminado de todo el JSX**: find/replace global a `fsc-azul*`. Solo quedan 3 aliases CSS en `index.css` por compat retro (apuntan al azul). El literal `#C9A227` en `TeamRegister.jsx` reemplazado por `#0640c8`.
+- **Home redesign**:
+  - Hero ahora `bg-gradient-to-br from-white via-fsc-gris/40 to-white` con escudo FSC en marca de agua a la derecha (`opacity-[0.06]`). Título oscuro (`text-fsc-negro`) y subtítulo cursive en rojo.
+  - Galería con fondo claro (`bg-fsc-gris/30`) + marca de agua central del escudo.
+  - `EventCard`: chips con TODAS las categorías inscritas al evento (no solo la primera), con fallback al `category` legacy.
+- **AdminInventory**:
+  - LodgingTab: input "Nombre" eliminado; el título de cada card es la clasificación en mayúsculas (`SAPPHIRE`/`ESMERALD`/etc) renderizada como `<div>` no editable.
+  - MealAddonTab: columna "Nombre" eliminada. La tabla solo expone Comida + Clasificación + Costo + Acciones.
+  - CreateModal: input "Nombre" solo para `transport` y `tour`. Para `lodging` el nombre se deriva de `classification`; para `meal_addon` se construye como `"DESAYUNO · SAPPHIRE"`.
+  - Modal titles ahora en español: "Nuevo paquete de hospedaje", "Nueva alimentación adicional", etc.
+- **AdminEventTypes**: campo `registration_fee_per_team` eliminado de la tabla, modal de creación, y `save()` (el backend lo conserva auto-seeded; deja de exponerse en UI).
+- **AdminQuotes**: nueva columna **Club** después de "Cliente" con `data-testid=quote-club-{id}`; búsqueda y export CSV incluyen `club_name`.
+
+### Verificación
+- `/app/test_reports/iteration_18.json` — **Backend pytest 6/6 PASS · Frontend 5/5 PASS**.
+- Smoke screenshots confirman: hero claro con marca de agua, paquetes con título=clasificación, tipos-evento sin columna fee, alimentación sin Nombre.
+
+### Pendiente — Sub-tanda B (Refactor Clubes)
+- 🔴 P0: Sidebar admin renombra "Equipos" → "Clubes".
+- 🔴 P0: Vista jerárquica `/admin/clubes`: Club → Eventos inscritos → Categorías → Equipos → cuerpo técnico + jugadores.
+- 🔴 P0: Bloqueo en cascada: club pendiente → users no pueden cotizar ni inscribir equipos.
+- 🔴 P0: Admin aprueba/rechaza inscripción de equipos a eventos.
+- 🔴 P0: Carnets admin agrupados Club > Evento > Equipo; DT/usuarios ven sin descargar.
+- 🔴 P0: Aprobaciones muestra usuarios registrados por club.
+

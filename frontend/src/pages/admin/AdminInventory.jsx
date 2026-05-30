@@ -355,7 +355,12 @@ function CreateModal({ creating, setCreating, onSubmit }) {
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4" onClick={() => setCreating(null)} data-testid="inv-create-modal">
       <form onClick={(e) => e.stopPropagation()} onSubmit={onSubmit} className="bg-white rounded-2xl max-w-md w-full p-6 space-y-3">
-        <h2 className="font-display text-2xl font-black uppercase tracking-tight">Nuevo {creating.type.replace("_", " ")}</h2>
+        <h2 className="font-display text-2xl font-black uppercase tracking-tight">
+          {creating.type === "lodging" && "Nuevo paquete de hospedaje"}
+          {creating.type === "meal_addon" && "Nueva alimentación adicional"}
+          {creating.type === "transport" && "Nuevo transporte"}
+          {creating.type === "tour" && "Nuevo tour"}
+        </h2>
         {!isLodging && !isMealAddon && (
           <label className="block">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Nombre</span>

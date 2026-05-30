@@ -2550,6 +2550,9 @@ async def get_quote_detail(qid: str, _: dict = Depends(get_current_user)):
 @api.get("/quotes")
 async def all_quotes(_: dict = Depends(require_admin)):
     items = await db.quotes.find({}, {"_id": 0}).sort("created_at", -1).to_list(2000)
+    # Default defensivo: garantizamos que el campo siempre existe.
+    for q in items:
+        q.setdefault("club_name", "")
     # Enriquecer cada cotización con el nombre del club asociado al user (rol team) o user.name.
     user_ids = list({q.get("user_id") for q in items if q.get("user_id")})
     if user_ids:
