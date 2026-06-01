@@ -1,0 +1,48 @@
+{
+  "summary": "Iter24 — Validación E2E del refactor /cotizar a múltiples eventos y múltiples paquetes de hospedaje. 6/6 tests backend PASARON; flujo UI completo verificado: selección multi-eventos, agregar/quitar paquetes, sub-editor de personas adicionales por paquete, totales se actualizan en vivo, gate Cuerpo Técnico funciona. Navbar 'Mi Club' presente para ambos roles (Directivo y CT). Compatibilidad legacy intacta.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Coach login → Mi Equipo redirect", "issue": "GET /api/teams/{team_id} retorna 404 para el coach (a50cdb94-2ba5-441b-9ec3-5dd5b5efb2da) — el team_id en /app/memory/test_credentials.md está obsoleto o el team fue eliminado. Cotizar igual funciona (no depende). El navbar 'Mi Club' apunta a /mi-equipo que muestra 'TU EQUIPO NO ESTÁ DISPONIBLE'. Afecta UX pero no la feature /cotizar bajo prueba.", "affected_selectors": ["/api/teams/{id}"]},
+      {"flow": "Webpack dev overlay", "issue": "El 404 anterior dispara un overlay 'Uncaught runtime errors' que cubre la pantalla en dev. No es bloqueante (se cierra con X), pero es ruido visible al usuario.", "affected_selectors": ["iframe#webpack-dev-server-client-overlay"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter24_multi_events_lodgings.py",
+    "/app/test_reports/pytest/iteration_24.xml"
+  ],
+  "test_coverage_verified": {
+    "POST /api/quotes/calculate multi-events": "PASS — registration_fee suma todas las fees de todas las categorías; events_breakdown[] con 2 items",
+    "POST /api/quotes/calculate multi-lodgings": "PASS — lodging_subtotal = suma de paquetes con extras propios; lodgings_breakdown[] tiene subtotal y extra_pax_breakdown por paquete",
+    "POST /api/quotes/calculate combinado events+lodgings": "PASS — total = lodging + meals + transport + tours + registration",
+    "POST /api/quotes/calculate LEGACY lodging_tier+pax": "PASS — sigue funcionando, lodgings_breakdown[0].tier_id == tier solicitado",
+    "POST /api/quotes/calculate LEGACY categories[]": "PASS — registration_fee suma fees del array categories",
+    "POST /api/quotes (coach) + GET + PUT con arrays": "PASS — crea con events/lodgings, GET retorna events_breakdown/lodgings_breakdown, PUT con segundo lodging reset status a 'pendiente'",
+    "Frontend /cotizar (Directivo) UI multi": "PASS — block-events, block-lodgings, add-lodging, lodging-block-{idx}, lodging-{idx}-pax/nights, extra-pax-editor-{idx}, extra-pax-add-{idx}, lodging-remove-{idx}, event-block-{idx} con event-{idx}-cat-{i} TODOS presentes",
+    "Frontend /cotizar totales en vivo": "PASS — 1 paquete SAPPHIRE 2pax 5n = $3.000.000 → +1 extra pax = $4.500.000 (con inscripción $1.5M) → +2do paquete GOLD = $5.650.000",
+    "Frontend resumen-en-vivo-label color blanco": "PASS — class incluye 'text-white'",
+    "Frontend /cotizar (Cuerpo Técnico) gate": "PASS — cotizar-gate-cuerpo-tecnico se renderiza; cotizar-page NO presente",
+    "Navbar Mi Club para role=team": "PASS — header contiene 'MI CLUB' (CSS uppercase) para tanto Directivo como Cuerpo Técnico; 'MI EQUIPO' NO aparece"
+  },
+  "action_items": [
+    "(Menor / fuera de scope) Actualizar /app/memory/test_credentials.md con un team_id válido para coach@test.com, o re-seed del team que apunta a coach, para que /mi-equipo cargue. No afecta a la feature /cotizar pero genera 404s en consola y un overlay de webpack en dev."
+  ],
+  "critical_code_review_comments": [
+    "server.py tiene 4171 líneas — sobrepasa ampliamente el umbral de 700 líneas; considerar split en routers (quotes_router.py, catalog_router.py, teams_router.py, etc.) en un futuro sprint.",
+    "El cálculo de extras (rate * extra.pax * (nights/5)) se hace en _calc_lodging_block; cobertura de noches != 5 para extras solo se validó indirectamente. Recomendado agregar test específico para extras con noches > 5 en próximo iter."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter24_multi_events_lodgings.py (nuevo, 6 tests)"
+  ],
+  "success_rate": {"backend": "100% (6/6)", "frontend": "100% (todos los testids y flujos E2E verificados)"},
+  "test_credentials": "admin@futuresoccercup.com / FSCAdmin2025! ; coach@test.com / Coach2025! ; ct_smoke2_1780348474@test.com / abc123",
+  "seed_data_creation": "Ninguna — se reutilizaron tournaments y lodging_tiers existentes en MongoDB.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "El refactor multi-events/multi-lodgings está completo y validado. El 404 en /api/teams/{id} para coach@test.com es independiente del feature. Si se vuelve a probar /mi-equipo, considerar re-seed o actualizar test_credentials.md."
+}

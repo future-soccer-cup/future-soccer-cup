@@ -618,23 +618,27 @@ class QuoteTourEntry(BaseModel):
 
 
 class QuoteIn(BaseModel):
-    event_type: Literal["festival", "premier_par", "premier_impar"]
+    # === LEGACY scalars (mantenidos para compatibilidad con cotizaciones antiguas) ===
+    event_type: Optional[str] = "festival"  # legacy single event_type
     birth_year: Optional[int] = None
     category: Optional[str] = ""  # legacy
-    # Nuevo flujo dinámico: el frontend puede elegir un Tournament del Admin (cualquier nombre)
-    # y marcar múltiples categorías inscritas con su fee. Si vienen, OVERRIDE el cálculo legacy.
     tournament_id: Optional[str] = None
     tournament_name: Optional[str] = None
-    categories: Optional[List[dict]] = []  # [{name, fee}]
-    # Hospedaje (paquetes — sin mostrar nombres de hoteles)
-    lodging_tier: str = Field(min_length=1)  # id de paquete (admin-editable). Antes era Literal estrecho.
+    categories: Optional[List[dict]] = []  # legacy single-event categories
+    lodging_tier: Optional[str] = ""  # legacy single tier
     room_type: Optional[str] = ""  # legacy, no longer used for pricing
-    pax: int = Field(ge=1)
-    nights: int = Field(default=5, ge=1)  # default 5 según PDF
+    pax: Optional[int] = 0  # legacy single pax
+    nights: int = Field(default=5, ge=1)
     days: int = Field(default=6, ge=1)
-    # PAX adicionales con sus propias noches (acompañantes que se quedan más / menos)
-    # Cada entry: {label, pax, nights} → suma cargos hospedaje base_5 + extras a la cotización.
-    extra_pax_entries: Optional[List[dict]] = []
+    extra_pax_entries: Optional[List[dict]] = []  # legacy global extra pax
+
+    # === NUEVO modelo multi-eventos / multi-paquetes ===
+    # events: lista de eventos a cotizar. Cada uno con sus categorías inscritas.
+    # Cada entry: {tournament_id, tournament_name, event_type, categories: [{name, fee}]}
+    events: Optional[List[dict]] = []
+    # lodgings: lista de paquetes a cotizar. Cada uno con su pax/nights y bloques de personas adicionales.
+    # Cada entry: {tier_id, pax, nights, extra_pax_entries: [{label, pax, nights, date_from, date_to}]}
+    lodgings: Optional[List[dict]] = []
     # Alimentación incluida en el paquete: 5 desayunos + 4 almuerzos + 5 cenas.
     # Estos toggles agregan comidas **adicionales** (llegadas tempranas, días extra)
     # multiplicadas por `meal_days` cuando no se usa meal_entries.
@@ -2458,33 +2462,24 @@ async def admin_clubs_tree(_: dict = Depends(require_admin)):
     return result
 
 # -------------------- Quotes (Cotizaciones) --------------------
-def _calculate_quote(payload: QuoteIn, catalog: dict) -> dict:
-    event = EVENT_TYPES.get(payload.event_type)
-    tier = (catalog["lodging"] or {}).get(payload.lodging_tier)
-    if not event or not tier:
-        raise HTTPException(status_code=400, detail="Evento o paquete de hospedaje inválido")
-
-    nights = payload.nights or EVENT_NIGHTS
-    days = payload.days or EVENT_DAYS
-    meal_days = payload.meal_days or days
-
-    # Hospedaje: base 5 noches + costo por noche adicional (todo POR PERSONA)
-    base_5 = float(tier.get("base_5_nights", 0) or 0)
-    add_night = float(tier.get("additional_night", 0) or 0)
-    extra_nights = max(0, nights - 5)
+def _calc_lodging_block(tier: dict, pax: int, nights: int, extras: list) -> dict:
+    """Calcula el bloque de hospedaje para un paquete: principal + extras (personas adicionales)."""
+    base_5 = float((tier or {}).get("base_5_nights", 0) or 0)
+    add_night = float((tier or {}).get("additional_night", 0) or 0)
+    extra_nights = max(0, int(nights or 0) - 5)
     rate_per_person = base_5 + add_night * extra_nights
-    # Promo "21 sale gratis": por cada bloque de 20 personas alojadas en la reserva principal,
-    # la persona #21 NO paga hospedaje. Solo aplica si está habilitada en el paquete y a la reserva
-    # principal (no a los extra_pax que pueden tener noches distintas).
-    free_21_enabled = bool(tier.get("free_21st_enabled"))
-    free_units = (payload.pax // 20) if free_21_enabled else 0
-    paying_pax = max(0, payload.pax - free_units)
-    lodging_total = rate_per_person * paying_pax
 
-    # PAX adicionales con noches propias (acompañantes): cada uno paga base_5 + add_night*(nights-5)
-    extra_pax_total = 0.0
-    extra_pax_breakdown = []
-    for ep in (payload.extra_pax_entries or []):
+    # Promo 21 gratis (solo a pax principal).
+    free_21_enabled = bool((tier or {}).get("free_21st_enabled"))
+    pax = max(0, int(pax or 0))
+    free_units = (pax // 20) if free_21_enabled else 0
+    paying_pax = max(0, pax - free_units)
+    main_subtotal = rate_per_person * paying_pax
+
+    # Personas adicionales (acompañantes) DENTRO de este paquete.
+    extras_total = 0.0
+    extras_breakdown = []
+    for ep in (extras or []):
         try:
             ep_pax = int(ep.get("pax") or 0)
             ep_nights = int(ep.get("nights") or 0)
@@ -2495,24 +2490,87 @@ def _calculate_quote(payload: QuoteIn, catalog: dict) -> dict:
         ep_extra = max(0, ep_nights - 5)
         ep_rate = base_5 + add_night * ep_extra
         ep_sub = ep_rate * ep_pax
-        extra_pax_total += ep_sub
-        extra_pax_breakdown.append({
+        extras_total += ep_sub
+        extras_breakdown.append({
             "label": str(ep.get("label", "")),
             "pax": ep_pax,
             "nights": ep_nights,
+            "date_from": str(ep.get("date_from", "") or ep.get("start_date", "")),
+            "date_to": str(ep.get("date_to", "") or ep.get("end_date", "")),
             "rate_per_person": ep_rate,
             "subtotal": ep_sub,
         })
-    lodging_total += extra_pax_total
 
-    # Alimentación (por persona × día). 0 en MEAL_PLANS significa N/A para ese paquete.
+    return {
+        "tier_id": (tier or {}).get("id"),
+        "tier_name": (tier or {}).get("name"),
+        "pax": pax,
+        "nights": int(nights or 0),
+        "extra_nights": extra_nights,
+        "rate_per_person_5nights": base_5,
+        "rate_per_person_additional_night": add_night,
+        "rate_per_person_total": rate_per_person,
+        "free_21_enabled": free_21_enabled,
+        "free_lodging_units": free_units,
+        "paying_pax_lodging": paying_pax,
+        "main_subtotal": main_subtotal,
+        "extra_pax_subtotal": extras_total,
+        "extra_pax_breakdown": extras_breakdown,
+        "subtotal": main_subtotal + extras_total,
+    }
+
+
+def _calculate_quote(payload: QuoteIn, catalog: dict) -> dict:
+    lodging_cat = catalog["lodging"] or {}
     meal_plans = catalog["meals"] or {}
-    breakfast_per_day = float((meal_plans.get("breakfast") or {}).get("per_day_by_tier", {}).get(payload.lodging_tier, 0) or 0)
-    lunch_per_day = float((meal_plans.get("lunch") or {}).get("per_day_by_tier", {}).get(payload.lodging_tier, 0) or 0)
-    dinner_per_day = float((meal_plans.get("dinner") or {}).get("per_day_by_tier", {}).get(payload.lodging_tier, 0) or 0)
+
+    nights = payload.nights or EVENT_NIGHTS
+    days = payload.days or EVENT_DAYS
+    meal_days = payload.meal_days or days
+
+    # ============ HOSPEDAJE — soporta múltiples paquetes (nuevo) o legacy single ============
+    lodgings_breakdown = []
+    if payload.lodgings:
+        for ld in payload.lodgings:
+            tier_id = (ld or {}).get("tier_id") or ""
+            tier = lodging_cat.get(tier_id)
+            if not tier:
+                continue
+            block = _calc_lodging_block(
+                tier,
+                pax=int((ld or {}).get("pax") or 0),
+                nights=int((ld or {}).get("nights") or nights),
+                extras=(ld or {}).get("extra_pax_entries") or [],
+            )
+            lodgings_breakdown.append(block)
+    elif payload.lodging_tier:
+        # Legacy single lodging path
+        tier = lodging_cat.get(payload.lodging_tier)
+        if not tier:
+            raise HTTPException(status_code=400, detail="Paquete de hospedaje inválido")
+        block = _calc_lodging_block(
+            tier,
+            pax=int(payload.pax or 0),
+            nights=int(nights),
+            extras=payload.extra_pax_entries or [],
+        )
+        lodgings_breakdown.append(block)
+
+    lodging_total = sum(b["subtotal"] for b in lodgings_breakdown)
+    extra_pax_total = sum(b["extra_pax_subtotal"] for b in lodgings_breakdown)
+
+    # Para compat con UI antigua: primer paquete dicta los "headline" stats
+    headline = lodgings_breakdown[0] if lodgings_breakdown else {}
+    primary_tier_id = headline.get("tier_id") or payload.lodging_tier or ""
+
+    # ============ ALIMENTACIÓN (global, basada en primer paquete para el rate) ============
+    breakfast_per_day = float((meal_plans.get("breakfast") or {}).get("per_day_by_tier", {}).get(primary_tier_id, 0) or 0)
+    lunch_per_day = float((meal_plans.get("lunch") or {}).get("per_day_by_tier", {}).get(primary_tier_id, 0) or 0)
+    dinner_per_day = float((meal_plans.get("dinner") or {}).get("per_day_by_tier", {}).get(primary_tier_id, 0) or 0)
     rate_by_meal = {"breakfast": breakfast_per_day, "lunch": lunch_per_day, "dinner": dinner_per_day}
 
-    # Si hay meal_entries explícitos (Domicilio o personalizados), priorizan sobre los toggles + meal_days.
+    total_lodging_pax = sum(b.get("pax", 0) for b in lodgings_breakdown) or int(payload.pax or 0)
+
     breakfast_total = lunch_total = dinner_total = 0.0
     if payload.meal_entries:
         for me in payload.meal_entries:
@@ -2524,12 +2582,12 @@ def _calculate_quote(payload: QuoteIn, catalog: dict) -> dict:
             elif me.meal_type == "lunch": lunch_total += sub
             elif me.meal_type == "dinner": dinner_total += sub
     else:
-        breakfast_total = breakfast_per_day * payload.pax * meal_days if payload.includes_breakfast and breakfast_per_day > 0 else 0
-        lunch_total     = lunch_per_day     * payload.pax * meal_days if payload.includes_lunch     and lunch_per_day     > 0 else 0
-        dinner_total    = dinner_per_day    * payload.pax * meal_days if payload.includes_dinner    and dinner_per_day    > 0 else 0
+        breakfast_total = breakfast_per_day * total_lodging_pax * meal_days if payload.includes_breakfast and breakfast_per_day > 0 else 0
+        lunch_total     = lunch_per_day     * total_lodging_pax * meal_days if payload.includes_lunch     and lunch_per_day     > 0 else 0
+        dinner_total    = dinner_per_day    * total_lodging_pax * meal_days if payload.includes_dinner    and dinner_per_day    > 0 else 0
     meals_total = breakfast_total + lunch_total + dinner_total
 
-    # Transporte: nuevo modelo (transport_entries con cantidad+fecha por ruta). Compat con transport_routes legacy.
+    # ============ TRANSPORTE (global) ============
     transport_entries_calc = []
     if payload.transport_entries:
         for te in payload.transport_entries:
@@ -2548,16 +2606,16 @@ def _calculate_quote(payload: QuoteIn, catalog: dict) -> dict:
         transport_routes = [t["route_id"] for t in transport_entries_calc]
     else:
         transport_total = sum(
-            (catalog["transport"].get(r, {}) or {}).get("price", 0) * payload.pax for r in (payload.transport_routes or [])
+            (catalog["transport"].get(r, {}) or {}).get("price", 0) * total_lodging_pax for r in (payload.transport_routes or [])
         )
         transport_routes = list(payload.transport_routes or [])
         if payload.includes_transport and not transport_routes:
             transport_routes = ["airport_to_hotel", "hotel_to_airport"]
             transport_total = sum(
-                (catalog["transport"].get(r, {}) or {}).get("price", 0) * payload.pax for r in transport_routes
+                (catalog["transport"].get(r, {}) or {}).get("price", 0) * total_lodging_pax for r in transport_routes
             )
 
-    # Tours: nuevo modelo (tour_entries con pax independiente). Compat con tour_ids legacy.
+    # ============ TOURS (global) ============
     tour_subtotals = []
     if payload.tour_entries:
         for te in payload.tour_entries:
@@ -2569,16 +2627,41 @@ def _calculate_quote(payload: QuoteIn, catalog: dict) -> dict:
             tour_ids.append("parque_del_cafe")
         for tid in tour_ids:
             price = (catalog["tours"].get(tid, {}) or {}).get("price", 0)
-            tour_subtotals.append({"tour_id": tid, "pax": payload.pax, "subtotal": price * payload.pax})
+            tour_subtotals.append({"tour_id": tid, "pax": total_lodging_pax, "subtotal": price * total_lodging_pax})
     tours_total = sum(t["subtotal"] for t in tour_subtotals)
     tour_ids_applied = [t["tour_id"] for t in tour_subtotals]
 
-    # Inscripción: PRIORIDAD 1 → si vienen categories[] del tournament dinámico, sumar todos los fees.
-    # PRIORIDAD 2 → fees_by_year[birth_year]. PRIORIDAD 3 → registration_fee_per_team.
-    registration = 0
+    # ============ INSCRIPCIÓN — soporta múltiples eventos o legacy ============
+    registration = 0.0
     registration_breakdown = []
+    events_breakdown = []
+
     if payload.include_registration:
-        if payload.categories:
+        if payload.events:
+            # Nuevo: múltiples eventos, cada uno con sus categorías inscritas.
+            for ev in payload.events:
+                ev_name = str((ev or {}).get("tournament_name") or (ev or {}).get("name") or "")
+                ev_cats = (ev or {}).get("categories") or []
+                ev_cats_norm = []
+                ev_subtotal = 0.0
+                for c in ev_cats:
+                    try:
+                        cfee = float((c or {}).get("fee", 0) or 0)
+                    except (TypeError, ValueError):
+                        cfee = 0.0
+                    cname = str((c or {}).get("name", ""))
+                    ev_cats_norm.append({"name": cname, "fee": cfee})
+                    registration_breakdown.append({"name": f"{ev_name} · {cname}" if ev_name else cname, "fee": cfee})
+                    ev_subtotal += cfee
+                events_breakdown.append({
+                    "tournament_id": (ev or {}).get("tournament_id", ""),
+                    "tournament_name": ev_name,
+                    "event_type": (ev or {}).get("event_type", ""),
+                    "categories": ev_cats_norm,
+                    "subtotal": ev_subtotal,
+                })
+                registration += ev_subtotal
+        elif payload.categories:
             for c in payload.categories:
                 try:
                     cfee = float(c.get("fee", 0) or 0)
@@ -2587,25 +2670,44 @@ def _calculate_quote(payload: QuoteIn, catalog: dict) -> dict:
                 registration += cfee
                 registration_breakdown.append({"name": str(c.get("name", "")), "fee": cfee})
         else:
+            event = EVENT_TYPES.get(payload.event_type) or {}
             fees_by_year = event.get("fees_by_year") or {}
             if payload.birth_year and str(payload.birth_year) in fees_by_year:
                 registration = float(fees_by_year[str(payload.birth_year)])
             else:
-                registration = float(event.get("registration_fee_per_team", 0))
+                registration = float(event.get("registration_fee_per_team", 0) or 0)
 
     total = lodging_total + meals_total + transport_total + tours_total + registration
 
-    # Nombre del evento: si vino tournament_name del frontend, usarlo; si no, fallback al evento clásico.
-    display_event_name = payload.tournament_name or event["name"]
+    # Display labels
+    if payload.events:
+        display_event_name = " · ".join([str(ev.get("tournament_name") or ev.get("name") or "") for ev in payload.events if (ev.get("tournament_name") or ev.get("name"))]) or "Múltiples eventos"
+    elif payload.tournament_name:
+        display_event_name = payload.tournament_name
+    else:
+        ev = EVENT_TYPES.get(payload.event_type) or {}
+        display_event_name = ev.get("name", "")
+
+    if len(lodgings_breakdown) > 1:
+        display_lodging_name = f"{len(lodgings_breakdown)} paquetes"
+    elif lodgings_breakdown:
+        display_lodging_name = lodgings_breakdown[0].get("tier_name") or ""
+    else:
+        display_lodging_name = ""
 
     return {
         "lodging_subtotal": lodging_total,
+        "lodgings_breakdown": lodgings_breakdown,
         "extra_pax_subtotal": extra_pax_total,
-        "extra_pax_breakdown": extra_pax_breakdown,
-        "rate_per_person_total": rate_per_person,
-        "rate_per_person_5nights": base_5,
-        "rate_per_person_additional_night": add_night,
-        "extra_nights": extra_nights,
+        # Headline (primer paquete) para compat con UI legacy
+        "extra_pax_breakdown": headline.get("extra_pax_breakdown", []),
+        "rate_per_person_total": headline.get("rate_per_person_total", 0),
+        "rate_per_person_5nights": headline.get("rate_per_person_5nights", 0),
+        "rate_per_person_additional_night": headline.get("rate_per_person_additional_night", 0),
+        "extra_nights": headline.get("extra_nights", 0),
+        "free_21_enabled": headline.get("free_21_enabled", False),
+        "free_lodging_units": sum(b.get("free_lodging_units", 0) for b in lodgings_breakdown),
+        "paying_pax_lodging": sum(b.get("paying_pax_lodging", 0) for b in lodgings_breakdown),
         "meals_subtotal": meals_total,
         "breakfast_subtotal": breakfast_total,
         "lunch_subtotal": lunch_total,
@@ -2616,21 +2718,17 @@ def _calculate_quote(payload: QuoteIn, catalog: dict) -> dict:
         "tours_subtotal": tours_total,
         "tour_subtotals": tour_subtotals,
         "tour_ids_applied": tour_ids_applied,
-        # legacy keys for backwards-compat
         "parque_subtotal": next((t["subtotal"] for t in tour_subtotals if t["tour_id"] == "parque_del_cafe"), 0),
         "tour_subtotal": 0,
         "registration_fee": registration,
         "registration_breakdown": registration_breakdown,
+        "events_breakdown": events_breakdown,
         "total_amount": total,
         "event_name": display_event_name,
-        "lodging_name": tier["name"],
+        "lodging_name": display_lodging_name,
         "nights": nights,
         "days": days,
-        "pax": payload.pax,
-        # Promo "21 sale gratis" — para que el frontend pueda mostrarlo en el desglose.
-        "free_21_enabled": free_21_enabled,
-        "free_lodging_units": free_units,
-        "paying_pax_lodging": paying_pax,
+        "pax": total_lodging_pax,
     }
 
 @api.post("/quotes/calculate")
