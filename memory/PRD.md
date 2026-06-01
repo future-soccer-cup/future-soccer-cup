@@ -945,3 +945,43 @@ Refactor de `const load = () => ...; useEffect(() => load(), [])` a `const load 
 - 🟢 P2: Refactor `server.py` (4073 líneas) en `/app/backend/routes/{quotes,tournaments,catalog,auth}.py`.
 - 🟢 P2: Refactor MyTeam.jsx (>749 líneas).
 
+
+## Iteration 27 (2026-06-01) — Cotizar: MULTI-eventos + MULTI-paquetes de hospedaje
+
+**Cambio crítico solicitado por el usuario** (rechazó la implementación anterior): el módulo `/cotizar` debe permitir al Directivo seleccionar **múltiples eventos** (con sus categorías) y **múltiples paquetes de hospedaje**, donde cada paquete tiene su propio número de personas, noches y bloques de "personas adicionales" (label + cantidad + noches + desde + hasta).
+
+### Backend (`server.py`)
+- `QuoteIn` extendido con dos arrays nuevos:
+  - `events: List[dict]` — `[{tournament_id, tournament_name, event_type, categories:[{name,fee}]}]`
+  - `lodgings: List[dict]` — `[{tier_id, pax, nights, extra_pax_entries:[{label,pax,nights,date_from,date_to}]}]`
+- Campos legacy (`lodging_tier`, `pax`, `categories`, `tournament_id`, `extra_pax_entries`) ahora son **opcionales** y se usan como fallback para cotizaciones antiguas.
+- Nuevo helper `_calc_lodging_block(tier, pax, nights, extras) -> dict` que calcula 1 paquete: principal + extras + promo "21 gratis" + breakdown.
+- `_calculate_quote` reescrito para iterar `lodgings[]` (suma `lodging_subtotal` de todos los paquetes con sus extras propios) e iterar `events[]` (suma `registration_fee` con `events_breakdown[]` listando cada evento + sus categorías).
+- Alimentación/transporte/tours siguen globales; el rate de comidas usa el tier del primer paquete (headline).
+- Compat total con payloads viejos.
+
+### Frontend (`Cotizar.jsx` — reescritura completa)
+- State: `events:[]` y `lodgings:[]` (arrays).
+- **Sección 1) Eventos**: tarjetas multi-select por torneo del admin. Por cada evento seleccionado se renderiza `event-block-{idx}` con sus categorías checkbox y botón "Quitar evento".
+- **Sección 2) Paquetes de hospedaje**: botón "Agregar paquete" → renderiza `lodging-block-{idx}` con selector de tier (cards), inputs pax/nights, y sub-editor `extra-pax-editor-{idx}` con filas {etiqueta, cantidad, noches, desde, hasta} + botón "Quitar paquete".
+- **Resumen lateral** en blanco, muestra cada paquete y cada evento como bloques independientes con sus subtotales.
+- Migración automática: si `?id=` carga una cotización vieja con scalars (`lodging_tier`+`pax`), se promueve a arrays en `lodgings`/`events` al cargar.
+
+### Testids agregados
+- `block-events`, `block-lodgings`, `add-lodging`, `lodging-block-{idx}`, `lodging-{idx}-pax`, `lodging-{idx}-nights`, `lodging-{idx}-tier-{tierId}`, `lodging-remove-{idx}`, `extra-pax-editor-{idx}`, `extra-pax-add-{idx}`, `extra-pax-{idx}-row-{i}`, `extra-pax-{idx}-{i}-pax`, `extra-pax-{idx}-{i}-nights`, `extra-pax-{idx}-{i}-remove`, `event-block-{idx}`, `event-remove-{idx}`, `event-{idx}-cat-{i}`, `selected-events-list`, `no-lodgings`.
+
+### Verificación
+- `/app/test_reports/iteration_24.json` — **Backend 6/6 PASS · Frontend 100% testids verificados**.
+- Caso real: SAPPHIRE 10pax 5n + GOLD 5pax 6n + 1 extra pax (4pax 7n) en SAPPHIRE → `lodgings_breakdown` con 2 items + `extra_pax_breakdown[0]` con la fila de extras → total correcto.
+- Multi-eventos: Festival ($4.6M en 2 categorías) + Premier ($2.8M) → `registration_fee = $7.4M` con `events_breakdown` listando ambos.
+
+### Side-fix
+- `users.coach@test.com.team_id` (que apuntaba a un team eliminado) → seteado a `null`. Ahora `/mi-equipo` carga vía club sin 404.
+
+## Backlog actualizado (P1/P2)
+- 🟡 **P1** — Notificaciones email (Resend/SendGrid) cambios de estado.
+- 🟡 **P1** — Slider del Hero editable (carrusel).
+- 🟢 **P2** — Aplicar `CurrencyInput` en `/cotizar`.
+- 🟢 **P2** — Stripe webhook signature verification.
+- 🟢 **P2** — Refactor `server.py` (>4100 líneas) → `/app/backend/routes/`.
+- 🟢 **P2** — Refactor `Cotizar.jsx` (>700 líneas) en sub-componentes (`<EventSelector/>`, `<LodgingList/>`).
