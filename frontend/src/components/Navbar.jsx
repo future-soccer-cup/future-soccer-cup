@@ -86,7 +86,7 @@ export default function Navbar() {
                 )}
                 {user.role === "team" && (
                   <Link to="/mi-equipo" className="text-fsc-azul hover:text-fsc-azul text-[12px] font-bold uppercase tracking-[0.15em] px-3 py-2 flex items-center gap-1" data-testid="navbar-myteam">
-                    <UserCircle2 size={14}/> Mi equipo
+                    <UserCircle2 size={14}/> Mi Club
                   </Link>
                 )}
                 <button onClick={handleLogout} className="text-white hover:text-fsc-rojo text-[12px] font-bold uppercase tracking-[0.15em] px-3 py-2 flex items-center gap-1" data-testid="navbar-logout">
@@ -129,7 +129,7 @@ export default function Navbar() {
             ) : (
               <>
                 {user.role === "admin" && <Link to="/admin" onClick={() => setOpen(false)} className="px-3 py-2.5 text-sm font-bold uppercase tracking-[0.15em] text-fsc-azul rounded-md hover:bg-fsc-azul/10">Admin</Link>}
-                {user.role === "team" && <Link to="/mi-equipo" onClick={() => setOpen(false)} className="px-3 py-2.5 text-sm font-bold uppercase tracking-[0.15em] text-fsc-azul rounded-md hover:bg-fsc-azul/10">Mi equipo</Link>}
+                {user.role === "team" && <Link to="/mi-equipo" onClick={() => setOpen(false)} className="px-3 py-2.5 text-sm font-bold uppercase tracking-[0.15em] text-fsc-azul rounded-md hover:bg-fsc-azul/10">Mi Club</Link>}
                 <button onClick={handleLogout} className="px-3 py-2.5 text-sm font-bold uppercase tracking-[0.15em] text-fsc-rojo rounded-md hover:bg-fsc-rojo/10 text-left">Salir</button>
               </>
             )}

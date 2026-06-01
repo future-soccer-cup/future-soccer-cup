@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import api, { formatApiError, FSC_LOGO } from "../lib/api";
@@ -9,6 +9,7 @@ import { ConsentBlock } from "./Register";
 const EMPTY = {
   email: "", password: "", manager_name: "", manager_phone: "", manager_role: "Directivo", manager_document: "",
   club_name: "", club_country: "Colombia", club_city: "", club_phone: "",
+  existing_club_id: "",
   color: "#0640c8", data_consent: false,
 };
 
@@ -23,23 +24,46 @@ export default function TeamRegister() {
   const [form, setForm] = useState(EMPTY);
   const [loading, setLoading] = useState(false);
   const [logoFile, setLogoFile] = useState(null);
+  const [clubs, setClubs] = useState([]);
   const fileRef = useRef(null);
   const { setUser } = useAuth();
   const nav = useNavigate();
+
+  // Cargar clubes aprobados (para selector de Cuerpo Técnico).
+  useEffect(() => {
+    api.get("/clubs").then((r) => {
+      const list = (r.data || []).filter((c) => (c.status || "pendiente") === "aprobado");
+      setClubs(list);
+    }).catch(() => {});
+  }, []);
+
+  const isDirectivo = form.manager_role === "Directivo";
+  const isCuerpoTecnico = form.manager_role === "Cuerpo Técnico";
 
   const upd = (k, v) => setForm({ ...form, [k]: v });
 
   const submit = async (e) => {
     e.preventDefault();
     if (!form.data_consent) return toast.error("Debes aceptar la política de datos");
+    if (isCuerpoTecnico && !form.existing_club_id) return toast.error("Selecciona el club al que perteneces");
+    if (isDirectivo && !(form.club_name || "").trim()) return toast.error("Indica el nombre del club");
     setLoading(true);
     try {
-      // El payload ya NO incluye event_type/birth_year — solo registramos el club.
+      // Si es Cuerpo Técnico: envío existing_club_id (no club_name). Si Directivo: envío club_name.
       const payload = { ...form };
+      if (isCuerpoTecnico) {
+        // Adjuntar el nombre del club seleccionado para mostrar en confirmación, pero el backend usa existing_club_id.
+        const sel = clubs.find((c) => c.id === form.existing_club_id);
+        payload.club_name = sel?.name || "";
+        payload.club_city = sel?.city || payload.club_city || "";
+        payload.club_country = sel?.country || payload.club_country || "Colombia";
+      } else {
+        payload.existing_club_id = ""; // limpiar por si el usuario cambió de rol
+      }
       const reg = await api.post("/auth/register-team", payload);
       setUser(reg.data);
 
-      if (logoFile && reg.data.team_id) {
+      if (logoFile && reg.data.team_id && isDirectivo) {
         try {
           const fd = new FormData();
           fd.append("file", logoFile);
@@ -47,12 +71,13 @@ export default function TeamRegister() {
           await api.put(`/teams/${reg.data.team_id}`, { name: "_skip", logo_url: up.data.url });
         } catch (e2) {
           console.error("[TeamRegister] logo upload failed (non-fatal)", e2);
-          toast.warning("El logo no se pudo subir. Podrás cargarlo más tarde desde 'Mi equipo'.");
+          toast.warning("El logo no se pudo subir. Podrás cargarlo más tarde desde 'Mi club'.");
         }
       }
 
-      toast.success("Club registrado. Espera la aprobación del administrador para acceder al panel.");
-      // Si se creó team (back-compat), va a /mi-equipo. Si solo club, va al Home.
+      toast.success(isCuerpoTecnico
+        ? "Cuenta creada. Acceso disponible cuando el Directivo apruebe el club."
+        : "Club registrado. Espera la aprobación del administrador para acceder al panel.");
       nav(reg.data.team_id ? "/mi-equipo" : "/");
     } catch (err) {
       toast.error(formatApiError(err.response?.data?.detail) || "Error al registrar");
@@ -73,8 +98,8 @@ export default function TeamRegister() {
 
         <form onSubmit={submit} className="mt-8 grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
-            {/* DT */}
-            <Section title="Datos del director técnico" testId="section-dt">
+            {/* Datos personales */}
+            <Section title="Datos personales" testId="section-personal">
               <div className="grid sm:grid-cols-2 gap-3">
                 <Field label="Nombre completo" required value={form.manager_name} onChange={(v) => upd("manager_name", v)} testId="tr-manager" />
                 <label className="block">
@@ -89,9 +114,26 @@ export default function TeamRegister() {
                 <Field label="Teléfono" value={form.manager_phone} onChange={(v) => upd("manager_phone", v)} testId="tr-manager-phone" />
                 <Field label="Documento" value={form.manager_document} onChange={(v) => upd("manager_document", v)} testId="tr-manager-doc" />
               </div>
+              {isCuerpoTecnico && (
+                <div className="mt-4 p-3 bg-fsc-azul/10 border-l-4 border-fsc-azul rounded">
+                  <p className="text-xs text-slate-700 mb-2">Como <strong>Cuerpo Técnico</strong> debes pertenecer a un club ya registrado. Selecciónalo a continuación.</p>
+                  <label className="block">
+                    <span className="text-xs font-bold uppercase tracking-wider text-fsc-azul">Club al que perteneces <span className="text-fsc-rojo">*</span></span>
+                    <select required value={form.existing_club_id} onChange={(e) => upd("existing_club_id", e.target.value)} className="mt-1 w-full px-3 py-2 border-2 border-fsc-azul rounded-md font-semibold" data-testid="tr-existing-club">
+                      <option value="">— Selecciona tu club —</option>
+                      {clubs.length === 0 && <option disabled>No hay clubes aprobados todavía</option>}
+                      {clubs.map((c) => (
+                        <option key={c.id} value={c.id}>{c.name} {c.city ? `· ${c.city}` : ""}</option>
+                      ))}
+                    </select>
+                    <span className="text-[10px] text-slate-500 mt-1 block">Solo se muestran clubes ya aprobados por el administrador.</span>
+                  </label>
+                </div>
+              )}
             </Section>
 
-            {/* Club */}
+            {/* Datos del club — SOLO si rol = Directivo */}
+            {isDirectivo && (
             <Section title="Datos del club" testId="section-club">
               <div className="grid sm:grid-cols-2 gap-3">
                 <Field label="Nombre del club" required value={form.club_name} onChange={(v) => upd("club_name", v)} testId="tr-club-name" />
@@ -117,6 +159,7 @@ export default function TeamRegister() {
                 <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => setLogoFile(e.target.files?.[0] || null)} data-testid="tr-logo" />
               </div>
             </Section>
+            )}
 
             {/* Sección Evento eliminada — el club se registra sin asociar a un evento específico.
                  Después de la aprobación, el admin/DT podrá inscribir equipos a eventos desde el panel. */}
@@ -124,7 +167,7 @@ export default function TeamRegister() {
             <ConsentBlock checked={form.data_consent} onChange={(v) => upd("data_consent", v)} testId="tr-consent" />
 
             <button type="submit" disabled={loading || !form.data_consent} className="fsc-btn-red w-full py-3 rounded-md flex items-center justify-center gap-2 disabled:opacity-50" data-testid="tr-submit">
-              {loading ? "Registrando..." : (<>Solicitar registro de club <ArrowRight size={16}/></>)}
+              {loading ? "Registrando..." : (<>{isCuerpoTecnico ? "Solicitar registro al club" : "Solicitar registro de club"} <ArrowRight size={16}/></>)}
             </button>
           </div>
 
@@ -134,11 +177,11 @@ export default function TeamRegister() {
               <img src={FSC_LOGO} alt="FSC" className="h-16 bg-fsc-negro border border-fsc-azul rounded-xl p-1.5" />
               <div className="mt-4 text-xs uppercase tracking-[0.25em] text-fsc-azul">Resumen</div>
               <div className="mt-2 space-y-2 text-sm">
-                <Row k="Club" v={form.club_name || "—"} />
+                <Row k="Rol" v={form.manager_role || "—"} />
+                <Row k="Club" v={isCuerpoTecnico ? (clubs.find((c) => c.id === form.existing_club_id)?.name || "—") : (form.club_name || "—")} />
                 <Row k="País" v={form.club_country || "—"} />
                 <Row k="Ciudad" v={form.club_city || "—"} />
                 <Row k="Responsable" v={form.manager_name || "—"} />
-                <Row k="Rol" v={form.manager_role || "—"} />
               </div>
               <div className="mt-5 pt-4 border-t border-fsc-azul/30 text-xs text-fsc-gris/80 leading-relaxed">
                 Después de aprobar tu cuenta, podrás inscribir tus equipos a los eventos y configurar categorías desde el panel.

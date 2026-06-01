@@ -104,6 +104,8 @@ export default function Cotizar() {
     // admin can preview
   } else if (user.role !== "team") {
     return <CotizarGate variant="role" />;
+  } else if ((user.manager_role || "").trim().toLowerCase() === "cuerpo técnico") {
+    return <CotizarGate variant="cuerpo-tecnico" />;
   } else if (myTeam && myTeam.status === "pendiente") {
     return <CotizarGate variant="pending" team={myTeam} />;
   } else if (myTeam && myTeam.status === "rechazado") {
@@ -433,6 +435,7 @@ function CotizarGate({ variant, team }) {
     rejected: { icon: Lock, title: "Equipo rechazado", text: "Tu equipo fue rechazado por el organizador. Contacta a Future Soccer Cup para más información.", cta: { label: "Ir al inicio", to: "/" } },
     "no-team": { icon: Lock, title: "Aún no tienes equipo", text: "Debes registrar un equipo para poder generar cotizaciones.", cta: { label: "Registrar equipo", to: "/registrar-equipo" } },
     role: { icon: Lock, title: "Función exclusiva para DTs", text: "Esta sección solo está disponible para directores técnicos.", cta: { label: "Volver al inicio", to: "/" } },
+    "cuerpo-tecnico": { icon: Lock, title: "Solo el Directivo puede cotizar", text: "Tu rol es Cuerpo Técnico. Las cotizaciones del club solo las puede generar el Directivo. Puedes seguir gestionando equipos, jugadores y cuerpo técnico desde Mi Club.", cta: { label: "Ir a Mi Club", to: "/mi-equipo" } },
   };
   const cfg = M[variant] || M.login;
   return (

@@ -1,0 +1,46 @@
+{
+  "summary": "Iter21 (FSC C1): roles Directivo/Cuerpo Técnico, register-team con existing_club_id, /auth/me con manager_role+club_id, gate POST /quotes para CT, flujo aprobación + bloqueo pago en estado pendiente, navbar 'Mi Club', gate /cotizar para CT. Backend: 11/11 pytest PASS. Frontend: rename 'Datos Personales' OK, conditional sections OK, Navbar 'MI CLUB' desktop + mobile OK, /cotizar gate CT OK. BUG ENCONTRADO: /mi-equipo bloquea CT (y Directivo sin team_id) con 'No Autorizado' debido al guard `!teamId` en MyTeam.jsx:76, lo que impide ver el [cta-cotizar-blocked].",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "MyTeam.jsx",
+        "issue": "El guard en línea 76 `if (user.role !== 'team' || !teamId)` redirige a 'No Autorizado' a usuarios Cuerpo Técnico (que legítimamente tienen team_id=null porque no crean equipo propio). Esto contradice requirement (6) FSC C1: 'MyTeam: si Cuerpo Técnico oculta CTA Cotizar y muestra bloqueo'. El usuario CT nunca llega a ver [data-testid=cta-cotizar-blocked]. Mismo problema afecta a Directivo recién registrado mientras su club está pendiente (no tiene team_id aún).",
+        "selector": "MyTeam.jsx:76",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter21_roles_quote_approval.py",
+    "/app/test_reports/pytest/iteration_21.xml"
+  ],
+  "action_items": [
+    "Ajustar MyTeam.jsx:76 para permitir acceso a Cuerpo Técnico (manager_role) aunque no tenga team_id. Sugerencia: `if (user.role !== 'team') return <NoAuth/>;` y luego dentro del componente, manejar el caso CT (mostrar header del club + listado de equipos del club + cta-cotizar-blocked) y el caso 'Directivo sin team_id' (mostrar pantalla de pendiente-aprobación o de 'crea tu primer equipo')."
+  ],
+  "critical_code_review_comments": [
+    "MyTeam.jsx tiene 685 líneas (>700 cercano); considerar dividir en sub-componentes (TeamHeader, PlayersList, StaffList, RegPaymentsPanel) por mantenibilidad.",
+    "TeamRegister.jsx: el título 'crea tu cuenta REGISTRA TU CLUB' aún muestra 'REGISTRA TU CLUB' al rol Cuerpo Técnico — podría confundir al técnico que no está registrando un club nuevo sino vinculándose. Sugerencia UX: cuando isCuerpoTecnico, cambiar el H1 a 'ÚNETE A UN CLUB' o similar.",
+    "Backend register-team: ya valida existing_club_id y crea club nuevo según rol — flujo correcto.",
+    "POST /quotes correctamente devuelve 403 con mensaje 'Solo el Directivo del club puede realizar cotizaciones'.",
+    "Owner PUT /quotes/{qid} correctamente resetea status a 'pendiente' después de edición — valida flujo de re-aprobación."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter21_roles_quote_approval.py (nuevo)"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "80%"
+  },
+  "test_credentials": "Admin: admin@futuresoccercup.com / FSCAdmin2025! ; Usuarios de prueba creados dinámicamente con sufijo aleatorio y limpiados al final.",
+  "seed_data_creation": "Tests crean Directivo + CT + club aprobado dinámicamente, cleanup en test_zzz_cleanup + cleanup manual de clubs TEST_iter21_*. Users de prueba (ct_*@test.com / directivo_*@test.com) quedan en DB (no hay endpoint público de borrado de users).",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend de iter21 100% green: register-team con existing_club_id, gate CT en POST /quotes, /auth/me con manager_role+club_id, flujo aprobación + bloqueo pago pendiente, edit aprobada→pendiente. Frontend: TeamRegister condicional OK, Navbar OK, /cotizar gate CT OK. Pendiente fix en MyTeam.jsx para permitir a CT (y a Directivo sin team_id) ver el contenido con cta-cotizar-blocked en vez del NoAutorizado.",
+  "rca of the issue": "RCA bug MyTeam: La página fue diseñada originalmente sólo para 'responsables de equipo' (Directivo con su primer team auto-creado en register-team). Con la introducción del rol 'Cuerpo Técnico' que se vincula a un club existente sin crear equipo (team_id=null), el guard `user.role !== 'team' || !teamId` ahora bloquea CTs legítimos. Reproducción: registrar CT con existing_club_id (club aprobado) → login → navegar a /mi-equipo → ver 'NO AUTORIZADO'. Mitigación: separar guard en dos: `if (user.role !== 'team') return NoAuth;` (siempre bloquea no-team) y luego ramificar UI por `user.manager_role` + presencia/ausencia de team_id."
+}

@@ -408,8 +408,10 @@ class TeamRegisterIn(BaseModel):
     manager_phone: Optional[str] = ""
     manager_role: Optional[str] = "Director técnico"
     manager_document: Optional[str] = ""
-    # Club info (created if doesn't exist)
-    club_name: str = Field(min_length=1)
+    # Club info (created if doesn't exist) — solo para rol "Directivo"
+    # Si el rol es "Cuerpo Técnico" se debe enviar existing_club_id (no club_name).
+    club_name: Optional[str] = None
+    existing_club_id: Optional[str] = None
     club_country: Optional[str] = "Colombia"
     club_city: Optional[str] = ""
     club_phone: Optional[str] = ""
@@ -732,28 +734,39 @@ async def register_team(payload: TeamRegisterIn, response: Response):
     now = datetime.now(timezone.utc).isoformat()
 
     # 1) Find or create Club
-    club_name_norm = payload.club_name.strip()
-    club = await db.clubs.find_one({"name": {"$regex": f"^{club_name_norm}$", "$options": "i"}}, {"_id": 0})
-    if not club:
-        club_id = str(uuid.uuid4())
-        club = {
-            "id": club_id,
-            "name": club_name_norm,
-            "country": payload.club_country or "Colombia",
-            "city": payload.club_city or "",
-            "phone": payload.club_phone or "",
-            "email": payload.club_email or email,
-            "website": payload.club_website or "",
-            "logo_url": payload.logo_url or "",
-            "color": payload.color or "#1d4ed8",
-            "status": "pendiente",
-            "manager_user_id": user_id,
-            "created_at": now,
-        }
-        await db.clubs.insert_one(club)
-        club.pop("_id", None)
-    else:
+    # - Si existing_club_id viene: el user (Cuerpo Técnico) se vincula a ese club; NO se crea uno nuevo.
+    # - Si NO: el rol es Directivo y se crea/encuentra el club por nombre.
+    if payload.existing_club_id:
+        club = await db.clubs.find_one({"id": payload.existing_club_id}, {"_id": 0})
+        if not club:
+            raise HTTPException(status_code=400, detail="El club seleccionado no existe")
         club_id = club["id"]
+        club_name_norm = club["name"]
+    else:
+        if not payload.club_name or not payload.club_name.strip():
+            raise HTTPException(status_code=400, detail="El nombre del club es obligatorio para registrar como Directivo")
+        club_name_norm = payload.club_name.strip()
+        club = await db.clubs.find_one({"name": {"$regex": f"^{club_name_norm}$", "$options": "i"}}, {"_id": 0})
+        if not club:
+            club_id = str(uuid.uuid4())
+            club = {
+                "id": club_id,
+                "name": club_name_norm,
+                "country": payload.club_country or "Colombia",
+                "city": payload.club_city or "",
+                "phone": payload.club_phone or "",
+                "email": payload.club_email or email,
+                "website": payload.club_website or "",
+                "logo_url": payload.logo_url or "",
+                "color": payload.color or "#1d4ed8",
+                "status": "pendiente",
+                "manager_user_id": user_id,
+                "created_at": now,
+            }
+            await db.clubs.insert_one(club)
+            club.pop("_id", None)
+        else:
+            club_id = club["id"]
 
     # 2) Compute registration fee from event + birth_year (solo si hay evento)
     fee = 0.0
@@ -807,7 +820,12 @@ async def register_team(payload: TeamRegisterIn, response: Response):
     access = create_access_token(user_id, email, "team")
     refresh = create_refresh_token(user_id)
     set_auth_cookies(response, access, refresh)
-    return {"id": user_id, "email": email, "name": payload.manager_name, "role": "team", "team_id": team_id}
+    return {
+        "id": user_id, "email": email, "name": payload.manager_name,
+        "role": "team", "team_id": team_id,
+        "manager_role": payload.manager_role or "",
+        "club_id": club_id,
+    }
 
 @api.post("/auth/login")
 async def login(payload: LoginIn, request: Request, response: Response):
@@ -849,7 +867,12 @@ async def logout(response: Response):
 
 @api.get("/auth/me")
 async def me(user: dict = Depends(get_current_user)):
-    return {"id": user["id"], "email": user["email"], "name": user["name"], "role": user["role"], "team_id": user.get("team_id")}
+    return {
+        "id": user["id"], "email": user["email"], "name": user["name"],
+        "role": user["role"], "team_id": user.get("team_id"),
+        "manager_role": user.get("manager_role", ""),
+        "club_id": user.get("club_id"),
+    }
 
 @api.post("/auth/refresh")
 async def refresh_token(request: Request, response: Response):
@@ -2599,7 +2622,10 @@ async def calculate_quote(payload: QuoteIn):
 @api.post("/quotes")
 async def create_quote(payload: QuoteIn, user: dict = Depends(get_current_user)):
     if user.get("role") not in ("team", "admin"):
-        raise HTTPException(status_code=403, detail="Solo los directores técnicos pueden enviar cotizaciones")
+        raise HTTPException(status_code=403, detail="Solo los usuarios de club pueden enviar cotizaciones")
+    # Solo el Directivo del club puede cotizar — el Cuerpo Técnico no.
+    if user.get("role") == "team" and (user.get("manager_role") or "").strip().lower() not in ("directivo", "director técnico", "director tecnico", "presidente"):
+        raise HTTPException(status_code=403, detail="Solo el Directivo del club puede realizar cotizaciones. El Cuerpo Técnico no tiene este permiso.")
     await _require_club_approved(user, action="cotizaciones")
     cat = await _load_catalog()
     breakdown = _calculate_quote(payload, cat)
