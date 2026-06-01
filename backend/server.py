@@ -621,6 +621,11 @@ class QuoteIn(BaseModel):
     event_type: Literal["festival", "premier_par", "premier_impar"]
     birth_year: Optional[int] = None
     category: Optional[str] = ""  # legacy
+    # Nuevo flujo dinámico: el frontend puede elegir un Tournament del Admin (cualquier nombre)
+    # y marcar múltiples categorías inscritas con su fee. Si vienen, OVERRIDE el cálculo legacy.
+    tournament_id: Optional[str] = None
+    tournament_name: Optional[str] = None
+    categories: Optional[List[dict]] = []  # [{name, fee}]
     # Hospedaje (paquetes — sin mostrar nombres de hoteles)
     lodging_tier: str = Field(min_length=1)  # id de paquete (admin-editable). Antes era Literal estrecho.
     room_type: Optional[str] = ""  # legacy, no longer used for pricing
@@ -2110,7 +2115,7 @@ async def _load_catalog() -> dict:
         elif t == "transport":
             transport[r["id"]] = {"id": r["id"], "name": r["name"], "price": float(r.get("price", 0) or 0)}
         elif t == "tour":
-            tours[r["id"]] = {"id": r["id"], "name": r["name"], "price": float(r.get("price", 0) or 0)}
+            tours[r["id"]] = {"id": r["id"], "name": r["name"], "description": r.get("description", ""), "price": float(r.get("price", 0) or 0)}
     # Fallback to constants when DB is empty (only on the very first request after deploy).
     return {
         "lodging": lodging or LODGING_TIERS,
@@ -2568,16 +2573,30 @@ def _calculate_quote(payload: QuoteIn, catalog: dict) -> dict:
     tours_total = sum(t["subtotal"] for t in tour_subtotals)
     tour_ids_applied = [t["tour_id"] for t in tour_subtotals]
 
-    # Inscripción: prefer fees_by_year cuando birth_year disponible
+    # Inscripción: PRIORIDAD 1 → si vienen categories[] del tournament dinámico, sumar todos los fees.
+    # PRIORIDAD 2 → fees_by_year[birth_year]. PRIORIDAD 3 → registration_fee_per_team.
     registration = 0
+    registration_breakdown = []
     if payload.include_registration:
-        fees_by_year = event.get("fees_by_year") or {}
-        if payload.birth_year and str(payload.birth_year) in fees_by_year:
-            registration = float(fees_by_year[str(payload.birth_year)])
+        if payload.categories:
+            for c in payload.categories:
+                try:
+                    cfee = float(c.get("fee", 0) or 0)
+                except (TypeError, ValueError):
+                    cfee = 0.0
+                registration += cfee
+                registration_breakdown.append({"name": str(c.get("name", "")), "fee": cfee})
         else:
-            registration = float(event.get("registration_fee_per_team", 0))
+            fees_by_year = event.get("fees_by_year") or {}
+            if payload.birth_year and str(payload.birth_year) in fees_by_year:
+                registration = float(fees_by_year[str(payload.birth_year)])
+            else:
+                registration = float(event.get("registration_fee_per_team", 0))
 
     total = lodging_total + meals_total + transport_total + tours_total + registration
+
+    # Nombre del evento: si vino tournament_name del frontend, usarlo; si no, fallback al evento clásico.
+    display_event_name = payload.tournament_name or event["name"]
 
     return {
         "lodging_subtotal": lodging_total,
@@ -2601,8 +2620,9 @@ def _calculate_quote(payload: QuoteIn, catalog: dict) -> dict:
         "parque_subtotal": next((t["subtotal"] for t in tour_subtotals if t["tour_id"] == "parque_del_cafe"), 0),
         "tour_subtotal": 0,
         "registration_fee": registration,
+        "registration_breakdown": registration_breakdown,
         "total_amount": total,
-        "event_name": event["name"],
+        "event_name": display_event_name,
         "lodging_name": tier["name"],
         "nights": nights,
         "days": days,

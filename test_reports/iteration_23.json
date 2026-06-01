@@ -1,0 +1,30 @@
+{
+  "summary": "Iter23 — Tanda C2 /cotizar refactor. Backend 5/5 PASS: POST /quotes/calculate suma fees de categories[] (Sub-12 2.4M + Sub-14 2.3M = 4.7M registration_fee), registration_breakdown.length=2, event_name=tournament_name; legacy path (event_type+birth_year) sigue funcionando; GET /event-types tours_catalog incluye 'description' en todos los tours; POST /quotes (admin) con tournament_id+categories OK persistiendo registration_fee=1M y event_name correcto. Frontend /cotizar (admin): [cotizar-events-list] muestra 2 cards de tournaments no archivados (PRUEBA 2027, TEMPORADA 2026); total inicial [cotizar-total]='$0COP'; label [resumen-en-vivo-label] tiene class 'text-white'; cotizar-total tiene class 'text-white'; texto 'AÑO DE NACIMIENTO' NO presente, sí está 'Categorías'; click en tournament muestra 3 [category-opt-i]; con pax=2 + SAPPHIRE + 2 cats marcadas + include_registration=true → total = $5.500.000 COP correcto, summary muestra desglose 'Inscripción' con Sub-8 $1.5M y Sub-10 $2.0M; sección Tours: add-tour muestra [tour-desc-0] con texto 'Visita a parque' (description del catálogo).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter23_cotizar_c2.py",
+    "/app/test_reports/pytest/iteration_23.xml"
+  ],
+  "action_items": [
+    "Opcional: cuando pax=0 (default) o lodging_tier='' (sin selección), el backend devuelve 422 (Field(ge=1) y min_length=1), por lo que el frontend mantiene estimate=null y muestra $0. UX actual coincide con spec ('Arranca en $0 cuando pax=0 (defaults)'), pero podría mostrarse un hint inline 'Selecciona un paquete y al menos 1 pax para ver el total' para reducir confusión.",
+    "Opcional: no se pudo testear [no-categories-warn] end-to-end porque ambos tournaments seed tienen 3 categorías. Crear un tournament de prueba sin categorías para regresión futura, o testear unitariamente con mock del state."
+  ],
+  "critical_code_review_comments": [
+    "server.py llegó a 4073 líneas — supera ampliamente el umbral recomendado (700). Considerar dividir en módulos: quotes.py, tournaments.py, catalog.py, auth.py, etc.",
+    "Cotizar.jsx llegó a 637 líneas — aún razonable pero acercándose al límite. La sección 1 (tournament selection + categorías checkboxes) ya tiene lógica suficiente para extraerla a un sub-componente <EventSelector />.",
+    "QuoteIn.categories es Optional[List[dict]] — sin validación de schema. Definir un Pydantic BaseModel QuoteCategoryEntry(name: str, fee: float = 0) y tipar como Optional[List[QuoteCategoryEntry]] para evitar errores de tipo en runtime y rechazar payloads malformados con 422 explícito (línea 628)."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter23_cotizar_c2.py"],
+  "success_rate": {"backend": "100% (5/5 pytest)", "frontend": "100% (all C2 assertions PASS)"},
+  "test_credentials": "Admin: admin@futuresoccercup.com / FSCAdmin2025! — usado en backend pytest y Playwright.",
+  "seed_data_creation": "Ninguno. Se reutilizaron 2 tournaments seed existentes (PRUEBA 2027 + TEMPORADA 2026, c/u con 3 categorías). El test admin-create-quote crea y elimina su propia quote (cleanup).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Tanda C2 verificada end-to-end: backend acepta tournament_id/tournament_name/categories[] y suma fees correctamente con registration_breakdown; legacy path (birth_year+event_type) intacto. Frontend muestra cards de tournaments, checkboxes 'CATEGORÍAS' (rename OK desde 'Año de nacimiento'), label+total en text-white, tour-desc visible en sección 5. Live summary recalcula bien cuando hay paquete+pax≥1+categories. Pendiente backlog C3: refactor hospedaje a múltiples paquetes con personas por paquete (el backend actual sólo soporta 1 paquete + extra_pax_entries).",
+  "rca of the issue": "N/A — todos los smoke pasan, no se encontraron bugs."
+}

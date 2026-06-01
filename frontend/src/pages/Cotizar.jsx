@@ -14,11 +14,17 @@ export default function Cotizar() {
   const editingId = searchParams.get("id");
   const [config, setConfig] = useState(null);
   const [myTeam, setMyTeam] = useState(null);
+  const [tournaments, setTournaments] = useState([]); // eventos activos del Admin (no archivados)
   const [form, setForm] = useState({
-    event_type: "",
+    // Evento clásico (legacy, requerido por backend para fallback de precios)
+    event_type: "festival",
     birth_year: "",
-    lodging_tier: "gold",
-    pax: 20,
+    // Nuevo flujo dinámico:
+    tournament_id: "",
+    tournament_name: "",
+    categories: [], // [{name, fee}] — categorías inscritas seleccionadas
+    lodging_tier: "",
+    pax: 0,
     nights: 5,
     days: 6,
     includes_breakfast: false,
@@ -40,6 +46,13 @@ export default function Cotizar() {
   const [userTouched, setUserTouched] = useState(false);
 
   useEffect(() => { api.get("/event-types").then((r) => setConfig(r.data)); }, []);
+  // Cargar tournaments activos (no archivados) — son los eventos que el Admin creó
+  useEffect(() => {
+    api.get("/tournaments").then((r) => {
+      const list = (r.data || []).filter((t) => !t.archived);
+      setTournaments(list);
+    }).catch(() => {});
+  }, []);
   useEffect(() => {
     if (user?.team_id) {
       api.get(`/teams/${user.team_id}`).then((r) => {
@@ -114,7 +127,6 @@ export default function Cotizar() {
     return <CotizarGate variant="no-team" />;
   }
 
-  const ev = config.events.find((e) => e.id === form.event_type);
   const tier = config.lodging_tiers.find((t) => t.id === form.lodging_tier);
   const isDomicilio = form.lodging_tier === "domicilio";
 
@@ -151,31 +163,93 @@ export default function Cotizar() {
       <div className="grid lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           {/* 1. Evento */}
-          <Section icon={Trophy} title="1) Evento" testId="block-event" subtitle="Selecciona en qué evento participará tu equipo">
-            <div className="grid sm:grid-cols-3 gap-3">
-              {config.events.map((e) => (
-                <button key={e.id} type="button" onClick={() => setFormUser({ ...form, event_type: e.id, birth_year: "" })} className={`text-left p-4 rounded-xl border-2 ${form.event_type === e.id ? "border-red-600 bg-red-50" : "border-slate-200 hover:border-slate-400"}`} data-testid={`event-${e.id}`}>
-                  <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Evento</div>
-                  <div className="font-display text-xl font-black uppercase tracking-tight">{e.name}</div>
-                  <div className="text-[10px] text-slate-500 mt-1">{e.dates}</div>
-                </button>
-              ))}
-            </div>
-            {ev && (
-              <div className="grid sm:grid-cols-2 gap-3 mt-3">
-                <label className="block">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Año de nacimiento del equipo</span>
-                  <select value={form.birth_year || ""} onChange={(e) => setFormUser({ ...form, birth_year: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="cotizar-year">
-                    <option value="">— (sin inscripción)</option>
-                    {ev.birth_years.map((y) => <option key={y} value={y}>{y} — {fmt(ev.fees_by_year[String(y)] || 0)}</option>)}
-                  </select>
-                </label>
-                <label className="flex items-center gap-2 pt-5">
-                  <input type="checkbox" checked={form.include_registration} onChange={(e) => setFormUser({ ...form, include_registration: e.target.checked })} className="h-4 w-4 accent-red-600" data-testid="cotizar-include-reg" />
-                  <span className="text-sm">Incluir inscripción del equipo en el total</span>
-                </label>
-              </div>
+          <Section icon={Trophy} title="1) Evento" testId="block-event" subtitle="Selecciona el evento creado por el Admin al que vas a participar y marca las categorías inscritas">
+            {tournaments.length === 0 && (
+              <p className="text-sm text-slate-500 italic">No hay eventos activos disponibles. Contacta al administrador.</p>
             )}
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3" data-testid="cotizar-events-list">
+              {tournaments.map((t) => {
+                const selected = form.tournament_id === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setFormUser({
+                      ...form,
+                      tournament_id: t.id,
+                      tournament_name: t.name,
+                      event_type: t.event_type || "festival", // fallback para backend
+                      categories: [],
+                    })}
+                    className={`text-left p-4 rounded-xl border-2 transition-colors ${selected ? "border-fsc-rojo bg-red-50" : "border-slate-200 hover:border-slate-400"}`}
+                    data-testid={`tournament-${t.id}`}
+                  >
+                    <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-fsc-azul">{t.event_type || "evento"}</div>
+                    <div className="font-display text-xl font-black uppercase tracking-tight">{t.name}</div>
+                    <div className="text-[10px] text-slate-500 mt-1">
+                      {t.start_date} → {t.end_date}
+                    </div>
+                    {t.city && <div className="text-[10px] text-slate-500">{t.city}</div>}
+                    {(t.categories?.length || 0) > 0 && (
+                      <div className="text-[10px] text-slate-500 mt-2">{t.categories.length} categoría(s) disponibles</div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Categorías inscritas — checkboxes múltiples */}
+            {form.tournament_id && (() => {
+              const sel = tournaments.find((t) => t.id === form.tournament_id);
+              const cats = sel?.categories || [];
+              if (cats.length === 0) {
+                return (
+                  <p className="mt-4 text-sm text-amber-600 italic" data-testid="no-categories-warn">
+                    Este evento aún no tiene categorías configuradas por el Admin.
+                  </p>
+                );
+              }
+              const isChecked = (cat) => (form.categories || []).some((c) => c.name === cat.name);
+              const toggle = (cat) => {
+                const exists = isChecked(cat);
+                const next = exists
+                  ? form.categories.filter((c) => c.name !== cat.name)
+                  : [...form.categories, { name: cat.name, fee: Number(cat.fee || 0) }];
+                setFormUser({ ...form, categories: next });
+              };
+              return (
+                <div className="mt-5">
+                  <div className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Categorías</div>
+                  <div className="grid sm:grid-cols-2 gap-2" data-testid="cotizar-categories">
+                    {cats.map((c, i) => {
+                      const checked = isChecked(c);
+                      return (
+                        <label
+                          key={`${c.name}-${i}`}
+                          className={`flex items-center gap-2 p-3 border-2 rounded-lg cursor-pointer transition-colors ${checked ? "border-fsc-azul bg-fsc-azul/10" : "border-slate-200 hover:border-slate-400"}`}
+                          data-testid={`category-opt-${i}`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggle(c)}
+                            className="h-4 w-4 accent-fsc-azul"
+                          />
+                          <span className="flex-1">
+                            <span className="font-bold uppercase tracking-wide">{c.name}</span>
+                            <span className="block text-[11px] text-slate-500 tabular-nums">Inscripción: {fmt(c.fee || 0)}</span>
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <label className="flex items-center gap-2 mt-3 text-sm">
+                    <input type="checkbox" checked={form.include_registration} onChange={(e) => setFormUser({ ...form, include_registration: e.target.checked })} className="h-4 w-4 accent-fsc-rojo" data-testid="cotizar-include-reg" />
+                    <span>Incluir inscripción de las categorías seleccionadas en el total</span>
+                  </label>
+                </div>
+              );
+            })()}
           </Section>
 
           {/* 2. Paquete de hospedaje */}
@@ -290,23 +364,35 @@ export default function Cotizar() {
         {/* Sticky summary */}
         <aside className="lg:col-span-1">
           <div className="sticky top-24 bg-fsc-negro text-white rounded-2xl p-6 border-2 border-fsc-azul">
-            <div className="text-xs uppercase tracking-[0.25em] text-fsc-azul">Resumen en vivo</div>
-            <div className="font-display text-2xl tracking-wider">Tu paquete</div>
+            <div className="text-xs uppercase tracking-[0.25em] text-white" data-testid="resumen-en-vivo-label">Resumen en vivo</div>
+            <div className="font-display text-2xl tracking-wider text-white">Tu paquete</div>
             <div className="mt-4 space-y-2 text-sm" data-testid="cotizar-summary">
               <Row k="Evento" v={estimate?.event_name || "—"} />
               <Row k="Paquete" v={estimate?.lodging_name || "—"} />
               {estimate?.rate_per_person_total > 0 && <Row k="Tarifa/pax" v={fmt(estimate.rate_per_person_total)} />}
               {estimate?.extra_nights > 0 && <Row k="Noches extra" v={`${estimate.extra_nights} × ${fmt(estimate.rate_per_person_additional_night || 0)}`} />}
               <Row k={`Hospedaje (${estimate?.pax || 0}×${estimate?.nights || 0}n)`} v={fmt(estimate?.lodging_subtotal || 0)} />
+              {estimate?.free_lodging_units > 0 && (
+                <div className="flex items-center justify-between bg-fsc-rojo/20 border border-fsc-rojo/40 rounded px-2 py-1 text-xs">
+                  <span className="font-bold uppercase tracking-wider">🎉 Promo 21 gratis</span>
+                  <span className="tabular-nums">{estimate.free_lodging_units} pax sin costo</span>
+                </div>
+              )}
               {estimate?.extra_pax_subtotal > 0 && <Row k="Adicionales" v={fmt(estimate.extra_pax_subtotal)} />}
               <Row k="Alimentación" v={fmt((estimate?.breakfast_subtotal || 0) + (estimate?.lunch_subtotal || 0) + (estimate?.dinner_subtotal || 0))} />
               <Row k="Transporte" v={fmt(estimate?.transport_subtotal || 0)} />
               <Row k="Tours" v={fmt(estimate?.tours_subtotal || 0)} />
               {estimate?.registration_fee > 0 && <Row k="Inscripción" v={fmt(estimate.registration_fee)} />}
+              {(estimate?.registration_breakdown || []).map((c, i) => (
+                <div key={i} className="flex items-center justify-between text-[10px] text-fsc-gris pl-3">
+                  <span>· {c.name}</span>
+                  <span className="tabular-nums">{fmt(c.fee)}</span>
+                </div>
+              ))}
               <div className="border-t border-fsc-azul/30 pt-3 mt-3">
                 <div className="flex items-baseline justify-between">
-                  <span className="text-xs uppercase tracking-widest text-fsc-gris">Total</span>
-                  <span className="font-display text-3xl tracking-wider text-fsc-azul tabular-nums" data-testid="cotizar-total">{fmt(estimate?.total_amount || 0)}<span className="text-xs text-fsc-gris ml-1">COP</span></span>
+                  <span className="text-xs uppercase tracking-widest text-white">Total</span>
+                  <span className="font-display text-3xl tracking-wider text-white tabular-nums" data-testid="cotizar-total">{fmt(estimate?.total_amount || 0)}<span className="text-xs text-fsc-gris ml-1">COP</span></span>
                 </div>
               </div>
             </div>
@@ -411,6 +497,11 @@ function TourEntriesEditor({ entries, tours, defaultPax, onChange }) {
               {available.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
             </select>
             <span className="text-[10px] text-slate-500">{fmtMoney(priceOf(e.tour_id))} / persona</span>
+            {(tours.find((t) => t.id === e.tour_id)?.description) && (
+              <span className="block text-[10px] italic text-slate-600 mt-1" data-testid={`tour-desc-${idx}`}>
+                {tours.find((t) => t.id === e.tour_id).description}
+              </span>
+            )}
           </label>
           <label className="col-span-3 block">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Personas</span>
