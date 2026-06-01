@@ -52,7 +52,8 @@ export default function TeamRegister() {
       }
 
       toast.success("Club registrado. Espera la aprobación del administrador para acceder al panel.");
-      nav("/mi-equipo");
+      // Si se creó team (back-compat), va a /mi-equipo. Si solo club, va al Home.
+      nav(reg.data.team_id ? "/mi-equipo" : "/");
     } catch (err) {
       toast.error(formatApiError(err.response?.data?.detail) || "Error al registrar");
     } finally {

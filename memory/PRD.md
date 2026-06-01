@@ -822,3 +822,35 @@ Refactor de `const load = () => ...; useEffect(() => load(), [])` a `const load 
 - 🟢 **P2** — `CurrencyInput` en `/cotizar` y formularios de pago manual del DT.
 - 🟢 **P2** — `GET /api/tournaments/{id}`, Stripe webhook signature, refactor `server.py` (>3937 líneas) → `/app/backend/routes/`.
 
+
+## Iteration 28 (2026-06-01) — Promo "21 gratis" + Registro de Club simplificado
+
+### Backend (`server.py`)
+- **Lodging `free_21st_enabled`** (bool, default false): persiste en `db.pricing_catalog` y se expone en `_load_catalog`.
+- **`_calculate_quote`**: aplica regla "21 sale gratis" — `free_units = (payload.pax // 20) if free_21_enabled else 0`; `paying_pax_lodging = pax - free_units`. **Aplica SOLO a `payload.pax` (reserva principal), NO a `extra_pax_entries`** (acompañantes pueden tener noches distintas).
+- **`QuoteIn.lodging_tier`** relajado de Literal estrecho a `str` (fix issue minor de iter19).
+- **`POST /auth/register-team`**: `event_type` y `birth_year` ahora opcionales. Si no vienen, se crea solo `user + club` (sin team). Si vienen, comportamiento legacy se mantiene.
+- Response de `/quotes/calculate` ahora incluye: `free_21_enabled`, `free_lodging_units`, `paying_pax_lodging`.
+
+### Frontend
+- **`AdminInventory.jsx`** LodgingTab + CreateModal: nuevo checkbox `[inv-lodging-free21-{id}]` y `[inv-new-free21]` con label "Promo 21 gratis" en rojo.
+- **`TeamRegister.jsx`** (formulario público "Registra tu club"):
+  - Rol restringido a **"Directivo"** y **"Cuerpo Técnico"** (eliminadas Director técnico/Gerente/Presidente/Delegado).
+  - Campo **País** como `<select>` con 22 países (Colombia default).
+  - Sección **Evento eliminada por completo** (payload no envía event_type/birth_year).
+  - Sidebar resumen muestra Club / País / Ciudad / Responsable / Rol.
+  - Navega a `/mi-equipo` si se creó team, sino al Home `/`.
+
+### Verificación
+- `/app/test_reports/iteration_20.json` — **Backend pytest 9/9 PASS · Frontend 100% PASS · 0 issues**.
+- Promo "21 gratis" matemáticamente validada: pax=19 (0 free), pax=21 (1 free), pax=40 (2 free); extra_pax no afectados.
+- Registro sin event_type → user+club creados, team_id=null.
+
+## Backlog actualizado
+- 🟡 P1: Notificaciones email (Resend/SendGrid) en cambios de estado.
+- 🟡 P1: Slider editable en Hero.
+- 🟢 P2: Pantalla `/pendiente-aprobacion` con UX dedicada en lugar de "No autorizado" para DT sin team_id.
+- 🟢 P2: `CurrencyInput` en `/cotizar` y formularios de pago manual.
+- 🟢 P2: Mostrar la promo "21 gratis" en el desglose de `/cotizar` (chip "1 persona gratis" cuando aplique).
+- 🟢 P2: `GET /api/tournaments/{id}`, Stripe webhook signature, refactor `server.py` (~4030 líneas).
+
