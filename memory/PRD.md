@@ -854,3 +854,57 @@ Refactor de `const load = () => ...; useEffect(() => load(), [])` a `const load 
 - 🟢 P2: Mostrar la promo "21 gratis" en el desglose de `/cotizar` (chip "1 persona gratis" cuando aplique).
 - 🟢 P2: `GET /api/tournaments/{id}`, Stripe webhook signature, refactor `server.py` (~4030 líneas).
 
+
+## Iteration 29 (2026-06-01) — C1: Roles diferenciados (Directivo vs Cuerpo Técnico) + Aprobación de cotizaciones
+
+### Backend (`server.py`)
+- **`TeamRegisterIn`**: `club_name` ahora opcional; agregado `existing_club_id` (Cuerpo Técnico se vincula a club existente sin crear uno nuevo).
+- **`register_team`**: lógica condicional — si viene `existing_club_id`, vincula user al club existente; si no, requiere `club_name` (rol Directivo crea club nuevo).
+- **`POST /quotes`**: nuevo guard rechaza con 403 si `manager_role.lower() == 'cuerpo técnico'`.
+- **`GET /auth/me`**: ahora devuelve `manager_role` y `club_id`.
+- **Response de `register-team`**: incluye `manager_role` y `club_id`.
+
+### Frontend
+- **`TeamRegister.jsx`**:
+  - Título "Datos del director técnico" → **"Datos personales"**.
+  - H1 dinámico: "REGISTRA TU CLUB" (Directivo) / "ÚNETE A UN CLUB" (Cuerpo Técnico).
+  - Cuando `manager_role==='Cuerpo Técnico'`: oculta sección "Datos del club" + muestra select `[tr-existing-club]` con clubes aprobados desde `GET /clubs`.
+  - Cuando `manager_role==='Directivo'`: comportamiento legacy (crear club nuevo).
+  - Payload envía `existing_club_id` o `club_name` según rol.
+- **`Navbar.jsx`**: "Mi equipo" → "MI CLUB" (desktop + mobile).
+- **`Cotizar.jsx`**: nuevo gate `cuerpo-tecnico` con icon Lock + CTA "Ir a Mi Club".
+- **`MyTeam.jsx`**:
+  - Guards split: `user.role!=='team'` → No autorizado; `!teamId` → pantalla "Mi Club" minimal con header + banner status + CTAs condicionales + lista clubTeams.
+  - `loadTeam` carga `club` via `user.club_id` cuando `!teamId` (caso CT).
+  - CTA `cta-cotizar` se reemplaza por `cta-cotizar-blocked` (dashed) si CT.
+  - Si `!team` (huérfano 404): UI clara con CTA "Volver al inicio" en vez de "Cargando..." infinito.
+
+### Verificación
+- `/app/test_reports/iteration_21.json`: Backend **11/11 PASS** · Frontend 80%.
+- `/app/test_reports/iteration_22.json` (retest fix): Frontend **6/6 CT assertions PASS** · `retest_needed: false`.
+- Bug HIGH del iter21 (MyTeam guard bloqueaba CTs) **resuelto**.
+- Issue MEDIUM team huérfano: UI explícita agregada (no más "Cargando..." infinito).
+
+### Flujo aprobación cotizaciones (ya existía, validado E2E):
+- POST `/quotes` → status `pendiente`.
+- Admin PUT `/quotes/{id}/status?status=aprobada` → status `aprobada`.
+- Owner PUT `/quotes/{id}` (edit) → resetea automáticamente a `pendiente`.
+- POST `/payments/checkout/session` requiere quote.status='aprobada'.
+
+## Backlog (post C1) — para Sub-tanda C2
+- 🔴 P0 [C2]: Reescribir `/cotizar`:
+  - Sección **EVENTO**: lista eventos activos creados por Admin (no más radio festival/premier).
+  - Selección de evento + checkboxes múltiples de categorías (con fee por categoría).
+  - Rename "AÑO DE NACIMIENTO DEL EQUIPO" → **CATEGORÍAS**.
+  - **PAQUETE DE HOSPEDAJE**: múltiples paquetes seleccionables, cada uno con pax + bloque "personas adicionales" (fecha desde/hasta, valor noche adicional).
+  - **ALIMENTACIÓN ADICIONAL**: matriz CRUD por fecha + tipo + cantidad + costo unitario/total.
+  - **TRANSPORTE/TOURS**: desde catálogo dinámico.
+  - **RESUMEN EN VIVO**: arranca en 0, texto blanco, dinámico.
+
+## Backlog general
+- 🟡 P1: Notificaciones email (Resend/SendGrid).
+- 🟡 P1: Slider editable Hero.
+- 🟢 P2: Refactor MyTeam.jsx (>749 líneas) en sub-componentes (TeamHeader, CotizarCTA, RegistrationBanner).
+- 🟢 P2: Pantalla `/pendiente-aprobacion` dedicada.
+- 🟢 P2: Refactor `server.py` (~4050 líneas).
+

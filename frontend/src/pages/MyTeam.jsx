@@ -146,7 +146,17 @@ export default function MyTeam() {
     );
   }
 
-  if (!team) return <div className="p-12 text-center text-slate-500">Cargando...</div>;
+  if (!team) {
+    // Si teamId existe pero el fetch falló (team huérfano), mostrar mensaje claro en vez de "Cargando..." infinito.
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-12 text-center" data-testid="myteam-orphan">
+        <h1 className="font-display text-3xl font-black uppercase">Tu equipo no está disponible</h1>
+        <p className="text-slate-500 mt-3">No pudimos cargar la información de tu equipo. Es posible que haya sido eliminado o reasignado por el administrador.</p>
+        <p className="text-slate-500 mt-2">Si crees que es un error, contacta al administrador del FSC.</p>
+        <Link to="/" className="fsc-btn-primary inline-flex mt-6 px-6 py-2 rounded-md">Volver al inicio</Link>
+      </div>
+    );
+  }
 
   const saveTeam = async (e) => {
     e.preventDefault();
