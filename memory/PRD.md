@@ -908,3 +908,40 @@ Refactor de `const load = () => ...; useEffect(() => load(), [])` a `const load 
 - 🟢 P2: Pantalla `/pendiente-aprobacion` dedicada.
 - 🟢 P2: Refactor `server.py` (~4050 líneas).
 
+
+## Iteration 30 (2026-06-01) — C2: Refactor /cotizar (Evento dinámico + Categorías múltiples + Resumen blanco)
+
+### Backend (`server.py`)
+- **`QuoteIn`**: agregados `tournament_id`, `tournament_name`, `categories[]` (lista `{name, fee}`).
+- **`_calculate_quote`**: si vienen `categories[]`, suma todos los fees como `registration_fee`; si no, fallback a fees_by_year (legacy).
+- **Response**: `event_name` ahora usa `tournament_name` si vino, sino legacy `event["name"]`; nuevo campo `registration_breakdown` con detalle por categoría.
+- **`tours_catalog`** ahora expone `description` por tour.
+
+### Frontend (`Cotizar.jsx`)
+- **Sección 1 EVENTO**:
+  - Reemplazado el radio fest/premier por cards `[tournament-{id}]` de **tournaments NO archivados** (`GET /tournaments`).
+  - Al elegir un evento: muestra checkboxes `[category-opt-{i}]` con todas las categorías inscritas del tournament + sus fees, permitiendo selección múltiple.
+  - Rename "AÑO DE NACIMIENTO DEL EQUIPO" → **"CATEGORÍAS"**.
+  - Si tournament sin categorías: muestra `[no-categories-warn]`.
+- **Sección 5 TOURS**: cada tour muestra ahora `description` como hint italic `[tour-desc-{i}]`.
+- **RESUMEN EN VIVO**:
+  - Label y total **en blanco** (`text-white`).
+  - Defaults: `pax: 0` y `lodging_tier: ""` → total arranca en $0.
+  - Hint `[cotizar-hint-empty]` cuando falta pax o paquete: "Selecciona un paquete de hospedaje e indica al menos 1 persona para ver el total".
+  - `registration_breakdown` renderizado como sub-lines por categoría con su fee.
+  - Promo "21 gratis" chip 🎉 visible cuando aplica.
+
+### Verificación
+- `/app/test_reports/iteration_23.json`: **Backend 5/5 PASS · Frontend 100% PASS · 0 bugs**.
+- Cálculo validado: 2 categorías (2.4M + 2.3M) + lodging 10M = total 14.7M correcto.
+- Legacy path intacto (event_type+birth_year sigue funcionando).
+
+## Backlog actualizado
+- 🔴 P0 [C3 — si el usuario lo pide]: refactor hospedaje a **múltiples paquetes con N personas por paquete** (requiere extender `_calculate_quote` para iterar sobre array de lodging entries, no solo un lodging_tier único). Hoy soportado vía `extra_pax_entries`.
+- 🟡 P1: Notificaciones email (Resend/SendGrid) cambios de estado.
+- 🟡 P1: Slider editable Hero.
+- 🟢 P2: Validar `QuoteIn.categories` con un sub-modelo Pydantic (QuoteCategoryEntry) para rechazar payloads malformados explícitamente.
+- 🟢 P2: Extraer `<EventSelector />` y sub-componentes de Cotizar.jsx (637 líneas — acercándose al límite).
+- 🟢 P2: Refactor `server.py` (4073 líneas) en `/app/backend/routes/{quotes,tournaments,catalog,auth}.py`.
+- 🟢 P2: Refactor MyTeam.jsx (>749 líneas).
+

@@ -366,6 +366,11 @@ export default function Cotizar() {
           <div className="sticky top-24 bg-fsc-negro text-white rounded-2xl p-6 border-2 border-fsc-azul">
             <div className="text-xs uppercase tracking-[0.25em] text-white" data-testid="resumen-en-vivo-label">Resumen en vivo</div>
             <div className="font-display text-2xl tracking-wider text-white">Tu paquete</div>
+            {(!form.pax || !form.lodging_tier) && (
+              <div className="mt-3 text-[11px] text-fsc-gris italic bg-fsc-azul/15 border border-fsc-azul/30 rounded px-2 py-1.5" data-testid="cotizar-hint-empty">
+                Selecciona un <strong>paquete de hospedaje</strong> e indica al menos <strong>1 persona</strong> para ver el total.
+              </div>
+            )}
             <div className="mt-4 space-y-2 text-sm" data-testid="cotizar-summary">
               <Row k="Evento" v={estimate?.event_name || "—"} />
               <Row k="Paquete" v={estimate?.lodging_name || "—"} />
