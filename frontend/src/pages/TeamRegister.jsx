@@ -92,9 +92,15 @@ export default function TeamRegister() {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <Link to="/login" className="text-xs uppercase tracking-widest font-bold text-fsc-azul-oscuro hover:text-fsc-azul">← Volver</Link>
         <div className="mt-4 font-cursive text-2xl text-fsc-azul-oscuro">crea tu cuenta</div>
-        <h1 className="mt-1 font-display text-5xl md:text-6xl tracking-wider text-fsc-negro">REGISTRA TU CLUB</h1>
+        <h1 className="mt-1 font-display text-5xl md:text-6xl tracking-wider text-fsc-negro" data-testid="tr-title">
+          {isCuerpoTecnico ? "ÚNETE A UN CLUB" : "REGISTRA TU CLUB"}
+        </h1>
         <div className="h-1 w-16 bg-fsc-rojo mt-3 mb-4"/>
-        <p className="text-sm text-slate-600 mt-2 max-w-xl">Crea tu cuenta de director técnico, registra tu club y tu primer equipo. Después podrás agregar más equipos (otros años o A/B) desde "Mi equipo".</p>
+        <p className="text-sm text-slate-600 mt-2 max-w-xl">
+          {isCuerpoTecnico
+            ? "Crea tu cuenta y vincúlate al club al que perteneces. El Directivo del club debe estar ya registrado y aprobado."
+            : "Crea tu cuenta como Directivo, registra tu club. Después podrás inscribir tus equipos a los eventos desde el panel."}
+        </p>
 
         <form onSubmit={submit} className="mt-8 grid lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">

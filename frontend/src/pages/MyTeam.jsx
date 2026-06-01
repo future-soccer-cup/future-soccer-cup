@@ -39,6 +39,16 @@ export default function MyTeam() {
   const teamId = user?.team_id;
 
   const loadTeam = async () => {
+    // Si el user tiene club_id (caso CT sin team), cargar al menos el club + sus equipos.
+    if (!teamId && user?.club_id) {
+      try {
+        const cl = await api.get(`/clubs/${user.club_id}`);
+        setClub(cl.data);
+        const ct = await api.get(`/clubs/${user.club_id}/teams`).catch(() => ({ data: [] }));
+        setClubTeams(ct.data);
+      } catch { /* silent */ }
+      return;
+    }
     if (!teamId) return;
     let tdata = null;
     try {
@@ -70,14 +80,68 @@ export default function MyTeam() {
     loadTeam();
     api.get("/event-types").then((r) => setEvents(r.data.events || [])).catch(() => {});
     /* eslint-disable-next-line */
-  }, [teamId]);
+  }, [teamId, user?.club_id]);
 
   if (!user) return null;
-  if (user.role !== "team" || !teamId) {
+  if (user.role !== "team") {
     return (
       <div className="max-w-3xl mx-auto px-4 py-12">
         <h1 className="font-display text-3xl font-black uppercase">No autorizado</h1>
-        <p className="text-slate-500 mt-2">Solo los responsables de equipo pueden acceder aquí.</p>
+        <p className="text-slate-500 mt-2">Solo los responsables de club pueden acceder aquí.</p>
+      </div>
+    );
+  }
+
+  // Pantalla específica para usuarios sin team_id (CT recién registrado o Directivo cuyo club aún no tiene equipos).
+  if (!teamId) {
+    const isCT = (user.manager_role || "").trim().toLowerCase() === "cuerpo técnico";
+    return (
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12" data-testid="my-team-page">
+        <Toaster position="top-right" />
+        {club && (club.status || "pendiente") !== "aprobado" && (
+          <div className={`mb-4 rounded-xl border-2 p-4 flex items-start gap-3 ${club.status === "rechazado" ? "bg-rose-50 border-rose-300 text-rose-900" : "bg-amber-50 border-amber-300 text-amber-900"}`} data-testid="club-status-banner">
+            <AlertCircle size={28} className="shrink-0" />
+            <div>
+              <div className="font-bold uppercase tracking-wider text-sm">Tu club <strong>{club.name}</strong> está en estado: {club.status || "pendiente"}</div>
+              <p className="text-xs mt-1">Hasta que el administrador apruebe tu club, no podrás realizar cotizaciones ni inscribir equipos a eventos.</p>
+            </div>
+          </div>
+        )}
+        <h1 className="font-display text-4xl md:text-5xl font-black uppercase tracking-tighter">Mi Club</h1>
+        <p className="text-slate-600 mt-2">
+          {club ? <>Estás vinculado a <strong>{club.name}</strong>.</> : "Cargando información del club..."}
+        </p>
+
+        <div className="mt-6 grid sm:grid-cols-2 gap-3">
+          {!isCT ? (
+            <Link to="/cotizar" className="bg-white border-2 border-slate-900 text-slate-900 rounded-xl p-4 hover:bg-slate-900 hover:text-white transition-colors" data-testid="cta-cotizar">
+              <div className="text-xs font-bold uppercase tracking-[0.2em]">Armar paquete</div>
+              <div className="font-display text-2xl font-black uppercase tracking-tight">Cotizar evento →</div>
+            </Link>
+          ) : (
+            <div className="bg-slate-50 border-2 border-dashed border-slate-300 text-slate-500 rounded-xl p-4" data-testid="cta-cotizar-blocked">
+              <div className="text-xs font-bold uppercase tracking-[0.2em]">Cotizar evento</div>
+              <div className="font-display text-sm uppercase tracking-tight mt-1">Solo el Directivo del club puede cotizar.</div>
+            </div>
+          )}
+          <Link to="/mis-cotizaciones" className="bg-slate-900 text-white rounded-xl p-4 hover:bg-slate-800 transition-colors" data-testid="cta-mis-cotizaciones">
+            <div className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Historial</div>
+            <div className="font-display text-2xl font-black uppercase tracking-tight">Mis cotizaciones →</div>
+          </Link>
+        </div>
+
+        {clubTeams.length > 0 && (
+          <div className="mt-10">
+            <h2 className="font-display text-2xl font-black uppercase tracking-tight">Equipos del club</h2>
+            <div className="mt-3 space-y-2">
+              {clubTeams.map((t) => (
+                <div key={t.id} className="bg-white border border-slate-200 rounded-lg p-3 text-sm" data-testid={`club-team-${t.id}`}>
+                  <strong>{t.name}</strong> · {t.category} · status: <span className="uppercase font-bold text-fsc-azul">{t.status || "pendiente"}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     );
   }

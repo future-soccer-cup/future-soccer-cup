@@ -1,0 +1,30 @@
+{
+  "summary": "Retest del fix MyTeam guard (iter21 HIGH). El bug está RESUELTO: usuario Cuerpo Técnico (team_id=null, club_id aprobado) ahora accede a /mi-equipo y ve titulo 'Mi Club', vínculo a club, [cta-cotizar-blocked] visible, [cta-cotizar] ausente, [cta-mis-cotizaciones] presente. 6/6 aserciones CT PASS. Regresión admin: el guard de ruta envía admin a /admin → al navegar manualmente a /mi-equipo el router redirige a / (homepage); el invariante 'admin no ve UI de equipo' se mantiene aunque no se renderiza el mensaje 'No autorizado' (manejado a nivel de ruta, no de página). Regresión coach (team con team_id): el usuario coach@test.com tiene team_id huérfano (GET /teams/{id} → 404), por lo que la página queda en 'Cargando...' indefinidamente — pre-existing, NO relacionado al fix. Directivo sin team_id no se pudo validar end-to-end por falta de credencial fresca, pero el branch del código es simétrico al CT y muestra cta-cotizar (no blocked) cuando manager_role!='Cuerpo Técnico'.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "MyTeam.jsx", "issue": "Cuando teamId existe pero GET /teams/{id} responde 404 (team huérfano), team queda null y el componente renderiza 'Cargando...' infinitamente — sin estado de error ni CTA de recuperación. Comment de código indica 'mostramos estado vacío' pero no hay tal UI. Pre-existing (no introducido por este fix).", "selector": "MyTeam.jsx:60-63 + :149", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/test_reports/iteration_22.json"],
+  "action_items": [
+    "Opcional: Agregar estado de error explícito en MyTeam cuando team load falla con 404 (team huérfano) — mostrar mensaje 'Tu equipo ya no está disponible, contacta a admin' en vez de 'Cargando...' infinito. No bloquea, es UX nice-to-have.",
+    "Refrescar test_credentials.md: coach@test.com tiene team_id huérfano (a50cdb94-2ba5-441b-9ec3-5dd5b5efb2da → 404). Crear un nuevo team user de prueba para regresiones futuras.",
+    "Opcional: Validar manualmente el caso Directivo registrado vía /registro-equipo SIN team_id (existing_club_id, club pendiente) — debe ver cta-cotizar (no blocked). El código del branch lo soporta correctamente."
+  ],
+  "critical_code_review_comments": [
+    "MyTeam.jsx ahora tiene 749 líneas — supera el umbral recomendado de 700. Considerar dividir en sub-componentes (TeamHeader, RegistrationBanner, ClubTeamsSection, PlayersSection, StaffSection) para mantenibilidad.",
+    "Hay duplicación del bloque cta-cotizar / cta-cotizar-blocked entre la rama !teamId (líneas 116-126) y la rama con teamId (líneas 401-411). Extraer a componente reutilizable <CotizarCTA managerRole={...} />.",
+    "El bloque club-status-banner también está duplicado entre las dos ramas (101-109 vs 304-312). Extraer."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (skipped)", "frontend": "95% (fix principal 100% PASS, hallazgo pre-existing orphan-team)"},
+  "test_credentials": "Admin: admin@futuresoccercup.com / FSCAdmin2025! ; CT smoke: ct_smoke2_1780348474@test.com / abc123 (vinculado a club 'AuditClub' aprobado) — funciona OK; Coach: coach@test.com / Coach2025! — team_id huérfano, página atascada en Cargando.",
+  "seed_data_creation": "Ninguno nuevo. Se usó CT smoke pre-existente del iter21.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Iter22 confirmó que el fix de MyTeam guard del iter21 funciona: CT con team_id=null y club_id aprobado ahora ve la pantalla 'Mi Club' con [cta-cotizar-blocked] en vez de 'No autorizado'. Aserciones CT 6/6 PASS. El usuario coach@test.com tiene team_id huérfano (404 en /teams/{id}) — no testeable como regresión de full dashboard hasta crear nuevo team user. Admin protection vía route-level guard funciona (redirige a / al intentar /mi-equipo).",
+  "rca of the issue": "El fix aplicado en MyTeam.jsx separa correctamente los dos guards: (1) `if (user.role !== 'team') return <NoAuth/>` bloquea no-team (líneas 86-93), (2) `if (!teamId) return <ClubScreen/>` renderiza pantalla específica para CT/Directivo sin team_id con cta-cotizar-blocked condicional según manager_role (líneas 96-147). loadTeam también fue actualizado para cargar el club via user.club_id cuando !teamId (líneas 42-51). Test e2e con CT user confirma comportamiento esperado."
+}
