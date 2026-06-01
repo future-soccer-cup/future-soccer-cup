@@ -111,7 +111,7 @@ export default function Cotizar() {
 
   if (authLoading || !config) return <div className="p-12 text-center text-slate-500">Cargando...</div>;
 
-  // === GATE: solo DTs aprobados o admins ===
+  // === GATE: roles + estado del club (cotizar NO requiere team registrado) ===
   if (!user) return <CotizarGate variant="login" />;
   if (user.role === "admin") {
     // admin can preview
@@ -123,9 +123,9 @@ export default function Cotizar() {
     return <CotizarGate variant="pending" team={myTeam} />;
   } else if (myTeam && myTeam.status === "rechazado") {
     return <CotizarGate variant="rejected" team={myTeam} />;
-  } else if (user.role === "team" && !myTeam) {
-    return <CotizarGate variant="no-team" />;
   }
+  // NOTA: ya NO bloqueamos a Directivos sin team — pueden cotizar sin tener equipo registrado.
+  // El bloqueo de club aprobado (require_club_approved) lo aplica el backend en POST /quotes.
 
   const tier = config.lodging_tiers.find((t) => t.id === form.lodging_tier);
   const isDomicilio = form.lodging_tier === "domicilio";

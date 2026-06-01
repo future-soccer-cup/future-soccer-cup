@@ -142,6 +142,15 @@ export default function MyTeam() {
             </div>
           </div>
         )}
+
+        {/* CTA Crear primer equipo — disponible para Directivos (no CT) sin team_id */}
+        {!isCT && user?.club_id && (club?.status === "aprobado") && (
+          <FirstTeamCreator
+            clubId={user.club_id}
+            events={events}
+            onCreated={loadTeam}
+          />
+        )}
       </div>
     );
   }
@@ -755,4 +764,73 @@ function StatusPill({ status }) {
     return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-yellow-100 text-yellow-800">Pendiente</span>;
   }
   return <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-red-100 text-red-800">Rechazado</span>;
+}
+
+
+function FirstTeamCreator({ clubId, events, onCreated }) {
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ event_type: "", birth_year: "", designation: "Único" });
+  const [saving, setSaving] = useState(false);
+  const ev = events.find((e) => e.id === form.event_type);
+  const years = ev?.birth_years || [];
+
+  const submit = async () => {
+    if (!form.event_type || !form.birth_year) return toast.error("Completa evento y año");
+    setSaving(true);
+    try {
+      await api.post(`/clubs/${clubId}/teams`, { ...form, birth_year: Number(form.birth_year) });
+      toast.success("Equipo creado");
+      setOpen(false);
+      setForm({ event_type: "", birth_year: "", designation: "Único" });
+      onCreated?.();
+    } catch (err) {
+      toast.error(formatApiError(err.response?.data?.detail) || "Error al crear equipo");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!open) {
+    return (
+      <div className="mt-8" data-testid="first-team-cta-wrapper">
+        <button onClick={() => setOpen(true)} className="fsc-btn-primary px-5 py-2.5 rounded-md text-sm inline-flex items-center gap-2" data-testid="first-team-cta">
+          <Plus size={16}/> Crear primer equipo
+        </button>
+        <p className="text-xs text-slate-500 mt-2">Opcional: puedes <strong>cotizar primero</strong> y crear los equipos después, o al revés.</p>
+      </div>
+    );
+  }
+  return (
+    <div className="mt-8 bg-white border-2 border-fsc-azul rounded-xl p-5" data-testid="first-team-form">
+      <h3 className="font-display text-xl font-black uppercase tracking-tight mb-3">Crear primer equipo</h3>
+      <div className="grid sm:grid-cols-3 gap-3">
+        <label className="block">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Evento</span>
+          <select value={form.event_type} onChange={(e) => setForm({ ...form, event_type: e.target.value, birth_year: "" })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="first-team-event">
+            <option value="">— Seleccionar</option>
+            {events.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+          </select>
+        </label>
+        <label className="block">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Año de nacimiento</span>
+          <select value={form.birth_year} onChange={(e) => setForm({ ...form, birth_year: e.target.value })} disabled={!ev} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md disabled:bg-slate-100" data-testid="first-team-year">
+            <option value="">—</option>
+            {years.map((y) => <option key={y} value={y}>{y}</option>)}
+          </select>
+        </label>
+        <label className="block">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Designación</span>
+          <select value={form.designation} onChange={(e) => setForm({ ...form, designation: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md">
+            <option>Único</option>
+            <option>Equipo A</option>
+            <option>Equipo B</option>
+          </select>
+        </label>
+      </div>
+      <div className="mt-4 flex gap-2">
+        <button onClick={submit} disabled={saving} className="fsc-btn-red px-5 py-2 rounded-md text-sm disabled:opacity-50" data-testid="first-team-confirm">{saving ? "Creando..." : "Crear equipo"}</button>
+        <button onClick={() => setOpen(false)} className="px-4 py-2 text-sm text-slate-600">Cancelar</button>
+      </div>
+    </div>
+  );
 }
