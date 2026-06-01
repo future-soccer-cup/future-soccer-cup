@@ -1,0 +1,32 @@
+{
+  "summary": "Iter20 FSC ajustes pequeños — Promo 21 gratis + register-team opcional + lodging_tier relajado. Backend: 9/9 pytest passed (catalog free_21st_enabled persist via POST+PUT, quote math pax=21→20paying/1free, pax=40→38/2, pax=19→19/0, free21 disabled→sin promo, extra_pax NO afectados, lodging_tier='paquete_1' aceptado como str, register-team SIN event_type → 200 con team_id=null y club creado, register-team CON event_type back-compat OK). Frontend: /registro-equipo verified — section-event count=0, tr-manager-role solo 'Directivo' y 'Cuerpo Técnico' (2 opciones exactas), tr-club-country select con default 'Colombia' (22 países), sidebar resumen muestra rows País y Rol; submit completo SIN event → POST 200 con team_id=null → navega a /mi-equipo (no rompe, muestra 'No autorizado' como UX esperada para DT sin team). Toast 'Club registrado. Espera aprobación' mostrado. Admin /admin/inventario tab 'Paquetes hospedaje' verificado: 4 cards con [inv-lodging-free21-{id}] + label 'Promo 21 gratis'; toggle paquete_1 + click save → PUT 200 → GET /event-types confirma free_21st_enabled=true; CreateModal 'Nuevo paquete' incluye [inv-new-free21] con label 'Promo \"21 sale gratis\"'. Estado paquete_1 restaurado a free_21st_enabled=false al finalizar.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter20_free21_and_team_register.py",
+    "/app/test_reports/pytest/iteration_20.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "register-team navega a /mi-equipo aún cuando team_id=null; el guard de /mi-equipo correctamente bloquea con 'No autorizado'. Considerar redirigir a una pantalla intermedia tipo '/pendiente-aprobacion' para mejor UX cuando solo el club está pendiente, en lugar de la genérica de 'No autorizado'.",
+    "_calculate_quote aplica free_21 solo a payload.pax y NO a extra_pax_entries (correcto según especificación). Fórmula: free_units = pax // 20, paying = pax - free_units. Verificada para 19, 21, 40 y 21+extra=2.",
+    "TeamRegisterIn.event_type y birth_year ahora son Optional[...]=None y el endpoint maneja condicionalmente la creación del team — back-compat OK.",
+    "QuoteIn.lodging_tier relajado a str: acepta 'paquete_1'/'paquete_premium'/'paquete_2'/'gold' del catálogo admin (fix de issue minor de iter19)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter20_free21_and_team_register.py"
+  ],
+  "success_rate": {"backend": "100% (9/9)", "frontend": "100% (todos los testids esperados verificados, toggle + save + modal + form submit OK)"},
+  "test_credentials": "Admin admin@futuresoccercup.com / FSCAdmin2025! OK.",
+  "seed_data_creation": "Tests creó (y limpió) un lodging row TEST_iter20_lodging, dos users DT TEST_iter20_no_event_*/TEST_iter20_with_event_* + clubs (clubs eliminados via /admin/clubs/{cid}, team eliminado via /admin/teams/{tid}; usuarios residuales sin endpoint de borrado). Adicionalmente desde UI: TEST_iter20_ui_*. Estado paquete_1.free_21st_enabled restaurado al estado original (false) por fixture finalize.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iter20 cerrado OK. Funcionalidades verificadas: (1) Promo '21 sale gratis' configurable por paquete en /admin/inventario + persistencia en MongoDB, (2) Cálculo quote aplica 1 gratis por bloque de 20 SOLO a payload.pax (no a extra_pax_entries), (3) /auth/register-team acepta payload sin event_type/birth_year y crea solo user+club (team_id=null), back-compat con event_type+birth_year intacto, (4) /quotes/calculate acepta lodging_tier como str (paquete_1 ya no 422). Frontend: TeamRegister.jsx con 22 países, rol Directivo/Cuerpo Técnico, sin sección evento; AdminInventory.jsx con checkbox per-card y en CreateModal. Recomendación futura: agregar pantalla /pendiente-aprobacion para DT sin team_id."
+}

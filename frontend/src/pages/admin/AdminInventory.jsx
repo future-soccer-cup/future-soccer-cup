@@ -108,7 +108,7 @@ export default function AdminInventory() {
         ))}
       </div>
 
-      {tab === "lodging" && <LodgingTab rows={byType.lodging} onChange={patchLocal} onSave={persist} onDelete={remove} saving={saving} onAdd={() => setCreating({ type: "lodging", body: { name: "", description: "", base_5_nights: 0, additional_night: 0, available: true, no_lodging: false, classification: "", accommodation_type: "" } })} />}
+      {tab === "lodging" && <LodgingTab rows={byType.lodging} onChange={patchLocal} onSave={persist} onDelete={remove} saving={saving} onAdd={() => setCreating({ type: "lodging", body: { name: "", description: "", base_5_nights: 0, additional_night: 0, available: true, no_lodging: false, classification: "", accommodation_type: "", free_21st_enabled: false } })} />}
       {tab === "meal_addon" && <MealAddonTab rows={byType.meal_addon} onChange={patchLocal} onSave={persist} onDelete={remove} saving={saving} onAdd={() => setCreating({ type: "meal_addon", body: { name: "", meal_type: "", classification: "", cost: 0 } })} />}
       {tab === "transport" && <SimpleTab type="transport" label="Transporte" rows={byType.transport} onChange={patchLocal} onSave={persist} onDelete={remove} saving={saving} onAdd={() => setCreating({ type: "transport", body: { name: "", price: 0 } })} />}
       {tab === "tour" && <TourTab rows={byType.tour} onChange={patchLocal} onSave={persist} onDelete={remove} saving={saving} onAdd={() => setCreating({ type: "tour", body: { name: "", description: "", price: 0 } })} />}
@@ -131,6 +131,7 @@ function buildBody(row) {
       additional_night: Number(row.additional_night || 0),
       available: row.available !== false,
       no_lodging: !!row.no_lodging,
+      free_21st_enabled: !!row.free_21st_enabled,
       classification: cls,
       accommodation_type: row.accommodation_type || "",
     };
@@ -201,7 +202,7 @@ function LodgingTab({ rows, onChange, onSave, onDelete, saving, onAdd }) {
                   <CurrencyInput value={r.additional_night} onChange={(v) => onChange(r.id, "lodging", { additional_night: v })} disabled={r.no_lodging} className="w-full text-sm" data-testid={`inv-lodging-add-${r.id}`} />
                 </label>
               </div>
-              <div className="flex gap-3 mt-3 text-xs">
+              <div className="flex gap-3 mt-3 text-xs flex-wrap">
                 <label className="flex items-center gap-1 cursor-pointer">
                   <input type="checkbox" checked={r.available !== false} onChange={(e) => onChange(r.id, "lodging", { available: e.target.checked })} className="accent-fsc-azul" />
                   <span>Disponible</span>
@@ -209,6 +210,10 @@ function LodgingTab({ rows, onChange, onSave, onDelete, saving, onAdd }) {
                 <label className="flex items-center gap-1 cursor-pointer">
                   <input type="checkbox" checked={!!r.no_lodging} onChange={(e) => onChange(r.id, "lodging", { no_lodging: e.target.checked })} className="accent-amber-500" />
                   <span>Sin hospedaje (Domicilio)</span>
+                </label>
+                <label className="flex items-center gap-1 cursor-pointer text-fsc-rojo font-bold" title="Por cada 20 personas alojadas en la misma reserva, la persona #21 NO paga hospedaje.">
+                  <input type="checkbox" checked={!!r.free_21st_enabled} onChange={(e) => onChange(r.id, "lodging", { free_21st_enabled: e.target.checked })} className="accent-fsc-rojo" data-testid={`inv-lodging-free21-${r.id}`} />
+                  <span>Promo 21 gratis</span>
                 </label>
               </div>
             </div>
@@ -403,6 +408,10 @@ function CreateModal({ creating, setCreating, onSubmit }) {
             <label className="flex items-center gap-2 cursor-pointer text-sm">
               <input type="checkbox" checked={!!creating.body.no_lodging} onChange={(e) => setBody({ no_lodging: e.target.checked })} />
               Sin hospedaje (domicilio)
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer text-sm text-fsc-rojo font-bold" title="Por cada 20 personas alojadas en la misma reserva, la persona #21 NO paga hospedaje.">
+              <input type="checkbox" checked={!!creating.body.free_21st_enabled} onChange={(e) => setBody({ free_21st_enabled: e.target.checked })} data-testid="inv-new-free21" />
+              Promo "21 sale gratis" (por cada 20 alojados en la reserva)
             </label>
           </>
         )}

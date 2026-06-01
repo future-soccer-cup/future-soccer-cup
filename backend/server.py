@@ -417,9 +417,9 @@ class TeamRegisterIn(BaseModel):
     club_website: Optional[str] = ""
     logo_url: Optional[str] = ""
     color: Optional[str] = "#1d4ed8"
-    # First team registered with the club
-    event_type: Literal["festival", "premier_par", "premier_impar"]
-    birth_year: int = Field(ge=2008, le=2020)
+    # First team registered with the club (OPCIONAL — si no se envía, solo se crea el club)
+    event_type: Optional[str] = None
+    birth_year: Optional[int] = None
     designation: Optional[Literal["Único", "Equipo A", "Equipo B"]] = "Único"
     data_consent: bool = False
 
@@ -620,7 +620,7 @@ class QuoteIn(BaseModel):
     birth_year: Optional[int] = None
     category: Optional[str] = ""  # legacy
     # Hospedaje (paquetes — sin mostrar nombres de hoteles)
-    lodging_tier: Literal["sapphire", "diamond", "gold", "silver", "bronze", "domicilio"]
+    lodging_tier: str = Field(min_length=1)  # id de paquete (admin-editable). Antes era Literal estrecho.
     room_type: Optional[str] = ""  # legacy, no longer used for pricing
     pax: int = Field(ge=1)
     nights: int = Field(default=5, ge=1)  # default 5 según PDF
@@ -716,16 +716,19 @@ async def register_team(payload: TeamRegisterIn, response: Response):
     email = payload.email.lower()
     if not payload.data_consent:
         raise HTTPException(status_code=400, detail="Debes aceptar el tratamiento de datos personales para continuar.")
-    event = EVENT_TYPES.get(payload.event_type)
-    if not event:
-        raise HTTPException(status_code=400, detail="Tipo de evento inválido")
-    if payload.birth_year not in event["birth_years"]:
-        raise HTTPException(status_code=400, detail=f"El año {payload.birth_year} no aplica al {event['name']}. Años válidos: {event['birth_years']}")
+    # event_type/birth_year son opcionales — si vienen, validamos. Si no, registramos solo el club.
+    event = None
+    if payload.event_type:
+        event = EVENT_TYPES.get(payload.event_type)
+        if not event:
+            raise HTTPException(status_code=400, detail="Tipo de evento inválido")
+        if payload.birth_year is not None and payload.birth_year not in event["birth_years"]:
+            raise HTTPException(status_code=400, detail=f"El año {payload.birth_year} no aplica al {event['name']}. Años válidos: {event['birth_years']}")
     if await db.users.find_one({"email": email}):
         raise HTTPException(status_code=400, detail="El correo ya está registrado")
 
     user_id = str(uuid.uuid4())
-    team_id = str(uuid.uuid4())
+    team_id = str(uuid.uuid4()) if event and payload.birth_year else None
     now = datetime.now(timezone.utc).isoformat()
 
     # 1) Find or create Club
@@ -752,32 +755,36 @@ async def register_team(payload: TeamRegisterIn, response: Response):
     else:
         club_id = club["id"]
 
-    # 2) Compute registration fee from event + birth_year
-    fee = float(event.get("fees_by_year", {}).get(str(payload.birth_year), event["registration_fee_per_team"]))
+    # 2) Compute registration fee from event + birth_year (solo si hay evento)
+    fee = 0.0
+    if event and payload.birth_year:
+        fee = float(event.get("fees_by_year", {}).get(str(payload.birth_year), event["registration_fee_per_team"]))
 
-    # 3) Create team
-    visible_name = f"{club_name_norm} {payload.birth_year} {payload.designation}".strip()
-    team_doc = {
-        "id": team_id,
-        "name": visible_name,
-        "club_id": club_id,
-        "club_name": club_name_norm,  # denormalized for convenience
-        "birth_year": payload.birth_year,
-        "designation": payload.designation or "Único",
-        "category": f"Año {payload.birth_year}",  # legacy display
-        "coach": payload.manager_name,
-        "city": payload.club_city or "",
-        "country": payload.club_country or "Colombia",
-        "logo_url": payload.logo_url or "",
-        "color": payload.color or "#1d4ed8",
-        "manager_user_id": user_id,
-        "status": "pendiente",
-        "event_type": payload.event_type,
-        "registration_fee": fee,
-        "registration_payment_status": "pending",
-        "cuerpo_tecnico": [],
-        "created_at": now,
-    }
+    # 3) Create team (SOLO si event_type + birth_year fueron suministrados)
+    team_doc = None
+    if event and payload.birth_year:
+        visible_name = f"{club_name_norm} {payload.birth_year} {payload.designation}".strip()
+        team_doc = {
+            "id": team_id,
+            "name": visible_name,
+            "club_id": club_id,
+            "club_name": club_name_norm,
+            "birth_year": payload.birth_year,
+            "designation": payload.designation or "Único",
+            "category": f"Año {payload.birth_year}",
+            "coach": payload.manager_name,
+            "city": payload.club_city or "",
+            "country": payload.club_country or "Colombia",
+            "logo_url": payload.logo_url or "",
+            "color": payload.color or "#1d4ed8",
+            "manager_user_id": user_id,
+            "status": "pendiente",
+            "event_type": payload.event_type,
+            "registration_fee": fee,
+            "registration_payment_status": "pending",
+            "cuerpo_tecnico": [],
+            "created_at": now,
+        }
     user_doc = {
         "id": user_id,
         "email": email,
@@ -793,7 +800,8 @@ async def register_team(payload: TeamRegisterIn, response: Response):
         "consent_at": now,
         "created_at": now,
     }
-    await db.teams.insert_one(team_doc)
+    if team_doc:
+        await db.teams.insert_one(team_doc)
     await db.users.insert_one(user_doc)
 
     access = create_access_token(user_id, email, "team")
@@ -2066,6 +2074,9 @@ async def _load_catalog() -> dict:
                 "base_5_nights": float(r.get("base_5_nights", 0) or 0),
                 "additional_night": float(r.get("additional_night", 0) or 0),
                 "available": bool(r.get("available", True)),
+                "free_21st_enabled": bool(r.get("free_21st_enabled", False)),
+                "classification": r.get("classification", ""),
+                "accommodation_type": r.get("accommodation_type", ""),
                 **({"no_lodging": True} if r.get("no_lodging") else {}),
             }
         elif t == "meal":
@@ -2137,6 +2148,8 @@ def _validate_catalog_row(t: str, body: dict) -> dict:
         out["additional_night"] = max(0.0, float(body.get("additional_night", 0) or 0))
         out["available"] = bool(body.get("available", True))
         out["no_lodging"] = bool(body.get("no_lodging", False))
+        # Promo "21 sale gratis" — 1 persona gratis por cada 20 alojadas en la misma reserva (no en total).
+        out["free_21st_enabled"] = bool(body.get("free_21st_enabled", False))
         # Clasificación oficial FSC (Esmerald / Sapphire / Diamond / Gold / Silver / Bronze).
         # Tipo de acomodación (Múltiple / Triple / Doble) y descripción larga del paquete.
         if "classification" in body:
@@ -2432,7 +2445,13 @@ def _calculate_quote(payload: QuoteIn, catalog: dict) -> dict:
     add_night = float(tier.get("additional_night", 0) or 0)
     extra_nights = max(0, nights - 5)
     rate_per_person = base_5 + add_night * extra_nights
-    lodging_total = rate_per_person * payload.pax
+    # Promo "21 sale gratis": por cada bloque de 20 personas alojadas en la reserva principal,
+    # la persona #21 NO paga hospedaje. Solo aplica si está habilitada en el paquete y a la reserva
+    # principal (no a los extra_pax que pueden tener noches distintas).
+    free_21_enabled = bool(tier.get("free_21st_enabled"))
+    free_units = (payload.pax // 20) if free_21_enabled else 0
+    paying_pax = max(0, payload.pax - free_units)
+    lodging_total = rate_per_person * paying_pax
 
     # PAX adicionales con noches propias (acompañantes): cada uno paga base_5 + add_night*(nights-5)
     extra_pax_total = 0.0
@@ -2565,6 +2584,10 @@ def _calculate_quote(payload: QuoteIn, catalog: dict) -> dict:
         "nights": nights,
         "days": days,
         "pax": payload.pax,
+        # Promo "21 sale gratis" — para que el frontend pueda mostrarlo en el desglose.
+        "free_21_enabled": free_21_enabled,
+        "free_lodging_units": free_units,
+        "paying_pax_lodging": paying_pax,
     }
 
 @api.post("/quotes/calculate")

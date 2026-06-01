@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import api, { formatApiError, FSC_LOGO } from "../lib/api";
@@ -7,46 +7,39 @@ import { Upload, ArrowRight } from "lucide-react";
 import { ConsentBlock } from "./Register";
 
 const EMPTY = {
-  email: "", password: "", manager_name: "", manager_phone: "", manager_role: "Director técnico", manager_document: "",
+  email: "", password: "", manager_name: "", manager_phone: "", manager_role: "Directivo", manager_document: "",
   club_name: "", club_country: "Colombia", club_city: "", club_phone: "",
-  color: "#0640c8", event_type: "", birth_year: "", designation: "Único", data_consent: false,
+  color: "#0640c8", data_consent: false,
 };
 
-const fmtCOP = (n) => `$${Number(n || 0).toLocaleString("es-CO")}`;
+const COUNTRIES = [
+  "Colombia", "Argentina", "Bolivia", "Brasil", "Chile", "Costa Rica", "Ecuador",
+  "El Salvador", "España", "Estados Unidos", "Guatemala", "Honduras", "México",
+  "Nicaragua", "Panamá", "Paraguay", "Perú", "Puerto Rico", "República Dominicana",
+  "Uruguay", "Venezuela", "Otro",
+];
 
 export default function TeamRegister() {
   const [form, setForm] = useState(EMPTY);
   const [loading, setLoading] = useState(false);
   const [logoFile, setLogoFile] = useState(null);
-  const [events, setEvents] = useState([]);
-  const [designations, setDesignations] = useState(["Único", "Equipo A", "Equipo B"]);
   const fileRef = useRef(null);
   const { setUser } = useAuth();
   const nav = useNavigate();
 
-  useEffect(() => {
-    api.get("/event-types").then((r) => {
-      setEvents(r.data.events || []);
-      if (r.data.designations) setDesignations(r.data.designations);
-    }).catch(() => {});
-  }, []);
-
   const upd = (k, v) => setForm({ ...form, [k]: v });
-  const selectedEvent = events.find((e) => e.id === form.event_type);
-  const allowedYears = selectedEvent?.birth_years || [];
-  const feeForYear = (yr) => selectedEvent?.fees_by_year?.[String(yr)] || selectedEvent?.registration_fee_per_team || 0;
 
   const submit = async (e) => {
     e.preventDefault();
-    if (!form.event_type) return toast.error("Selecciona el evento");
     if (!form.data_consent) return toast.error("Debes aceptar la política de datos");
     setLoading(true);
     try {
-      const payload = { ...form, birth_year: form.birth_year ? Number(form.birth_year) : (selectedEvent?.birth_years?.[0] || null) };
+      // El payload ya NO incluye event_type/birth_year — solo registramos el club.
+      const payload = { ...form };
       const reg = await api.post("/auth/register-team", payload);
       setUser(reg.data);
 
-      if (logoFile) {
+      if (logoFile && reg.data.team_id) {
         try {
           const fd = new FormData();
           fd.append("file", logoFile);
@@ -86,10 +79,8 @@ export default function TeamRegister() {
                 <label className="block">
                   <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Rol</span>
                   <select value={form.manager_role} onChange={(e) => upd("manager_role", e.target.value)} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="tr-manager-role">
-                    <option>Director técnico</option>
-                    <option>Gerente</option>
-                    <option>Presidente</option>
-                    <option>Delegado</option>
+                    <option value="Directivo">Directivo</option>
+                    <option value="Cuerpo Técnico">Cuerpo Técnico</option>
                   </select>
                 </label>
                 <Field label="Correo electrónico" required type="email" value={form.email} onChange={(v) => upd("email", v)} testId="tr-email" />
@@ -104,8 +95,14 @@ export default function TeamRegister() {
               <div className="grid sm:grid-cols-2 gap-3">
                 <Field label="Nombre del club" required value={form.club_name} onChange={(v) => upd("club_name", v)} testId="tr-club-name" />
                 <Field label="Teléfono del club" value={form.club_phone} onChange={(v) => upd("club_phone", v)} testId="tr-club-phone" />
-                <Field label="Ciudad" required value={form.club_city} onChange={(v) => upd("club_city", v)} testId="tr-club-city" />
                 <label className="block">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500">País <span className="text-fsc-rojo">*</span></span>
+                  <select required value={form.club_country} onChange={(e) => upd("club_country", e.target.value)} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="tr-club-country">
+                    {COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </label>
+                <Field label="Ciudad" required value={form.club_city} onChange={(v) => upd("club_city", v)} testId="tr-club-city" />
+                <label className="block sm:col-span-2">
                   <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Color principal</span>
                   <input type="color" value={form.color} onChange={(e) => upd("color", e.target.value)} className="mt-1 w-full h-10 px-1 border border-slate-200 rounded-md" />
                 </label>
@@ -120,20 +117,8 @@ export default function TeamRegister() {
               </div>
             </Section>
 
-            {/* Evento + primer equipo */}
-            <Section title="Evento" testId="section-event">
-              <p className="text-xs text-slate-500 mb-3">Indica el evento principal al que se inscribirá tu club. Los equipos y categorías se gestionan desde el panel después de la aprobación admin.</p>
-              <div className="grid sm:grid-cols-3 gap-3">
-                {events.map((ev) => (
-                  <label key={ev.id} className={`cursor-pointer border-2 rounded-xl p-4 transition-colors ${form.event_type === ev.id ? "border-fsc-azul bg-fsc-azul/10" : "border-slate-200 hover:border-slate-400"}`} data-testid={`event-option-${ev.id}`}>
-                    <input type="radio" name="event_type" className="hidden" value={ev.id} checked={form.event_type === ev.id} onChange={() => setForm({ ...form, event_type: ev.id, birth_year: ev.birth_years?.[0] || "" })} />
-                    <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Evento</div>
-                    <div className="font-display text-xl tracking-wider">{ev.name}</div>
-                    <div className="text-[10px] text-slate-500 mt-1">{ev.dates}</div>
-                  </label>
-                ))}
-              </div>
-            </Section>
+            {/* Sección Evento eliminada — el club se registra sin asociar a un evento específico.
+                 Después de la aprobación, el admin/DT podrá inscribir equipos a eventos desde el panel. */}
 
             <ConsentBlock checked={form.data_consent} onChange={(v) => upd("data_consent", v)} testId="tr-consent" />
 
@@ -149,11 +134,13 @@ export default function TeamRegister() {
               <div className="mt-4 text-xs uppercase tracking-[0.25em] text-fsc-azul">Resumen</div>
               <div className="mt-2 space-y-2 text-sm">
                 <Row k="Club" v={form.club_name || "—"} />
-                <Row k="Director" v={form.manager_name || "—"} />
-                <Row k="Evento" v={selectedEvent?.name || "—"} />
+                <Row k="País" v={form.club_country || "—"} />
+                <Row k="Ciudad" v={form.club_city || "—"} />
+                <Row k="Responsable" v={form.manager_name || "—"} />
+                <Row k="Rol" v={form.manager_role || "—"} />
               </div>
               <div className="mt-5 pt-4 border-t border-fsc-azul/30 text-xs text-fsc-gris/80 leading-relaxed">
-                Después de aprobar tu cuenta, podrás registrar tus equipos y categorías desde el panel.
+                Después de aprobar tu cuenta, podrás inscribir tus equipos a los eventos y configurar categorías desde el panel.
               </div>
             </div>
           </aside>
