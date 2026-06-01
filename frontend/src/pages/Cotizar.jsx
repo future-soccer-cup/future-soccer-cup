@@ -392,10 +392,13 @@ export default function Cotizar() {
               {(estimate?.lodgings_breakdown || []).map((b, i) => (
                 <div key={`ldb-${i}`} className="border-b border-fsc-azul/20 pb-2">
                   <div className="flex justify-between text-xs">
-                    <span className="text-fsc-gris uppercase tracking-wider">{b.tier_name} · {b.pax}p × {b.nights}n</span>
+                    <span className="text-fsc-gris uppercase tracking-wider">{b.tier_name} · {b.pax} pax</span>
                     <span className="font-bold tabular-nums">{fmt(b.subtotal)}</span>
                   </div>
-                  <div className="text-[10px] text-fsc-gris pl-2">Tarifa/pax: {fmt(b.rate_per_person_total)}</div>
+                  <div className="flex justify-between text-[10px] text-fsc-gris pl-2">
+                    <span>· Valor unitario</span>
+                    <span className="tabular-nums">{fmt(b.rate_per_person_total)}</span>
+                  </div>
                   {b.free_lodging_units > 0 && (
                     <div className="text-[10px] text-fsc-rojo pl-2">🎉 Promo 21 gratis: {b.free_lodging_units} pax sin costo</div>
                   )}
@@ -460,6 +463,9 @@ function Row({ k, v }) {
 function LodgingBlock({ idx, data, tiers, onChange, onRemove }) {
   const tier = tiers.find((t) => t.id === data.tier_id);
   const isDom = data.tier_id === "domicilio";
+  const pax = Number(data.pax || 0);
+  const unitario = (tier && !isDom) ? Number(tier.base_5_nights || 0) : 0;
+  const subtotal = unitario * pax;
   return (
     <div className="border-2 border-fsc-azul/30 bg-fsc-azul/5 rounded-xl p-4" data-testid={`lodging-block-${idx}`}>
       <div className="flex items-center justify-between mb-3">
@@ -472,10 +478,11 @@ function LodgingBlock({ idx, data, tiers, onChange, onRemove }) {
         </button>
       </div>
 
-      {/* Selector de tier */}
+      {/* Selector de tier — muestra NOMBRE, ACOMODACIÓN, VALOR PAQUETE, NOCHE ADICIONAL (estructura del admin) */}
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2 mb-3">
         {tiers.map((t) => {
           const selected = data.tier_id === t.id;
+          const tIsDom = t.id === "domicilio";
           return (
             <button
               key={t.id}
@@ -484,44 +491,69 @@ function LodgingBlock({ idx, data, tiers, onChange, onRemove }) {
               className={`text-left p-3 rounded-lg border-2 transition-colors ${selected ? "border-fsc-azul bg-white" : "border-slate-200 bg-white/60 hover:border-slate-400"}`}
               data-testid={`lodging-${idx}-tier-${t.id}`}
             >
-              <div className="font-display text-base font-black uppercase tracking-tight">{t.name}</div>
-              <div className="text-[10px] text-slate-500">{t.description}</div>
-              {t.id !== "domicilio" ? (
-                <div className="mt-1 text-[11px]">
-                  <div><span className="text-slate-500">5n: </span><span className="font-bold tabular-nums">{fmt(t.base_5_nights)}</span></div>
-                  <div className="text-[10px] text-slate-500">+noche: <span className="font-bold tabular-nums">{fmt(t.additional_night)}</span></div>
+              {/* NOMBRE */}
+              <div className="font-display text-base font-black uppercase tracking-tight" data-testid={`lodging-${idx}-tier-${t.id}-name`}>{t.name}</div>
+              {/* ACOMODACIÓN */}
+              <div className="text-[10px] font-bold uppercase tracking-[0.15em] text-fsc-azul-oscuro mt-0.5" data-testid={`lodging-${idx}-tier-${t.id}-acc`}>
+                Acomodación: {t.accommodation_type || "—"}
+              </div>
+              {t.description && <div className="text-[10px] text-slate-500 mt-0.5">{t.description}</div>}
+              {!tIsDom ? (
+                <div className="mt-2 space-y-0.5 text-[11px]">
+                  {/* VALOR PAQUETE */}
+                  <div className="flex justify-between">
+                    <span className="text-slate-500 uppercase tracking-wider text-[9px]">Valor paquete</span>
+                    <span className="font-bold tabular-nums" data-testid={`lodging-${idx}-tier-${t.id}-base`}>{fmt(t.base_5_nights)}</span>
+                  </div>
+                  {/* NOCHE ADICIONAL */}
+                  <div className="flex justify-between">
+                    <span className="text-slate-500 uppercase tracking-wider text-[9px]">Noche adicional</span>
+                    <span className="font-bold tabular-nums" data-testid={`lodging-${idx}-tier-${t.id}-add`}>{fmt(t.additional_night)}</span>
+                  </div>
                 </div>
               ) : (
-                <div className="mt-1 text-[10px] italic text-slate-500">Sin hospedaje</div>
+                <div className="mt-2 text-[10px] italic text-slate-500">Sin hospedaje (alojamiento propio)</div>
               )}
             </button>
           );
         })}
       </div>
 
-      {/* Pax + Noches */}
-      <div className="grid sm:grid-cols-2 gap-3">
+      {/* PAX (digitable) — Noches removido: ya viene definido en el paquete */}
+      <div className="grid sm:grid-cols-3 gap-3 items-end">
         <label className="block">
           <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Personas (pax)</span>
           <input
-            type="number" min="1"
-            value={data.pax || 0}
-            onChange={(e) => onChange({ pax: Number(e.target.value) || 1 })}
-            className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md tabular-nums"
+            type="number"
+            min="0"
+            inputMode="numeric"
+            value={data.pax === undefined || data.pax === null ? "" : data.pax}
+            onChange={(e) => {
+              const v = e.target.value;
+              onChange({ pax: v === "" ? "" : Number(v) });
+            }}
+            onBlur={(e) => {
+              if (e.target.value === "" || Number(e.target.value) < 0) onChange({ pax: 0 });
+            }}
+            placeholder="0"
+            className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md tabular-nums focus:border-fsc-azul focus:outline-none"
             data-testid={`lodging-${idx}-pax`}
           />
         </label>
-        <label className="block">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Noches</span>
-          <input
-            type="number" min="1"
-            disabled={isDom}
-            value={data.nights || 5}
-            onChange={(e) => onChange({ nights: Number(e.target.value) || 1 })}
-            className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md tabular-nums disabled:bg-slate-100"
-            data-testid={`lodging-${idx}-nights`}
-          />
-        </label>
+        {/* Valor unitario (por persona, definido por el admin) */}
+        <div className="block">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Valor unitario</span>
+          <div className="mt-1 px-3 py-2 border border-slate-200 rounded-md bg-white tabular-nums font-bold text-fsc-azul" data-testid={`lodging-${idx}-unit`}>
+            {fmt(unitario)}
+          </div>
+        </div>
+        {/* Valor total = unitario × pax */}
+        <div className="block">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Valor total</span>
+          <div className="mt-1 px-3 py-2 border-2 border-fsc-azul rounded-md bg-fsc-azul/10 tabular-nums font-black text-fsc-azul text-lg" data-testid={`lodging-${idx}-total`}>
+            {fmt(subtotal)}
+          </div>
+        </div>
       </div>
 
       {/* Extra pax (personas adicionales) DENTRO de este paquete */}
@@ -529,6 +561,7 @@ function LodgingBlock({ idx, data, tiers, onChange, onRemove }) {
         <ExtraPaxEditor
           parentIdx={idx}
           entries={data.extra_pax_entries || []}
+          tier={tier}
           onChange={(entries) => onChange({ extra_pax_entries: entries })}
         />
       )}
@@ -536,15 +569,33 @@ function LodgingBlock({ idx, data, tiers, onChange, onRemove }) {
   );
 }
 
-// ----- Editor de personas adicionales (etiqueta + cantidad + noches + desde/hasta) -----
-function ExtraPaxEditor({ parentIdx, entries, onChange }) {
+// ----- Editor de personas adicionales (etiqueta + cantidad + noches + desde/hasta + valor) -----
+function ExtraPaxEditor({ parentIdx, entries, tier, onChange }) {
   const add = () => onChange([...entries, { label: "", pax: 1, nights: 5, date_from: "", date_to: "" }]);
   const update = (i, k, v) => {
     const next = [...entries];
-    next[i] = { ...next[i], [k]: (k === "label" || k === "date_from" || k === "date_to") ? v : Number(v) || 0 };
+    if (k === "label" || k === "date_from" || k === "date_to") {
+      next[i] = { ...next[i], [k]: v };
+    } else {
+      // pax y nights: permitir vacío durante el tipeo
+      next[i] = { ...next[i], [k]: v === "" ? "" : Number(v) };
+    }
     onChange(next);
   };
+  const onBlurNum = (i, k) => {
+    const v = entries[i]?.[k];
+    if (v === "" || v === undefined || Number(v) < 0) {
+      const next = [...entries];
+      next[i] = { ...next[i], [k]: 0 };
+      onChange(next);
+    }
+  };
   const remove = (i) => onChange(entries.filter((_, j) => j !== i));
+
+  const base5 = Number(tier?.base_5_nights || 0);
+  const addNight = Number(tier?.additional_night || 0);
+  const unitFor = (nights) => base5 + addNight * Math.max(0, Number(nights || 0) - 5);
+
   return (
     <div className="mt-4 border-t-2 border-dashed border-fsc-azul/20 pt-3" data-testid={`extra-pax-editor-${parentIdx}`}>
       <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
@@ -558,31 +609,59 @@ function ExtraPaxEditor({ parentIdx, entries, onChange }) {
         <div className="text-[11px] text-slate-400 italic">Sin personas adicionales.</div>
       )}
       <div className="space-y-2">
-        {entries.map((ep, i) => (
-          <div key={i} className="grid sm:grid-cols-12 gap-2 items-end bg-white border border-slate-200 rounded-md p-2" data-testid={`extra-pax-${parentIdx}-row-${i}`}>
-            <label className="sm:col-span-3 block">
-              <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Etiqueta</span>
-              <input value={ep.label || ""} onChange={(e) => update(i, "label", e.target.value)} placeholder="Padres, fisio..." className="mt-0.5 w-full px-2 py-1 border border-slate-300 rounded text-xs" />
-            </label>
-            <label className="sm:col-span-2 block">
-              <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Cantidad</span>
-              <input type="number" min="1" value={ep.pax} onChange={(e) => update(i, "pax", e.target.value)} className="mt-0.5 w-full px-2 py-1 border border-slate-300 rounded text-xs tabular-nums" data-testid={`extra-pax-${parentIdx}-${i}-pax`} />
-            </label>
-            <label className="sm:col-span-2 block">
-              <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Noches</span>
-              <input type="number" min="1" value={ep.nights} onChange={(e) => update(i, "nights", e.target.value)} className="mt-0.5 w-full px-2 py-1 border border-slate-300 rounded text-xs tabular-nums" data-testid={`extra-pax-${parentIdx}-${i}-nights`} />
-            </label>
-            <label className="sm:col-span-2 block">
-              <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Desde</span>
-              <input type="date" value={ep.date_from || ""} onChange={(e) => update(i, "date_from", e.target.value)} className="mt-0.5 w-full px-2 py-1 border border-slate-300 rounded text-xs" />
-            </label>
-            <label className="sm:col-span-2 block">
-              <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Hasta</span>
-              <input type="date" value={ep.date_to || ""} onChange={(e) => update(i, "date_to", e.target.value)} className="mt-0.5 w-full px-2 py-1 border border-slate-300 rounded text-xs" />
-            </label>
-            <button type="button" onClick={() => remove(i)} className="sm:col-span-1 text-fsc-rojo hover:bg-red-50 p-1 rounded justify-self-end" aria-label="Quitar" data-testid={`extra-pax-${parentIdx}-${i}-remove`}><X size={14}/></button>
-          </div>
-        ))}
+        {entries.map((ep, i) => {
+          const epPax = Number(ep.pax || 0);
+          const unit = unitFor(ep.nights);
+          const total = unit * epPax;
+          return (
+            <div key={i} className="bg-white border border-slate-200 rounded-md p-2 space-y-2" data-testid={`extra-pax-${parentIdx}-row-${i}`}>
+              <div className="grid sm:grid-cols-12 gap-2 items-end">
+                <label className="sm:col-span-3 block">
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Etiqueta</span>
+                  <input value={ep.label || ""} onChange={(e) => update(i, "label", e.target.value)} placeholder="Padres, fisio..." className="mt-0.5 w-full px-2 py-1 border border-slate-300 rounded text-xs" />
+                </label>
+                <label className="sm:col-span-2 block">
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Cantidad</span>
+                  <input
+                    type="number" min="0" inputMode="numeric"
+                    value={ep.pax === undefined || ep.pax === null ? "" : ep.pax}
+                    onChange={(e) => update(i, "pax", e.target.value)}
+                    onBlur={() => onBlurNum(i, "pax")}
+                    placeholder="0"
+                    className="mt-0.5 w-full px-2 py-1 border border-slate-300 rounded text-xs tabular-nums"
+                    data-testid={`extra-pax-${parentIdx}-${i}-pax`}
+                  />
+                </label>
+                <label className="sm:col-span-2 block">
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Noches</span>
+                  <input
+                    type="number" min="0" inputMode="numeric"
+                    value={ep.nights === undefined || ep.nights === null ? "" : ep.nights}
+                    onChange={(e) => update(i, "nights", e.target.value)}
+                    onBlur={() => onBlurNum(i, "nights")}
+                    placeholder="5"
+                    className="mt-0.5 w-full px-2 py-1 border border-slate-300 rounded text-xs tabular-nums"
+                    data-testid={`extra-pax-${parentIdx}-${i}-nights`}
+                  />
+                </label>
+                <label className="sm:col-span-2 block">
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Desde</span>
+                  <input type="date" value={ep.date_from || ""} onChange={(e) => update(i, "date_from", e.target.value)} className="mt-0.5 w-full px-2 py-1 border border-slate-300 rounded text-xs" />
+                </label>
+                <label className="sm:col-span-2 block">
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Hasta</span>
+                  <input type="date" value={ep.date_to || ""} onChange={(e) => update(i, "date_to", e.target.value)} className="mt-0.5 w-full px-2 py-1 border border-slate-300 rounded text-xs" />
+                </label>
+                <button type="button" onClick={() => remove(i)} className="sm:col-span-1 text-fsc-rojo hover:bg-red-50 p-1 rounded justify-self-end" aria-label="Quitar" data-testid={`extra-pax-${parentIdx}-${i}-remove`}><X size={14}/></button>
+              </div>
+              {/* Valor unitario y total de la fila */}
+              <div className="flex justify-end gap-4 text-[10px] pt-1 border-t border-slate-100">
+                <span className="text-slate-500">Valor unitario: <span className="font-bold tabular-nums text-fsc-azul" data-testid={`extra-pax-${parentIdx}-${i}-unit`}>{fmt(unit)}</span></span>
+                <span className="text-slate-500">Valor total: <span className="font-bold tabular-nums text-fsc-azul" data-testid={`extra-pax-${parentIdx}-${i}-total`}>{fmt(total)}</span></span>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
