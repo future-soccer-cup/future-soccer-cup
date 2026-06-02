@@ -166,21 +166,16 @@ function QuoteDetailModal({ q, onClose }) {
         <div className="p-6 space-y-5 text-sm">
           <DetailGrid items={[
             ["Estado", q.status],
-            ["Evento", q.event_name],
-            ["Categoría", q.category],
-            ["Año nac.", q.birth_year],
-            ["PAX base", q.pax],
-            ["Noches", q.nights],
-            ["Hospedaje", q.lodging_name],
+            ["Cliente", q.user_name],
+            ["Club", q.club_name || "—"],
             ["Teléfono contacto", q.contact_phone || "—"],
           ]} />
 
           <DetailSection title="Resumen económico">
             <div className="grid grid-cols-2 gap-2">
-              <KV k="Tarifa por persona" v={fmt(q.rate_per_person_total)} />
               <KV k="Hospedaje subtotal" v={fmt(q.lodging_subtotal)} />
               <KV k="Personas adicionales" v={fmt(q.extra_pax_subtotal || 0)} />
-              <KV k="Alimentación" v={fmt((q.breakfast_subtotal || 0) + (q.lunch_subtotal || 0) + (q.dinner_subtotal || 0))} />
+              <KV k="Alimentación" v={fmt(q.meals_subtotal || (q.breakfast_subtotal || 0) + (q.lunch_subtotal || 0) + (q.dinner_subtotal || 0))} />
               <KV k="Transporte" v={fmt(q.transport_subtotal)} />
               <KV k="Tours" v={fmt(q.tours_subtotal)} />
               <KV k="Inscripción" v={fmt(q.registration_fee)} />
@@ -188,25 +183,113 @@ function QuoteDetailModal({ q, onClose }) {
             </div>
           </DetailSection>
 
-          {q.extra_pax_breakdown?.length > 0 && (
-            <DetailSection title={`Personas adicionales (${q.extra_pax_breakdown.length})`}>
+          {/* Eventos seleccionados (nuevo modelo array) */}
+          {(q.events_breakdown?.length > 0) && (
+            <DetailSection title={`Eventos seleccionados (${q.events_breakdown.length})`}>
+              <div className="space-y-3">
+                {q.events_breakdown.map((ev, i) => (
+                  <div key={i} className="border-2 border-fsc-rojo/30 bg-red-50/40 rounded-lg p-3" data-testid={`detail-event-${i}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-fsc-rojo">Evento {i + 1} · {ev.event_type || ""}</div>
+                        <div className="font-display text-lg font-black uppercase">{ev.tournament_name || "—"}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-[10px] uppercase text-slate-500">Subtotal</div>
+                        <div className="font-bold tabular-nums">{fmt(ev.subtotal)}</div>
+                      </div>
+                    </div>
+                    <table className="w-full text-xs">
+                      <thead className="text-left text-slate-500 uppercase tracking-widest"><tr>
+                        <th className="py-1">Categoría inscrita</th><th className="text-right">Fee</th>
+                      </tr></thead>
+                      <tbody>
+                        {(ev.categories || []).map((c, j) => (
+                          <tr key={j} className="border-t border-slate-100">
+                            <td className="py-1">{c.name}</td>
+                            <td className="text-right tabular-nums">{fmt(c.fee)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ))}
+              </div>
+            </DetailSection>
+          )}
+
+          {/* Paquetes de hospedaje (nuevo modelo array) */}
+          {(q.lodgings_breakdown?.length > 0) && (
+            <DetailSection title={`Paquetes de hospedaje (${q.lodgings_breakdown.length})`}>
+              <div className="space-y-3">
+                {q.lodgings_breakdown.map((b, i) => (
+                  <div key={i} className="border-2 border-fsc-azul/30 bg-fsc-azul/5 rounded-lg p-3" data-testid={`detail-lodging-${i}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-fsc-azul">Paquete {i + 1}</div>
+                        <div className="font-display text-lg font-black uppercase">{b.tier_name} · {b.pax} pax</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-[10px] uppercase text-slate-500">Subtotal</div>
+                        <div className="font-bold tabular-nums">{fmt(b.subtotal)}</div>
+                      </div>
+                    </div>
+                    <div className="grid sm:grid-cols-4 gap-2 text-[11px]">
+                      <KV k="Valor 5n" v={fmt(b.rate_per_person_5nights)} />
+                      <KV k="Noche adicional" v={fmt(b.rate_per_person_additional_night)} />
+                      <KV k="Valor unitario total" v={fmt(b.rate_per_person_total)} />
+                      <KV k="Noches" v={b.nights} />
+                    </div>
+                    {b.free_lodging_units > 0 && (
+                      <div className="text-[11px] text-fsc-rojo mt-2">🎉 Promo 21 gratis: {b.free_lodging_units} pax sin costo</div>
+                    )}
+                    {(b.extra_pax_breakdown || []).length > 0 && (
+                      <div className="mt-3 pt-2 border-t border-fsc-azul/20">
+                        <div className="text-[10px] uppercase tracking-widest text-fsc-azul-oscuro font-bold mb-1">Personas adicionales</div>
+                        <table className="w-full text-xs">
+                          <thead className="text-left text-slate-500 uppercase tracking-widest"><tr>
+                            <th className="py-1">Etiqueta</th><th>Cant.</th><th>Noches</th><th>Desde</th><th>Hasta</th><th className="text-right">Subtotal</th>
+                          </tr></thead>
+                          <tbody>
+                            {b.extra_pax_breakdown.map((ep, j) => (
+                              <tr key={j} className="border-t border-slate-100">
+                                <td className="py-1">{ep.label || "—"}</td>
+                                <td>{ep.pax}</td><td>{ep.nights}</td>
+                                <td>{ep.date_from || "—"}</td><td>{ep.date_to || "—"}</td>
+                                <td className="text-right tabular-nums">{fmt(ep.subtotal)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </DetailSection>
+          )}
+
+          {/* Alimentación (meals_breakdown nuevo) */}
+          {(q.meals_breakdown?.length > 0) ? (
+            <DetailSection title={`Alimentación adicional (${q.meals_breakdown.length})`}>
               <table className="w-full text-xs">
                 <thead className="text-left text-slate-500 uppercase tracking-widest"><tr>
-                  <th className="py-1">Etiqueta</th><th>Cantidad</th><th>Noches</th><th className="text-right">Subtotal</th>
+                  <th className="py-1">Fecha</th><th>Comida</th><th>Personas</th><th>Valor unitario</th><th className="text-right">Subtotal</th>
                 </tr></thead>
                 <tbody>
-                  {q.extra_pax_breakdown.map((ep, i) => (
-                    <tr key={i} className="border-t border-slate-100">
-                      <td className="py-1">{ep.label || "—"}</td><td>{ep.pax}</td><td>{ep.nights}</td>
-                      <td className="text-right tabular-nums">{fmt(ep.subtotal)}</td>
+                  {q.meals_breakdown.map((m, i) => (
+                    <tr key={i} className="border-t border-slate-100" data-testid={`detail-meal-${i}`}>
+                      <td className="py-1">{m.date || "—"}</td>
+                      <td>{m.name || m.meal_type || "—"}</td>
+                      <td>{m.pax}</td>
+                      <td className="tabular-nums">{fmt(m.unit)}</td>
+                      <td className="text-right tabular-nums">{fmt(m.subtotal)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </DetailSection>
-          )}
-
-          {q.meal_entries?.length > 0 && (
+          ) : q.meal_entries?.length > 0 && (
             <DetailSection title={`Alimentación adicional (${q.meal_entries.length})`}>
               <table className="w-full text-xs">
                 <thead className="text-left text-slate-500 uppercase tracking-widest"><tr>
@@ -215,7 +298,7 @@ function QuoteDetailModal({ q, onClose }) {
                 <tbody>
                   {q.meal_entries.map((m, i) => (
                     <tr key={i} className="border-t border-slate-100">
-                      <td className="py-1">{m.date || "—"}</td><td>{m.meal_type || "—"}</td><td className="text-right">{m.pax}</td>
+                      <td className="py-1">{m.date || "—"}</td><td>{m.meal_type || m.meal_addon_id || "—"}</td><td className="text-right">{m.pax}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -223,7 +306,7 @@ function QuoteDetailModal({ q, onClose }) {
             </DetailSection>
           )}
 
-          {q.transport_entries_breakdown?.length > 0 ? (
+          {q.transport_entries_breakdown?.length > 0 && (
             <DetailSection title={`Transporte (${q.transport_entries_breakdown.length})`}>
               <table className="w-full text-xs">
                 <thead className="text-left text-slate-500 uppercase tracking-widest"><tr>
@@ -239,22 +322,19 @@ function QuoteDetailModal({ q, onClose }) {
                 </tbody>
               </table>
             </DetailSection>
-          ) : q.transport_routes_applied?.length > 0 && (
-            <DetailSection title="Transporte (rutas)">
-              <ul className="text-xs">{q.transport_routes_applied.map((r) => <li key={r}>· {r}</li>)}</ul>
-            </DetailSection>
           )}
 
-          {q.tour_entries?.length > 0 && (
-            <DetailSection title={`Tours (${q.tour_entries.length})`}>
+          {q.tour_subtotals?.length > 0 && (
+            <DetailSection title={`Tours (${q.tour_subtotals.length})`}>
               <table className="w-full text-xs">
                 <thead className="text-left text-slate-500 uppercase tracking-widest"><tr>
-                  <th className="py-1">Tour</th><th className="text-right">Personas</th>
+                  <th className="py-1">Tour</th><th>Personas</th><th className="text-right">Subtotal</th>
                 </tr></thead>
                 <tbody>
-                  {q.tour_entries.map((t, i) => (
+                  {q.tour_subtotals.map((t, i) => (
                     <tr key={i} className="border-t border-slate-100">
-                      <td className="py-1">{t.tour_id}</td><td className="text-right">{t.pax}</td>
+                      <td className="py-1">{t.tour_id}</td><td>{t.pax}</td>
+                      <td className="text-right tabular-nums">{fmt(t.subtotal)}</td>
                     </tr>
                   ))}
                 </tbody>

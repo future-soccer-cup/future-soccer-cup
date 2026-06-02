@@ -951,8 +951,13 @@ async def create_team(payload: TeamIn, _: dict = Depends(require_admin)):
 @api.put("/teams/{team_id}", response_model=TeamOut)
 async def update_team(team_id: str, payload: TeamIn, user: dict = Depends(get_current_user)):
     if user.get("role") == "team":
-        if user.get("team_id") != team_id:
-            raise HTTPException(status_code=403, detail="Solo puedes editar tu propio equipo")
+        target = await db.teams.find_one({"id": team_id}, {"_id": 0, "club_id": 1})
+        if not target:
+            raise HTTPException(status_code=404, detail="Equipo no encontrado")
+        same_team = user.get("team_id") == team_id
+        same_club = user.get("club_id") and target.get("club_id") == user["club_id"]
+        if not (same_team or same_club):
+            raise HTTPException(status_code=403, detail="Solo puedes editar equipos de tu club")
     elif user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="No autorizado")
     if not (payload.category or '').strip():
@@ -1016,11 +1021,15 @@ async def create_player(payload: PlayerIn, user: dict = Depends(require_admin_or
     team = await db.teams.find_one({"id": payload.team_id})
     if not team:
         raise HTTPException(status_code=400, detail="Equipo inválido")
-    if user["role"] == "team" and user.get("team_id") != payload.team_id:
-        raise HTTPException(status_code=403, detail="Solo puedes agregar jugadores a tu propio equipo")
+    # Permite a cualquier usuario del CLUB (Directivo o Cuerpo Técnico) gestionar jugadores de cualquier
+    # equipo de su club. El check antiguo de team_id se mantiene como fallback.
+    if user["role"] == "team":
+        same_club = user.get("club_id") and team.get("club_id") == user["club_id"]
+        same_team = user.get("team_id") and user["team_id"] == payload.team_id
+        if not (same_club or same_team):
+            raise HTTPException(status_code=403, detail="Solo puedes agregar jugadores a equipos de tu club")
     doc = payload.model_dump()
     doc["id"] = str(uuid.uuid4())
-    # Admin-added players are auto-approved; team-added are pending
     doc["status"] = "aprobado" if user["role"] == "admin" else "pendiente"
     doc["created_at"] = datetime.now(timezone.utc).isoformat()
     await db.players.insert_one(doc)
@@ -1033,8 +1042,11 @@ async def update_player(player_id: str, payload: PlayerIn, user: dict = Depends(
     if not existing:
         raise HTTPException(status_code=404, detail="Jugador no encontrado")
     if user["role"] == "team":
-        if user.get("team_id") != existing["team_id"] or payload.team_id != existing["team_id"]:
-            raise HTTPException(status_code=403, detail="Solo puedes editar jugadores de tu propio equipo")
+        cur_team = await db.teams.find_one({"id": existing["team_id"]}, {"_id": 0, "club_id": 1})
+        new_team = await db.teams.find_one({"id": payload.team_id}, {"_id": 0, "club_id": 1})
+        user_club = user.get("club_id")
+        if not (user_club and cur_team and new_team and cur_team.get("club_id") == user_club and new_team.get("club_id") == user_club):
+            raise HTTPException(status_code=403, detail="Solo puedes editar jugadores de equipos de tu club")
     await db.players.update_one({"id": player_id}, {"$set": payload.model_dump()})
     p = await db.players.find_one({"id": player_id}, {"_id": 0})
     return p
@@ -1044,8 +1056,10 @@ async def delete_player(player_id: str, user: dict = Depends(require_admin_or_te
     existing = await db.players.find_one({"id": player_id}, {"_id": 0})
     if not existing:
         raise HTTPException(status_code=404, detail="Jugador no encontrado")
-    if user["role"] == "team" and user.get("team_id") != existing["team_id"]:
-        raise HTTPException(status_code=403, detail="Solo puedes eliminar jugadores de tu propio equipo")
+    if user["role"] == "team":
+        t = await db.teams.find_one({"id": existing["team_id"]}, {"_id": 0, "club_id": 1})
+        if not (user.get("club_id") and t and t.get("club_id") == user["club_id"]):
+            raise HTTPException(status_code=403, detail="Solo puedes eliminar jugadores de equipos de tu club")
     await db.players.delete_one({"id": player_id})
     return {"ok": True}
 
@@ -2327,9 +2341,14 @@ async def set_club_status(cid: str, status: str, user: dict = Depends(require_ad
 
 # DT can register additional teams under their existing club
 class TeamAddIn(BaseModel):
-    event_type: Literal["festival", "premier_par", "premier_impar"]
-    birth_year: int = Field(ge=2008, le=2020)
+    # Modelo legacy (event_type + birth_year + designation)
+    event_type: Optional[Literal["festival", "premier_par", "premier_impar"]] = None
+    birth_year: Optional[int] = Field(default=None, ge=2008, le=2030)
     designation: Optional[Literal["Único", "Equipo A", "Equipo B"]] = "Único"
+    # Modelo nuevo: vinculado a un Tournament del Admin + Categoría con fee.
+    tournament_id: Optional[str] = ""
+    category_name: Optional[str] = ""
+    team_name: Optional[str] = ""
 
 @api.post("/clubs/{cid}/teams")
 async def add_team_to_club(cid: str, payload: TeamAddIn, user: dict = Depends(get_current_user)):
@@ -2340,16 +2359,71 @@ async def add_team_to_club(cid: str, payload: TeamAddIn, user: dict = Depends(ge
         raise HTTPException(status_code=404, detail="Club no encontrado")
     if user.get("role") != "admin" and club.get("manager_user_id") != user["id"]:
         raise HTTPException(status_code=403, detail="No autorizado")
-    # Bloqueo: si el club no está aprobado, el DT no puede inscribir más equipos.
     if user.get("role") != "admin" and (club.get("status") or "pendiente") != "aprobado":
         raise HTTPException(
             status_code=403,
             detail=f"Tu club '{club.get('name','')}' está en estado '{club.get('status','pendiente')}'. Espera la aprobación del administrador para inscribir equipos a eventos.",
         )
+
+    now = datetime.now(timezone.utc).isoformat()
+
+    # --- Nuevo flujo: tournament_id + category_name + team_name ---
+    if payload.tournament_id:
+        t = await db.tournaments.find_one({"id": payload.tournament_id}, {"_id": 0})
+        if not t:
+            raise HTTPException(status_code=404, detail="Evento no encontrado")
+        name = (payload.team_name or "").strip()
+        if not name:
+            raise HTTPException(status_code=400, detail="El nombre del equipo es obligatorio")
+        cat_name = (payload.category_name or "").strip()
+        if not cat_name:
+            raise HTTPException(status_code=400, detail="Debes seleccionar una categoría")
+        cats = t.get("categories") or []
+        cat_match = next((c for c in cats if (c.get("name") or "").strip() == cat_name), None)
+        if not cat_match:
+            raise HTTPException(status_code=400, detail=f"La categoría '{cat_name}' no pertenece al evento '{t.get('name','')}'")
+        existing = await db.teams.find_one({
+            "club_id": cid,
+            "tournament_id": payload.tournament_id,
+            "category": cat_name,
+            "name": name,
+        })
+        if existing:
+            raise HTTPException(status_code=400, detail="Ya existe un equipo con ese nombre en esa categoría del evento")
+        fee = float(cat_match.get("fee", 0) or 0)
+        tid = str(uuid.uuid4())
+        team_doc = {
+            "id": tid,
+            "name": name,
+            "club_id": cid,
+            "club_name": club["name"],
+            "tournament_id": payload.tournament_id,
+            "tournament_name": t.get("name", ""),
+            "event_type": t.get("event_type", "festival"),
+            "category": cat_name,
+            "designation": "Único",
+            "coach": user.get("name", ""),
+            "city": club.get("city", ""),
+            "country": club.get("country", ""),
+            "logo_url": club.get("logo_url", ""),
+            "color": club.get("color", "#1d4ed8"),
+            "manager_user_id": club.get("manager_user_id", ""),
+            "status": "pendiente",
+            "registration_fee": fee,
+            "registration_payment_status": "pending",
+            "cuerpo_tecnico": [],
+            "created_at": now,
+        }
+        await db.teams.insert_one(team_doc)
+        team_doc.pop("_id", None)
+        return team_doc
+
+    # --- Flujo legacy: event_type + birth_year ---
+    if not payload.event_type or not payload.birth_year:
+        raise HTTPException(status_code=400, detail="Debes seleccionar Evento, Categoría y Nombre del equipo")
     event = EVENT_TYPES.get(payload.event_type)
     if payload.birth_year not in event["birth_years"]:
         raise HTTPException(status_code=400, detail=f"El año {payload.birth_year} no aplica al {event['name']}")
-    # Uniqueness: one (club_id, event_type, birth_year, designation)
     existing = await db.teams.find_one({
         "club_id": cid,
         "event_type": payload.event_type,
@@ -2361,7 +2435,6 @@ async def add_team_to_club(cid: str, payload: TeamAddIn, user: dict = Depends(ge
 
     fee = float(event.get("fees_by_year", {}).get(str(payload.birth_year), event["registration_fee_per_team"]))
     tid = str(uuid.uuid4())
-    now = datetime.now(timezone.utc).isoformat()
     team_doc = {
         "id": tid,
         "name": f"{club['name']} {payload.birth_year} {payload.designation}".strip(),
@@ -3022,6 +3095,15 @@ async def _pending_balance(target_type: str, target_id: str, exclude_pid: Option
 async def submit_payment(payload: PaymentIn, user: dict = Depends(get_current_user)):
     if not await _can_pay(user, payload.target_type, payload.target_id):
         raise HTTPException(status_code=403, detail="No autorizado")
+    # Política: las cotizaciones solo aceptan abonos cuando han sido aprobadas por el Admin.
+    if payload.target_type == "quote":
+        q = await db.quotes.find_one({"id": payload.target_id}, {"_id": 0, "status": 1})
+        qstatus = (q or {}).get("status", "")
+        if user.get("role") != "admin" and qstatus not in ("aprobada", "pagada"):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Esta cotización está en estado '{qstatus}'. El administrador debe aprobarla antes de poder registrar abonos.",
+            )
     receipt_url = _validate_receipt_url(payload.receipt_url)
     total = await _target_total(payload.target_type, payload.target_id)
     if total is None:

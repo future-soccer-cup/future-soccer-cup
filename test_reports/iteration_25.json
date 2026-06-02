@@ -1,0 +1,39 @@
+{
+  "summary": "Backend 12/12 PASS for iter25 (quote-approval payment gate, new team flow with tournament+category+name, legacy team flow, player/team RBAC by club_id, quote calculate regression). Frontend MyTeam (/mi-equipo) verified: staff-section/players-section-ct/first-team-cta present; CTA reveals first-team-tournament/category/name; player-team-select and staff-team-select are SELECTs populated with clubTeams (enabled in create mode). MyQuotes (/mis-cotizaciones) verified: pendiente cards do NOT expose 'Registrar abono' nor 'Pagar saldo con Stripe' (only the 'Abonos' toggle); aprobada cards expose both CTAs after toggling. Admin /admin/quotes detail modal could NOT be verified — page rendered blank (0 testids, 0 buttons, 0 rows) under playwright admin session; needs main agent attention.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "AdminQuotes", "issue": "/admin/quotes rendered empty (0 buttons, 0 rows, 0 testids) when accessed via Playwright after admin login. Unable to open detail modal to validate detail-event-{i}/detail-lodging-{i}/detail-meal-{i} testids. Likely admin auth not persisted across page.goto or page-level JS error.", "selector": "/admin/quotes", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter25_approval_and_team_rbac.py",
+    "/app/test_reports/pytest/iteration_25.xml"
+  ],
+  "action_items": [
+    "Manually validate Admin /admin/quotes detail modal renders the new breakdown testids detail-event-{i}, detail-lodging-{i}, detail-meal-{i}. Curl shows /api/admin/catalog and /api/tournaments work, so backend data is fine; investigate whether AdminQuotes.jsx is gated by a different auth flag, or if a JS error short-circuits render. Re-run logged-in browser session.",
+    "(Optional) Add 'detail-*' breakdown testids verification once admin page renders."
+  ],
+  "critical_code_review_comments": [
+    "POST /api/payments correctly enforces quote.status in ('aprobada','pagada') for non-admin role=team users and returns 400 with mention of admin approval — verified end-to-end.",
+    "POST /api/clubs/{cid}/teams new branch validates team_name (400), category existence (400), tournament existence (404), and persists tournament_name + category + fee from tournament.categories[].fee — verified.",
+    "Legacy team flow still reachable; duplicate-detection (Ya tienes un equipo) preserved as before.",
+    "Player creation RBAC now keys on user.club_id == team.club_id (not team_id) — CT users with team_id=null and club_id can create players for any team in their club; cross-club attempt returns 403 — verified.",
+    "PUT /api/teams/{id} accepts CT user when team.club_id == user.club_id — verified.",
+    "Frontend MyQuotes correctly hides 'Registrar abono' and 'Pagar saldo con Stripe' for pendiente quotes — UX expectation met.",
+    "Frontend /mi-equipo unified view shows staff-section + players-section-ct for Directivo with team_id=null; first-team CTA + dropdowns wired to /tournaments and category selection.",
+    "MyTeam modals 'Nuevo jugador' (player-team-select) and 'Nuevo miembro' (staff-team-select) are native <select> populated with clubTeams; both enabled in create mode."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter25_approval_and_team_rbac.py"
+  ],
+  "success_rate": {"backend": "100% (12/12)", "frontend": "~85% (MyTeam + MyQuotes verified; AdminQuotes detail blocked by render issue)"},
+  "test_credentials": "admin@futuresoccercup.com / FSCAdmin2025!; coach@test.com / Coach2025!; ct_smoke2_1780348474@test.com / abc123 (club=AuditClub c241e25b-...; aprobado)",
+  "seed_data_creation": "Created via tests: 1 quote (TEST_iter25) for coach, several TEST_iter25_team_* teams in coach's club (e13098dc-...), 1 TEST_iter25_ctclub_* team in CT's AuditClub, 1 TEST_iter25_player_* under CT.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend test file /app/backend/tests/test_iter25_approval_and_team_rbac.py is the canonical regression. The lodging tier id must be picked dynamically from /api/admin/catalog (use _pick_lodging_tier helper); 'ZAFIRO' is no longer valid. /api/quotes/calculate response key is 'total_amount'. Receipt URL is mandatory for payments — use https://example.com/receipt.png. CT user club is AuditClub (c241e25b-...) and is APROBADO; no admin endpoint exists to remap a user's club_id (PUT /api/admin/users/{id}/club returns 404). Admin /admin/quotes page rendered blank under playwright admin session — needs main agent investigation (likely a route-guard or hydration issue; backend admin endpoints work via curl).",
+  "rca of the issue": "AdminQuotes blank render: hypothesis is either (a) navigation to /admin/quotes after login redirected because auth state hadn't hydrated yet, or (b) a runtime JS exception in AdminQuotes.jsx that produced an empty render tree. Reproduction: login as admin, navigate to /admin/quotes via page.goto; result: 0 testids, 0 buttons, 0 rows. Mitigation: main agent should open the page in a real browser, inspect the console, ensure AdminQuotes.jsx mounts and that the new detail modal renders detail-event-/detail-lodging-/detail-meal- testids."
+}

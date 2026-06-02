@@ -11,7 +11,7 @@ import PaymentsList from "../components/PaymentsList";
 import CarnetSheet from "../components/CarnetSheet";
 
 const EMPTY_PLAYER = { name: "", team_id: "", jersey_number: 1, position: "Mediocampista", birth_date: "", photo_url: "", document_id: "", nickname: "", gender: "", eps: "", guardian_name: "", guardian_doc: "", guardian_relation: "", guardian_phone: "" };
-const EMPTY_STAFF = { name: "", document: "", role: "Director técnico", phone: "" };
+const EMPTY_STAFF = { name: "", document: "", role: "Director técnico", phone: "", team_id: "" };
 const fmtCOP = (n) => `$${Number(n || 0).toLocaleString("es-CO")} COP`;
 
 export default function MyTeam() {
@@ -32,20 +32,84 @@ export default function MyTeam() {
   const fileRef = useRef(null);
   const [clubTeams, setClubTeams] = useState([]);
   const [events, setEvents] = useState([]);
+  const [quoteTournaments, setQuoteTournaments] = useState([]); // tournaments asociados a cotizaciones aprobadas
   const [showAddTeam, setShowAddTeam] = useState(false);
-  const [newTeam, setNewTeam] = useState({ event_type: "", birth_year: "", designation: "Único" });
+  const [newTeam, setNewTeam] = useState({ tournament_id: "", category_name: "", team_name: "" });
   const [club, setClub] = useState(null);
 
   const teamId = user?.team_id;
 
+  // ===== HANDLERS (definidos antes de los early-returns para uso en ambas ramas) =====
+  const savePlayer = async (e) => {
+    e.preventDefault();
+    try {
+      const pickedTeamId = editingPlayer.team_id || teamId;
+      if (!pickedTeamId) { toast.error("Selecciona un equipo para el jugador"); return; }
+      const payload = { ...editingPlayer, team_id: pickedTeamId, jersey_number: Number(editingPlayer.jersey_number) };
+      if (editingPlayer.id) await api.put(`/players/${editingPlayer.id}`, payload);
+      else await api.post("/players", payload);
+      toast.success("Guardado");
+      setEditingPlayer(null);
+      loadTeam();
+    } catch (err) {
+      toast.error(formatApiError(err.response?.data?.detail));
+    }
+  };
+  const removePlayer = async (id) => {
+    if (!window.confirm("¿Eliminar jugador?")) return;
+    await api.delete(`/players/${id}`);
+    loadTeam();
+  };
+  const saveStaff = async (e) => {
+    e.preventDefault();
+    try {
+      const targetTeamId = editingStaff.data.team_id || teamId;
+      if (!targetTeamId) {
+        toast.error("Selecciona un equipo para el miembro del cuerpo técnico");
+        return;
+      }
+      const targetTeam = clubTeams.find((t) => t.id === targetTeamId) || (teamId === targetTeamId ? team : null);
+      if (!targetTeam) { toast.error("Equipo no encontrado"); return; }
+      const list = Array.isArray(targetTeam.cuerpo_tecnico) ? [...targetTeam.cuerpo_tecnico] : [];
+      const { team_id: _omit, ...staffPayload } = editingStaff.data;
+      if (editingStaff.idx != null) list[editingStaff.idx] = staffPayload;
+      else list.push(staffPayload);
+      await api.put(`/teams/${targetTeamId}`, { ...targetTeam, cuerpo_tecnico: list });
+      toast.success("Guardado");
+      setEditingStaff(null);
+      loadTeam();
+    } catch (err) {
+      toast.error(formatApiError(err.response?.data?.detail));
+    }
+  };
+  const removeStaffMember = async (memberTeamId, idx) => {
+    if (!window.confirm("¿Eliminar miembro del cuerpo técnico?")) return;
+    const t = clubTeams.find((x) => x.id === memberTeamId) || (memberTeamId === teamId ? team : null);
+    if (!t) return;
+    const list = (t.cuerpo_tecnico || []).filter((_, i) => i !== idx);
+    await api.put(`/teams/${memberTeamId}`, { ...t, cuerpo_tecnico: list });
+    loadTeam();
+  };
+  // Aggregator de cuerpo técnico de todos los equipos del club.
+  const aggregatedStaff = clubTeams.flatMap((t) => (t.cuerpo_tecnico || []).map((s, idx) => ({ ...s, team_id: t.id, team_name: t.name, _idx: idx })));
+
   const loadTeam = async () => {
-    // Si el user tiene club_id (caso CT sin team), cargar al menos el club + sus equipos.
+    // Caso CT sin team: cargar club + equipos + jugadores de todos los equipos.
     if (!teamId && user?.club_id) {
       try {
         const cl = await api.get(`/clubs/${user.club_id}`);
         setClub(cl.data);
         const ct = await api.get(`/clubs/${user.club_id}/teams`).catch(() => ({ data: [] }));
-        setClubTeams(ct.data);
+        setClubTeams(ct.data || []);
+        // Cargar jugadores de todos los equipos del club.
+        const allPlayers = [];
+        for (const t of (ct.data || [])) {
+          try {
+            const p = await api.get(`/players?team_id=${t.id}`);
+            allPlayers.push(...(p.data || []));
+          } catch { /* silent */ }
+        }
+        setPlayers(allPlayers);
       } catch { /* silent */ }
       return;
     }
@@ -57,28 +121,54 @@ export default function MyTeam() {
       setTeam(tdata);
       setTeamForm(tdata);
     } catch (err) {
-      // Team huérfano (404) o cualquier otro error: mantenemos team=null y mostramos estado vacío.
       setTeam(null);
       return;
     }
-    try {
-      const p = await api.get(`/players?team_id=${teamId}`);
-      setPlayers(p.data);
-    } catch { /* silent */ }
     // Load other teams in same club + the club itself (status)
+    let clubTeamsLocal = [];
     if (tdata && tdata.club_id) {
       const [ct, cl] = await Promise.all([
         api.get(`/clubs/${tdata.club_id}/teams`).catch(() => ({ data: [] })),
         api.get(`/clubs/${tdata.club_id}`).catch(() => ({ data: null })),
       ]);
-      setClubTeams(ct.data);
+      clubTeamsLocal = ct.data || [];
+      setClubTeams(clubTeamsLocal);
       setClub(cl.data);
     }
+    // Cargar jugadores: incluir todos los equipos del club para que Directivo y CT vean todos.
+    const targetTeams = clubTeamsLocal.length > 0 ? clubTeamsLocal : (tdata ? [tdata] : []);
+    const allPlayers = [];
+    for (const t of targetTeams) {
+      try {
+        const p = await api.get(`/players?team_id=${t.id}`);
+        allPlayers.push(...(p.data || []));
+      } catch { /* silent */ }
+    }
+    setPlayers(allPlayers);
   };
 
   useEffect(() => {
     loadTeam();
     api.get("/event-types").then((r) => setEvents(r.data.events || [])).catch(() => {});
+    // Cargar tournaments asociados a las cotizaciones APROBADAS del Directivo (o todos para CT).
+    // Si hay cotizaciones aprobadas, listamos solo los eventos cotizados; sino fallback a todos los activos.
+    (async () => {
+      try {
+        const [allT, mineQ] = await Promise.all([
+          api.get("/tournaments"),
+          api.get("/quotes/mine").catch(() => ({ data: [] })),
+        ]);
+        const all = (allT.data || []).filter((t) => !t.archived);
+        const approvedIds = new Set();
+        for (const q of mineQ.data || []) {
+          if (q.status !== "aprobada" && q.status !== "pagada") continue;
+          for (const ev of q.events || []) if (ev?.tournament_id) approvedIds.add(ev.tournament_id);
+          if (q.tournament_id) approvedIds.add(q.tournament_id);
+        }
+        const filtered = approvedIds.size > 0 ? all.filter((t) => approvedIds.has(t.id)) : all;
+        setQuoteTournaments(filtered);
+      } catch { /* silent */ }
+    })();
     /* eslint-disable-next-line */
   }, [teamId, user?.club_id]);
 
@@ -143,13 +233,130 @@ export default function MyTeam() {
           </div>
         )}
 
-        {/* CTA Crear primer equipo — disponible para Directivos (no CT) sin team_id */}
-        {!isCT && user?.club_id && (club?.status === "aprobado") && (
+        {/* CTA Crear primer equipo — disponible para Directivos Y Cuerpo Técnico cuando club está aprobado */}
+        {user?.club_id && (club?.status === "aprobado") && (
           <FirstTeamCreator
             clubId={user.club_id}
-            events={events}
+            tournaments={quoteTournaments}
             onCreated={loadTeam}
           />
+        )}
+
+        {/* Cuerpo técnico — agregado de todos los equipos del club */}
+        <div className="mt-10" data-testid="staff-section">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-display text-3xl font-black uppercase tracking-tight flex items-center gap-3"><Users2 size={28}/> Cuerpo técnico ({aggregatedStaff.length})</h2>
+            <button onClick={() => setEditingStaff({ idx: null, data: { ...EMPTY_STAFF, team_id: clubTeams[0]?.id || "" } })} className="fsc-btn-primary px-4 py-2 rounded-md text-sm flex items-center gap-2" disabled={clubTeams.length === 0} data-testid="add-staff-btn">
+              <Plus size={16}/> Agregar
+            </button>
+          </div>
+          {clubTeams.length === 0 && (
+            <p className="text-xs text-amber-700">Primero crea un equipo para poder asignar cuerpo técnico.</p>
+          )}
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {aggregatedStaff.length === 0 && clubTeams.length > 0 && <p className="col-span-full text-center text-slate-400 py-6">Aún no has agregado al cuerpo técnico.</p>}
+            {aggregatedStaff.map((s) => (
+              <div key={`${s.team_id}-${s._idx}`} className="bg-white border border-slate-200 rounded-lg p-4 flex items-center gap-3" data-testid={`staff-${s.team_id}-${s._idx}`}>
+                <div className="h-12 w-12 rounded-full bg-red-100 text-red-700 flex items-center justify-center font-bold uppercase">{(s.name || "?")[0]}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold truncate">{s.name}</div>
+                  <div className="text-xs text-slate-500 truncate">{s.role}{s.document ? ` · Doc ${s.document}` : ""}{s.phone ? ` · ${s.phone}` : ""}</div>
+                  <div className="text-[10px] uppercase tracking-widest text-fsc-azul mt-0.5">Equipo: {s.team_name}</div>
+                </div>
+                <button onClick={() => setEditingStaff({ idx: s._idx, data: { name: s.name, document: s.document || "", role: s.role || "Director técnico", phone: s.phone || "", team_id: s.team_id } })} className="text-blue-700"><Pencil size={16}/></button>
+                <button onClick={() => removeStaffMember(s.team_id, s._idx)} className="text-red-600"><Trash2 size={16}/></button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Jugadores de todos los equipos del club */}
+        <div className="mt-10" data-testid="players-section-ct">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-display text-3xl font-black uppercase tracking-tight">Jugadores ({players.length})</h2>
+            <button onClick={() => setEditingPlayer({ ...EMPTY_PLAYER, team_id: clubTeams[0]?.id || "" })} className="fsc-btn-red px-4 py-2 rounded-md text-sm flex items-center gap-2" disabled={clubTeams.length === 0} data-testid="add-player-btn">
+              <Plus size={16}/> Agregar jugador
+            </button>
+          </div>
+          {clubTeams.length === 0 && (
+            <p className="text-xs text-amber-700">Primero crea un equipo para inscribir jugadores.</p>
+          )}
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {players.length === 0 && clubTeams.length > 0 && <p className="col-span-full text-center text-slate-400 py-6">Aún no hay jugadores.</p>}
+            {players.map((p) => {
+              const t = clubTeams.find((x) => x.id === p.team_id);
+              return (
+                <div key={p.id} className="bg-white border border-slate-200 rounded-lg p-4" data-testid={`player-${p.id}`}>
+                  <div className="flex items-center gap-3">
+                    {p.photo_url ? <img src={p.photo_url} alt={p.name} className="h-12 w-12 rounded-full object-cover" /> : <div className="h-12 w-12 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold uppercase">{(p.name || "?")[0]}</div>}
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold truncate">#{p.jersey_number} · {p.name}</div>
+                      <div className="text-xs text-slate-500 truncate">{p.position}</div>
+                      <div className="text-[10px] uppercase tracking-widest text-fsc-azul">Equipo: {t?.name || p.team_id} · <span className="text-amber-600">{p.status}</span></div>
+                    </div>
+                    <button onClick={() => setEditingPlayer({ ...p })} className="text-blue-700"><Pencil size={16}/></button>
+                    <button onClick={() => removePlayer(p.id)} className="text-red-600"><Trash2 size={16}/></button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Modales reutilizables (player + staff) */}
+        {editingPlayer && (
+          <Modal title={editingPlayer.id ? "Editar jugador" : "Nuevo jugador"} onClose={() => setEditingPlayer(null)}>
+            <form onSubmit={savePlayer} className="space-y-3">
+              <label className="block">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Equipo *</span>
+                <select value={editingPlayer.team_id || ""} onChange={(e) => setEditingPlayer({ ...editingPlayer, team_id: e.target.value })} disabled={!!editingPlayer.id} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md disabled:bg-slate-100" data-testid="player-team-select">
+                  <option value="">Seleccionar equipo...</option>
+                  {clubTeams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+              </label>
+              <Field label="Nombre completo" required value={editingPlayer.name} onChange={(v) => setEditingPlayer({ ...editingPlayer, name: v })} testId="player-name-input" />
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Dorsal" type="number" required value={editingPlayer.jersey_number} onChange={(v) => setEditingPlayer({ ...editingPlayer, jersey_number: v })} testId="player-jersey-input" />
+                <label className="block">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Posición</span>
+                  <select value={editingPlayer.position} onChange={(e) => setEditingPlayer({ ...editingPlayer, position: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md">
+                    <option>Portero</option><option>Defensa</option><option>Mediocampista</option><option>Delantero</option>
+                  </select>
+                </label>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Documento" value={editingPlayer.document_id} onChange={(v) => setEditingPlayer({ ...editingPlayer, document_id: v })} />
+                <Field label="Fecha nacimiento" type="date" value={editingPlayer.birth_date} onChange={(v) => setEditingPlayer({ ...editingPlayer, birth_date: v })} />
+              </div>
+              <button className="fsc-btn-red w-full py-2 rounded-md" data-testid="save-player-btn">Guardar</button>
+            </form>
+          </Modal>
+        )}
+        {editingStaff && (
+          <Modal title={editingStaff.idx != null ? "Editar miembro" : "Nuevo miembro"} onClose={() => setEditingStaff(null)}>
+            <form onSubmit={saveStaff} className="space-y-3">
+              <label className="block">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Equipo *</span>
+                <select value={editingStaff.data.team_id || ""} onChange={(e) => setEditingStaff({ ...editingStaff, data: { ...editingStaff.data, team_id: e.target.value } })} disabled={editingStaff.idx != null} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md disabled:bg-slate-100" data-testid="staff-team-select">
+                  <option value="">Seleccionar equipo...</option>
+                  {clubTeams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+              </label>
+              <Field label="Nombre completo" required value={editingStaff.data.name} onChange={(v) => setEditingStaff({ ...editingStaff, data: { ...editingStaff.data, name: v } })} testId="staff-name-input" />
+              <label className="block">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Rol</span>
+                <select value={editingStaff.data.role} onChange={(e) => setEditingStaff({ ...editingStaff, data: { ...editingStaff.data, role: e.target.value } })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="staff-role-select">
+                  <option>Director técnico</option><option>Asistente técnico</option><option>Preparador físico</option>
+                  <option>Médico</option><option>Fisioterapeuta</option><option>Delegado</option><option>Utilero</option>
+                </select>
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Documento" value={editingStaff.data.document} onChange={(v) => setEditingStaff({ ...editingStaff, data: { ...editingStaff.data, document: v } })} testId="staff-document-input" />
+                <Field label="Teléfono" value={editingStaff.data.phone} onChange={(v) => setEditingStaff({ ...editingStaff, data: { ...editingStaff.data, phone: v } })} testId="staff-phone-input" />
+              </div>
+              <button className="fsc-btn-primary w-full py-2 rounded-md" data-testid="save-staff-btn">Guardar</button>
+            </form>
+          </Modal>
         )}
       </div>
     );
@@ -179,26 +386,6 @@ export default function MyTeam() {
     }
   };
 
-  const savePlayer = async (e) => {
-    e.preventDefault();
-    try {
-      const payload = { ...editingPlayer, team_id: teamId, jersey_number: Number(editingPlayer.jersey_number) };
-      if (editingPlayer.id) await api.put(`/players/${editingPlayer.id}`, payload);
-      else await api.post("/players", payload);
-      toast.success("Guardado");
-      setEditingPlayer(null);
-      loadTeam();
-    } catch (err) {
-      toast.error(formatApiError(err.response?.data?.detail));
-    }
-  };
-
-  const removePlayer = async (id) => {
-    if (!window.confirm("¿Eliminar jugador?")) return;
-    await api.delete(`/players/${id}`);
-    loadTeam();
-  };
-
   const payRegistration = async () => {
     setPayingReg(true);
     try {
@@ -211,28 +398,6 @@ export default function MyTeam() {
       toast.error(formatApiError(err.response?.data?.detail) || "No se pudo iniciar el pago");
       setPayingReg(false);
     }
-  };
-
-  const saveStaff = async (e) => {
-    e.preventDefault();
-    try {
-      const list = Array.isArray(team.cuerpo_tecnico) ? [...team.cuerpo_tecnico] : [];
-      if (editingStaff.idx != null) list[editingStaff.idx] = editingStaff.data;
-      else list.push(editingStaff.data);
-      await api.put(`/teams/${teamId}`, { ...team, cuerpo_tecnico: list });
-      toast.success("Guardado");
-      setEditingStaff(null);
-      loadTeam();
-    } catch (err) {
-      toast.error(formatApiError(err.response?.data?.detail));
-    }
-  };
-
-  const removeStaff = async (idx) => {
-    if (!window.confirm("¿Eliminar miembro del cuerpo técnico?")) return;
-    const list = (team.cuerpo_tecnico || []).filter((_, i) => i !== idx);
-    await api.put(`/teams/${teamId}`, { ...team, cuerpo_tecnico: list });
-    loadTeam();
   };
 
   const downloadTemplate = async () => {
@@ -272,7 +437,7 @@ export default function MyTeam() {
 
   const regPaid = team.registration_payment_status === "paid";
   const eventLabel = { festival: "Festival", premier_par: "Premier Par", premier_impar: "Premier Impar" }[team.event_type] || "—";
-  const staff = Array.isArray(team.cuerpo_tecnico) ? team.cuerpo_tecnico : [];
+  const staff = aggregatedStaff;
 
   const loadRegPayments = async () => {
     try {
@@ -297,18 +462,21 @@ export default function MyTeam() {
   const regPaidAmt = regPaymentsData?.balance?.paid ?? 0;
   const regBalance = regPaymentsData?.balance?.balance ?? regTotal;
 
-  const newEvent = events.find((e) => e.id === newTeam.event_type);
-  const newYears = newEvent?.birth_years || [];
-  const newFee = newEvent?.fees_by_year?.[String(newTeam.birth_year)] || 0;
+  const newTournament = quoteTournaments.find((t) => t.id === newTeam.tournament_id);
+  const newCats = newTournament?.categories || [];
+  const newCatMatch = newCats.find((c) => c.name === newTeam.category_name);
+  const newFee = Number(newCatMatch?.fee || 0);
 
   const addTeamToClub = async () => {
     if (!team.club_id) return toast.error("Tu equipo aún no está vinculado a un club");
-    if (!newTeam.event_type || !newTeam.birth_year) return toast.error("Completa evento y año");
+    if (!newTeam.tournament_id) return toast.error("Selecciona un evento");
+    if (!newTeam.category_name) return toast.error("Selecciona una categoría");
+    if (!newTeam.team_name.trim()) return toast.error("Escribe el nombre del equipo");
     try {
-      await api.post(`/clubs/${team.club_id}/teams`, { ...newTeam, birth_year: Number(newTeam.birth_year) });
+      await api.post(`/clubs/${team.club_id}/teams`, newTeam);
       toast.success("Equipo agregado al club");
       setShowAddTeam(false);
-      setNewTeam({ event_type: "", birth_year: "", designation: "Único" });
+      setNewTeam({ tournament_id: "", category_name: "", team_name: "" });
       loadTeam();
     } catch (err) {
       toast.error(formatApiError(err.response?.data?.detail) || "Error al agregar");
@@ -451,27 +619,26 @@ export default function MyTeam() {
             <div className="grid sm:grid-cols-3 gap-3">
               <label className="block">
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Evento</span>
-                <select value={newTeam.event_type} onChange={(e) => setNewTeam({ ...newTeam, event_type: e.target.value, birth_year: "" })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="add-team-event">
+                <select value={newTeam.tournament_id} onChange={(e) => setNewTeam({ ...newTeam, tournament_id: e.target.value, category_name: "" })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="add-team-tournament">
                   <option value="">Seleccionar...</option>
-                  {events.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+                  {quoteTournaments.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                 </select>
               </label>
               <label className="block">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Año</span>
-                <select value={newTeam.birth_year} onChange={(e) => setNewTeam({ ...newTeam, birth_year: e.target.value })} disabled={!newEvent} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md disabled:bg-slate-100" data-testid="add-team-year">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Categoría</span>
+                <select value={newTeam.category_name} onChange={(e) => setNewTeam({ ...newTeam, category_name: e.target.value })} disabled={!newTournament || newCats.length === 0} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md disabled:bg-slate-100" data-testid="add-team-category">
                   <option value="">Seleccionar...</option>
-                  {newYears.map((y) => <option key={y} value={y}>{y}</option>)}
+                  {newCats.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
                 </select>
               </label>
               <label className="block">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Designación</span>
-                <select value={newTeam.designation} onChange={(e) => setNewTeam({ ...newTeam, designation: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="add-team-designation">
-                  <option>Único</option>
-                  <option>Equipo A</option>
-                  <option>Equipo B</option>
-                </select>
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Nombre del equipo</span>
+                <input value={newTeam.team_name} onChange={(e) => setNewTeam({ ...newTeam, team_name: e.target.value })} placeholder="Ej: Halcones FC A" className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="add-team-name" />
               </label>
             </div>
+            {quoteTournaments.length === 0 && (
+              <p className="text-xs text-amber-700 mt-3">No tienes cotizaciones aprobadas con eventos. Cotiza primero y espera la aprobación del admin para inscribir equipos.</p>
+            )}
             {newFee > 0 && <p className="text-xs text-slate-600 mt-3">Inscripción: <strong className="text-blue-700">{fmtCOP(newFee)}</strong></p>}
             <button onClick={addTeamToClub} className="mt-3 fsc-btn-red px-5 py-2 rounded-md text-sm" data-testid="add-team-confirm">Crear equipo</button>
           </div>
@@ -495,25 +662,29 @@ export default function MyTeam() {
         </div>
       </div>
 
-      {/* Cuerpo técnico */}
-      <div className="mt-10">
+      {/* Cuerpo técnico — agregado de todos los equipos del club */}
+      <div className="mt-10" data-testid="staff-section">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-display text-3xl font-black uppercase tracking-tight flex items-center gap-3"><Users2 size={28}/> Cuerpo técnico ({staff.length})</h2>
-          <button onClick={() => setEditingStaff({ idx: null, data: { ...EMPTY_STAFF } })} className="fsc-btn-primary px-4 py-2 rounded-md text-sm flex items-center gap-2" data-testid="add-staff-btn">
+          <button onClick={() => setEditingStaff({ idx: null, data: { ...EMPTY_STAFF, team_id: clubTeams[0]?.id || teamId || "" } })} className="fsc-btn-primary px-4 py-2 rounded-md text-sm flex items-center gap-2" disabled={clubTeams.length === 0} data-testid="add-staff-btn">
             <Plus size={16}/> Agregar
           </button>
         </div>
+        {clubTeams.length === 0 && (
+          <p className="text-xs text-amber-700">Primero crea un equipo en la sección de arriba para poder asignar cuerpo técnico.</p>
+        )}
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {staff.length === 0 && <p className="col-span-full text-center text-slate-400 py-6">Aún no has agregado al cuerpo técnico.</p>}
-          {staff.map((s, idx) => (
-            <div key={s.document || `${s.name}-${idx}`} className="bg-white border border-slate-200 rounded-lg p-4 flex items-center gap-3" data-testid={`staff-${idx}`}>
+          {staff.length === 0 && clubTeams.length > 0 && <p className="col-span-full text-center text-slate-400 py-6">Aún no has agregado al cuerpo técnico.</p>}
+          {staff.map((s) => (
+            <div key={`${s.team_id}-${s._idx}`} className="bg-white border border-slate-200 rounded-lg p-4 flex items-center gap-3" data-testid={`staff-${s.team_id}-${s._idx}`}>
               <div className="h-12 w-12 rounded-full bg-red-100 text-red-700 flex items-center justify-center font-bold uppercase">{(s.name || "?")[0]}</div>
               <div className="flex-1 min-w-0">
                 <div className="font-semibold truncate">{s.name}</div>
                 <div className="text-xs text-slate-500 truncate">{s.role}{s.document ? ` · Doc ${s.document}` : ""}{s.phone ? ` · ${s.phone}` : ""}</div>
+                <div className="text-[10px] uppercase tracking-widest text-fsc-azul mt-0.5">Equipo: {s.team_name}</div>
               </div>
-              <button onClick={() => setEditingStaff({ idx, data: { ...s } })} className="text-blue-700"><Pencil size={16}/></button>
-              <button onClick={() => removeStaff(idx)} className="text-red-600"><Trash2 size={16}/></button>
+              <button onClick={() => setEditingStaff({ idx: s._idx, data: { name: s.name, document: s.document || "", role: s.role || "Director técnico", phone: s.phone || "", team_id: s.team_id } })} className="text-blue-700" data-testid={`staff-edit-${s.team_id}-${s._idx}`}><Pencil size={16}/></button>
+              <button onClick={() => removeStaffMember(s.team_id, s._idx)} className="text-red-600" data-testid={`staff-remove-${s.team_id}-${s._idx}`}><Trash2 size={16}/></button>
             </div>
           ))}
         </div>
@@ -664,6 +835,19 @@ export default function MyTeam() {
       {editingPlayer && (
         <Modal title={editingPlayer.id ? "Editar jugador" : "Nuevo jugador"} onClose={() => setEditingPlayer(null)}>
           <form onSubmit={savePlayer} className="space-y-3">
+            <label className="block">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Equipo *</span>
+              <select
+                value={editingPlayer.team_id || ""}
+                onChange={(e) => setEditingPlayer({ ...editingPlayer, team_id: e.target.value })}
+                disabled={!!editingPlayer.id}
+                className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md disabled:bg-slate-100"
+                data-testid="player-team-select"
+              >
+                <option value="">Seleccionar equipo...</option>
+                {clubTeams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </select>
+            </label>
             <Field label="Nombre completo" required value={editingPlayer.name} onChange={(v) => setEditingPlayer({ ...editingPlayer, name: v })} testId="player-name-input" />
             <div className="grid grid-cols-2 gap-3">
               <Field label="Apodo / Nick name" value={editingPlayer.nickname} onChange={(v) => setEditingPlayer({ ...editingPlayer, nickname: v })} />
@@ -708,6 +892,19 @@ export default function MyTeam() {
       {editingStaff && (
         <Modal title={editingStaff.idx != null ? "Editar miembro" : "Nuevo miembro del cuerpo técnico"} onClose={() => setEditingStaff(null)}>
           <form onSubmit={saveStaff} className="space-y-3">
+            <label className="block">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Equipo *</span>
+              <select
+                value={editingStaff.data.team_id || ""}
+                onChange={(e) => setEditingStaff({ ...editingStaff, data: { ...editingStaff.data, team_id: e.target.value } })}
+                disabled={editingStaff.idx != null}
+                className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md disabled:bg-slate-100"
+                data-testid="staff-team-select"
+              >
+                <option value="">Seleccionar equipo...</option>
+                {clubTeams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </select>
+            </label>
             <Field label="Nombre completo" required value={editingStaff.data.name} onChange={(v) => setEditingStaff({ ...editingStaff, data: { ...editingStaff.data, name: v } })} testId="staff-name-input" />
             <label className="block">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Rol</span>
@@ -722,8 +919,8 @@ export default function MyTeam() {
               </select>
             </label>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Documento" value={editingStaff.data.document} onChange={(v) => setEditingStaff({ ...editingStaff, data: { ...editingStaff.data, document: v } })} />
-              <Field label="Teléfono" value={editingStaff.data.phone} onChange={(v) => setEditingStaff({ ...editingStaff, data: { ...editingStaff.data, phone: v } })} />
+              <Field label="Documento" value={editingStaff.data.document} onChange={(v) => setEditingStaff({ ...editingStaff, data: { ...editingStaff.data, document: v } })} testId="staff-document-input" />
+              <Field label="Teléfono" value={editingStaff.data.phone} onChange={(v) => setEditingStaff({ ...editingStaff, data: { ...editingStaff.data, phone: v } })} testId="staff-phone-input" />
             </div>
             <button className="fsc-btn-primary w-full py-2 rounded-md" data-testid="save-staff-btn">Guardar</button>
           </form>
@@ -767,21 +964,23 @@ function StatusPill({ status }) {
 }
 
 
-function FirstTeamCreator({ clubId, events, onCreated }) {
+function FirstTeamCreator({ clubId, tournaments, onCreated }) {
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ event_type: "", birth_year: "", designation: "Único" });
+  const [form, setForm] = useState({ tournament_id: "", category_name: "", team_name: "" });
   const [saving, setSaving] = useState(false);
-  const ev = events.find((e) => e.id === form.event_type);
-  const years = ev?.birth_years || [];
+  const sel = tournaments.find((t) => t.id === form.tournament_id);
+  const cats = sel?.categories || [];
 
   const submit = async () => {
-    if (!form.event_type || !form.birth_year) return toast.error("Completa evento y año");
+    if (!form.tournament_id) return toast.error("Selecciona un evento");
+    if (!form.category_name) return toast.error("Selecciona una categoría");
+    if (!form.team_name.trim()) return toast.error("Escribe el nombre del equipo");
     setSaving(true);
     try {
-      await api.post(`/clubs/${clubId}/teams`, { ...form, birth_year: Number(form.birth_year) });
+      await api.post(`/clubs/${clubId}/teams`, form);
       toast.success("Equipo creado");
       setOpen(false);
-      setForm({ event_type: "", birth_year: "", designation: "Único" });
+      setForm({ tournament_id: "", category_name: "", team_name: "" });
       onCreated?.();
     } catch (err) {
       toast.error(formatApiError(err.response?.data?.detail) || "Error al crear equipo");
@@ -794,37 +993,35 @@ function FirstTeamCreator({ clubId, events, onCreated }) {
     return (
       <div className="mt-8" data-testid="first-team-cta-wrapper">
         <button onClick={() => setOpen(true)} className="fsc-btn-primary px-5 py-2.5 rounded-md text-sm inline-flex items-center gap-2" data-testid="first-team-cta">
-          <Plus size={16}/> Crear primer equipo
+          <Plus size={16}/> Agregar equipo
         </button>
-        <p className="text-xs text-slate-500 mt-2">Opcional: puedes <strong>cotizar primero</strong> y crear los equipos después, o al revés.</p>
+        {tournaments.length === 0 && (
+          <p className="text-xs text-amber-700 mt-2">No hay eventos disponibles. El admin debe aprobar primero una cotización con eventos para que puedas inscribir equipos.</p>
+        )}
       </div>
     );
   }
   return (
     <div className="mt-8 bg-white border-2 border-fsc-azul rounded-xl p-5" data-testid="first-team-form">
-      <h3 className="font-display text-xl font-black uppercase tracking-tight mb-3">Crear primer equipo</h3>
+      <h3 className="font-display text-xl font-black uppercase tracking-tight mb-3">Crear equipo</h3>
       <div className="grid sm:grid-cols-3 gap-3">
         <label className="block">
           <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Evento</span>
-          <select value={form.event_type} onChange={(e) => setForm({ ...form, event_type: e.target.value, birth_year: "" })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="first-team-event">
+          <select value={form.tournament_id} onChange={(e) => setForm({ ...form, tournament_id: e.target.value, category_name: "" })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="first-team-tournament">
             <option value="">— Seleccionar</option>
-            {events.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+            {tournaments.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
           </select>
         </label>
         <label className="block">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Año de nacimiento</span>
-          <select value={form.birth_year} onChange={(e) => setForm({ ...form, birth_year: e.target.value })} disabled={!ev} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md disabled:bg-slate-100" data-testid="first-team-year">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Categoría</span>
+          <select value={form.category_name} onChange={(e) => setForm({ ...form, category_name: e.target.value })} disabled={!sel || cats.length === 0} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md disabled:bg-slate-100" data-testid="first-team-category">
             <option value="">—</option>
-            {years.map((y) => <option key={y} value={y}>{y}</option>)}
+            {cats.map((c) => <option key={c.name} value={c.name}>{c.name}</option>)}
           </select>
         </label>
         <label className="block">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Designación</span>
-          <select value={form.designation} onChange={(e) => setForm({ ...form, designation: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md">
-            <option>Único</option>
-            <option>Equipo A</option>
-            <option>Equipo B</option>
-          </select>
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Nombre del equipo</span>
+          <input value={form.team_name} onChange={(e) => setForm({ ...form, team_name: e.target.value })} placeholder="Ej: Halcones FC Sub-12 A" className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="first-team-name" />
         </label>
       </div>
       <div className="mt-4 flex gap-2">

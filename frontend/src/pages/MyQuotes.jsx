@@ -93,7 +93,7 @@ export default function MyQuotes() {
         {items.map((q) => {
           const s = STATUS[q.status] || STATUS.pendiente;
           const canStripe = q.status === "aprobada" && q.payment_status !== "paid";
-          const canPayManual = ["aprobada", "pendiente"].includes(q.status) && q.payment_status !== "paid" && q.status !== "rechazada";
+          const canPayManual = q.status === "aprobada" && q.payment_status !== "paid";
           const isOpen = openId === q.id;
           const data = payments[q.id];
           const balanceTotal = data?.balance?.total ?? q.total_amount;
