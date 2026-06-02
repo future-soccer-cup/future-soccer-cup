@@ -608,7 +608,10 @@ class MatchUpdateIn(BaseModel):
 
 class QuoteMealEntry(BaseModel):
     date: str            # YYYY-MM-DD
-    meal_type: Literal["breakfast", "lunch", "dinner"]
+    # Nuevo: id del meal_addon creado por el admin. Si viene, prioriza sobre meal_type.
+    meal_addon_id: Optional[str] = ""
+    # Legacy: tipo de comida (breakfast/lunch/dinner) usando matriz por tier.
+    meal_type: Optional[Literal["breakfast", "lunch", "dinner"]] = None
     pax: int = Field(ge=1)
 
 
@@ -2096,7 +2099,7 @@ async def _load_catalog() -> dict:
     """Load pricing catalog from MongoDB and shape it like the legacy in-memory dicts.
     Falls back to the seed constants if a row is missing so /cotizar never breaks."""
     rows = await db.pricing_catalog.find({}, {"_id": 0}).sort("sort_order", 1).to_list(200)
-    lodging, meals, transport, tours = {}, {}, {}, {}
+    lodging, meals, meal_addons, transport, tours = {}, {}, {}, {}, {}
     for r in rows:
         t = r.get("type")
         if t == "lodging":
@@ -2116,6 +2119,13 @@ async def _load_catalog() -> dict:
                 "id": r["id"], "name": r["name"],
                 "per_day_by_tier": {k: float(v or 0) for k, v in (r.get("per_day_by_tier") or {}).items()},
             }
+        elif t == "meal_addon":
+            meal_addons[r["id"]] = {
+                "id": r["id"], "name": r["name"],
+                "meal_type": (r.get("meal_type") or "").upper(),
+                "classification": (r.get("classification") or "").upper(),
+                "cost": float(r.get("cost", 0) or 0),
+            }
         elif t == "transport":
             transport[r["id"]] = {"id": r["id"], "name": r["name"], "price": float(r.get("price", 0) or 0)}
         elif t == "tour":
@@ -2124,6 +2134,7 @@ async def _load_catalog() -> dict:
     return {
         "lodging": lodging or LODGING_TIERS,
         "meals": meals or MEAL_PLANS,
+        "meal_addons": meal_addons,
         "transport": transport or TRANSPORT_ROUTES,
         "tours": tours or TOURS_CATALOG,
     }
@@ -2139,6 +2150,7 @@ async def list_event_types():
         "events": list(EVENT_TYPES.values()),
         "lodging_tiers": list(cat["lodging"].values()),
         "meal_plans": list(cat["meals"].values()),
+        "meal_addons": list((cat.get("meal_addons") or {}).values()),
         "transport_routes": list(cat["transport"].values()),
         "tours_catalog": list(cat["tours"].values()),
         "addons": ADDON_PRICES,  # legacy
@@ -2477,6 +2489,8 @@ def _calc_lodging_block(tier: dict, pax: int, nights: int, extras: list) -> dict
     main_subtotal = rate_per_person * paying_pax
 
     # Personas adicionales (acompañantes) DENTRO de este paquete.
+    # Por solicitud del usuario: valor unitario = NOCHE ADICIONAL del paquete.
+    # Subtotal = additional_night × noches × pax.
     extras_total = 0.0
     extras_breakdown = []
     for ep in (extras or []):
@@ -2485,11 +2499,10 @@ def _calc_lodging_block(tier: dict, pax: int, nights: int, extras: list) -> dict
             ep_nights = int(ep.get("nights") or 0)
         except (TypeError, ValueError):
             continue
-        if ep_pax <= 0 or ep_nights <= 0 or base_5 == 0:
+        if ep_pax <= 0 or ep_nights <= 0 or add_night <= 0:
             continue
-        ep_extra = max(0, ep_nights - 5)
-        ep_rate = base_5 + add_night * ep_extra
-        ep_sub = ep_rate * ep_pax
+        ep_rate = add_night  # valor unitario = noche adicional
+        ep_sub = ep_rate * ep_nights * ep_pax
         extras_total += ep_sub
         extras_breakdown.append({
             "label": str(ep.get("label", "")),
@@ -2563,7 +2576,10 @@ def _calculate_quote(payload: QuoteIn, catalog: dict) -> dict:
     headline = lodgings_breakdown[0] if lodgings_breakdown else {}
     primary_tier_id = headline.get("tier_id") or payload.lodging_tier or ""
 
-    # ============ ALIMENTACIÓN (global, basada en primer paquete para el rate) ============
+    # ============ ALIMENTACIÓN ============
+    # Prioridad 1: si una meal_entry trae `meal_addon_id`, usar el catálogo meal_addons del admin (precio unitario).
+    # Prioridad 2 (legacy): meal_type + matriz per_day_by_tier (paquete actual).
+    meal_addons_cat = catalog.get("meal_addons") or {}
     breakfast_per_day = float((meal_plans.get("breakfast") or {}).get("per_day_by_tier", {}).get(primary_tier_id, 0) or 0)
     lunch_per_day = float((meal_plans.get("lunch") or {}).get("per_day_by_tier", {}).get(primary_tier_id, 0) or 0)
     dinner_per_day = float((meal_plans.get("dinner") or {}).get("per_day_by_tier", {}).get(primary_tier_id, 0) or 0)
@@ -2572,15 +2588,44 @@ def _calculate_quote(payload: QuoteIn, catalog: dict) -> dict:
     total_lodging_pax = sum(b.get("pax", 0) for b in lodgings_breakdown) or int(payload.pax or 0)
 
     breakfast_total = lunch_total = dinner_total = 0.0
+    meals_breakdown = []
     if payload.meal_entries:
         for me in payload.meal_entries:
-            rate = float(rate_by_meal.get(me.meal_type, 0) or 0)
-            if rate <= 0:
+            pax_n = int(me.pax or 0)
+            if pax_n <= 0:
                 continue
-            sub = rate * int(me.pax)
-            if me.meal_type == "breakfast": breakfast_total += sub
-            elif me.meal_type == "lunch": lunch_total += sub
-            elif me.meal_type == "dinner": dinner_total += sub
+            unit = 0.0
+            name = ""
+            mtype = (me.meal_type or "").lower()
+            if me.meal_addon_id and me.meal_addon_id in meal_addons_cat:
+                ma = meal_addons_cat[me.meal_addon_id]
+                unit = float(ma.get("cost", 0) or 0)
+                name = ma.get("name", "")
+                mtype_raw = (ma.get("meal_type") or "").lower()
+                if "desayuno" in mtype_raw or mtype_raw == "breakfast":
+                    mtype = "breakfast"
+                elif "almuerzo" in mtype_raw or mtype_raw == "lunch":
+                    mtype = "lunch"
+                elif "cena" in mtype_raw or mtype_raw == "dinner":
+                    mtype = "dinner"
+            elif mtype in rate_by_meal:
+                unit = float(rate_by_meal.get(mtype, 0) or 0)
+                name = {"breakfast": "Desayuno", "lunch": "Almuerzo", "dinner": "Cena"}.get(mtype, mtype)
+            if unit <= 0:
+                continue
+            sub = unit * pax_n
+            meals_breakdown.append({
+                "date": me.date,
+                "meal_addon_id": me.meal_addon_id or "",
+                "meal_type": mtype,
+                "name": name,
+                "pax": pax_n,
+                "unit": unit,
+                "subtotal": sub,
+            })
+            if mtype == "breakfast": breakfast_total += sub
+            elif mtype == "lunch": lunch_total += sub
+            elif mtype == "dinner": dinner_total += sub
     else:
         breakfast_total = breakfast_per_day * total_lodging_pax * meal_days if payload.includes_breakfast and breakfast_per_day > 0 else 0
         lunch_total     = lunch_per_day     * total_lodging_pax * meal_days if payload.includes_lunch     and lunch_per_day     > 0 else 0
@@ -2709,6 +2754,7 @@ def _calculate_quote(payload: QuoteIn, catalog: dict) -> dict:
         "free_lodging_units": sum(b.get("free_lodging_units", 0) for b in lodgings_breakdown),
         "paying_pax_lodging": sum(b.get("paying_pax_lodging", 0) for b in lodgings_breakdown),
         "meals_subtotal": meals_total,
+        "meals_breakdown": meals_breakdown,
         "breakfast_subtotal": breakfast_total,
         "lunch_subtotal": lunch_total,
         "dinner_subtotal": dinner_total,

@@ -313,11 +313,10 @@ export default function Cotizar() {
           </Section>
 
           {/* 3. Alimentación */}
-          <Section icon={Utensils} title="3) Alimentación adicional" testId="block-meals" subtitle="Para llegadas tempranas o días extra. El paquete ya incluye 5 desayunos, 4 almuerzos y 5 cenas.">
-            <DomicilioMealsEditor
+          <Section icon={Utensils} title="3) Alimentación adicional" testId="block-meals" subtitle="Comidas creadas por el administrador en Paquetes/Alimentación adicional. Define fecha, comida, personas, valor unitario y valor total.">
+            <MealAddonsEditor
               entries={form.meal_entries || []}
-              mealPlans={config.meal_plans}
-              tier={form.lodgings[0]?.tier_id || ""}
+              addons={config.meal_addons || []}
               onChange={(entries) => setFormUser({ ...form, meal_entries: entries })}
             />
           </Section>
@@ -594,7 +593,10 @@ function ExtraPaxEditor({ parentIdx, entries, tier, onChange }) {
 
   const base5 = Number(tier?.base_5_nights || 0);
   const addNight = Number(tier?.additional_night || 0);
-  const unitFor = (nights) => base5 + addNight * Math.max(0, Number(nights || 0) - 5);
+  // El usuario solicitó: valor unitario = valor de NOCHE ADICIONAL del paquete.
+  // Total = unitario × noches × cantidad.
+  const unitFor = () => addNight;
+  const totalFor = (nights, pax) => addNight * Math.max(0, Number(nights || 0)) * Math.max(0, Number(pax || 0));
 
   return (
     <div className="mt-4 border-t-2 border-dashed border-fsc-azul/20 pt-3" data-testid={`extra-pax-editor-${parentIdx}`}>
@@ -611,8 +613,8 @@ function ExtraPaxEditor({ parentIdx, entries, tier, onChange }) {
       <div className="space-y-2">
         {entries.map((ep, i) => {
           const epPax = Number(ep.pax || 0);
-          const unit = unitFor(ep.nights);
-          const total = unit * epPax;
+          const unit = unitFor();
+          const total = totalFor(ep.nights, ep.pax);
           return (
             <div key={i} className="bg-white border border-slate-200 rounded-md p-2 space-y-2" data-testid={`extra-pax-${parentIdx}-row-${i}`}>
               <div className="grid sm:grid-cols-12 gap-2 items-end">
@@ -667,45 +669,96 @@ function ExtraPaxEditor({ parentIdx, entries, tier, onChange }) {
   );
 }
 
-// ----- Meals editor -----
-function DomicilioMealsEditor({ entries, mealPlans, tier, onChange }) {
-  const add = () => onChange([...entries, { _uid: crypto.randomUUID(), date: new Date().toISOString().slice(0, 10), meal_type: "breakfast", pax: 1 }]);
+// ----- Meals editor — usa meal_addons creados por el admin -----
+function MealAddonsEditor({ entries, addons, onChange }) {
+  const add = () => {
+    if (!addons || addons.length === 0) {
+      return;
+    }
+    const first = addons[0];
+    onChange([
+      ...entries,
+      {
+        _uid: crypto.randomUUID(),
+        date: new Date().toISOString().slice(0, 10),
+        meal_addon_id: first.id,
+        pax: 1,
+      },
+    ]);
+  };
   const update = (idx, patch) => onChange(entries.map((e, i) => (i === idx ? { ...e, ...patch } : e)));
   const remove = (idx) => onChange(entries.filter((_, i) => i !== idx));
-  const priceOf = (mt) => (mealPlans.find((m) => m.id === mt)?.per_day_by_tier?.[tier] || 0);
+  const findAddon = (id) => (addons || []).find((a) => a.id === id);
+
+  if (!addons || addons.length === 0) {
+    return (
+      <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-900" data-testid="meals-empty-catalog">
+        Aún no hay opciones de alimentación adicional configuradas por el administrador. Pídele al admin que las cree en <strong>Paquetes / Alimentación adicional</strong>.
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3" data-testid="meals-editor">
-      <p className="text-xs text-slate-500">Agrega una fila por cada comida (fecha + tipo + número de personas).</p>
+      <p className="text-xs text-slate-500">Agrega una fila por cada comida adicional que necesite el equipo.</p>
       <div className="space-y-2">
         {entries.length === 0 && <p className="text-xs italic text-slate-400">Sin comidas agregadas aún.</p>}
-        {entries.map((e, idx) => (
-          <div key={e._uid || `meal-${idx}`} className="grid grid-cols-12 gap-2 items-end bg-slate-50 border border-slate-200 rounded-md p-2" data-testid={`meal-row-${idx}`}>
-            <label className="col-span-4 block">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Fecha</span>
-              <input type="date" value={e.date} onChange={(ev) => update(idx, { date: ev.target.value })} className="w-full mt-1 px-2 py-1 border border-slate-200 rounded text-xs" />
-            </label>
-            <label className="col-span-3 block">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Comida</span>
-              <select value={e.meal_type} onChange={(ev) => update(idx, { meal_type: ev.target.value })} className="w-full mt-1 px-2 py-1 border border-slate-200 rounded text-xs bg-white">
-                {mealPlans.map((m) => <option key={m.id} value={m.id} disabled={priceOf(m.id) <= 0}>{m.name}{priceOf(m.id) <= 0 ? " (N/A)" : ""}</option>)}
-              </select>
-            </label>
-            <label className="col-span-2 block">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Personas</span>
-              <input type="number" min="1" value={e.pax} onChange={(ev) => update(idx, { pax: Number(ev.target.value) || 1 })} className="w-full mt-1 px-2 py-1 border border-slate-200 rounded text-xs tabular-nums" />
-            </label>
-            <div className="col-span-2 text-right text-xs font-bold tabular-nums text-emerald-700 pb-1">{`$${(priceOf(e.meal_type) * (e.pax || 0)).toLocaleString("es-CO")}`}</div>
-            <button type="button" onClick={() => remove(idx)} className="col-span-1 text-red-600 hover:bg-red-50 p-1 rounded justify-self-end" aria-label="Quitar"><X size={14}/></button>
-          </div>
-        ))}
+        {entries.map((e, idx) => {
+          const a = findAddon(e.meal_addon_id);
+          const unit = Number(a?.cost || 0);
+          const paxN = Number(e.pax || 0);
+          const total = unit * paxN;
+          return (
+            <div key={e._uid || `meal-${idx}`} className="bg-emerald-50/40 border border-emerald-200 rounded-md p-2 space-y-2" data-testid={`meal-row-${idx}`}>
+              <div className="grid grid-cols-12 gap-2 items-end">
+                <label className="col-span-3 block">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Fecha</span>
+                  <input type="date" value={e.date || ""} onChange={(ev) => update(idx, { date: ev.target.value })} className="w-full mt-1 px-2 py-1 border border-slate-200 rounded text-xs" data-testid={`meal-${idx}-date`} />
+                </label>
+                <label className="col-span-4 block">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Comida</span>
+                  <select
+                    value={e.meal_addon_id || ""}
+                    onChange={(ev) => update(idx, { meal_addon_id: ev.target.value })}
+                    className="w-full mt-1 px-2 py-1 border border-slate-200 rounded text-xs bg-white"
+                    data-testid={`meal-${idx}-addon`}
+                  >
+                    {addons.map((m) => (
+                      <option key={m.id} value={m.id}>{m.name}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="col-span-2 block">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Personas</span>
+                  <input
+                    type="number" min="0" inputMode="numeric"
+                    value={e.pax === undefined || e.pax === null ? "" : e.pax}
+                    onChange={(ev) => {
+                      const v = ev.target.value;
+                      update(idx, { pax: v === "" ? "" : Number(v) });
+                    }}
+                    onBlur={(ev) => { if (ev.target.value === "") update(idx, { pax: 0 }); }}
+                    placeholder="0"
+                    className="w-full mt-1 px-2 py-1 border border-slate-200 rounded text-xs tabular-nums"
+                    data-testid={`meal-${idx}-pax`}
+                  />
+                </label>
+                <button type="button" onClick={() => remove(idx)} className="col-span-3 text-fsc-rojo hover:bg-red-50 p-1 rounded justify-self-end inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider" aria-label="Quitar" data-testid={`meal-${idx}-remove`}><X size={14}/> Quitar</button>
+              </div>
+              <div className="flex justify-end gap-4 text-[11px] pt-1 border-t border-emerald-100">
+                <span className="text-slate-500">Valor unitario: <span className="font-bold tabular-nums text-emerald-700" data-testid={`meal-${idx}-unit`}>{`$${unit.toLocaleString("es-CO")}`}</span></span>
+                <span className="text-slate-500">Valor total: <span className="font-bold tabular-nums text-emerald-700" data-testid={`meal-${idx}-total`}>{`$${total.toLocaleString("es-CO")}`}</span></span>
+              </div>
+            </div>
+          );
+        })}
       </div>
-      <button type="button" onClick={add} className="text-xs font-bold uppercase tracking-wide text-blue-700 hover:underline flex items-center gap-1" data-testid="meal-add"><Plus size={12}/> Agregar comida</button>
+      <button type="button" onClick={add} className="text-xs font-bold uppercase tracking-wide text-emerald-700 hover:underline flex items-center gap-1" data-testid="meal-add"><Plus size={12}/> Agregar comida</button>
     </div>
   );
 }
 
-// ----- Tour entries editor -----
+// ----- Tour entries editor (con descripción del paquete) -----
 function TourEntriesEditor({ entries, tours, defaultPax, onChange }) {
   const fmtMoney = (n) => `$${Number(n || 0).toLocaleString("es-CO")}`;
   const used = new Set(entries.map((e) => e.tour_id));
@@ -717,29 +770,57 @@ function TourEntriesEditor({ entries, tours, defaultPax, onChange }) {
   };
   const update = (idx, patch) => onChange(entries.map((e, i) => (i === idx ? { ...e, ...patch } : e)));
   const remove = (idx) => onChange(entries.filter((_, i) => i !== idx));
-  const priceOf = (tid) => tours.find((t) => t.id === tid)?.price || 0;
+  const findTour = (tid) => tours.find((t) => t.id === tid);
+  const priceOf = (tid) => findTour(tid)?.price || 0;
 
   return (
     <div className="space-y-2" data-testid="tour-entries">
       {entries.length === 0 && <p className="text-xs italic text-slate-400">Sin tours agregados. Pulsa "Agregar tour".</p>}
-      {entries.map((e, idx) => (
-        <div key={`${e.tour_id}-${idx}`} className="grid grid-cols-12 gap-2 items-end bg-orange-50 border border-orange-200 rounded-md p-2" data-testid={`tour-row-${idx}`}>
-          <label className="col-span-5 block">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Tour</span>
-            <select value={e.tour_id} onChange={(ev) => update(idx, { tour_id: ev.target.value })} className="w-full mt-1 px-2 py-1 border border-slate-200 rounded text-xs bg-white">
-              <option value={e.tour_id}>{tours.find((t) => t.id === e.tour_id)?.name || e.tour_id}</option>
-              {available.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-            </select>
-            <span className="text-[10px] text-slate-500">{fmtMoney(priceOf(e.tour_id))} / persona</span>
-          </label>
-          <label className="col-span-3 block">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Personas</span>
-            <input type="number" min="1" value={e.pax} onChange={(ev) => update(idx, { pax: Number(ev.target.value) || 1 })} className="w-full mt-1 px-2 py-1 border border-slate-200 rounded text-xs tabular-nums" data-testid={`tour-pax-${idx}`} />
-          </label>
-          <div className="col-span-3 text-right text-xs font-bold tabular-nums text-orange-700 pb-1">{fmtMoney(priceOf(e.tour_id) * (e.pax || 0))}</div>
-          <button type="button" onClick={() => remove(idx)} className="col-span-1 text-red-600 hover:bg-red-50 p-1 rounded justify-self-end" aria-label="Quitar"><X size={14}/></button>
-        </div>
-      ))}
+      {entries.map((e, idx) => {
+        const t = findTour(e.tour_id);
+        return (
+          <div key={`${e.tour_id}-${idx}`} className="bg-orange-50 border border-orange-200 rounded-md p-2 space-y-2" data-testid={`tour-row-${idx}`}>
+            <div className="grid grid-cols-12 gap-2 items-end">
+              <label className="col-span-5 block">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Tour</span>
+                <select value={e.tour_id} onChange={(ev) => update(idx, { tour_id: ev.target.value })} className="w-full mt-1 px-2 py-1 border border-slate-200 rounded text-xs bg-white">
+                  <option value={e.tour_id}>{t?.name || e.tour_id}</option>
+                  {available.map((tt) => <option key={tt.id} value={tt.id}>{tt.name}</option>)}
+                </select>
+              </label>
+              <label className="col-span-2 block">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Personas</span>
+                <input
+                  type="number" min="0" inputMode="numeric"
+                  value={e.pax === undefined || e.pax === null ? "" : e.pax}
+                  onChange={(ev) => {
+                    const v = ev.target.value;
+                    update(idx, { pax: v === "" ? "" : Number(v) });
+                  }}
+                  onBlur={(ev) => { if (ev.target.value === "") update(idx, { pax: 0 }); }}
+                  placeholder="0"
+                  className="w-full mt-1 px-2 py-1 border border-slate-200 rounded text-xs tabular-nums"
+                  data-testid={`tour-pax-${idx}`}
+                />
+              </label>
+              <div className="col-span-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Valor unitario</span>
+                <div className="mt-1 px-2 py-1 border border-slate-200 rounded text-xs tabular-nums bg-white font-bold text-orange-800" data-testid={`tour-${idx}-unit`}>{fmtMoney(priceOf(e.tour_id))}</div>
+              </div>
+              <div className="col-span-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Valor total</span>
+                <div className="mt-1 px-2 py-1 border-2 border-orange-300 rounded text-xs tabular-nums bg-orange-100 font-black text-orange-900" data-testid={`tour-${idx}-total`}>{fmtMoney(priceOf(e.tour_id) * Number(e.pax || 0))}</div>
+              </div>
+              <button type="button" onClick={() => remove(idx)} className="col-span-1 text-red-600 hover:bg-red-50 p-1 rounded justify-self-end" aria-label="Quitar"><X size={14}/></button>
+            </div>
+            {t?.description && (
+              <div className="text-[11px] italic text-slate-700 bg-white/60 border border-orange-200 rounded px-2 py-1" data-testid={`tour-desc-${idx}`}>
+                {t.description}
+              </div>
+            )}
+          </div>
+        );
+      })}
       {available.length > 0 && (
         <button type="button" onClick={add} className="text-xs font-bold uppercase tracking-wide text-orange-700 hover:underline flex items-center gap-1" data-testid="add-tour"><Plus size={12}/> Agregar tour</button>
       )}

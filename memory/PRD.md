@@ -985,3 +985,23 @@ Refactor de `const load = () => ...; useEffect(() => load(), [])` a `const load 
 - 🟢 **P2** — Stripe webhook signature verification.
 - 🟢 **P2** — Refactor `server.py` (>4100 líneas) → `/app/backend/routes/`.
 - 🟢 **P2** — Refactor `Cotizar.jsx` (>700 líneas) en sub-componentes (`<EventSelector/>`, `<LodgingList/>`).
+
+## Iteration 28 (2026-06-02) — Refinamientos Cotizar (extras, alimentación admin, tours desc)
+
+### Backend
+- `_load_catalog`: ahora carga también `type=meal_addon` desde `db.pricing_catalog` y lo retorna en la clave `meal_addons`.
+- `/api/event-types`: expone `meal_addons` array.
+- `QuoteMealEntry`: campo nuevo `meal_addon_id` (opcional); `meal_type` ahora opcional. Si `meal_addon_id` viene poblado, prioriza el catálogo del admin (precio unitario = `cost`).
+- `_calc_lodging_block`: cambio semántico solicitado por usuario — **valor unitario de personas adicionales = `additional_night`** del paquete; subtotal = `additional_night × nights × pax`. (Antes era `base_5 + addNight × (nights-5)`.)
+- `_calculate_quote`: meals branch usa `meal_addons_cat` cuando entries tienen `meal_addon_id`; retorna `meals_breakdown` con `{date, name, meal_addon_id, meal_type, pax, unit, subtotal}` por fila.
+
+### Frontend (`Cotizar.jsx`)
+- `LodgingBlock.ExtraPaxEditor`: unit = `tier.additional_night`, total = unit × nights × pax. Inputs Cantidad/Noches permiten vacío durante tipeo.
+- Sección "3) Alimentación adicional" reescrita → nuevo componente `MealAddonsEditor` que muestra: Fecha · Comida (select de admin meal_addons) · Personas · Valor unitario · Valor total · Quitar. Fallback amber si no hay catalog.
+- `TourEntriesEditor`: ahora muestra **descripción** del tour debajo de cada fila (`tour-desc-{idx}`) + Valor unitario + Valor total columnas separadas.
+- Testids agregados: `meal-{idx}-date`, `meal-{idx}-addon`, `meal-{idx}-pax`, `meal-{idx}-unit`, `meal-{idx}-total`, `meal-{idx}-remove`, `meal-add`, `tour-{idx}-unit`, `tour-{idx}-total`, `tour-desc-{idx}`, `extra-pax-{idx}-{i}-unit`, `extra-pax-{idx}-{i}-total`.
+
+### Verificación
+- curl SAPPHIRE 10pax + extras Padres 4pax 3n: extras_subtotal = 4 × 3 × $200.000 = **$2.400.000** ✓
+- curl meals con `meal_addon_id=opcion_1` (DESAYUNO·GOLD $28k) pax=15: subtotal = **$420.000** ✓; `meals_breakdown` retornado con nombre y unit.
+- UI: capturado correctamente "Valor unitario: $200.000" y "Valor total: $2.400.000" en fila de extras; "DESAYUNO · GOLD" en selector de alimentación; "Visita a parque" debajo del tour.
