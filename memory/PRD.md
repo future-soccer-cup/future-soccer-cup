@@ -1005,3 +1005,21 @@ Refactor de `const load = () => ...; useEffect(() => load(), [])` a `const load 
 - curl SAPPHIRE 10pax + extras Padres 4pax 3n: extras_subtotal = 4 × 3 × $200.000 = **$2.400.000** ✓
 - curl meals con `meal_addon_id=opcion_1` (DESAYUNO·GOLD $28k) pax=15: subtotal = **$420.000** ✓; `meals_breakdown` retornado con nombre y unit.
 - UI: capturado correctamente "Valor unitario: $200.000" y "Valor total: $2.400.000" en fila de extras; "DESAYUNO · GOLD" en selector de alimentación; "Visita a parque" debajo del tour.
+
+## Iteration 29 (2026-06-02) — Aprobación cotización + Equipos/Staff/Players por club
+
+### Backend
+- `POST /api/payments` con `target_type=quote`: bloquea con 400 si la cotización no está en estado 'aprobada' o 'pagada' (admin no afectado).
+- `TeamAddIn` extendido: campos opcionales `tournament_id` + `category_name` + `team_name`. Modelo legacy (event_type+birth_year+designation) sigue funcionando.
+- `POST /api/clubs/{cid}/teams`: rama nueva que valida tournament/category, calcula fee desde `tournament.categories[].fee`, persiste `category=category_name`, `tournament_name`, `event_type`. Si team_name vacío o category no pertenece al tournament → 400.
+- `POST /api/players`, `PUT /api/players/{id}`, `DELETE`: RBAC ahora por `club_id` (en vez de team_id), permite a CT manipular jugadores de cualquier equipo de su club.
+- `PUT /api/teams/{team_id}`: permite a usuarios del mismo club editar (no solo el dueño del team_id).
+
+### Frontend
+- `MyQuotes.jsx`: `canPayManual` ahora solo true cuando `status === 'aprobada'`. Tarjetas pendientes ya no muestran "Registrar abono" ni "Pagar con Stripe".
+- `AdminQuotes.jsx`: detail modal completamente reescrito para renderizar `events_breakdown[]`, `lodgings_breakdown[]` (con `extra_pax_breakdown` y `free_lodging_units`), `meals_breakdown[]`, `transport_entries_breakdown`, `tour_subtotals`.
+- `MyTeam.jsx` (Mi Club): refactor unificado. Tanto Directivo como Cuerpo Técnico ven las mismas 3 secciones — Equipos del club, Cuerpo técnico, Jugadores. State `newTeam={tournament_id, category_name, team_name}`. Tournaments precargados desde `/quotes/mine` filtrando los aprobados. Modal de jugador incluye `player-team-select` (clubTeams dropdown). Modal de staff incluye `staff-team-select` (clubTeams dropdown). Staff agregado en `aggregatedStaff` que mapea cada miembro a su `team_id` y `team_name`.
+- Componente `FirstTeamCreator` actualizado al nuevo modelo (tournament + category + name).
+
+### Verificación
+- `/app/test_reports/iteration_25.json` — Backend 12/12 PASS. Frontend MyTeam/MyQuotes/AdminQuotes verificados manualmente con screenshots (admin detail modal muestra "Paquete 1 SAPPHIRE · 2 PAX" + "Paquete 2 PAQUETE PREMIUM · 1 PAX" + "PRUEBA 2027 · Sub-8 fee $1.500.000" en una cotización con `events:[]` y `lodgings:[]` reales).
