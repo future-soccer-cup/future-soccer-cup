@@ -257,7 +257,7 @@ export default function AdminTournaments() {
 }
 
 function CategoriesFeesEditor({ categories, catalog, onChange }) {
-  const add = () => onChange([...categories, { name: "", fee: 0 }]);
+  const add = () => onChange([...categories, { name: "", fee: 0, fee_usd: 0 }]);
   const update = (i, k, v) => {
     const next = [...categories];
     next[i] = { ...next[i], [k]: v };
@@ -269,7 +269,7 @@ function CategoriesFeesEditor({ categories, catalog, onChange }) {
       <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
         <div>
           <div className="text-xs font-bold uppercase tracking-wider text-fsc-azul">Categorías inscritas al evento</div>
-          <div className="text-[11px] text-slate-500">El evento se asociará a TODAS las categorías agregadas aquí. Cada una con su costo de inscripción.</div>
+          <div className="text-[11px] text-slate-500">El evento se asociará a TODAS las categorías agregadas aquí. Cada una con su costo de inscripción en COP y USD.</div>
           <a href="/admin/categorias" className="text-[10px] text-fsc-azul underline">Gestionar catálogo de categorías</a>
         </div>
         <button type="button" onClick={add} className="text-xs font-bold uppercase tracking-wider text-white bg-fsc-azul hover:bg-fsc-azul-oscuro px-3 py-1.5 rounded" data-testid="add-category-fee">+ Agregar categoría</button>
@@ -278,16 +278,27 @@ function CategoriesFeesEditor({ categories, catalog, onChange }) {
       <div className="space-y-2">
         {categories.map((c, i) => (
           <div key={i} className="grid grid-cols-12 gap-2 items-end" data-testid={`category-fee-row-${i}`}>
-            <label className="col-span-6 sm:col-span-5 block">
+            <label className="col-span-12 sm:col-span-4 block">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Categoría</span>
               <select value={c.name} onChange={(e) => update(i, "name", e.target.value)} className="mt-0.5 w-full px-2 py-1.5 border border-slate-300 rounded text-sm">
                 <option value="">Selecciona...</option>
                 {catalog.map((opt) => <option key={opt.id || opt.name} value={opt.name}>{opt.name}</option>)}
               </select>
             </label>
-            <label className="col-span-5 sm:col-span-6 block">
+            <label className="col-span-6 sm:col-span-4 block">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Inscripción (COP)</span>
               <CurrencyInput value={c.fee} onChange={(v) => update(i, "fee", v)} className="w-full text-sm" data-testid={`category-fee-input-${i}`} />
+            </label>
+            <label className="col-span-5 sm:col-span-3 block">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Inscripción (USD)</span>
+              <input
+                type="number" step="0.01" min="0"
+                value={c.fee_usd ?? 0}
+                onChange={(e) => update(i, "fee_usd", Number(e.target.value) || 0)}
+                placeholder="0.00"
+                className="mt-0.5 w-full px-2 py-1.5 border border-slate-300 rounded text-sm tabular-nums"
+                data-testid={`category-fee-usd-input-${i}`}
+              />
             </label>
             <button type="button" onClick={() => remove(i)} className="col-span-1 text-fsc-rojo hover:bg-red-50 p-1.5 rounded" data-testid={`remove-category-fee-${i}`}>
               <Trash2 size={14}/>

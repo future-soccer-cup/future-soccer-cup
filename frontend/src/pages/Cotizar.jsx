@@ -5,7 +5,10 @@ import { useAuth } from "../context/AuthContext";
 import { toast, Toaster } from "sonner";
 import { Trophy, Hotel, Utensils, Bus, Map, BadgeCheck, ArrowRight, Lock, Clock, Plus, X, Trash2 } from "lucide-react";
 
-const fmt = (n) => `$${Number(n || 0).toLocaleString("es-CO")}`;
+const fmtCOP = (n) => `$${Number(n || 0).toLocaleString("es-CO")}`;
+const fmtUSD = (n) => `US$${Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const fmtCur = (n, cur) => (cur === "USD" ? fmtUSD(n) : fmtCOP(n));
+const fmt = fmtCOP; // backward compat para los lugares que aún la usan
 
 export default function Cotizar() {
   const { user, loading: authLoading } = useAuth();
@@ -20,6 +23,7 @@ export default function Cotizar() {
     events: [],   // [{tournament_id, tournament_name, event_type, categories: [{name, fee}]}]
     lodgings: [], // [{tier_id, pax, nights, extra_pax_entries: [{label,pax,nights,date_from,date_to}]}]
     // Globales:
+    currency: "COP",
     include_registration: true,
     includes_breakfast: false,
     includes_lunch: false,
@@ -160,7 +164,7 @@ export default function Cotizar() {
       const has = (e.categories || []).some((c) => c.name === cat.name);
       const cats = has
         ? e.categories.filter((c) => c.name !== cat.name)
-        : [...(e.categories || []), { name: cat.name, fee: Number(cat.fee || 0) }];
+        : [...(e.categories || []), { name: cat.name, fee: Number(cat.fee || 0), fee_usd: Number(cat.fee_usd || 0) }];
       return { ...e, categories: cats };
     });
     setFormUser({ ...form, events: next });
@@ -190,10 +194,28 @@ export default function Cotizar() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12" data-testid="cotizar-page">
       <Toaster position="top-right" />
-      <div className="mb-8">
-        <span className="text-xs tracking-[0.25em] uppercase font-bold text-red-600">Armar cotización</span>
-        <h1 className="font-display text-5xl md:text-6xl font-black uppercase tracking-tighter">Cotiza tu evento</h1>
-        <p className="text-sm text-slate-500 mt-2 max-w-xl">Selecciona uno o varios eventos y paquetes de hospedaje. Cada paquete admite personas adicionales con noches y fechas propias. Total en vivo.</p>
+      <div className="mb-8 flex items-start justify-between flex-wrap gap-4">
+        <div>
+          <span className="text-xs tracking-[0.25em] uppercase font-bold text-red-600">Armar cotización</span>
+          <h1 className="font-display text-5xl md:text-6xl font-black uppercase tracking-tighter">Cotiza tu evento</h1>
+          <p className="text-sm text-slate-500 mt-2 max-w-xl">Selecciona uno o varios eventos y paquetes de hospedaje. Cada paquete admite personas adicionales con noches y fechas propias. Total en vivo.</p>
+        </div>
+        <div className="bg-white border-2 border-fsc-azul rounded-xl p-3" data-testid="currency-toggle">
+          <div className="text-[10px] font-bold uppercase tracking-[0.25em] text-fsc-azul-oscuro mb-1">Moneda</div>
+          <div className="flex bg-slate-100 rounded-lg p-1">
+            {["COP", "USD"].map((cur) => (
+              <button
+                key={cur}
+                type="button"
+                onClick={() => setFormUser({ ...form, currency: cur })}
+                className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wider rounded-md transition-colors ${form.currency === cur ? "bg-fsc-azul text-white" : "text-slate-600 hover:text-fsc-azul"}`}
+                data-testid={`currency-${cur}`}
+              >
+                {cur === "COP" ? "Pesos (COP)" : "Dólares (USD)"}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
@@ -258,16 +280,18 @@ export default function Cotizar() {
                         <div className="grid sm:grid-cols-2 gap-2">
                           {cats.map((c, ci) => {
                             const checked = (ev.categories || []).some((x) => x.name === c.name);
+                            const cur = form.currency || "COP";
+                            const cFee = cur === "USD" ? Number(c.fee_usd || 0) : Number(c.fee || 0);
                             return (
                               <label
                                 key={`${ev.tournament_id}-${c.name}-${ci}`}
                                 className={`flex items-center gap-2 p-2.5 border-2 rounded cursor-pointer transition-colors ${checked ? "border-fsc-azul bg-white" : "border-slate-200 bg-white/60 hover:border-slate-400"}`}
                                 data-testid={`event-${evIdx}-cat-${ci}`}
                               >
-                                <input type="checkbox" checked={checked} onChange={() => toggleEventCategory(ev.tournament_id, c)} className="h-4 w-4 accent-fsc-azul" />
+                                <input type="checkbox" checked={checked} onChange={() => toggleEventCategory(ev.tournament_id, { name: c.name, fee: c.fee, fee_usd: c.fee_usd })} className="h-4 w-4 accent-fsc-azul" />
                                 <span className="flex-1">
                                   <span className="font-bold uppercase tracking-wide text-sm">{c.name}</span>
-                                  <span className="block text-[11px] text-slate-500 tabular-nums">Inscripción: {fmt(c.fee || 0)}</span>
+                                  <span className="block text-[11px] text-slate-500 tabular-nums">Inscripción: {fmtCur(cFee, cur)}</span>
                                 </span>
                               </label>
                             );
@@ -297,6 +321,7 @@ export default function Cotizar() {
                   idx={idx}
                   data={ld}
                   tiers={config.lodging_tiers}
+                  currency={form.currency || "COP"}
                   onChange={(patch) => updateLodging(idx, patch)}
                   onRemove={() => removeLodging(idx)}
                 />
@@ -317,6 +342,7 @@ export default function Cotizar() {
             <MealAddonsEditor
               entries={form.meal_entries || []}
               addons={config.meal_addons || []}
+              currency={form.currency || "COP"}
               onChange={(entries) => setFormUser({ ...form, meal_entries: entries })}
             />
           </Section>
@@ -326,6 +352,7 @@ export default function Cotizar() {
             <TransportEntriesEditor
               entries={form.transport_entries || []}
               routes={config.transport_routes}
+              currency={form.currency || "COP"}
               defaultPax={form.lodgings.reduce((s, l) => s + (l.pax || 0), 0) || 1}
               onChange={(entries) => setFormUser({
                 ...form,
@@ -340,6 +367,7 @@ export default function Cotizar() {
             <TourEntriesEditor
               entries={form.tour_entries || []}
               tours={config.tours_catalog}
+              currency={form.currency || "COP"}
               defaultPax={form.lodgings.reduce((s, l) => s + (l.pax || 0), 0) || 1}
               onChange={(entries) => setFormUser({ ...form, tour_entries: entries, tour_ids: entries.map((e) => e.tour_id) })}
             />
@@ -376,12 +404,12 @@ export default function Cotizar() {
                 <div key={`evb-${i}`} className="border-b border-fsc-azul/20 pb-2">
                   <div className="flex justify-between text-xs">
                     <span className="text-fsc-gris uppercase tracking-wider">{ev.tournament_name || "Evento"}</span>
-                    <span className="font-bold tabular-nums">{fmt(ev.subtotal)}</span>
+                    <span className="font-bold tabular-nums">{fmtCur(ev.subtotal, form.currency)}</span>
                   </div>
                   {(ev.categories || []).map((c, j) => (
                     <div key={`evbc-${i}-${j}`} className="flex justify-between text-[10px] text-fsc-gris pl-2">
                       <span>· {c.name}</span>
-                      <span className="tabular-nums">{fmt(c.fee)}</span>
+                      <span className="tabular-nums">{fmtCur(c.fee, form.currency)}</span>
                     </div>
                   ))}
                 </div>
@@ -392,11 +420,11 @@ export default function Cotizar() {
                 <div key={`ldb-${i}`} className="border-b border-fsc-azul/20 pb-2">
                   <div className="flex justify-between text-xs">
                     <span className="text-fsc-gris uppercase tracking-wider">{b.tier_name} · {b.pax} pax</span>
-                    <span className="font-bold tabular-nums">{fmt(b.subtotal)}</span>
+                    <span className="font-bold tabular-nums">{fmtCur(b.subtotal, form.currency)}</span>
                   </div>
                   <div className="flex justify-between text-[10px] text-fsc-gris pl-2">
                     <span>· Valor unitario</span>
-                    <span className="tabular-nums">{fmt(b.rate_per_person_total)}</span>
+                    <span className="tabular-nums">{fmtCur(b.rate_per_person_total, form.currency)}</span>
                   </div>
                   {b.free_lodging_units > 0 && (
                     <div className="text-[10px] text-fsc-rojo pl-2">🎉 Promo 21 gratis: {b.free_lodging_units} pax sin costo</div>
@@ -404,21 +432,21 @@ export default function Cotizar() {
                   {(b.extra_pax_breakdown || []).map((ep, j) => (
                     <div key={`ldb-${i}-ep-${j}`} className="flex justify-between text-[10px] text-fsc-gris pl-2">
                       <span>· {ep.label || "Adicionales"} ({ep.pax}p × {ep.nights}n)</span>
-                      <span className="tabular-nums">{fmt(ep.subtotal)}</span>
+                      <span className="tabular-nums">{fmtCur(ep.subtotal, form.currency)}</span>
                     </div>
                   ))}
                 </div>
               ))}
 
-              <Row k="Hospedaje" v={fmt(estimate?.lodging_subtotal || 0)} />
-              <Row k="Alimentación" v={fmt((estimate?.breakfast_subtotal || 0) + (estimate?.lunch_subtotal || 0) + (estimate?.dinner_subtotal || 0))} />
-              <Row k="Transporte" v={fmt(estimate?.transport_subtotal || 0)} />
-              <Row k="Tours" v={fmt(estimate?.tours_subtotal || 0)} />
-              {estimate?.registration_fee > 0 && <Row k="Inscripción" v={fmt(estimate.registration_fee)} />}
+              <Row k="Hospedaje" v={fmtCur(estimate?.lodging_subtotal || 0, form.currency)} />
+              <Row k="Alimentación" v={fmtCur((estimate?.breakfast_subtotal || 0) + (estimate?.lunch_subtotal || 0) + (estimate?.dinner_subtotal || 0), form.currency)} />
+              <Row k="Transporte" v={fmtCur(estimate?.transport_subtotal || 0, form.currency)} />
+              <Row k="Tours" v={fmtCur(estimate?.tours_subtotal || 0, form.currency)} />
+              {estimate?.registration_fee > 0 && <Row k="Inscripción" v={fmtCur(estimate.registration_fee, form.currency)} />}
               <div className="border-t border-fsc-azul/30 pt-3 mt-3">
                 <div className="flex items-baseline justify-between">
                   <span className="text-xs uppercase tracking-widest text-white">Total</span>
-                  <span className="font-display text-3xl tracking-wider text-white tabular-nums" data-testid="cotizar-total">{fmt(estimate?.total_amount || 0)}<span className="text-xs text-fsc-gris ml-1">COP</span></span>
+                  <span className="font-display text-3xl tracking-wider text-white tabular-nums" data-testid="cotizar-total">{fmtCur(estimate?.total_amount || 0, form.currency)}<span className="text-xs text-fsc-gris ml-1">{form.currency}</span></span>
                 </div>
               </div>
             </div>
@@ -459,11 +487,13 @@ function Row({ k, v }) {
 }
 
 // ----- Bloque de paquete de hospedaje individual -----
-function LodgingBlock({ idx, data, tiers, onChange, onRemove }) {
+function LodgingBlock({ idx, data, tiers, currency = "COP", onChange, onRemove }) {
   const tier = tiers.find((t) => t.id === data.tier_id);
   const isDom = data.tier_id === "domicilio";
   const pax = Number(data.pax || 0);
-  const unitario = (tier && !isDom) ? Number(tier.base_5_nights || 0) : 0;
+  const baseField = currency === "USD" ? "base_5_nights_usd" : "base_5_nights";
+  const addField = currency === "USD" ? "additional_night_usd" : "additional_night";
+  const unitario = (tier && !isDom) ? Number(tier[baseField] || 0) : 0;
   const subtotal = unitario * pax;
   return (
     <div className="border-2 border-fsc-azul/30 bg-fsc-azul/5 rounded-xl p-4" data-testid={`lodging-block-${idx}`}>
@@ -502,12 +532,12 @@ function LodgingBlock({ idx, data, tiers, onChange, onRemove }) {
                   {/* VALOR PAQUETE */}
                   <div className="flex justify-between">
                     <span className="text-slate-500 uppercase tracking-wider text-[9px]">Valor paquete</span>
-                    <span className="font-bold tabular-nums" data-testid={`lodging-${idx}-tier-${t.id}-base`}>{fmt(t.base_5_nights)}</span>
+                    <span className="font-bold tabular-nums" data-testid={`lodging-${idx}-tier-${t.id}-base`}>{fmtCur(t[baseField] || 0, currency)}</span>
                   </div>
                   {/* NOCHE ADICIONAL */}
                   <div className="flex justify-between">
                     <span className="text-slate-500 uppercase tracking-wider text-[9px]">Noche adicional</span>
-                    <span className="font-bold tabular-nums" data-testid={`lodging-${idx}-tier-${t.id}-add`}>{fmt(t.additional_night)}</span>
+                    <span className="font-bold tabular-nums" data-testid={`lodging-${idx}-tier-${t.id}-add`}>{fmtCur(t[addField] || 0, currency)}</span>
                   </div>
                 </div>
               ) : (
@@ -543,14 +573,14 @@ function LodgingBlock({ idx, data, tiers, onChange, onRemove }) {
         <div className="block">
           <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Valor unitario</span>
           <div className="mt-1 px-3 py-2 border border-slate-200 rounded-md bg-white tabular-nums font-bold text-fsc-azul" data-testid={`lodging-${idx}-unit`}>
-            {fmt(unitario)}
+            {fmtCur(unitario, currency)}
           </div>
         </div>
         {/* Valor total = unitario × pax */}
         <div className="block">
           <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Valor total</span>
           <div className="mt-1 px-3 py-2 border-2 border-fsc-azul rounded-md bg-fsc-azul/10 tabular-nums font-black text-fsc-azul text-lg" data-testid={`lodging-${idx}-total`}>
-            {fmt(subtotal)}
+            {fmtCur(subtotal, currency)}
           </div>
         </div>
       </div>
@@ -561,6 +591,7 @@ function LodgingBlock({ idx, data, tiers, onChange, onRemove }) {
           parentIdx={idx}
           entries={data.extra_pax_entries || []}
           tier={tier}
+          currency={currency}
           onChange={(entries) => onChange({ extra_pax_entries: entries })}
         />
       )}
@@ -569,7 +600,7 @@ function LodgingBlock({ idx, data, tiers, onChange, onRemove }) {
 }
 
 // ----- Editor de personas adicionales (etiqueta + cantidad + noches + desde/hasta + valor) -----
-function ExtraPaxEditor({ parentIdx, entries, tier, onChange }) {
+function ExtraPaxEditor({ parentIdx, entries, tier, currency = "COP", onChange }) {
   const add = () => onChange([...entries, { label: "", pax: 1, nights: 5, date_from: "", date_to: "" }]);
   const update = (i, k, v) => {
     const next = [...entries];
@@ -591,8 +622,8 @@ function ExtraPaxEditor({ parentIdx, entries, tier, onChange }) {
   };
   const remove = (i) => onChange(entries.filter((_, j) => j !== i));
 
-  const base5 = Number(tier?.base_5_nights || 0);
-  const addNight = Number(tier?.additional_night || 0);
+  const addField = currency === "USD" ? "additional_night_usd" : "additional_night";
+  const addNight = Number(tier?.[addField] || 0);
   // El usuario solicitó: valor unitario = valor de NOCHE ADICIONAL del paquete.
   // Total = unitario × noches × cantidad.
   const unitFor = () => addNight;
@@ -658,8 +689,8 @@ function ExtraPaxEditor({ parentIdx, entries, tier, onChange }) {
               </div>
               {/* Valor unitario y total de la fila */}
               <div className="flex justify-end gap-4 text-[10px] pt-1 border-t border-slate-100">
-                <span className="text-slate-500">Valor unitario: <span className="font-bold tabular-nums text-fsc-azul" data-testid={`extra-pax-${parentIdx}-${i}-unit`}>{fmt(unit)}</span></span>
-                <span className="text-slate-500">Valor total: <span className="font-bold tabular-nums text-fsc-azul" data-testid={`extra-pax-${parentIdx}-${i}-total`}>{fmt(total)}</span></span>
+                <span className="text-slate-500">Valor unitario: <span className="font-bold tabular-nums text-fsc-azul" data-testid={`extra-pax-${parentIdx}-${i}-unit`}>{fmtCur(unit, currency)}</span></span>
+                <span className="text-slate-500">Valor total: <span className="font-bold tabular-nums text-fsc-azul" data-testid={`extra-pax-${parentIdx}-${i}-total`}>{fmtCur(total, currency)}</span></span>
               </div>
             </div>
           );
@@ -670,7 +701,7 @@ function ExtraPaxEditor({ parentIdx, entries, tier, onChange }) {
 }
 
 // ----- Meals editor — usa meal_addons creados por el admin -----
-function MealAddonsEditor({ entries, addons, onChange }) {
+function MealAddonsEditor({ entries, addons, currency = "COP", onChange }) {
   const add = () => {
     if (!addons || addons.length === 0) {
       return;
@@ -705,7 +736,8 @@ function MealAddonsEditor({ entries, addons, onChange }) {
         {entries.length === 0 && <p className="text-xs italic text-slate-400">Sin comidas agregadas aún.</p>}
         {entries.map((e, idx) => {
           const a = findAddon(e.meal_addon_id);
-          const unit = Number(a?.cost || 0);
+          const costField = currency === "USD" ? "cost_usd" : "cost";
+          const unit = Number(a?.[costField] || 0);
           const paxN = Number(e.pax || 0);
           const total = unit * paxN;
           return (
@@ -746,8 +778,8 @@ function MealAddonsEditor({ entries, addons, onChange }) {
                 <button type="button" onClick={() => remove(idx)} className="col-span-3 text-fsc-rojo hover:bg-red-50 p-1 rounded justify-self-end inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider" aria-label="Quitar" data-testid={`meal-${idx}-remove`}><X size={14}/> Quitar</button>
               </div>
               <div className="flex justify-end gap-4 text-[11px] pt-1 border-t border-emerald-100">
-                <span className="text-slate-500">Valor unitario: <span className="font-bold tabular-nums text-emerald-700" data-testid={`meal-${idx}-unit`}>{`$${unit.toLocaleString("es-CO")}`}</span></span>
-                <span className="text-slate-500">Valor total: <span className="font-bold tabular-nums text-emerald-700" data-testid={`meal-${idx}-total`}>{`$${total.toLocaleString("es-CO")}`}</span></span>
+                <span className="text-slate-500">Valor unitario: <span className="font-bold tabular-nums text-emerald-700" data-testid={`meal-${idx}-unit`}>{fmtCur(unit, currency)}</span></span>
+                <span className="text-slate-500">Valor total: <span className="font-bold tabular-nums text-emerald-700" data-testid={`meal-${idx}-total`}>{fmtCur(total, currency)}</span></span>
               </div>
             </div>
           );
@@ -759,8 +791,9 @@ function MealAddonsEditor({ entries, addons, onChange }) {
 }
 
 // ----- Tour entries editor (con descripción del paquete) -----
-function TourEntriesEditor({ entries, tours, defaultPax, onChange }) {
-  const fmtMoney = (n) => `$${Number(n || 0).toLocaleString("es-CO")}`;
+function TourEntriesEditor({ entries, tours, currency = "COP", defaultPax, onChange }) {
+  const priceField = currency === "USD" ? "price_usd" : "price";
+  const fmtMoney = (n) => fmtCur(n, currency);
   const used = new Set(entries.map((e) => e.tour_id));
   const available = tours.filter((t) => !used.has(t.id));
   const add = () => {
@@ -771,7 +804,7 @@ function TourEntriesEditor({ entries, tours, defaultPax, onChange }) {
   const update = (idx, patch) => onChange(entries.map((e, i) => (i === idx ? { ...e, ...patch } : e)));
   const remove = (idx) => onChange(entries.filter((_, i) => i !== idx));
   const findTour = (tid) => tours.find((t) => t.id === tid);
-  const priceOf = (tid) => findTour(tid)?.price || 0;
+  const priceOf = (tid) => Number(findTour(tid)?.[priceField] || 0);
 
   return (
     <div className="space-y-2" data-testid="tour-entries">
@@ -829,15 +862,16 @@ function TourEntriesEditor({ entries, tours, defaultPax, onChange }) {
 }
 
 // ----- Transport entries editor -----
-function TransportEntriesEditor({ entries, routes, defaultPax, onChange }) {
-  const fmtMoney = (n) => `$${Number(n || 0).toLocaleString("es-CO")}`;
+function TransportEntriesEditor({ entries, routes, currency = "COP", defaultPax, onChange }) {
+  const priceField = currency === "USD" ? "price_usd" : "price";
+  const fmtMoney = (n) => fmtCur(n, currency);
   const add = () => {
     if (routes.length === 0) return;
     onChange([...entries, { route_id: routes[0].id, pax: defaultPax || 1, date: "" }]);
   };
   const update = (idx, patch) => onChange(entries.map((e, i) => (i === idx ? { ...e, ...patch } : e)));
   const remove = (idx) => onChange(entries.filter((_, i) => i !== idx));
-  const priceOf = (rid) => routes.find((r) => r.id === rid)?.price || 0;
+  const priceOf = (rid) => Number(routes.find((r) => r.id === rid)?.[priceField] || 0);
   return (
     <div className="space-y-2" data-testid="transport-entries">
       {entries.length === 0 && <p className="text-xs italic text-slate-400">Sin transportes agregados. Pulsa "Agregar transporte".</p>}

@@ -637,11 +637,13 @@ class QuoteIn(BaseModel):
 
     # === NUEVO modelo multi-eventos / multi-paquetes ===
     # events: lista de eventos a cotizar. Cada uno con sus categorías inscritas.
-    # Cada entry: {tournament_id, tournament_name, event_type, categories: [{name, fee}]}
+    # Cada entry: {tournament_id, tournament_name, event_type, categories: [{name, fee, fee_usd?}]}
     events: Optional[List[dict]] = []
     # lodgings: lista de paquetes a cotizar. Cada uno con su pax/nights y bloques de personas adicionales.
     # Cada entry: {tier_id, pax, nights, extra_pax_entries: [{label, pax, nights, date_from, date_to}]}
     lodgings: Optional[List[dict]] = []
+    # Moneda en la que se calcula el TOTAL: "COP" (default) o "USD".
+    currency: Optional[Literal["COP", "USD"]] = "COP"
     # Alimentación incluida en el paquete: 5 desayunos + 4 almuerzos + 5 cenas.
     # Estos toggles agregan comidas **adicionales** (llegadas tempranas, días extra)
     # multiplicadas por `meal_days` cuando no se usa meal_entries.
@@ -2122,6 +2124,8 @@ async def _load_catalog() -> dict:
                 "includes": r.get("includes", []),
                 "base_5_nights": float(r.get("base_5_nights", 0) or 0),
                 "additional_night": float(r.get("additional_night", 0) or 0),
+                "base_5_nights_usd": float(r.get("base_5_nights_usd", 0) or 0),
+                "additional_night_usd": float(r.get("additional_night_usd", 0) or 0),
                 "available": bool(r.get("available", True)),
                 "free_21st_enabled": bool(r.get("free_21st_enabled", False)),
                 "classification": r.get("classification", ""),
@@ -2139,11 +2143,12 @@ async def _load_catalog() -> dict:
                 "meal_type": (r.get("meal_type") or "").upper(),
                 "classification": (r.get("classification") or "").upper(),
                 "cost": float(r.get("cost", 0) or 0),
+                "cost_usd": float(r.get("cost_usd", 0) or 0),
             }
         elif t == "transport":
-            transport[r["id"]] = {"id": r["id"], "name": r["name"], "price": float(r.get("price", 0) or 0)}
+            transport[r["id"]] = {"id": r["id"], "name": r["name"], "price": float(r.get("price", 0) or 0), "price_usd": float(r.get("price_usd", 0) or 0)}
         elif t == "tour":
-            tours[r["id"]] = {"id": r["id"], "name": r["name"], "description": r.get("description", ""), "price": float(r.get("price", 0) or 0)}
+            tours[r["id"]] = {"id": r["id"], "name": r["name"], "description": r.get("description", ""), "price": float(r.get("price", 0) or 0), "price_usd": float(r.get("price_usd", 0) or 0)}
     # Fallback to constants when DB is empty (only on the very first request after deploy).
     return {
         "lodging": lodging or LODGING_TIERS,
@@ -2204,6 +2209,9 @@ def _validate_catalog_row(t: str, body: dict) -> dict:
     if t == "lodging":
         out["base_5_nights"] = max(0.0, float(body.get("base_5_nights", 0) or 0))
         out["additional_night"] = max(0.0, float(body.get("additional_night", 0) or 0))
+        # Precios en dólares (opcional). 0 = no definido en USD.
+        out["base_5_nights_usd"] = max(0.0, float(body.get("base_5_nights_usd", 0) or 0))
+        out["additional_night_usd"] = max(0.0, float(body.get("additional_night_usd", 0) or 0))
         out["available"] = bool(body.get("available", True))
         out["no_lodging"] = bool(body.get("no_lodging", False))
         # Promo "21 sale gratis" — 1 persona gratis por cada 20 alojadas en la misma reserva (no en total).
@@ -2226,15 +2234,17 @@ def _validate_catalog_row(t: str, body: dict) -> dict:
         if "classification" in body:
             out["classification"] = (body.get("classification") or "").strip().upper()
     elif t == "meal_addon":
-        # Alimentación adicional: {meal_type, classification, cost}.
+        # Alimentación adicional: {meal_type, classification, cost, cost_usd}.
         mt = (body.get("meal_type") or "").strip().upper()
         if mt and mt not in ("DESAYUNO", "ALMUERZO", "CENA"):
             raise HTTPException(status_code=400, detail="meal_type debe ser DESAYUNO, ALMUERZO o CENA")
         out["meal_type"] = mt
         out["classification"] = (body.get("classification") or "").strip().upper()
         out["cost"] = max(0.0, float(body.get("cost", 0) or 0))
+        out["cost_usd"] = max(0.0, float(body.get("cost_usd", 0) or 0))
     elif t in ("transport", "tour"):
         out["price"] = max(0.0, float(body.get("price", 0) or 0))
+        out["price_usd"] = max(0.0, float(body.get("price_usd", 0) or 0))
     return out
 
 
@@ -2547,10 +2557,12 @@ async def admin_clubs_tree(_: dict = Depends(require_admin)):
     return result
 
 # -------------------- Quotes (Cotizaciones) --------------------
-def _calc_lodging_block(tier: dict, pax: int, nights: int, extras: list) -> dict:
-    """Calcula el bloque de hospedaje para un paquete: principal + extras (personas adicionales)."""
-    base_5 = float((tier or {}).get("base_5_nights", 0) or 0)
-    add_night = float((tier or {}).get("additional_night", 0) or 0)
+def _calc_lodging_block(tier: dict, pax: int, nights: int, extras: list, currency: str = "COP") -> dict:
+    """Calcula el bloque de hospedaje para un paquete: principal + extras (personas adicionales).
+    Si `currency=='USD'`, usa los precios *_usd. Si en USD un valor es 0, no se cobra (no hace fallback a COP)."""
+    is_usd = (currency == "USD")
+    base_5 = float((tier or {}).get("base_5_nights_usd" if is_usd else "base_5_nights", 0) or 0)
+    add_night = float((tier or {}).get("additional_night_usd" if is_usd else "additional_night", 0) or 0)
     extra_nights = max(0, int(nights or 0) - 5)
     rate_per_person = base_5 + add_night * extra_nights
 
@@ -2613,6 +2625,8 @@ def _calculate_quote(payload: QuoteIn, catalog: dict) -> dict:
     nights = payload.nights or EVENT_NIGHTS
     days = payload.days or EVENT_DAYS
     meal_days = payload.meal_days or days
+    currency = (payload.currency or "COP").upper()
+    is_usd = (currency == "USD")
 
     # ============ HOSPEDAJE — soporta múltiples paquetes (nuevo) o legacy single ============
     lodgings_breakdown = []
@@ -2627,6 +2641,7 @@ def _calculate_quote(payload: QuoteIn, catalog: dict) -> dict:
                 pax=int((ld or {}).get("pax") or 0),
                 nights=int((ld or {}).get("nights") or nights),
                 extras=(ld or {}).get("extra_pax_entries") or [],
+                currency=currency,
             )
             lodgings_breakdown.append(block)
     elif payload.lodging_tier:
@@ -2639,6 +2654,7 @@ def _calculate_quote(payload: QuoteIn, catalog: dict) -> dict:
             pax=int(payload.pax or 0),
             nights=int(nights),
             extras=payload.extra_pax_entries or [],
+            currency=currency,
         )
         lodgings_breakdown.append(block)
 
@@ -2672,7 +2688,7 @@ def _calculate_quote(payload: QuoteIn, catalog: dict) -> dict:
             mtype = (me.meal_type or "").lower()
             if me.meal_addon_id and me.meal_addon_id in meal_addons_cat:
                 ma = meal_addons_cat[me.meal_addon_id]
-                unit = float(ma.get("cost", 0) or 0)
+                unit = float(ma.get("cost_usd" if is_usd else "cost", 0) or 0)
                 name = ma.get("name", "")
                 mtype_raw = (ma.get("meal_type") or "").lower()
                 if "desayuno" in mtype_raw or mtype_raw == "breakfast":
@@ -2681,7 +2697,8 @@ def _calculate_quote(payload: QuoteIn, catalog: dict) -> dict:
                     mtype = "lunch"
                 elif "cena" in mtype_raw or mtype_raw == "dinner":
                     mtype = "dinner"
-            elif mtype in rate_by_meal:
+            elif mtype in rate_by_meal and not is_usd:
+                # Legacy: la matriz per_day_by_tier solo está en COP.
                 unit = float(rate_by_meal.get(mtype, 0) or 0)
                 name = {"breakfast": "Desayuno", "lunch": "Almuerzo", "dinner": "Cena"}.get(mtype, mtype)
             if unit <= 0:
@@ -2706,6 +2723,7 @@ def _calculate_quote(payload: QuoteIn, catalog: dict) -> dict:
     meals_total = breakfast_total + lunch_total + dinner_total
 
     # ============ TRANSPORTE (global) ============
+    _price_field = "price_usd" if is_usd else "price"
     transport_entries_calc = []
     if payload.transport_entries:
         for te in payload.transport_entries:
@@ -2713,7 +2731,7 @@ def _calculate_quote(payload: QuoteIn, catalog: dict) -> dict:
             qty = int((te or {}).get("pax") or 0)
             if not rid or qty <= 0:
                 continue
-            price = (catalog["transport"].get(rid, {}) or {}).get("price", 0)
+            price = float((catalog["transport"].get(rid, {}) or {}).get(_price_field, 0) or 0)
             transport_entries_calc.append({
                 "route_id": rid,
                 "pax": qty,
@@ -2724,27 +2742,27 @@ def _calculate_quote(payload: QuoteIn, catalog: dict) -> dict:
         transport_routes = [t["route_id"] for t in transport_entries_calc]
     else:
         transport_total = sum(
-            (catalog["transport"].get(r, {}) or {}).get("price", 0) * total_lodging_pax for r in (payload.transport_routes or [])
+            float((catalog["transport"].get(r, {}) or {}).get(_price_field, 0) or 0) * total_lodging_pax for r in (payload.transport_routes or [])
         )
         transport_routes = list(payload.transport_routes or [])
         if payload.includes_transport and not transport_routes:
             transport_routes = ["airport_to_hotel", "hotel_to_airport"]
             transport_total = sum(
-                (catalog["transport"].get(r, {}) or {}).get("price", 0) * total_lodging_pax for r in transport_routes
+                float((catalog["transport"].get(r, {}) or {}).get(_price_field, 0) or 0) * total_lodging_pax for r in transport_routes
             )
 
     # ============ TOURS (global) ============
     tour_subtotals = []
     if payload.tour_entries:
         for te in payload.tour_entries:
-            price = (catalog["tours"].get(te.tour_id, {}) or {}).get("price", 0)
+            price = float((catalog["tours"].get(te.tour_id, {}) or {}).get(_price_field, 0) or 0)
             tour_subtotals.append({"tour_id": te.tour_id, "pax": te.pax, "subtotal": price * int(te.pax)})
     else:
         tour_ids = list(payload.tour_ids or [])
         if (payload.includes_parque or payload.includes_tour) and "parque_del_cafe" not in tour_ids:
             tour_ids.append("parque_del_cafe")
         for tid in tour_ids:
-            price = (catalog["tours"].get(tid, {}) or {}).get("price", 0)
+            price = float((catalog["tours"].get(tid, {}) or {}).get(_price_field, 0) or 0)
             tour_subtotals.append({"tour_id": tid, "pax": total_lodging_pax, "subtotal": price * total_lodging_pax})
     tours_total = sum(t["subtotal"] for t in tour_subtotals)
     tour_ids_applied = [t["tour_id"] for t in tour_subtotals]
@@ -2757,6 +2775,7 @@ def _calculate_quote(payload: QuoteIn, catalog: dict) -> dict:
     if payload.include_registration:
         if payload.events:
             # Nuevo: múltiples eventos, cada uno con sus categorías inscritas.
+            _fee_key = "fee_usd" if is_usd else "fee"
             for ev in payload.events:
                 ev_name = str((ev or {}).get("tournament_name") or (ev or {}).get("name") or "")
                 ev_cats = (ev or {}).get("categories") or []
@@ -2764,7 +2783,7 @@ def _calculate_quote(payload: QuoteIn, catalog: dict) -> dict:
                 ev_subtotal = 0.0
                 for c in ev_cats:
                     try:
-                        cfee = float((c or {}).get("fee", 0) or 0)
+                        cfee = float((c or {}).get(_fee_key, 0) or 0)
                     except (TypeError, ValueError):
                         cfee = 0.0
                     cname = str((c or {}).get("name", ""))
@@ -2780,9 +2799,10 @@ def _calculate_quote(payload: QuoteIn, catalog: dict) -> dict:
                 })
                 registration += ev_subtotal
         elif payload.categories:
+            _fee_key = "fee_usd" if is_usd else "fee"
             for c in payload.categories:
                 try:
-                    cfee = float(c.get("fee", 0) or 0)
+                    cfee = float(c.get(_fee_key, 0) or 0)
                 except (TypeError, ValueError):
                     cfee = 0.0
                 registration += cfee
@@ -2843,6 +2863,7 @@ def _calculate_quote(payload: QuoteIn, catalog: dict) -> dict:
         "registration_breakdown": registration_breakdown,
         "events_breakdown": events_breakdown,
         "total_amount": total,
+        "currency": currency,
         "event_name": display_event_name,
         "lodging_name": display_lodging_name,
         "nights": nights,

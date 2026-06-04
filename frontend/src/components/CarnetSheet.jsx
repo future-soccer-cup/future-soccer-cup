@@ -20,6 +20,8 @@ export default function CarnetSheet({ players, teams, lockedTeamId = null, title
   const [q, setQ] = useState("");
   const [team, setTeam] = useState(lockedTeamId || "");
   const [club, setClub] = useState("");
+  const [tournament, setTournament] = useState(""); // tournament_id
+  const [category, setCategory] = useState(""); // category name
   const [tab, setTab] = useState("players"); // "players" | "staff"
   const [selected, setSelected] = useState(new Set());
   const [generating, setGenerating] = useState(false);
@@ -36,18 +38,43 @@ export default function CarnetSheet({ players, teams, lockedTeamId = null, title
       .sort();
   }, [teams]);
 
-  // Filtro de teams visibles para selector y staff: respeta club si está seteado.
-  const visibleTeams = useMemo(() => teams.filter((t) => !club || t.club_name === club), [teams, club]);
+  // Filtros encadenados: Club -> Evento -> Categoría -> Equipo
+  const tournamentsForClub = useMemo(() => {
+    const seen = new Map();
+    teams
+      .filter((t) => !club || t.club_name === club)
+      .forEach((t) => {
+        if (t.tournament_id && !seen.has(t.tournament_id)) {
+          seen.set(t.tournament_id, t.tournament_name || t.tournament_id);
+        }
+      });
+    return Array.from(seen.entries()).map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+  }, [teams, club]);
+
+  const categoriesForTournament = useMemo(() => {
+    const seen = new Set();
+    return teams
+      .filter((t) => (!club || t.club_name === club) && (!tournament || t.tournament_id === tournament))
+      .map((t) => t.category || "")
+      .filter((c) => c && !seen.has(c) && seen.add(c))
+      .sort();
+  }, [teams, club, tournament]);
+
+  const visibleTeams = useMemo(() => teams.filter((t) =>
+    (!club || t.club_name === club)
+    && (!tournament || t.tournament_id === tournament)
+    && (!category || t.category === category)
+  ), [teams, club, tournament, category]);
 
   const filteredPlayers = useMemo(() => players.filter((p) => {
     if (effectiveTeamFilter && p.team_id !== effectiveTeamFilter) return false;
-    if (club) {
-      const t = tmap[p.team_id];
-      if (!t || t.club_name !== club) return false;
-    }
+    const t = tmap[p.team_id];
+    if (club && (!t || t.club_name !== club)) return false;
+    if (tournament && (!t || t.tournament_id !== tournament)) return false;
+    if (category && (!t || t.category !== category)) return false;
     if (q && !p.name?.toLowerCase().includes(q.toLowerCase())) return false;
     return true;
-  }), [players, effectiveTeamFilter, club, tmap, q]);
+  }), [players, effectiveTeamFilter, club, tournament, category, tmap, q]);
 
   const staffList = useMemo(() => visibleTeams
     .filter((t) => !effectiveTeamFilter || t.id === effectiveTeamFilter)
@@ -226,15 +253,27 @@ export default function CarnetSheet({ players, teams, lockedTeamId = null, title
         </button>
       </div>
 
-      <div className={`grid ${lockedTeamId ? "sm:grid-cols-2" : showClubFilter ? "sm:grid-cols-4" : "sm:grid-cols-3"} gap-3 mb-4`}>
-        <div className={`${lockedTeamId ? "sm:col-span-2" : "sm:col-span-2"} relative`}>
+      <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-3 mb-4" data-testid={`${testIdPrefix}-filters`}>
+        <div className="relative sm:col-span-2 lg:col-span-1">
           <Search size={16} className="absolute left-3 top-3 text-slate-400" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={tab === "players" ? "Buscar jugador..." : "Buscar nombre o rol..."} className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-md" data-testid={`${testIdPrefix}-search`} />
         </div>
         {showClubFilter && !lockedTeamId && (
-          <select value={club} onChange={(e) => { setClub(e.target.value); setTeam(""); clearSelection(); }} className="px-3 py-2 border border-slate-200 rounded-md" data-testid={`${testIdPrefix}-club-filter`}>
+          <select value={club} onChange={(e) => { setClub(e.target.value); setTournament(""); setCategory(""); setTeam(""); clearSelection(); }} className="px-3 py-2 border border-slate-200 rounded-md" data-testid={`${testIdPrefix}-club-filter`}>
             <option value="">Todos los clubes</option>
             {clubs.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        )}
+        {!lockedTeamId && (
+          <select value={tournament} onChange={(e) => { setTournament(e.target.value); setCategory(""); setTeam(""); clearSelection(); }} className="px-3 py-2 border border-slate-200 rounded-md" data-testid={`${testIdPrefix}-tournament-filter`}>
+            <option value="">Todos los eventos</option>
+            {tournamentsForClub.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+          </select>
+        )}
+        {!lockedTeamId && (
+          <select value={category} onChange={(e) => { setCategory(e.target.value); setTeam(""); clearSelection(); }} className="px-3 py-2 border border-slate-200 rounded-md" data-testid={`${testIdPrefix}-category-filter`}>
+            <option value="">Todas las categorías</option>
+            {categoriesForTournament.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         )}
         {!lockedTeamId && (

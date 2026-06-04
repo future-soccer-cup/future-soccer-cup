@@ -1,0 +1,31 @@
+{
+  "summary": "Iter26 USD pricing + currency switching tests. Backend 8/8 PASS: catalog accepts/exposes base_5_nights_usd, additional_night_usd, cost_usd, price_usd (lodging/meal_addon/transport/tour); GET /api/event-types exposes _usd fields; POST /api/quotes/calculate with currency='USD' uses *_usd prices (lodging rate_per_person_total = base_5_nights_usd + additional_night_usd*(nights-5); meals from cost_usd; transport/tour from price_usd; categories from fee_usd) and returns 'currency':'USD' in response; currency='COP' (and default) preserves legacy behaviour; POST/GET /api/tournaments persists+returns categories with both fee and fee_usd. Frontend verified: (a) /admin sidebar shows EXACTLY the 20 items in the requested order; (b) /admin/inventario tabs Hospedaje/Alimentación/Transporte/Tours expose USD inputs (inv-lodging-base-usd-*, inv-lodging-add-usd-*, inv-meal_addon-cost-usd-*, inv-price-usd-*); (c) /admin/torneos modal (Nuevo evento) renders category-fee-input-{i} and category-fee-usd-input-{i} after 'Agregar categoría'; (d) /cotizar shows currency-toggle with currency-COP/currency-USD buttons, switching to USD updates total to 'US$...USD' suffix, default cotizar-total shown; (e) /admin/carnets shows the 5 expected filters (carnet-search, carnet-club-filter, carnet-tournament-filter, carnet-category-filter, carnet-team-filter).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter26_usd_and_currency.py",
+    "/app/test_reports/pytest/iteration_26.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "_calc_lodging_block correctly switches between base_5_nights / additional_night and *_usd variants based on currency param; extra-pax billing uses additional_night value in same currency — verified.",
+    "_calculate_quote currency-aware: uses _fee_key='fee_usd' for events+categories, _price_field='price_usd' for transport/tour, and cost_usd for meal_addons. Legacy 'per_day_by_tier' (meal_plans matrix) is intentionally skipped in USD mode (only meal_addons supported in USD) — documented behaviour.",
+    "Response includes 'currency' field — UI can reflect symbol/suffix correctly.",
+    "Tournaments categories is a free-form List[dict], so fee_usd is persisted opaquely without explicit Pydantic validation — adequate for now, but consider typed CategoryFeeIn(BaseModel) to enforce numeric types.",
+    "AdminLayout NAV order matches requested order EXACTLY (20 items)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter26_usd_and_currency.py"
+  ],
+  "success_rate": {"backend": "100% (8/8)", "frontend": "100% (sidebar order, inventory USD inputs across 4 tabs, tournaments fee_usd input, cotizar currency-toggle with USD total, carnets 5 filters)"},
+  "test_credentials": "admin@futuresoccercup.com / FSCAdmin2025!",
+  "seed_data_creation": "Tests create+delete TEST_iter26_* catalog rows (lodging/meal_addon/transport/tour) and one TEST_iter26_tournament_* tournament; all cleaned up in teardown.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend regression file is /app/backend/tests/test_iter26_usd_and_currency.py (8 tests, all green). Run with REACT_APP_BACKEND_URL exported. For tournaments POST: /api/tournaments requires name, season, category (string, legacy), start_date, end_date — categories list is optional and accepts arbitrary dicts (fee_usd is persisted). For USD quotes: rate_per_person_total = base_5_nights_usd + additional_night_usd*(nights-5); if a USD price is 0 in catalog, that line contributes 0 (no fallback to COP, by design). Frontend tournaments modal: requires clicking 'Agregar categoría' for category-fee-input-{i}/category-fee-usd-input-{i} to render (they are dynamic).",
+  "rca of the issue": "N/A — no defects found."
+}
