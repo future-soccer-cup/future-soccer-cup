@@ -337,18 +337,57 @@ export default function MyTeam() {
               </label>
               <Field label="Nombre completo" required value={editingPlayer.name} onChange={(v) => setEditingPlayer({ ...editingPlayer, name: v })} testId="player-name-input" />
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Dorsal" type="number" required value={editingPlayer.jersey_number} onChange={(v) => setEditingPlayer({ ...editingPlayer, jersey_number: v })} testId="player-jersey-input" />
+                <Field label="Apodo / Nick name" value={editingPlayer.nickname} onChange={(v) => setEditingPlayer({ ...editingPlayer, nickname: v })} testId="player-nickname-input" />
                 <label className="block">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Posición</span>
-                  <select value={editingPlayer.position} onChange={(e) => setEditingPlayer({ ...editingPlayer, position: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md">
-                    <option>Portero</option><option>Defensa</option><option>Mediocampista</option><option>Delantero</option>
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Género</span>
+                  <select value={editingPlayer.gender || ""} onChange={(e) => setEditingPlayer({ ...editingPlayer, gender: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="player-gender-select">
+                    <option value="">—</option><option value="M">Masculino</option><option value="F">Femenino</option>
                   </select>
                 </label>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Documento" value={editingPlayer.document_id} onChange={(v) => setEditingPlayer({ ...editingPlayer, document_id: v })} />
-                <Field label="Fecha nacimiento" type="date" value={editingPlayer.birth_date} onChange={(v) => setEditingPlayer({ ...editingPlayer, birth_date: v })} />
+                <Field label="Dorsal" type="number" required value={editingPlayer.jersey_number} onChange={(v) => setEditingPlayer({ ...editingPlayer, jersey_number: v })} testId="player-jersey-input" />
+                <label className="block">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Posición</span>
+                  <select value={editingPlayer.position} onChange={(e) => setEditingPlayer({ ...editingPlayer, position: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="player-position-select">
+                    <option>Portero</option>
+                    <option>Defensa central</option>
+                    <option>Lateral derecho</option>
+                    <option>Lateral izquierdo</option>
+                    <option>Carrilero derecho</option>
+                    <option>Carrilero izquierdo</option>
+                    <option>Mediocampista defensivo</option>
+                    <option>Mediocampista central</option>
+                    <option>Mediocampista mixto</option>
+                    <option>Mediocampista ofensivo</option>
+                    <option>Volante por derecha</option>
+                    <option>Volante por izquierda</option>
+                    <option>Extremo derecho</option>
+                    <option>Extremo izquierdo</option>
+                    <option>Mediapunta / Enganche</option>
+                    <option>Segundo delantero</option>
+                    <option>Delantero centro</option>
+                    <option>Delantero</option>
+                  </select>
+                </label>
               </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Fecha nacimiento" type="date" value={editingPlayer.birth_date} onChange={(v) => setEditingPlayer({ ...editingPlayer, birth_date: v })} testId="player-birthdate-input" />
+                <Field label="Documento de identidad" value={editingPlayer.document_id} onChange={(v) => setEditingPlayer({ ...editingPlayer, document_id: v })} testId="player-doc-input" />
+              </div>
+              <Field label="EPS" value={editingPlayer.eps} onChange={(v) => setEditingPlayer({ ...editingPlayer, eps: v })} testId="player-eps-input" />
+              <ImageUpload value={editingPlayer.photo_url} onChange={(v) => setEditingPlayer({ ...editingPlayer, photo_url: v })} label="Foto del jugador (para el carnet)" testId="player-photo-upload" />
+
+              <div className="border-t border-slate-200 pt-3 mt-3">
+                <h4 className="font-display text-base font-black uppercase tracking-tight mb-2">Acudiente / Contacto</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Nombre acudiente" value={editingPlayer.guardian_name} onChange={(v) => setEditingPlayer({ ...editingPlayer, guardian_name: v })} testId="player-guardian-name-input" />
+                  <Field label="Documento acudiente" value={editingPlayer.guardian_doc} onChange={(v) => setEditingPlayer({ ...editingPlayer, guardian_doc: v })} testId="player-guardian-doc-input" />
+                  <Field label="Parentesco" value={editingPlayer.guardian_relation} onChange={(v) => setEditingPlayer({ ...editingPlayer, guardian_relation: v })} testId="player-guardian-relation-input" />
+                  <Field label="Teléfono de contacto" value={editingPlayer.guardian_phone} onChange={(v) => setEditingPlayer({ ...editingPlayer, guardian_phone: v })} testId="player-guardian-phone-input" />
+                </div>
+              </div>
+
               <button className="fsc-btn-red w-full py-2 rounded-md" data-testid="save-player-btn">Guardar</button>
             </form>
           </Modal>
