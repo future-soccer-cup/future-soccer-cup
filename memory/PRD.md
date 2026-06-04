@@ -1033,3 +1033,17 @@ Refactor de `const load = () => ...; useEffect(() => load(), [])` a `const load 
 - **AdminCarnets**: ahora carga `/clubs` y `/tournaments` además de teams+players, los pasa a `CarnetSheet` que ya no depende de teams.club_name para llenar el dropdown de clubes ni de teams.tournament_id para el de eventos. Las categorías se toman directamente del `tournament.categories`.
 - **MyTeam**: `quoteTournaments` ahora filtra eventos activos (`!archived`) que estén cotizados Y aprobados, y por cada uno conserva SOLO las categorías cotizadas (subset). Así el dropdown de Categoría al inscribir un equipo no muestra categorías no cotizadas.
 - **/quotes/mine**: extendido para devolver también las cotizaciones de OTROS usuarios del mismo `club_id` — así Cuerpo Técnico ve las cotizaciones del Directivo y puede inscribir equipos a esos eventos.
+
+## Iteration 31 (2026-06-04) — Pagos USD/COP, fotos staff/jugador, restricción carnets
+
+- **PaymentForm**: rediseñado. Muestra siempre el banner con datos bancarios del organizador (Bancolombia, cuenta de ahorros 247-000006-97, titular Grupo Empresarial ANCLA, NIT 901.523.952). El monto del abono se formatea según `currency` recibida del padre.
+- **MyQuotes**: ahora pasa `currency={q.currency || "COP"}` a `<PaymentForm>`. PaymentsList ahora muestra "US$..." o "$..." según `p.currency`.
+- **PaymentIn (backend)**: agregado campo `currency: Literal["COP","USD"]`. `submit_payment` valida que la moneda del abono coincida con la de la cotización (error 400 si no). El doc persistido en `payments` incluye `currency`.
+- **MyTeam (player modal)**: agregada lista extendida de posiciones (Portero, Defensa central, Lateral der/izq, Carrilero der/izq, Mediocampista def/central/mixto/ofensivo, Volante der/izq, Extremo der/izq, Mediapunta/Enganche, Segundo delantero, Delantero centro).
+- **Staff modals (CT y Director)**: `EMPTY_STAFF.photo_url`, ImageUpload presente en ambos modales, foto se muestra en las tarjetas de cuerpo técnico.
+- **MyTeam.jsx**: eliminado el bloque `<CarnetSheet>` que aparecía debajo de "Jugadores". Los roles Directivo y Cuerpo Técnico ya no pueden ver ni descargar carnets — esos solo se gestionan desde /admin/carnets.
+
+### Verificación
+- curl: USD quote → admin aprueba → abono en COP devuelve 400 "El abono debe ser en USD" ✓
+- curl: USD quote + abono USD se persiste con currency=USD ✓
+- Screenshot: MyQuotes muestra "US$750.00 USD" para cotizaciones USD y "$2.000.000 COP" para COP ✓

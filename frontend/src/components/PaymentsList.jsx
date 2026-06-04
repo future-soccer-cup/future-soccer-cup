@@ -18,6 +18,8 @@ const METHOD_LABEL = {
 };
 
 const fmtCOP = (n) => `$${Number(n || 0).toLocaleString("es-CO")}`;
+const fmtUSD = (n) => `US$${Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const fmtCur = (n, cur) => (cur === "USD" ? fmtUSD(n) : fmtCOP(n));
 const fileSrc = (u) => (u && u.startsWith("/api/") ? `${API_BASE.replace(/\/api$/, "")}${u}` : u);
 
 export function PaymentStatusBadge({ status }) {
@@ -40,7 +42,7 @@ export default function PaymentsList({ items = [], emptyText = "Aún no hay abon
         return (
           <div key={p.id} className="grid grid-cols-12 gap-2 items-center bg-white border border-slate-200 rounded-md px-3 py-2 text-xs" data-testid={`payment-item-${p.id}`}>
             <div className="col-span-3">
-              <div className="font-display text-base font-black tabular-nums">{fmtCOP(p.amount)}</div>
+              <div className="font-display text-base font-black tabular-nums">{fmtCur(p.amount, p.currency)}<span className="text-[9px] text-slate-400 ml-1">{p.currency || "COP"}</span></div>
               <div className="text-[10px] text-slate-500 uppercase">{METHOD_LABEL[p.method] || p.method}</div>
             </div>
             <div className="col-span-3 text-slate-600">

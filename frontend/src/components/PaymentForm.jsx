@@ -13,16 +13,23 @@ const METHODS = [
 ];
 
 const fmtCOP = (n) => `$${Number(n || 0).toLocaleString("es-CO")}`;
+const fmtUSD = (n) => `US$${Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const fmtCur = (n, cur) => (cur === "USD" ? fmtUSD(n) : fmtCOP(n));
 
 /**
  * Inline form for registering a manual partial payment (abono) with a receipt.
  * targetType: "quote" | "team_registration"
  * targetId: id of the parent record
  * suggestedAmount: prefilled amount (balance), optional
- * onCreated(): callback after successful submit
+ * currency: "COP" | "USD" — moneda del target (cotización). Default COP.
  */
-export default function PaymentForm({ targetType, targetId, suggestedAmount = "", onCreated, onCancel }) {
-  const [amount, setAmount] = useState(suggestedAmount ? String(Math.round(suggestedAmount)) : "");
+export default function PaymentForm({ targetType, targetId, suggestedAmount = "", currency = "COP", onCreated, onCancel }) {
+  const isUSD = currency === "USD";
+  const [amount, setAmount] = useState(
+    suggestedAmount
+      ? (isUSD ? String(Number(suggestedAmount).toFixed(2)) : String(Math.round(suggestedAmount)))
+      : ""
+  );
   const [method, setMethod] = useState("transferencia");
   const [reference, setReference] = useState("");
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().slice(0, 10));
@@ -41,6 +48,7 @@ export default function PaymentForm({ targetType, targetId, suggestedAmount = ""
         target_type: targetType,
         target_id: targetId,
         amount: num,
+        currency,
         method,
         reference,
         payment_date: paymentDate ? new Date(paymentDate).toISOString() : undefined,
@@ -58,21 +66,34 @@ export default function PaymentForm({ targetType, targetId, suggestedAmount = ""
 
   return (
     <form onSubmit={submit} className="bg-slate-50 border border-slate-200 rounded-xl p-5 space-y-4" data-testid="payment-form">
+      {/* Datos bancarios del organizador */}
+      <div className="bg-fsc-azul/5 border-2 border-fsc-azul/30 rounded-lg p-4" data-testid="payment-bank-info">
+        <div className="text-[10px] font-bold uppercase tracking-[0.25em] text-fsc-azul-oscuro">Realiza tu abono a:</div>
+        <div className="font-display text-base font-black uppercase tracking-tight text-fsc-azul mt-1">Transferencia · Cuenta de Ahorros</div>
+        <ul className="text-xs text-slate-700 mt-2 space-y-0.5">
+          <li><span className="text-slate-500">Banco:</span> <strong>Bancolombia</strong></li>
+          <li><span className="text-slate-500">Cuenta de Ahorros N°:</span> <strong className="tabular-nums">247-000006-97</strong></li>
+          <li><span className="text-slate-500">Titular:</span> <strong>Grupo Empresarial ANCLA</strong></li>
+          <li><span className="text-slate-500">NIT:</span> <strong className="tabular-nums">901.523.952</strong></li>
+        </ul>
+        <p className="text-[11px] text-slate-600 mt-2 italic">Sube el comprobante para que el administrador valide tu abono.</p>
+      </div>
+
       <div className="grid sm:grid-cols-2 gap-3">
         <label className="block">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Monto del abono (COP)</span>
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Monto del abono ({currency})</span>
           <input
             type="number"
-            min="1"
-            step="1"
+            min="0.01"
+            step={isUSD ? "0.01" : "1"}
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            placeholder="Ej. 500000"
+            placeholder={isUSD ? "Ej. 150.00" : "Ej. 500000"}
             className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-md text-sm tabular-nums"
             data-testid="payment-amount-input"
             required
           />
-          {amount && <p className="text-[11px] text-slate-500 mt-1">{fmtCOP(amount)}</p>}
+          {amount && <p className="text-[11px] text-slate-500 mt-1">{fmtCur(amount, currency)}</p>}
         </label>
         <label className="block">
           <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Fecha del pago</span>

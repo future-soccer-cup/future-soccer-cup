@@ -174,6 +174,7 @@ export default function MyQuotes() {
                       targetType="quote"
                       targetId={q.id}
                       suggestedAmount={balanceRemaining}
+                      currency={q.currency || "COP"}
                       onCreated={() => onPaymentCreated(q.id)}
                       onCancel={() => setShowFormFor(null)}
                     />

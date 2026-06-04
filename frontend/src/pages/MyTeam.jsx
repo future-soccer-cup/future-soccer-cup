@@ -8,10 +8,9 @@ import ImageUpload from "../components/ImageUpload";
 import CategorySelect from "../components/CategorySelect";
 import PaymentForm from "../components/PaymentForm";
 import PaymentsList from "../components/PaymentsList";
-import CarnetSheet from "../components/CarnetSheet";
 
 const EMPTY_PLAYER = { name: "", team_id: "", jersey_number: 1, position: "Mediocampista", birth_date: "", photo_url: "", document_id: "", nickname: "", gender: "", eps: "", guardian_name: "", guardian_doc: "", guardian_relation: "", guardian_phone: "" };
-const EMPTY_STAFF = { name: "", document: "", role: "Director técnico", phone: "", team_id: "" };
+const EMPTY_STAFF = { name: "", document: "", role: "Director técnico", phone: "", team_id: "", photo_url: "" };
 const fmtCOP = (n) => `$${Number(n || 0).toLocaleString("es-CO")} COP`;
 
 export default function MyTeam() {
@@ -279,13 +278,13 @@ export default function MyTeam() {
             {aggregatedStaff.length === 0 && clubTeams.length > 0 && <p className="col-span-full text-center text-slate-400 py-6">Aún no has agregado al cuerpo técnico.</p>}
             {aggregatedStaff.map((s) => (
               <div key={`${s.team_id}-${s._idx}`} className="bg-white border border-slate-200 rounded-lg p-4 flex items-center gap-3" data-testid={`staff-${s.team_id}-${s._idx}`}>
-                <div className="h-12 w-12 rounded-full bg-red-100 text-red-700 flex items-center justify-center font-bold uppercase">{(s.name || "?")[0]}</div>
+                {s.photo_url ? <img src={s.photo_url} alt={s.name} className="h-12 w-12 rounded-full object-cover" /> : <div className="h-12 w-12 rounded-full bg-red-100 text-red-700 flex items-center justify-center font-bold uppercase">{(s.name || "?")[0]}</div>}
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold truncate">{s.name}</div>
                   <div className="text-xs text-slate-500 truncate">{s.role}{s.document ? ` · Doc ${s.document}` : ""}{s.phone ? ` · ${s.phone}` : ""}</div>
                   <div className="text-[10px] uppercase tracking-widest text-fsc-azul mt-0.5">Equipo: {s.team_name}</div>
                 </div>
-                <button onClick={() => setEditingStaff({ idx: s._idx, data: { name: s.name, document: s.document || "", role: s.role || "Director técnico", phone: s.phone || "", team_id: s.team_id } })} className="text-blue-700"><Pencil size={16}/></button>
+                <button onClick={() => setEditingStaff({ idx: s._idx, data: { name: s.name, document: s.document || "", role: s.role || "Director técnico", phone: s.phone || "", team_id: s.team_id, photo_url: s.photo_url || "" } })} className="text-blue-700"><Pencil size={16}/></button>
                 <button onClick={() => removeStaffMember(s.team_id, s._idx)} className="text-red-600"><Trash2 size={16}/></button>
               </div>
             ))}
@@ -376,6 +375,7 @@ export default function MyTeam() {
                 <Field label="Documento" value={editingStaff.data.document} onChange={(v) => setEditingStaff({ ...editingStaff, data: { ...editingStaff.data, document: v } })} testId="staff-document-input" />
                 <Field label="Teléfono" value={editingStaff.data.phone} onChange={(v) => setEditingStaff({ ...editingStaff, data: { ...editingStaff.data, phone: v } })} testId="staff-phone-input" />
               </div>
+              <ImageUpload value={editingStaff.data.photo_url} onChange={(v) => setEditingStaff({ ...editingStaff, data: { ...editingStaff.data, photo_url: v } })} label="Foto para el carnet (sin fondo)" testId="staff-photo-upload" />
               <button className="fsc-btn-primary w-full py-2 rounded-md" data-testid="save-staff-btn">Guardar</button>
             </form>
           </Modal>
@@ -699,13 +699,13 @@ export default function MyTeam() {
           {staff.length === 0 && clubTeams.length > 0 && <p className="col-span-full text-center text-slate-400 py-6">Aún no has agregado al cuerpo técnico.</p>}
           {staff.map((s) => (
             <div key={`${s.team_id}-${s._idx}`} className="bg-white border border-slate-200 rounded-lg p-4 flex items-center gap-3" data-testid={`staff-${s.team_id}-${s._idx}`}>
-              <div className="h-12 w-12 rounded-full bg-red-100 text-red-700 flex items-center justify-center font-bold uppercase">{(s.name || "?")[0]}</div>
+              {s.photo_url ? <img src={s.photo_url} alt={s.name} className="h-12 w-12 rounded-full object-cover" /> : <div className="h-12 w-12 rounded-full bg-red-100 text-red-700 flex items-center justify-center font-bold uppercase">{(s.name || "?")[0]}</div>}
               <div className="flex-1 min-w-0">
                 <div className="font-semibold truncate">{s.name}</div>
                 <div className="text-xs text-slate-500 truncate">{s.role}{s.document ? ` · Doc ${s.document}` : ""}{s.phone ? ` · ${s.phone}` : ""}</div>
                 <div className="text-[10px] uppercase tracking-widest text-fsc-azul mt-0.5">Equipo: {s.team_name}</div>
               </div>
-              <button onClick={() => setEditingStaff({ idx: s._idx, data: { name: s.name, document: s.document || "", role: s.role || "Director técnico", phone: s.phone || "", team_id: s.team_id } })} className="text-blue-700" data-testid={`staff-edit-${s.team_id}-${s._idx}`}><Pencil size={16}/></button>
+              <button onClick={() => setEditingStaff({ idx: s._idx, data: { name: s.name, document: s.document || "", role: s.role || "Director técnico", phone: s.phone || "", team_id: s.team_id, photo_url: s.photo_url || "" } })} className="text-blue-700" data-testid={`staff-edit-${s.team_id}-${s._idx}`}><Pencil size={16}/></button>
               <button onClick={() => removeStaffMember(s.team_id, s._idx)} className="text-red-600" data-testid={`staff-remove-${s.team_id}-${s._idx}`}><Trash2 size={16}/></button>
             </div>
           ))}
@@ -824,18 +824,8 @@ export default function MyTeam() {
         </div>
       </div>
 
-      {/* Carnets del equipo */}
-      <div className="mt-12 border-t border-slate-200 pt-10">
-        <CarnetSheet
-          players={players.filter((p) => !p.status || p.status === "aprobado")}
-          teams={team ? [team] : []}
-          lockedTeamId={teamId}
-          title="Carnets del equipo"
-          testIdPrefix="myteam-carnet"
-          readonly={true}
-        />
-      </div>
-
+      {/* Los carnets son gestionados únicamente por el administrador en /admin/carnets.
+          Los roles Directivo y Cuerpo Técnico NO tienen permitido visualizar ni descargar carnets. */}
 
       {editingTeam && (
         <Modal title="Editar equipo" onClose={() => setEditingTeam(false)}>
@@ -885,7 +875,24 @@ export default function MyTeam() {
               <label className="block">
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Posición</span>
                 <select value={editingPlayer.position} onChange={(e) => setEditingPlayer({ ...editingPlayer, position: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md">
-                  <option>Portero</option><option>Defensa</option><option>Mediocampista</option><option>Delantero</option>
+                  <option>Portero</option>
+                  <option>Defensa central</option>
+                  <option>Lateral derecho</option>
+                  <option>Lateral izquierdo</option>
+                  <option>Carrilero derecho</option>
+                  <option>Carrilero izquierdo</option>
+                  <option>Mediocampista defensivo</option>
+                  <option>Mediocampista central</option>
+                  <option>Mediocampista mixto</option>
+                  <option>Mediocampista ofensivo</option>
+                  <option>Volante por derecha</option>
+                  <option>Volante por izquierda</option>
+                  <option>Extremo derecho</option>
+                  <option>Extremo izquierdo</option>
+                  <option>Mediapunta / Enganche</option>
+                  <option>Segundo delantero</option>
+                  <option>Delantero centro</option>
+                  <option>Delantero</option>
                 </select>
               </label>
             </div>
@@ -944,6 +951,7 @@ export default function MyTeam() {
               <Field label="Documento" value={editingStaff.data.document} onChange={(v) => setEditingStaff({ ...editingStaff, data: { ...editingStaff.data, document: v } })} testId="staff-document-input" />
               <Field label="Teléfono" value={editingStaff.data.phone} onChange={(v) => setEditingStaff({ ...editingStaff, data: { ...editingStaff.data, phone: v } })} testId="staff-phone-input" />
             </div>
+            <ImageUpload value={editingStaff.data.photo_url} onChange={(v) => setEditingStaff({ ...editingStaff, data: { ...editingStaff.data, photo_url: v } })} label="Foto para el carnet (sin fondo)" testId="staff-photo-upload" />
             <button className="fsc-btn-primary w-full py-2 rounded-md" data-testid="save-staff-btn">Guardar</button>
           </form>
         </Modal>

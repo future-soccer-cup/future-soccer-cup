@@ -3009,6 +3009,7 @@ class PaymentIn(BaseModel):
     target_type: Literal["quote", "team_registration"]
     target_id: str
     amount: float = Field(gt=0)
+    currency: Optional[Literal["COP", "USD"]] = "COP"  # moneda en la que se reporta el abono.
     payment_date: Optional[str] = None  # ISO date
     method: Optional[str] = "transferencia"  # transferencia | efectivo | pse | otro
     receipt_url: Optional[str] = ""
@@ -3132,12 +3133,19 @@ async def submit_payment(payload: PaymentIn, user: dict = Depends(get_current_us
         raise HTTPException(status_code=403, detail="No autorizado")
     # Política: las cotizaciones solo aceptan abonos cuando han sido aprobadas por el Admin.
     if payload.target_type == "quote":
-        q = await db.quotes.find_one({"id": payload.target_id}, {"_id": 0, "status": 1})
+        q = await db.quotes.find_one({"id": payload.target_id}, {"_id": 0, "status": 1, "currency": 1})
         qstatus = (q or {}).get("status", "")
+        qcurrency = ((q or {}).get("currency") or "COP").upper()
         if user.get("role") != "admin" and qstatus not in ("aprobada", "pagada"):
             raise HTTPException(
                 status_code=400,
                 detail=f"Esta cotización está en estado '{qstatus}'. El administrador debe aprobarla antes de poder registrar abonos.",
+            )
+        pcurrency = (payload.currency or "COP").upper()
+        if user.get("role") != "admin" and pcurrency != qcurrency:
+            raise HTTPException(
+                status_code=400,
+                detail=f"El abono debe ser en {qcurrency}: la cotización está expresada en esa moneda.",
             )
     receipt_url = _validate_receipt_url(payload.receipt_url)
     total = await _target_total(payload.target_type, payload.target_id)
@@ -3159,6 +3167,7 @@ async def submit_payment(payload: PaymentIn, user: dict = Depends(get_current_us
         "target_type": payload.target_type,
         "target_id": payload.target_id,
         "amount": amount,
+        "currency": (payload.currency or "COP").upper(),
         "payment_date": payload.payment_date or now,
         "method": payload.method or "transferencia",
         "receipt_url": receipt_url,
