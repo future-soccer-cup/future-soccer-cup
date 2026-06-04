@@ -47,11 +47,17 @@ export default function Cotizar() {
       setTournaments(list);
     }).catch(() => {});
   }, []);
+  const [club, setClub] = useState(null);
   useEffect(() => {
     if (user?.team_id) {
       api.get(`/teams/${user.team_id}`).then((r) => setMyTeam(r.data));
     }
   }, [user]);
+  useEffect(() => {
+    if (user?.club_id) {
+      api.get(`/clubs/${user.club_id}`).then((r) => setClub(r.data)).catch(() => {});
+    }
+  }, [user?.club_id]);
 
   // Cargar cotización existente si viene ?id=
   useEffect(() => {
@@ -121,6 +127,10 @@ export default function Cotizar() {
     return <CotizarGate variant="role" />;
   } else if ((user.manager_role || "").trim().toLowerCase() === "cuerpo técnico") {
     return <CotizarGate variant="cuerpo-tecnico" />;
+  } else if (user.club_id && club && (club.status || "pendiente") === "pendiente") {
+    return <CotizarGate variant="club-pending" club={club} />;
+  } else if (user.club_id && club && club.status === "rechazado") {
+    return <CotizarGate variant="club-rejected" club={club} />;
   } else if (myTeam && myTeam.status === "pendiente") {
     return <CotizarGate variant="pending" team={myTeam} />;
   } else if (myTeam && myTeam.status === "rechazado") {
@@ -904,11 +914,13 @@ function TransportEntriesEditor({ entries, routes, currency = "COP", defaultPax,
 }
 
 // ----- Public gate -----
-function CotizarGate({ variant, team }) {
+function CotizarGate({ variant, team, club }) {
   const M = {
     login: { icon: Lock, title: "Acceso restringido", text: "Las cotizaciones son exclusivas para directivos registrados y aprobados por la organización.", cta: { label: "Iniciar sesión / Registrar club", to: "/login" } },
     pending: { icon: Clock, title: "Tu club está en revisión", text: `El club "${team?.name}" está pendiente de aprobación por el organizador. Apenas se apruebe podrás generar cotizaciones aquí.`, cta: { label: "Volver a Mi Club", to: "/mi-equipo" } },
     rejected: { icon: Lock, title: "Club rechazado", text: "Tu club fue rechazado por el organizador. Contacta a Future Soccer Cup para más información.", cta: { label: "Ir al inicio", to: "/" } },
+    "club-pending": { icon: Clock, title: "Tu club está pendiente de aprobación", text: `El club "${club?.name || ""}" aún no ha sido aprobado por el administrador. Podrás cotizar una vez el administrador apruebe tu registro.`, cta: { label: "Volver a Mi Club", to: "/mi-equipo" } },
+    "club-rejected": { icon: Lock, title: "Tu club fue rechazado", text: `El registro del club "${club?.name || ""}" fue rechazado por el administrador. Contacta a Future Soccer Cup para más información.`, cta: { label: "Ir al inicio", to: "/" } },
     role: { icon: Lock, title: "Función exclusiva", text: "Esta sección solo está disponible para directivos de club.", cta: { label: "Volver al inicio", to: "/" } },
     "cuerpo-tecnico": { icon: Lock, title: "Solo el Directivo puede cotizar", text: "Tu rol es Cuerpo Técnico. Las cotizaciones del club solo las puede generar el Directivo.", cta: { label: "Ir a Mi Club", to: "/mi-equipo" } },
   };

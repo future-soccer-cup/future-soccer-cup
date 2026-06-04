@@ -486,6 +486,12 @@ class TeamOut(TeamIn):
     reviewed_by_name: Optional[str] = None
     reviewed_at: Optional[str] = None
     reviewed_status: Optional[str] = None
+    # Estado de aprobación + nuevos campos del flujo Tournament+Category.
+    status: Optional[str] = None
+    tournament_id: Optional[str] = None
+    tournament_name: Optional[str] = None
+    club_name: Optional[str] = None
+    manager_user_id: Optional[str] = None
 
 class PlayerIn(BaseModel):
     name: str
@@ -2931,7 +2937,15 @@ async def update_quote(qid: str, payload: QuoteIn, user: dict = Depends(get_curr
 
 @api.get("/quotes/mine")
 async def my_quotes(user: dict = Depends(get_current_user)):
-    items = await db.quotes.find({"user_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    # Devuelve cotizaciones propias + del mismo club (para que Cuerpo Técnico también vea las del Directivo).
+    or_filters = [{"user_id": user["id"]}]
+    if user.get("club_id"):
+        # Buscamos otros usuarios del mismo club y agregamos sus cotizaciones.
+        club_users = await db.users.find({"club_id": user["club_id"]}, {"_id": 0, "id": 1}).to_list(50)
+        club_uids = [u["id"] for u in club_users if u.get("id")]
+        if club_uids:
+            or_filters.append({"user_id": {"$in": club_uids}})
+    items = await db.quotes.find({"$or": or_filters}, {"_id": 0}).sort("created_at", -1).to_list(500)
     return items
 
 @api.get("/quotes/{qid}")

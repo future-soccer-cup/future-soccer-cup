@@ -32,7 +32,7 @@ export default function MyTeam() {
   const fileRef = useRef(null);
   const [clubTeams, setClubTeams] = useState([]);
   const [events, setEvents] = useState([]);
-  const [quoteTournaments, setQuoteTournaments] = useState([]); // tournaments asociados a cotizaciones aprobadas
+  const [quoteTournaments, setQuoteTournaments] = useState([]); // tournaments asociados a cotizaciones aprobadas (con sus categorías cotizadas)
   const [showAddTeam, setShowAddTeam] = useState(false);
   const [newTeam, setNewTeam] = useState({ tournament_id: "", category_name: "", team_name: "" });
   const [club, setClub] = useState(null);
@@ -150,23 +150,45 @@ export default function MyTeam() {
   useEffect(() => {
     loadTeam();
     api.get("/event-types").then((r) => setEvents(r.data.events || [])).catch(() => {});
-    // Cargar tournaments asociados a las cotizaciones APROBADAS del Directivo (o todos para CT).
-    // Si hay cotizaciones aprobadas, listamos solo los eventos cotizados; sino fallback a todos los activos.
+    // Cargar tournaments asociados a las cotizaciones del Directivo / Cuerpo Técnico.
+    // - Solo cotizaciones APROBADAS (o pagadas).
+    // - Solo eventos ACTIVOS (no archivados, no fuera de fecha) si tienen 'archived' o 'active' flags.
+    // - Para cada evento, conservar SOLO las categorías que fueron cotizadas (subset, no todas).
     (async () => {
       try {
         const [allT, mineQ] = await Promise.all([
           api.get("/tournaments"),
           api.get("/quotes/mine").catch(() => ({ data: [] })),
         ]);
-        const all = (allT.data || []).filter((t) => !t.archived);
-        const approvedIds = new Set();
-        for (const q of mineQ.data || []) {
+        const allActive = (allT.data || []).filter((t) => !t.archived);
+        // categoriesCotizadasByTournament: { tournament_id: Set<category_name> }
+        const cotizadasByT = new Map();
+        for (const q of (mineQ.data || [])) {
           if (q.status !== "aprobada" && q.status !== "pagada") continue;
-          for (const ev of q.events || []) if (ev?.tournament_id) approvedIds.add(ev.tournament_id);
-          if (q.tournament_id) approvedIds.add(q.tournament_id);
+          for (const ev of (q.events || [])) {
+            if (!ev?.tournament_id) continue;
+            const s = cotizadasByT.get(ev.tournament_id) || new Set();
+            for (const c of (ev.categories || [])) {
+              if (c?.name) s.add(c.name);
+            }
+            cotizadasByT.set(ev.tournament_id, s);
+          }
+          if (q.tournament_id) {
+            const s = cotizadasByT.get(q.tournament_id) || new Set();
+            for (const c of (q.categories || [])) if (c?.name) s.add(c.name);
+            if (s.size === 0 && q.category) s.add(q.category);
+            cotizadasByT.set(q.tournament_id, s);
+          }
         }
-        const filtered = approvedIds.size > 0 ? all.filter((t) => approvedIds.has(t.id)) : all;
-        setQuoteTournaments(filtered);
+        // Filtramos eventos activos cuyos id están en cotizadasByT.
+        const result = allActive
+          .filter((t) => cotizadasByT.has(t.id))
+          .map((t) => {
+            const allowed = cotizadasByT.get(t.id) || new Set();
+            const cats = (t.categories || []).filter((c) => allowed.has(c.name));
+            return { ...t, categories: cats };
+          });
+        setQuoteTournaments(result);
       } catch { /* silent */ }
     })();
     /* eslint-disable-next-line */

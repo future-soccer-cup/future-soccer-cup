@@ -16,7 +16,7 @@ import { toast } from "sonner";
  *   - title: título mostrado arriba (default "Carnets")
  *   - testIdPrefix: prefijo para los data-testid (default "carnet")
  */
-export default function CarnetSheet({ players, teams, lockedTeamId = null, title = "Carnets", testIdPrefix = "carnet", readonly = false, showClubFilter = false }) {
+export default function CarnetSheet({ players, teams, clubs: clubsProp = null, tournaments: tournamentsProp = null, lockedTeamId = null, title = "Carnets", testIdPrefix = "carnet", readonly = false, showClubFilter = false }) {
   const [q, setQ] = useState("");
   const [team, setTeam] = useState(lockedTeamId || "");
   const [club, setClub] = useState("");
@@ -30,36 +30,55 @@ export default function CarnetSheet({ players, teams, lockedTeamId = null, title
 
   const effectiveTeamFilter = lockedTeamId || team;
   const tmap = useMemo(() => Object.fromEntries(teams.map((t) => [t.id, t])), [teams]);
-  const clubs = useMemo(() => {
+  // Mapa rápido club_id -> club_name desde el catálogo inyectado (fallback: nombres únicos de teams).
+  const clubsCatalog = useMemo(() => {
+    if (Array.isArray(clubsProp) && clubsProp.length > 0) return clubsProp;
+    // fallback: derivar de teams
     const seen = new Set();
     return teams
-      .map((t) => t.club_name || "")
-      .filter((c) => c && !seen.has(c) && seen.add(c))
-      .sort();
-  }, [teams]);
+      .filter((t) => t.club_name && !seen.has(t.club_name) && seen.add(t.club_name))
+      .map((t) => ({ id: t.club_id || t.club_name, name: t.club_name }));
+  }, [clubsProp, teams]);
+  const clubs = useMemo(() => clubsCatalog.map((c) => c.name).filter(Boolean).sort(), [clubsCatalog]);
+  const clubIdByName = useMemo(() => Object.fromEntries(clubsCatalog.map((c) => [c.name, c.id])), [clubsCatalog]);
 
   // Filtros encadenados: Club -> Evento -> Categoría -> Equipo
+  // Si hay catálogo inyectado de tournaments, mostramos TODOS los eventos (no solo los que tengan equipos).
+  // Aún así, cuando hay club seleccionado, filtramos teams por club; si el catálogo de tournaments existe
+  // mostramos los eventos que tengan al menos UN equipo de ese club; si no hay teams del club, mostramos todos.
   const tournamentsForClub = useMemo(() => {
+    if (Array.isArray(tournamentsProp) && tournamentsProp.length > 0) {
+      if (!club) return tournamentsProp.map((t) => ({ id: t.id, name: t.name }));
+      const idsInClub = new Set(teams.filter((t) => t.club_name === club && t.tournament_id).map((t) => t.tournament_id));
+      // Si el club ya tiene equipos asociados, filtramos por esos eventos. Sino, mostramos todos para permitir inscribir el primero.
+      if (idsInClub.size === 0) return tournamentsProp.map((t) => ({ id: t.id, name: t.name }));
+      return tournamentsProp.filter((t) => idsInClub.has(t.id)).map((t) => ({ id: t.id, name: t.name }));
+    }
+    // Sin catálogo inyectado: derivar de teams (legacy).
     const seen = new Map();
-    teams
-      .filter((t) => !club || t.club_name === club)
-      .forEach((t) => {
-        if (t.tournament_id && !seen.has(t.tournament_id)) {
-          seen.set(t.tournament_id, t.tournament_name || t.tournament_id);
-        }
-      });
-    return Array.from(seen.entries()).map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
-  }, [teams, club]);
+    teams.filter((t) => !club || t.club_name === club).forEach((t) => {
+      if (t.tournament_id && !seen.has(t.tournament_id)) seen.set(t.tournament_id, t.tournament_name || t.tournament_id);
+    });
+    return Array.from(seen.entries()).map(([id, name]) => ({ id, name }));
+  }, [tournamentsProp, teams, club]);
 
   const categoriesForTournament = useMemo(() => {
+    // Si tenemos catálogo inyectado: usamos TODAS las categorías del evento (sin importar si hay equipos inscritos).
+    if (Array.isArray(tournamentsProp) && tournament) {
+      const t = tournamentsProp.find((x) => x.id === tournament);
+      const cats = (t?.categories || []).map((c) => c.name).filter(Boolean);
+      if (cats.length > 0) return [...new Set(cats)].sort();
+    }
+    // Fallback: derivar de teams
     const seen = new Set();
     return teams
       .filter((t) => (!club || t.club_name === club) && (!tournament || t.tournament_id === tournament))
       .map((t) => t.category || "")
       .filter((c) => c && !seen.has(c) && seen.add(c))
       .sort();
-  }, [teams, club, tournament]);
+  }, [tournamentsProp, teams, club, tournament]);
 
+  // Equipos: todos los del club seleccionado (si el usuario eligió evento/categoría, filtra; sino lista todos).
   const visibleTeams = useMemo(() => teams.filter((t) =>
     (!club || t.club_name === club)
     && (!tournament || t.tournament_id === tournament)

@@ -1023,3 +1023,13 @@ Refactor de `const load = () => ...; useEffect(() => load(), [])` a `const load 
 
 ### Verificación
 - `/app/test_reports/iteration_25.json` — Backend 12/12 PASS. Frontend MyTeam/MyQuotes/AdminQuotes verificados manualmente con screenshots (admin detail modal muestra "Paquete 1 SAPPHIRE · 2 PAX" + "Paquete 2 PAQUETE PREMIUM · 1 PAX" + "PRUEBA 2027 · Sub-8 fee $1.500.000" en una cotización con `events:[]` y `lodgings:[]` reales).
+
+## Iteration 30 (2026-06-04) — Bugfixes USD + aprobación team + carnets + restricciones cotización
+
+- **TeamOut**: agregados campos `status`, `tournament_id`, `tournament_name`, `club_name`, `manager_user_id` al response_model. Sin esto, GET /teams/{id} devolvía `status: None` aunque DB guardaba "aprobado".
+- **AdminQuotes**: tabla y modal de detalle ahora usan `q.currency`. La etiqueta dice "USD" cuando aplica.
+- **MyQuotes**: total + balance Pagado + Saldo usan currency-aware (`fmtCur(amount, q.currency)`).
+- **Cotizar**: gates nuevos `club-pending` y `club-rejected` que aparecen cuando el Directivo se acaba de registrar y el admin aún no aprobó su club.
+- **AdminCarnets**: ahora carga `/clubs` y `/tournaments` además de teams+players, los pasa a `CarnetSheet` que ya no depende de teams.club_name para llenar el dropdown de clubes ni de teams.tournament_id para el de eventos. Las categorías se toman directamente del `tournament.categories`.
+- **MyTeam**: `quoteTournaments` ahora filtra eventos activos (`!archived`) que estén cotizados Y aprobados, y por cada uno conserva SOLO las categorías cotizadas (subset). Así el dropdown de Categoría al inscribir un equipo no muestra categorías no cotizadas.
+- **/quotes/mine**: extendido para devolver también las cotizaciones de OTROS usuarios del mismo `club_id` — así Cuerpo Técnico ve las cotizaciones del Directivo y puede inscribir equipos a esos eventos.

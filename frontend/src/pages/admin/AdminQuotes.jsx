@@ -6,7 +6,10 @@ import ExportCsvButton from "../../components/ExportCsvButton";
 import { Eye, X } from "lucide-react";
 
 const STATUSES = ["pendiente", "aprobada", "rechazada", "pagada"];
-const fmt = (n) => `$${Number(n || 0).toLocaleString("es-CO")}`;
+const fmtMoney = (n, cur) => cur === "USD"
+  ? `US$${Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  : `$${Number(n || 0).toLocaleString("es-CO")}`;
+const fmt = fmtMoney; // wrapper kept for callers passing only amount (defaults to COP)
 
 export default function AdminQuotes() {
   const [quotes, setQuotes] = useState([]);
@@ -113,7 +116,7 @@ export default function AdminQuotes() {
                 <td className="px-4 py-2">{q.category}</td>
                 <td className="px-4 py-2">{q.lodging_name}</td>
                 <td className="px-4 py-2">{q.pax} × {q.nights}</td>
-                <td className="px-4 py-2 text-right font-display font-black text-blue-700 tabular-nums">${Number(q.total_amount || 0).toLocaleString("es-CO")}<span className="text-[9px] text-slate-400 font-bold ml-1">COP</span></td>
+                <td className="px-4 py-2 text-right font-display font-black text-blue-700 tabular-nums">{q.currency === "USD" ? `US$${Number(q.total_amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : `$${Number(q.total_amount || 0).toLocaleString("es-CO")}`}<span className="text-[9px] text-slate-400 font-bold ml-1">{q.currency || "COP"}</span></td>
                 <td className="px-4 py-2 text-xs text-slate-500">{new Date(q.created_at).toLocaleDateString("es")}</td>
                 <td className="px-4 py-2">
                   <span className="text-xs font-bold uppercase tracking-wider">{q.status}</span>
@@ -173,13 +176,13 @@ function QuoteDetailModal({ q, onClose }) {
 
           <DetailSection title="Resumen económico">
             <div className="grid grid-cols-2 gap-2">
-              <KV k="Hospedaje subtotal" v={fmt(q.lodging_subtotal)} />
-              <KV k="Personas adicionales" v={fmt(q.extra_pax_subtotal || 0)} />
-              <KV k="Alimentación" v={fmt(q.meals_subtotal || (q.breakfast_subtotal || 0) + (q.lunch_subtotal || 0) + (q.dinner_subtotal || 0))} />
-              <KV k="Transporte" v={fmt(q.transport_subtotal)} />
-              <KV k="Tours" v={fmt(q.tours_subtotal)} />
-              <KV k="Inscripción" v={fmt(q.registration_fee)} />
-              <KV k="TOTAL" v={fmt(q.total_amount)} highlight />
+              <KV k="Hospedaje subtotal" v={fmt(q.lodging_subtotal, q.currency)} />
+              <KV k="Personas adicionales" v={fmt(q.extra_pax_subtotal || 0, q.currency)} />
+              <KV k="Alimentación" v={fmt(q.meals_subtotal || (q.breakfast_subtotal || 0) + (q.lunch_subtotal || 0) + (q.dinner_subtotal || 0), q.currency)} />
+              <KV k="Transporte" v={fmt(q.transport_subtotal, q.currency)} />
+              <KV k="Tours" v={fmt(q.tours_subtotal, q.currency)} />
+              <KV k="Inscripción" v={fmt(q.registration_fee, q.currency)} />
+              <KV k={`TOTAL (${q.currency || "COP"})`} v={fmt(q.total_amount, q.currency)} highlight />
             </div>
           </DetailSection>
 
@@ -196,7 +199,7 @@ function QuoteDetailModal({ q, onClose }) {
                       </div>
                       <div className="text-right">
                         <div className="text-[10px] uppercase text-slate-500">Subtotal</div>
-                        <div className="font-bold tabular-nums">{fmt(ev.subtotal)}</div>
+                        <div className="font-bold tabular-nums">{fmt(ev.subtotal, q.currency)}</div>
                       </div>
                     </div>
                     <table className="w-full text-xs">
@@ -207,7 +210,7 @@ function QuoteDetailModal({ q, onClose }) {
                         {(ev.categories || []).map((c, j) => (
                           <tr key={j} className="border-t border-slate-100">
                             <td className="py-1">{c.name}</td>
-                            <td className="text-right tabular-nums">{fmt(c.fee)}</td>
+                            <td className="text-right tabular-nums">{fmt(c.fee, q.currency)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -231,13 +234,13 @@ function QuoteDetailModal({ q, onClose }) {
                       </div>
                       <div className="text-right">
                         <div className="text-[10px] uppercase text-slate-500">Subtotal</div>
-                        <div className="font-bold tabular-nums">{fmt(b.subtotal)}</div>
+                        <div className="font-bold tabular-nums">{fmt(b.subtotal, q.currency)}</div>
                       </div>
                     </div>
                     <div className="grid sm:grid-cols-4 gap-2 text-[11px]">
-                      <KV k="Valor 5n" v={fmt(b.rate_per_person_5nights)} />
-                      <KV k="Noche adicional" v={fmt(b.rate_per_person_additional_night)} />
-                      <KV k="Valor unitario total" v={fmt(b.rate_per_person_total)} />
+                      <KV k="Valor 5n" v={fmt(b.rate_per_person_5nights, q.currency)} />
+                      <KV k="Noche adicional" v={fmt(b.rate_per_person_additional_night, q.currency)} />
+                      <KV k="Valor unitario total" v={fmt(b.rate_per_person_total, q.currency)} />
                       <KV k="Noches" v={b.nights} />
                     </div>
                     {b.free_lodging_units > 0 && (
@@ -256,7 +259,7 @@ function QuoteDetailModal({ q, onClose }) {
                                 <td className="py-1">{ep.label || "—"}</td>
                                 <td>{ep.pax}</td><td>{ep.nights}</td>
                                 <td>{ep.date_from || "—"}</td><td>{ep.date_to || "—"}</td>
-                                <td className="text-right tabular-nums">{fmt(ep.subtotal)}</td>
+                                <td className="text-right tabular-nums">{fmt(ep.subtotal, q.currency)}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -282,8 +285,8 @@ function QuoteDetailModal({ q, onClose }) {
                       <td className="py-1">{m.date || "—"}</td>
                       <td>{m.name || m.meal_type || "—"}</td>
                       <td>{m.pax}</td>
-                      <td className="tabular-nums">{fmt(m.unit)}</td>
-                      <td className="text-right tabular-nums">{fmt(m.subtotal)}</td>
+                      <td className="tabular-nums">{fmt(m.unit, q.currency)}</td>
+                      <td className="text-right tabular-nums">{fmt(m.subtotal, q.currency)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -316,7 +319,7 @@ function QuoteDetailModal({ q, onClose }) {
                   {q.transport_entries_breakdown.map((t, i) => (
                     <tr key={i} className="border-t border-slate-100">
                       <td className="py-1">{t.route_id}</td><td>{t.pax}</td><td>{t.date || "—"}</td>
-                      <td className="text-right tabular-nums">{fmt(t.subtotal)}</td>
+                      <td className="text-right tabular-nums">{fmt(t.subtotal, q.currency)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -334,7 +337,7 @@ function QuoteDetailModal({ q, onClose }) {
                   {q.tour_subtotals.map((t, i) => (
                     <tr key={i} className="border-t border-slate-100">
                       <td className="py-1">{t.tour_id}</td><td>{t.pax}</td>
-                      <td className="text-right tabular-nums">{fmt(t.subtotal)}</td>
+                      <td className="text-right tabular-nums">{fmt(t.subtotal, q.currency)}</td>
                     </tr>
                   ))}
                 </tbody>

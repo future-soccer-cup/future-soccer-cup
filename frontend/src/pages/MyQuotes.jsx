@@ -14,6 +14,8 @@ const STATUS = {
 };
 
 const fmtCOP = (n) => `$${Number(n || 0).toLocaleString("es-CO")}`;
+const fmtUSD = (n) => `US$${Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const fmtCur = (n, cur) => (cur === "USD" ? fmtUSD(n) : fmtCOP(n));
 
 export default function MyQuotes() {
   const [items, setItems] = useState([]);
@@ -114,8 +116,8 @@ export default function MyQuotes() {
                 </div>
                 <div className="md:col-span-2 text-sm">
                   <div className="text-xs uppercase tracking-widest text-slate-500">Total</div>
-                  <div className="font-display text-2xl font-black text-blue-700 tabular-nums">{fmtCOP(q.total_amount)}</div>
-                  <div className="text-[10px] text-slate-400">COP</div>
+                  <div className="font-display text-2xl font-black text-blue-700 tabular-nums">{fmtCur(q.total_amount, q.currency)}</div>
+                  <div className="text-[10px] text-slate-400">{q.currency || "COP"}</div>
                 </div>
                 <div className="md:col-span-2 text-xs text-slate-500">
                   {new Date(q.created_at).toLocaleDateString("es", { dateStyle: "medium" })}
@@ -146,15 +148,15 @@ export default function MyQuotes() {
                   <div className="grid sm:grid-cols-3 gap-3 text-center">
                     <div className="bg-white border border-slate-200 rounded-lg p-3">
                       <div className="text-[10px] uppercase tracking-widest text-slate-500">Total</div>
-                      <div className="font-display text-xl font-black tabular-nums">{fmtCOP(balanceTotal)}</div>
+                      <div className="font-display text-xl font-black tabular-nums">{fmtCur(balanceTotal, q.currency)}</div>
                     </div>
                     <div className="bg-white border border-green-200 rounded-lg p-3">
                       <div className="text-[10px] uppercase tracking-widest text-green-600">Pagado (aprobado)</div>
-                      <div className="font-display text-xl font-black text-green-700 tabular-nums" data-testid={`balance-paid-${q.id}`}>{fmtCOP(balancePaid)}</div>
+                      <div className="font-display text-xl font-black text-green-700 tabular-nums" data-testid={`balance-paid-${q.id}`}>{fmtCur(balancePaid, q.currency)}</div>
                     </div>
                     <div className="bg-white border border-amber-200 rounded-lg p-3">
                       <div className="text-[10px] uppercase tracking-widest text-amber-600">Saldo</div>
-                      <div className="font-display text-xl font-black text-amber-700 tabular-nums" data-testid={`balance-remaining-${q.id}`}>{fmtCOP(balanceRemaining)}</div>
+                      <div className="font-display text-xl font-black text-amber-700 tabular-nums" data-testid={`balance-remaining-${q.id}`}>{fmtCur(balanceRemaining, q.currency)}</div>
                     </div>
                   </div>
 
