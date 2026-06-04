@@ -143,11 +143,11 @@ export default function AdminTeams() {
   );
 }
 
-export function Field({ label, value, onChange, required, type = "text" }) {
+export function Field({ label, value, onChange, required, type = "text", testId }) {
   return (
     <label className="block">
       <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{label}</span>
-      <input required={required} type={type} value={value || ""} onChange={(e) => onChange(e.target.value)} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" />
+      <input required={required} type={type} value={value || ""} onChange={(e) => onChange(e.target.value)} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid={testId} />
     </label>
   );
 }

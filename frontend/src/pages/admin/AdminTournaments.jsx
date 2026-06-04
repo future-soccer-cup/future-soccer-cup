@@ -291,14 +291,7 @@ function CategoriesFeesEditor({ categories, catalog, onChange }) {
             </label>
             <label className="col-span-5 sm:col-span-3 block">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Inscripción (USD)</span>
-              <input
-                type="number" step="0.01" min="0"
-                value={c.fee_usd ?? 0}
-                onChange={(e) => update(i, "fee_usd", Number(e.target.value) || 0)}
-                placeholder="0.00"
-                className="mt-0.5 w-full px-2 py-1.5 border border-slate-300 rounded text-sm tabular-nums"
-                data-testid={`category-fee-usd-input-${i}`}
-              />
+              <CurrencyInput value={c.fee_usd || 0} onChange={(v) => update(i, "fee_usd", v)} className="w-full text-sm" data-testid={`category-fee-usd-input-${i}`} />
             </label>
             <button type="button" onClick={() => remove(i)} className="col-span-1 text-fsc-rojo hover:bg-red-50 p-1.5 rounded" data-testid={`remove-category-fee-${i}`}>
               <Trash2 size={14}/>

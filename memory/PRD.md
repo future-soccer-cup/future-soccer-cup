@@ -16,15 +16,17 @@ Aplicación versátil para una empresa que organiza eventos de fútbol infantil 
 
 ## Estado de implementación (Feb 2026)
 - ✅ Cotizar multi-evento + multi-hospedaje con toggle USD/COP en vivo.
-- ✅ Catálogo de precios dual COP/USD en Admin (paquetes, eventos).
+- ✅ Catálogo de precios dual COP/USD en Admin (paquetes, eventos). Inscripción USD usa `CurrencyInput` con separador de miles y sin cero a la izquierda.
 - ✅ Aprobación admin obligatoria antes de pagar cotizaciones.
 - ✅ Pagos manuales con info bancaria; validación estricta de moneda (USD↔USD, COP↔COP).
 - ✅ Generación PDF de carnets (solo admin); Directivo/CT no ven módulo.
 - ✅ Filtros en cascada Admin Carnets (Club→Evento→Categoría→Equipo).
 - ✅ Subida de foto para Jugadores y Staff (ImageUpload).
-- ✅ Registro completo de jugador: Nombre, Apodo/Nick, Género, Dorsal, Posición (18 opciones), Fecha nac., Documento, EPS, Foto, Acudiente (nombre/doc/parentesco/teléfono). Unificado en ambos modales (Directivo/CT y DT con equipo).
+- ✅ Registro completo de jugador (los 13 campos en los 3 sitios: MyTeam-Directivo/CT, MyTeam-DT, AdminPlayers): Nombre, Apodo/Nick, Género, Dorsal, Posición (18 opciones), Fecha nac., Documento, EPS, Foto, Acudiente (nombre/doc/parentesco/teléfono).
 - ✅ Staff con rol, documento, teléfono y foto.
 - ✅ Sidebar Admin reordenado.
+- ✅ Admin Quotes detail muestra Club y Teléfono de contacto.
+- ✅ Editar cotización: moneda bloqueada en la moneda original (no se permite cambiar).
 
 ## Backlog priorizado
 - **P1** Notificaciones por email (Resend o SendGrid) al aprobar/rechazar clubes, equipos, cotizaciones y pagos.
@@ -35,7 +37,7 @@ Aplicación versátil para una empresa que organiza eventos de fútbol infantil 
 - **P3** Notificaciones in-app (campanita).
 
 ## Modelos clave
-- `quotes`: `{currency: USD|COP, lodgings:[{tier_id,pax,...}], status:pendiente|aprobada}`
+- `quotes`: `{currency: USD|COP, lodgings:[{tier_id,pax,...}], status:pendiente|aprobada, contact_phone}`
 - `pricing_catalog`: `{type, price, price_usd, ...}`
 - `teams`: `{tournament_id, category, status, ...}`
 - `players`: `{name, nickname, gender, jersey_number, position, birth_date, document_id, eps, photo_url, guardian_name, guardian_doc, guardian_relation, guardian_phone, ...}`
@@ -43,6 +45,7 @@ Aplicación versátil para una empresa que organiza eventos de fútbol infantil 
 
 ## Endpoints clave
 - POST /api/quotes/calculate
+- GET  /api/quotes/{qid}  (incluye club_name y contact_phone)
 - POST /api/clubs/{cid}/teams
 - POST /api/payments  (valida moneda)
 - GET  /api/admin/catalog

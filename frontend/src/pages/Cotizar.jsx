@@ -87,6 +87,7 @@ export default function Cotizar() {
         ...f,
         events,
         lodgings,
+        currency: q.currency || f.currency || "COP",
         include_registration: q.include_registration !== false,
         meal_entries: q.meal_entries || [],
         transport_routes: q.transport_routes || [],
@@ -211,20 +212,22 @@ export default function Cotizar() {
           <p className="text-sm text-slate-500 mt-2 max-w-xl">Selecciona uno o varios eventos y paquetes de hospedaje. Cada paquete admite personas adicionales con noches y fechas propias. Total en vivo.</p>
         </div>
         <div className="bg-white border-2 border-fsc-azul rounded-xl p-3" data-testid="currency-toggle">
-          <div className="text-[10px] font-bold uppercase tracking-[0.25em] text-fsc-azul-oscuro mb-1">Moneda</div>
+          <div className="text-[10px] font-bold uppercase tracking-[0.25em] text-fsc-azul-oscuro mb-1">Moneda{editingId ? " (bloqueada)" : ""}</div>
           <div className="flex bg-slate-100 rounded-lg p-1">
             {["COP", "USD"].map((cur) => (
               <button
                 key={cur}
                 type="button"
+                disabled={!!editingId}
                 onClick={() => setFormUser({ ...form, currency: cur })}
-                className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wider rounded-md transition-colors ${form.currency === cur ? "bg-fsc-azul text-white" : "text-slate-600 hover:text-fsc-azul"}`}
+                className={`px-4 py-1.5 text-xs font-bold uppercase tracking-wider rounded-md transition-colors ${form.currency === cur ? "bg-fsc-azul text-white" : "text-slate-600 hover:text-fsc-azul"} ${editingId ? "opacity-60 cursor-not-allowed" : ""}`}
                 data-testid={`currency-${cur}`}
               >
                 {cur === "COP" ? "Pesos (COP)" : "Dólares (USD)"}
               </button>
             ))}
           </div>
+          {editingId && <div className="text-[10px] text-slate-500 mt-1 italic">La moneda no se puede cambiar al editar una cotización existente.</div>}
         </div>
       </div>
 

@@ -2954,6 +2954,23 @@ async def get_quote_detail(qid: str, _: dict = Depends(get_current_user)):
     q = await db.quotes.find_one({"id": qid}, {"_id": 0})
     if not q:
         raise HTTPException(status_code=404, detail="Cotización no encontrada")
+    # Enriquecer con el nombre del CLUB del usuario que cotizó (rol team o admin actuando para club).
+    if not q.get("club_name"):
+        uid = q.get("user_id")
+        if uid:
+            u = await db.users.find_one({"id": uid}, {"_id": 0, "team_id": 1, "club_id": 1})
+            club_name = ""
+            if u:
+                if u.get("club_id"):
+                    club = await db.clubs.find_one({"id": u["club_id"]}, {"_id": 0, "name": 1})
+                    if club:
+                        club_name = club.get("name") or ""
+                if not club_name and u.get("team_id"):
+                    t = await db.teams.find_one({"id": u["team_id"]}, {"_id": 0, "club_name": 1, "name": 1})
+                    if t:
+                        club_name = t.get("club_name") or t.get("name") or ""
+            q["club_name"] = club_name
+    q.setdefault("contact_phone", "")
     return q
 
 @api.get("/quotes")
