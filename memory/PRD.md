@@ -1,7 +1,7 @@
 # PRD — FUTRE SOCCER CUP
 
 ## Problema y objetivo
-Aplicación versátil para una empresa que organiza eventos de fútbol infantil y juvenil (FUTRE SOCCER CUP). Portal público + Admin, generación de fixtures, resultados, registro de clubes/equipos/jugadores, cotización multi-moneda (USD/COP) y multi-evento/hospedaje, pagos manuales con recibos bancarios, generación PDF de carnets, control de roles (Admin / Directivo / Cuerpo Técnico) e identidad visual robusta.
+Aplicación versátil para FUTRE SOCCER CUP: Portal público + Admin, fixtures, resultados, registro clubes/equipos/jugadores, cotización multi-moneda (USD/COP) multi-evento/hospedaje, pagos manuales con info bancaria, generación PDF carnets, control de roles (Admin/Directivo/CT), identidad visual.
 
 ## Stack
 - Frontend: React + Tailwind + shadcn/ui
@@ -10,48 +10,35 @@ Aplicación versátil para una empresa que organiza eventos de fútbol infantil 
 - Storage de fotos: Emergent Object Storage
 
 ## Roles
-- **Admin**: gestión completa (inventario, torneos, carnets, aprobaciones).
-- **Directivo (Director Técnico)**: cotiza tras aprobación del club, crea equipos enlazados a cotizaciones aprobadas, registra jugadores y staff.
-- **Cuerpo Técnico (CT)**: registra jugadores y staff; no cotiza.
+- **Admin**: gestión completa.
+- **Directivo (DT)**: cotiza tras aprobación club, crea equipos, registra jugadores/staff.
+- **Cuerpo Técnico (CT)**: registra jugadores/staff; no cotiza.
 
 ## Estado de implementación (Feb 2026)
-- ✅ Cotizar multi-evento + multi-hospedaje con toggle USD/COP en vivo.
-- ✅ Catálogo de precios dual COP/USD en Admin (paquetes, eventos). Inscripción USD usa `CurrencyInput` con separador de miles y sin cero a la izquierda.
-- ✅ Aprobación admin obligatoria antes de pagar cotizaciones.
-- ✅ Pagos manuales con info bancaria; validación estricta de moneda (USD↔USD, COP↔COP).
-- ✅ Generación PDF de carnets (solo admin); Directivo/CT no ven módulo.
-- ✅ Filtros en cascada Admin Carnets (Club→Evento→Categoría→Equipo).
-- ✅ Subida de foto para Jugadores y Staff (ImageUpload).
-- ✅ Registro completo de jugador (los 13 campos en los 3 sitios: MyTeam-Directivo/CT, MyTeam-DT, AdminPlayers): Nombre, Apodo/Nick, Género, Dorsal, Posición (18 opciones), Fecha nac., Documento, EPS, Foto, Acudiente (nombre/doc/parentesco/teléfono).
-- ✅ Staff con rol, documento, teléfono y foto.
+- ✅ Cotizar multi-evento + multi-hospedaje, toggle USD/COP en vivo, moneda **bloqueada al editar**.
+- ✅ Catálogo dual COP/USD: todos los inputs USD en Inventario (lodging, meal addons, transport, tours) y en Torneos usan `CurrencyInput` con separador de miles (200.000) sin cero a la izquierda.
+- ✅ Aprobación admin obligatoria antes de pagar.
+- ✅ Pagos manuales con info bancaria, validación estricta de moneda.
+- ✅ PDF carnets (solo admin); Directivo/CT no ven módulo.
+- ✅ Filtros cascada Admin Carnets (Club→Evento→Categoría→Equipo).
+- ✅ Foto jugador y staff (ImageUpload) en 3 modales (MyTeam-Directivo/CT, MyTeam-DT, AdminPlayers) con los 13 campos: Nombre, Apodo, Género, Dorsal, Posición (18 op), Fecha nac., Documento, EPS, Foto, Acudiente (nombre/doc/parentesco/teléfono).
+- ✅ Admin · Cotizaciones · Ver: muestra Club + **Teléfono contacto**, etiqueta "Valor Paquete" (antes "Valor 5n"), elimina "Noches", muestra descripción del paquete y **acomodación** (accommodation_type del catálogo).
+- ✅ Admin · Cotizaciones · Ver: Transporte muestra `route_name` (no más route_id), Tours muestra `tour_name` (no más tour_id). Cotizaciones legacy hacen fallback al id.
+- ✅ Admin · Cotizaciones · Ver: montos formateados con sufijo "USD" o "COP" en cada línea.
 - ✅ Sidebar Admin reordenado.
-- ✅ Admin Quotes detail muestra Club y Teléfono de contacto.
-- ✅ Editar cotización: moneda bloqueada en la moneda original (no se permite cambiar).
 
 ## Backlog priorizado
-- **P1** Notificaciones por email (Resend o SendGrid) al aprobar/rechazar clubes, equipos, cotizaciones y pagos.
+- **P1** Notificaciones email (Resend/SendGrid) al aprobar/rechazar clubes/equipos/cotizaciones/pagos.
 - **P2** Stripe Webhook signature verification.
 - **P2** Refactor `server.py` (>4300 líneas) → `/app/backend/routes/`.
-- **P3** Dashboard de estadísticas avanzadas (goleadores, tarjetas).
-- **P3** Exportación XLSX/CSV de listados por torneo/categoría.
-- **P3** Notificaciones in-app (campanita).
+- **P3** Dashboard de estadísticas avanzadas.
+- **P3** Exportación XLSX/CSV.
+- **P3** Notificaciones in-app.
 
 ## Modelos clave
-- `quotes`: `{currency: USD|COP, lodgings:[{tier_id,pax,...}], status:pendiente|aprobada, contact_phone}`
-- `pricing_catalog`: `{type, price, price_usd, ...}`
-- `teams`: `{tournament_id, category, status, ...}`
-- `players`: `{name, nickname, gender, jersey_number, position, birth_date, document_id, eps, photo_url, guardian_name, guardian_doc, guardian_relation, guardian_phone, ...}`
-- `staff`: `{name, role, document, phone, photo_url, ...}`
-
-## Endpoints clave
-- POST /api/quotes/calculate
-- GET  /api/quotes/{qid}  (incluye club_name y contact_phone)
-- POST /api/clubs/{cid}/teams
-- POST /api/payments  (valida moneda)
-- GET  /api/admin/catalog
-- GET  /api/quotes/mine
-- POST /api/players, PUT /api/players/{id}
-- POST /api/team-roster/import?preview=
+- `quotes`: `{currency, contact_phone, lodgings_breakdown:[{tier_name,tier_description,tier_accommodation,...}], transport_entries_breakdown:[{route_id,route_name,...}], tour_subtotals:[{tour_id,tour_name,...}], status}`
+- `pricing_catalog`: `{type, price, price_usd, accommodation_type, description, includes, ...}`
+- `players`: `{name, nickname, gender, jersey_number, position, birth_date, document_id, eps, photo_url, guardian_*}`
 
 ## Credenciales de prueba
 Ver `/app/memory/test_credentials.md`.

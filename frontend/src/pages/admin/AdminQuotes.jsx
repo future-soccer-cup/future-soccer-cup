@@ -7,8 +7,8 @@ import { Eye, X } from "lucide-react";
 
 const STATUSES = ["pendiente", "aprobada", "rechazada", "pagada"];
 const fmtMoney = (n, cur) => cur === "USD"
-  ? `US$${Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-  : `$${Number(n || 0).toLocaleString("es-CO")}`;
+  ? `US$${Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD`
+  : `$${Number(n || 0).toLocaleString("es-CO")} COP`;
 const fmt = fmtMoney; // wrapper kept for callers passing only amount (defaults to COP)
 
 export default function AdminQuotes() {
@@ -231,17 +231,25 @@ function QuoteDetailModal({ q, onClose }) {
                       <div>
                         <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-fsc-azul">Paquete {i + 1}</div>
                         <div className="font-display text-lg font-black uppercase">{b.tier_name} · {b.pax} pax</div>
+                        {b.tier_description && (
+                          <div className="text-[11px] text-slate-600 mt-1 italic">{b.tier_description}</div>
+                        )}
+                        {(b.tier_accommodation || (Array.isArray(b.tier_includes) && b.tier_includes.length > 0)) && (
+                          <div className="text-[11px] mt-1">
+                            <span className="font-bold uppercase tracking-wider text-fsc-azul-oscuro">Acomodación:</span>{" "}
+                            <span className="text-slate-700">{b.tier_accommodation || (b.tier_includes || []).join(", ")}</span>
+                          </div>
+                        )}
                       </div>
                       <div className="text-right">
                         <div className="text-[10px] uppercase text-slate-500">Subtotal</div>
                         <div className="font-bold tabular-nums">{fmt(b.subtotal, q.currency)}</div>
                       </div>
                     </div>
-                    <div className="grid sm:grid-cols-4 gap-2 text-[11px]">
-                      <KV k="Valor 5n" v={fmt(b.rate_per_person_5nights, q.currency)} />
+                    <div className="grid sm:grid-cols-3 gap-2 text-[11px]">
+                      <KV k="Valor Paquete" v={fmt(b.rate_per_person_5nights, q.currency)} />
                       <KV k="Noche adicional" v={fmt(b.rate_per_person_additional_night, q.currency)} />
                       <KV k="Valor unitario total" v={fmt(b.rate_per_person_total, q.currency)} />
-                      <KV k="Noches" v={b.nights} />
                     </div>
                     {b.free_lodging_units > 0 && (
                       <div className="text-[11px] text-fsc-rojo mt-2">🎉 Promo 21 gratis: {b.free_lodging_units} pax sin costo</div>
@@ -318,7 +326,7 @@ function QuoteDetailModal({ q, onClose }) {
                 <tbody>
                   {q.transport_entries_breakdown.map((t, i) => (
                     <tr key={i} className="border-t border-slate-100">
-                      <td className="py-1">{t.route_id}</td><td>{t.pax}</td><td>{t.date || "—"}</td>
+                      <td className="py-1">{t.route_name || t.route_id}</td><td>{t.pax}</td><td>{t.date || "—"}</td>
                       <td className="text-right tabular-nums">{fmt(t.subtotal, q.currency)}</td>
                     </tr>
                   ))}
@@ -336,7 +344,7 @@ function QuoteDetailModal({ q, onClose }) {
                 <tbody>
                   {q.tour_subtotals.map((t, i) => (
                     <tr key={i} className="border-t border-slate-100">
-                      <td className="py-1">{t.tour_id}</td><td>{t.pax}</td>
+                      <td className="py-1">{t.tour_name || t.tour_id}</td><td>{t.pax}</td>
                       <td className="text-right tabular-nums">{fmt(t.subtotal, q.currency)}</td>
                     </tr>
                   ))}

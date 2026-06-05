@@ -2608,6 +2608,9 @@ def _calc_lodging_block(tier: dict, pax: int, nights: int, extras: list, currenc
     return {
         "tier_id": (tier or {}).get("id"),
         "tier_name": (tier or {}).get("name"),
+        "tier_description": (tier or {}).get("description", ""),
+        "tier_includes": (tier or {}).get("includes", []),
+        "tier_accommodation": (tier or {}).get("accommodation_type", "") or (tier or {}).get("classification", ""),
         "pax": pax,
         "nights": int(nights or 0),
         "extra_nights": extra_nights,
@@ -2738,8 +2741,10 @@ def _calculate_quote(payload: QuoteIn, catalog: dict) -> dict:
             if not rid or qty <= 0:
                 continue
             price = float((catalog["transport"].get(rid, {}) or {}).get(_price_field, 0) or 0)
+            route_name = (catalog["transport"].get(rid, {}) or {}).get("name", "") or rid
             transport_entries_calc.append({
                 "route_id": rid,
+                "route_name": route_name,
                 "pax": qty,
                 "date": (te or {}).get("date", ""),
                 "subtotal": price * qty,
@@ -2762,14 +2767,16 @@ def _calculate_quote(payload: QuoteIn, catalog: dict) -> dict:
     if payload.tour_entries:
         for te in payload.tour_entries:
             price = float((catalog["tours"].get(te.tour_id, {}) or {}).get(_price_field, 0) or 0)
-            tour_subtotals.append({"tour_id": te.tour_id, "pax": te.pax, "subtotal": price * int(te.pax)})
+            tname = (catalog["tours"].get(te.tour_id, {}) or {}).get("name", "") or te.tour_id
+            tour_subtotals.append({"tour_id": te.tour_id, "tour_name": tname, "pax": te.pax, "subtotal": price * int(te.pax)})
     else:
         tour_ids = list(payload.tour_ids or [])
         if (payload.includes_parque or payload.includes_tour) and "parque_del_cafe" not in tour_ids:
             tour_ids.append("parque_del_cafe")
         for tid in tour_ids:
             price = float((catalog["tours"].get(tid, {}) or {}).get(_price_field, 0) or 0)
-            tour_subtotals.append({"tour_id": tid, "pax": total_lodging_pax, "subtotal": price * total_lodging_pax})
+            tname = (catalog["tours"].get(tid, {}) or {}).get("name", "") or tid
+            tour_subtotals.append({"tour_id": tid, "tour_name": tname, "pax": total_lodging_pax, "subtotal": price * total_lodging_pax})
     tours_total = sum(t["subtotal"] for t in tour_subtotals)
     tour_ids_applied = [t["tour_id"] for t in tour_subtotals]
 

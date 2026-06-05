@@ -204,27 +204,11 @@ function LodgingTab({ rows, onChange, onSave, onDelete, saving, onAdd }) {
                 </label>
                 <label className="block">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Valor Paquete (USD)</span>
-                  <input
-                    type="number" step="0.01" min="0"
-                    value={r.base_5_nights_usd ?? 0}
-                    onChange={(e) => onChange(r.id, "lodging", { base_5_nights_usd: Number(e.target.value) || 0 })}
-                    disabled={r.no_lodging}
-                    placeholder="0.00"
-                    className="mt-1 w-full px-2 py-1 border border-slate-200 rounded text-sm tabular-nums disabled:bg-slate-100"
-                    data-testid={`inv-lodging-base-usd-${r.id}`}
-                  />
+                  <CurrencyInput value={r.base_5_nights_usd || 0} onChange={(v) => onChange(r.id, "lodging", { base_5_nights_usd: v })} disabled={r.no_lodging} className="w-full text-sm" data-testid={`inv-lodging-base-usd-${r.id}`} />
                 </label>
                 <label className="block">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Noche adicional (USD)</span>
-                  <input
-                    type="number" step="0.01" min="0"
-                    value={r.additional_night_usd ?? 0}
-                    onChange={(e) => onChange(r.id, "lodging", { additional_night_usd: Number(e.target.value) || 0 })}
-                    disabled={r.no_lodging}
-                    placeholder="0.00"
-                    className="mt-1 w-full px-2 py-1 border border-slate-200 rounded text-sm tabular-nums disabled:bg-slate-100"
-                    data-testid={`inv-lodging-add-usd-${r.id}`}
-                  />
+                  <CurrencyInput value={r.additional_night_usd || 0} onChange={(v) => onChange(r.id, "lodging", { additional_night_usd: v })} disabled={r.no_lodging} className="w-full text-sm" data-testid={`inv-lodging-add-usd-${r.id}`} />
                 </label>
               </div>
               <div className="flex gap-3 mt-3 text-xs flex-wrap">
@@ -289,7 +273,7 @@ function MealAddonTab({ rows, onChange, onSave, onDelete, saving, onAdd }) {
                     <CurrencyInput value={r.cost} onChange={(v) => onChange(r.id, "meal_addon", { cost: v })} className="w-32 text-sm" data-testid={`inv-meal_addon-cost-${r.id}`} />
                   </td>
                   <td className="px-3 py-2 text-right">
-                    <input type="number" step="0.01" min="0" value={r.cost_usd ?? 0} onChange={(e) => onChange(r.id, "meal_addon", { cost_usd: Number(e.target.value) || 0 })} placeholder="0.00" className="w-28 text-sm px-2 py-1 border border-slate-200 rounded tabular-nums" data-testid={`inv-meal_addon-cost-usd-${r.id}`} />
+                    <CurrencyInput value={r.cost_usd || 0} onChange={(v) => onChange(r.id, "meal_addon", { cost_usd: v })} className="w-32 text-sm" data-testid={`inv-meal_addon-cost-usd-${r.id}`} />
                   </td>
                   <td className="px-3 py-2 text-right">
                     <button onClick={() => onSave(r)} disabled={isSaving} className="text-fsc-azul disabled:opacity-50 p-1" data-testid={`inv-save-meal_addon-${r.id}`}><Save size={14}/></button>
@@ -333,7 +317,7 @@ function SimpleTab({ type, label, rows, onChange, onSave, onDelete, saving, onAd
                     <CurrencyInput value={r.price} onChange={(v) => onChange(r.id, type, { price: v })} className="w-32 text-sm" data-testid={`inv-price-${r.id}`} />
                   </td>
                   <td className="px-3 py-2 text-right">
-                    <input type="number" step="0.01" min="0" value={r.price_usd ?? 0} onChange={(e) => onChange(r.id, type, { price_usd: Number(e.target.value) || 0 })} placeholder="0.00" className="w-28 text-sm px-2 py-1 border border-slate-200 rounded tabular-nums" data-testid={`inv-price-usd-${r.id}`} />
+                    <CurrencyInput value={r.price_usd || 0} onChange={(v) => onChange(r.id, type, { price_usd: v })} className="w-32 text-sm" data-testid={`inv-price-usd-${r.id}`} />
                   </td>
                   <td className="px-3 py-2 text-right">
                     <button onClick={() => onSave(r)} disabled={isSaving} className="text-fsc-azul disabled:opacity-50 p-1" data-testid={`inv-save-${type}-${r.id}`}><Save size={14}/></button>
@@ -380,7 +364,7 @@ function TourTab({ rows, onChange, onSave, onDelete, saving, onAdd }) {
                 </label>
                 <label className="block">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Precio (USD)</span>
-                  <input type="number" step="0.01" min="0" value={r.price_usd ?? 0} onChange={(e) => onChange(r.id, "tour", { price_usd: Number(e.target.value) || 0 })} placeholder="0.00" className="mt-1 w-full px-2 py-1 border border-slate-200 rounded text-sm tabular-nums" data-testid={`inv-price-usd-${r.id}`} />
+                  <CurrencyInput value={r.price_usd || 0} onChange={(v) => onChange(r.id, "tour", { price_usd: v })} className="w-full text-sm" data-testid={`inv-price-usd-${r.id}`} />
                 </label>
               </div>
             </div>
@@ -445,11 +429,11 @@ function CreateModal({ creating, setCreating, onSubmit }) {
               </label>
               <label className="block">
                 <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">Valor Paquete (USD)</span>
-                <input type="number" step="0.01" min="0" value={creating.body.base_5_nights_usd || 0} onChange={(e) => setBody({ base_5_nights_usd: Number(e.target.value) || 0 })} placeholder="0.00" className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md tabular-nums" data-testid="inv-new-base-usd" />
+                <CurrencyInput value={creating.body.base_5_nights_usd || 0} onChange={(v) => setBody({ base_5_nights_usd: v })} className="w-full" data-testid="inv-new-base-usd" />
               </label>
               <label className="block">
                 <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">Noche adicional (USD)</span>
-                <input type="number" step="0.01" min="0" value={creating.body.additional_night_usd || 0} onChange={(e) => setBody({ additional_night_usd: Number(e.target.value) || 0 })} placeholder="0.00" className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md tabular-nums" data-testid="inv-new-add-usd" />
+                <CurrencyInput value={creating.body.additional_night_usd || 0} onChange={(v) => setBody({ additional_night_usd: v })} className="w-full" data-testid="inv-new-add-usd" />
               </label>
             </div>
             <label className="flex items-center gap-2 cursor-pointer text-sm">
@@ -485,7 +469,7 @@ function CreateModal({ creating, setCreating, onSubmit }) {
             </label>
             <label className="block col-span-2">
               <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">Costo (USD por persona)</span>
-              <input type="number" step="0.01" min="0" value={creating.body.cost_usd || 0} onChange={(e) => setBody({ cost_usd: Number(e.target.value) || 0 })} placeholder="0.00" className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md tabular-nums" data-testid="inv-new-cost-usd" />
+              <CurrencyInput value={creating.body.cost_usd || 0} onChange={(v) => setBody({ cost_usd: v })} className="w-full" data-testid="inv-new-cost-usd" />
             </label>
           </div>
         )}
@@ -503,7 +487,7 @@ function CreateModal({ creating, setCreating, onSubmit }) {
               </label>
               <label className="block">
                 <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">Precio (USD por persona)</span>
-                <input type="number" step="0.01" min="0" value={creating.body.price_usd || 0} onChange={(e) => setBody({ price_usd: Number(e.target.value) || 0 })} placeholder="0.00" className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md tabular-nums" data-testid="inv-new-price-usd" />
+                <CurrencyInput value={creating.body.price_usd || 0} onChange={(v) => setBody({ price_usd: v })} className="w-full" data-testid="inv-new-price-usd" />
               </label>
             </div>
           </>
@@ -517,7 +501,7 @@ function CreateModal({ creating, setCreating, onSubmit }) {
             </label>
             <label className="block">
               <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">Precio (USD por persona)</span>
-              <input type="number" step="0.01" min="0" value={creating.body.price_usd || 0} onChange={(e) => setBody({ price_usd: Number(e.target.value) || 0 })} placeholder="0.00" className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md tabular-nums" data-testid="inv-new-price-usd" />
+              <CurrencyInput value={creating.body.price_usd || 0} onChange={(v) => setBody({ price_usd: v })} className="w-full" data-testid="inv-new-price-usd" />
             </label>
           </div>
         )}
