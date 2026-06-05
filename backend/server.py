@@ -2962,22 +2962,69 @@ async def get_quote_detail(qid: str, _: dict = Depends(get_current_user)):
     if not q:
         raise HTTPException(status_code=404, detail="Cotización no encontrada")
     # Enriquecer con el nombre del CLUB del usuario que cotizó (rol team o admin actuando para club).
-    if not q.get("club_name"):
+    if not q.get("club_name") or not q.get("contact_phone"):
         uid = q.get("user_id")
+        club_name = q.get("club_name") or ""
+        contact_phone = q.get("contact_phone") or ""
         if uid:
-            u = await db.users.find_one({"id": uid}, {"_id": 0, "team_id": 1, "club_id": 1})
-            club_name = ""
+            u = await db.users.find_one({"id": uid}, {"_id": 0, "team_id": 1, "club_id": 1, "phone": 1})
             if u:
+                # Fallback de teléfono: phone del usuario → phone del club
+                if not contact_phone:
+                    contact_phone = u.get("phone") or ""
                 if u.get("club_id"):
-                    club = await db.clubs.find_one({"id": u["club_id"]}, {"_id": 0, "name": 1})
+                    club = await db.clubs.find_one({"id": u["club_id"]}, {"_id": 0, "name": 1, "phone": 1})
                     if club:
-                        club_name = club.get("name") or ""
+                        if not club_name:
+                            club_name = club.get("name") or ""
+                        if not contact_phone:
+                            contact_phone = club.get("phone") or ""
                 if not club_name and u.get("team_id"):
                     t = await db.teams.find_one({"id": u["team_id"]}, {"_id": 0, "club_name": 1, "name": 1})
                     if t:
                         club_name = t.get("club_name") or t.get("name") or ""
-            q["club_name"] = club_name
+        q["club_name"] = club_name
+        q["contact_phone"] = contact_phone
     q.setdefault("contact_phone", "")
+
+    # Enriquecer breakdowns con nombres/descripciones del catálogo (para cotizaciones legacy
+    # que solo guardaron IDs). Esto se hace al leer; no muta el snapshot guardado.
+    try:
+        cat = await _load_catalog()
+        lodging_cat = cat.get("lodging") or {}
+        transport_cat = cat.get("transport") or {}
+        tours_cat = cat.get("tours") or {}
+
+        # Hospedaje: añadir descripción y acomodación si faltan
+        for b in (q.get("lodgings_breakdown") or []):
+            tier = lodging_cat.get(b.get("tier_id"))
+            if tier:
+                if not b.get("tier_name"):
+                    b["tier_name"] = tier.get("name", "")
+                if not b.get("tier_description"):
+                    b["tier_description"] = tier.get("description", "")
+                if not b.get("tier_accommodation"):
+                    b["tier_accommodation"] = tier.get("accommodation_type", "") or tier.get("classification", "")
+                if not b.get("tier_includes"):
+                    b["tier_includes"] = tier.get("includes", [])
+
+        # Transporte: añadir route_name si falta
+        for t in (q.get("transport_entries_breakdown") or []):
+            if not t.get("route_name"):
+                rid = t.get("route_id")
+                r = transport_cat.get(rid) if rid else None
+                t["route_name"] = (r or {}).get("name", "") or (rid or "")
+
+        # Tours: añadir tour_name si falta
+        for ts in (q.get("tour_subtotals") or []):
+            if not ts.get("tour_name"):
+                tid = ts.get("tour_id")
+                tr = tours_cat.get(tid) if tid else None
+                ts["tour_name"] = (tr or {}).get("name", "") or (tid or "")
+    except Exception:
+        # No bloquear el detalle si falla el enriquecimiento.
+        pass
+
     return q
 
 @api.get("/quotes")
