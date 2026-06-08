@@ -2265,9 +2265,19 @@ async def admin_create_catalog(t: str, body: dict, user: dict = Depends(require_
     if t not in CATALOG_TYPES:
         raise HTTPException(status_code=400, detail="Tipo inválido")
     update = _validate_catalog_row(t, body)
-    rid = (body.get("id") or _slugify(update["name"]))
+    # Generar id base: si es lodging, incluir la acomodación para diferenciar paquetes con el mismo nombre.
+    base_slug_parts = [update["name"]]
+    if t == "lodging" and update.get("accommodation_type"):
+        base_slug_parts.append(update["accommodation_type"])
+    rid = (body.get("id") or _slugify(" ".join(base_slug_parts)))
+    # Si el id ya existe, agregar sufijo numérico (-2, -3, ...) hasta encontrar uno libre.
     if await db.pricing_catalog.find_one({"id": rid, "type": t}):
-        raise HTTPException(status_code=400, detail="Ya existe un ítem con ese id")
+        if body.get("id"):
+            raise HTTPException(status_code=400, detail="Ya existe un ítem con ese id")
+        n = 2
+        while await db.pricing_catalog.find_one({"id": f"{rid}-{n}", "type": t}):
+            n += 1
+        rid = f"{rid}-{n}"
     # Default sort_order = max + 1 of its type
     if "sort_order" not in update:
         last = await db.pricing_catalog.find({"type": t}, {"_id": 0, "sort_order": 1}).sort("sort_order", -1).limit(1).to_list(1)
