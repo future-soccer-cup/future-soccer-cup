@@ -877,7 +877,12 @@ async def login(payload: LoginIn, request: Request, response: Response):
     access = create_access_token(user["id"], user["email"], user["role"])
     refresh = create_refresh_token(user["id"])
     set_auth_cookies(response, access, refresh)
-    return {"id": user["id"], "email": user["email"], "name": user["name"], "role": user["role"], "team_id": user.get("team_id")}
+    return {
+        "id": user["id"], "email": user["email"], "name": user["name"], "role": user["role"],
+        "team_id": user.get("team_id"),
+        "manager_role": user.get("manager_role", ""),
+        "club_id": user.get("club_id"),
+    }
 
 @api.post("/auth/logout")
 async def logout(response: Response):
@@ -2383,8 +2388,13 @@ async def add_team_to_club(cid: str, payload: TeamAddIn, user: dict = Depends(ge
     club = await db.clubs.find_one({"id": cid}, {"_id": 0})
     if not club:
         raise HTTPException(status_code=404, detail="Club no encontrado")
-    if user.get("role") != "admin" and club.get("manager_user_id") != user["id"]:
-        raise HTTPException(status_code=403, detail="No autorizado")
+    # Autorización: admin OK; o cualquier usuario (Directivo / Cuerpo Técnico) cuyo club_id = cid;
+    # o el manager histórico (legacy donde club_id pudiera no estar seteado).
+    if user.get("role") != "admin":
+        is_member = user.get("club_id") == cid
+        is_manager = club.get("manager_user_id") == user["id"]
+        if not (is_member or is_manager):
+            raise HTTPException(status_code=403, detail="No autorizado")
     if user.get("role") != "admin" and (club.get("status") or "pendiente") != "aprobado":
         raise HTTPException(
             status_code=403,
@@ -2519,17 +2529,20 @@ async def _require_club_approved(user: dict, *, action: str = "esta acción"):
 
 @api.get("/admin/clubs/{cid}/users")
 async def list_club_users(cid: str, _: dict = Depends(require_admin)):
-    """Lista los usuarios registrados asociados a un club (manager + cualquier user con teams del club)."""
-    # 1) Manager directo del club
+    """Lista los usuarios registrados asociados a un club (manager + cualquier user con club_id o team del club)."""
     club = await db.clubs.find_one({"id": cid}, {"_id": 0})
     if not club:
         raise HTTPException(status_code=404, detail="Club no encontrado")
     manager_id = club.get("manager_user_id")
-    # 2) Usuarios con team_id apuntando a equipos del club
+    # Usuarios con club_id apuntando a este club (incluye Directivo y Cuerpo Técnico).
     team_ids = [t["id"] async for t in db.teams.find({"club_id": cid}, {"_id": 0, "id": 1})]
     user_ids = set()
     if manager_id:
         user_ids.add(manager_id)
+    # 1) Cualquier usuario con club_id = cid (Directivo, Cuerpo Técnico, futuros roles).
+    async for u in db.users.find({"club_id": cid}, {"_id": 0, "id": 1}):
+        user_ids.add(u["id"])
+    # 2) Fallback legacy: usuarios con team_id de algún team del club (registros viejos sin club_id).
     if team_ids:
         async for u in db.users.find({"team_id": {"$in": team_ids}}, {"_id": 0, "id": 1}):
             user_ids.add(u["id"])
@@ -2537,7 +2550,7 @@ async def list_club_users(cid: str, _: dict = Depends(require_admin)):
         return []
     users = await db.users.find(
         {"id": {"$in": list(user_ids)}},
-        {"_id": 0, "id": 1, "name": 1, "email": 1, "role": 1, "team_id": 1, "created_at": 1}
+        {"_id": 0, "id": 1, "name": 1, "email": 1, "role": 1, "team_id": 1, "manager_role": 1, "phone": 1, "created_at": 1}
     ).to_list(200)
     return users
 

@@ -206,6 +206,7 @@ export default function MyTeam() {
   // Pantalla específica para usuarios sin team_id (CT recién registrado o Directivo cuyo club aún no tiene equipos).
   if (!teamId) {
     const isCT = (user.manager_role || "").trim().toLowerCase() === "cuerpo técnico";
+    const roleLabel = user.manager_role || (isCT ? "Cuerpo Técnico" : "Directivo");
     return (
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12" data-testid="my-team-page">
         <Toaster position="top-right" />
@@ -218,10 +219,21 @@ export default function MyTeam() {
             </div>
           </div>
         )}
-        <h1 className="font-display text-4xl md:text-5xl font-black uppercase tracking-tighter">Mi Club</h1>
-        <p className="text-slate-600 mt-2">
-          {club ? <>Estás vinculado a <strong>{club.name}</strong>.</> : "Cargando información del club..."}
-        </p>
+        {/* Header con logo del club + nombre del usuario + rol */}
+        <div className="flex items-center gap-4 mb-6" data-testid="my-team-header">
+          {club?.logo_url
+            ? <img src={imgSrc(club.logo_url)} alt={club.name} className="h-20 w-20 rounded-xl object-cover border-2 border-fsc-azul shadow" data-testid="my-team-club-logo" />
+            : <div className="h-20 w-20 rounded-xl bg-fsc-azul/10 border-2 border-fsc-azul flex items-center justify-center font-display text-3xl font-black text-fsc-azul" data-testid="my-team-club-logo-fallback">{(club?.name || user.name || "?").charAt(0).toUpperCase()}</div>
+          }
+          <div className="min-w-0">
+            <div className="text-xs font-bold uppercase tracking-[0.2em] text-fsc-azul">Mi Club</div>
+            <h1 className="font-display text-3xl md:text-4xl font-black uppercase tracking-tighter truncate">{club?.name || "Mi Club"}</h1>
+            <div className="text-sm text-slate-600 mt-1">
+              <strong data-testid="my-team-user-name">{user.name}</strong>
+              <span className={`ml-2 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${isCT ? "bg-purple-100 text-purple-700" : "bg-emerald-100 text-emerald-700"}`} data-testid="my-team-user-role">{roleLabel}</span>
+            </div>
+          </div>
+        </div>
 
         <div className="mt-6 grid sm:grid-cols-2 gap-3">
           {!isCT ? (
@@ -564,6 +576,19 @@ export default function MyTeam() {
           {team.logo_url ? <img src={imgSrc(team.logo_url)} alt={team.name} className="h-full w-full object-contain p-1" /> : team.name[0]}
         </div>
         <div className="flex-1">
+          {club && (
+            <div className="flex items-center gap-2 mb-1.5" data-testid="my-team-club-strip">
+              {club.logo_url
+                ? <img src={imgSrc(club.logo_url)} alt={club.name} className="h-7 w-7 rounded object-cover border border-slate-200" data-testid="my-team-club-logo" />
+                : <div className="h-7 w-7 rounded bg-fsc-azul/10 border border-fsc-azul/30 flex items-center justify-center font-bold text-fsc-azul text-xs" data-testid="my-team-club-logo-fallback">{(club.name || "?").charAt(0).toUpperCase()}</div>}
+              <span className="text-xs font-bold uppercase tracking-wider text-fsc-azul-oscuro">{club.name}</span>
+              <span className="text-slate-300">·</span>
+              <span className="text-xs font-semibold text-slate-700" data-testid="my-team-user-name">{user.name}</span>
+              {user.manager_role && (
+                <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${(user.manager_role || "").trim().toLowerCase() === "cuerpo técnico" ? "bg-purple-100 text-purple-700" : "bg-emerald-100 text-emerald-700"}`} data-testid="my-team-user-role">{user.manager_role}</span>
+              )}
+            </div>
+          )}
           <div className="text-xs uppercase tracking-[0.2em] font-bold text-slate-500">{team.category} · {eventLabel}</div>
           <h1 className="font-display text-4xl md:text-5xl font-black uppercase tracking-tighter">{team.name}</h1>
           <div className="text-sm text-slate-600">{team.city || "—"} {team.coach && `· DT: ${team.coach}`}</div>

@@ -214,16 +214,26 @@ function ClubNode({ club, users, expanded, onToggle, onApprove, onReject, onPend
             {users && users.length === 0 && <div className="text-xs text-slate-400 italic">Sin usuarios asociados.</div>}
             {users && users.length > 0 && (
               <div className="grid sm:grid-cols-2 gap-2" data-testid={`club-users-${club.id}`}>
-                {users.map((u) => (
-                  <div key={u.id} className="bg-white border border-slate-200 rounded-md p-2 text-xs flex items-start gap-2">
-                    <div className="h-7 w-7 bg-fsc-azul/10 text-fsc-azul rounded-full flex items-center justify-center font-bold">{(u.name || "?").charAt(0).toUpperCase()}</div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-semibold truncate">{u.name || u.email}</div>
-                      <div className="text-slate-500 flex items-center gap-1"><Mail size={10}/> {u.email}</div>
-                      <div className="text-[10px] uppercase tracking-wider text-fsc-azul font-bold">{u.role}</div>
+                {users.map((u) => {
+                  const mr = (u.manager_role || "").trim();
+                  const isCT = mr.toLowerCase() === "cuerpo técnico";
+                  const isDT = mr && !isCT;
+                  const badgeColor = isCT ? "bg-purple-100 text-purple-700" : isDT ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600";
+                  return (
+                    <div key={u.id} className="bg-white border border-slate-200 rounded-md p-2 text-xs flex items-start gap-2">
+                      <div className="h-7 w-7 bg-fsc-azul/10 text-fsc-azul rounded-full flex items-center justify-center font-bold">{(u.name || "?").charAt(0).toUpperCase()}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold truncate">{u.name || u.email}</div>
+                        <div className="text-slate-500 flex items-center gap-1"><Mail size={10}/> {u.email}</div>
+                        {u.phone && <div className="text-slate-500 flex items-center gap-1"><Phone size={10}/> {u.phone}</div>}
+                        <div className="mt-1 flex items-center gap-1 flex-wrap">
+                          <span className="text-[9px] uppercase tracking-wider text-slate-500 font-bold">{u.role}</span>
+                          {mr && <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${badgeColor}`} data-testid={`user-manager-role-${u.id}`}>{mr}</span>}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
