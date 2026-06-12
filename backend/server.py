@@ -981,6 +981,27 @@ async def update_team(team_id: str, payload: TeamIn, user: dict = Depends(get_cu
     t = await db.teams.find_one({"id": team_id}, {"_id": 0})
     return t
 
+@api.patch("/teams/{team_id}/name")
+async def update_team_name(team_id: str, payload: dict, user: dict = Depends(get_current_user)):
+    """Edición parcial — actualiza SOLO el nombre del equipo sin afectar club_id, tournament_id,
+    birth_year, cuerpo_tecnico ni demás campos. Admin o cualquier usuario del mismo club."""
+    target = await db.teams.find_one({"id": team_id}, {"_id": 0, "club_id": 1})
+    if not target:
+        raise HTTPException(status_code=404, detail="Equipo no encontrado")
+    if user.get("role") != "admin":
+        if user.get("role") != "team":
+            raise HTTPException(status_code=403, detail="No autorizado")
+        same_team = user.get("team_id") == team_id
+        same_club = user.get("club_id") and target.get("club_id") == user["club_id"]
+        if not (same_team or same_club):
+            raise HTTPException(status_code=403, detail="Solo puedes editar equipos de tu club")
+    new_name = (payload.get("name") or "").strip()
+    if not new_name:
+        raise HTTPException(status_code=400, detail="El nombre del equipo es obligatorio")
+    await db.teams.update_one({"id": team_id}, {"$set": {"name": new_name}})
+    t = await db.teams.find_one({"id": team_id}, {"_id": 0})
+    return t
+
 @api.delete("/teams/{team_id}")
 async def delete_team(team_id: str, _: dict = Depends(require_admin)):
     res = await db.teams.delete_one({"id": team_id})

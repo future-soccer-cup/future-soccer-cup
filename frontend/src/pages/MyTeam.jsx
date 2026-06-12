@@ -1243,15 +1243,7 @@ function ClubTeamNameModal({ team, onClose, onSaved }) {
     if (!trimmed) { toast.error("El nombre del equipo es obligatorio"); return; }
     setSaving(true);
     try {
-      const payload = {
-        name: trimmed,
-        category: team.category,
-        city: team.city || "",
-        coach: team.coach || "",
-        color: team.color || "#1d4ed8",
-        logo_url: team.logo_url || "",
-      };
-      await api.put(`/teams/${team.id}`, payload);
+      await api.patch(`/teams/${team.id}/name`, { name: trimmed });
       toast.success("Nombre del equipo actualizado");
       await onSaved?.();
     } catch (err) {

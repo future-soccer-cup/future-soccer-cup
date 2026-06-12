@@ -427,14 +427,7 @@ function TeamNameEditModal({ team, onClose, onSaved }) {
     if (!trimmed) { toast.error("El nombre es obligatorio"); return; }
     setSaving(true);
     try {
-      await api.put(`/teams/${team.id}`, {
-        name: trimmed,
-        category: team.category,
-        city: team.city || "",
-        coach: team.coach || "",
-        color: team.color || "#1d4ed8",
-        logo_url: team.logo_url || "",
-      });
+      await api.patch(`/teams/${team.id}/name`, { name: trimmed });
       toast.success("Nombre del equipo actualizado");
       onSaved?.();
     } catch (err) {
