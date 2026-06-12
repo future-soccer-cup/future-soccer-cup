@@ -61,7 +61,7 @@ export default function AdminPayments() {
   , []);
 
   const { query, setQuery, page, setPage, totalPages, pageItems, filtered, filteredCount, totalCount } =
-    usePagedSearch(items, matchFn, 15);
+    usePagedSearch(items, matchFn, 10);
 
   const exportColumns = [
     { key: "payment_date", label: "Fecha pago", accessor: (p) => (p.payment_date || p.created_at) ? new Date(p.payment_date || p.created_at).toISOString().slice(0,10) : "" },

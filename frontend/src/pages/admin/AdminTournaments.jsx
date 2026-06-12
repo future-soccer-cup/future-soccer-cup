@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Modal, Field } from "./AdminTeams";
 import ImageUpload from "../../components/ImageUpload";
 import CurrencyInput from "../../components/CurrencyInput";
+import { usePagedSearch, SearchBar, Pagination } from "../../components/PagedTable";
 
 const EMPTY = {
   name: "",
@@ -123,6 +124,18 @@ export default function AdminTournaments() {
     }
   };
 
+  const matchFn = useCallback((t, q) =>
+    (t.name || "").toLowerCase().includes(q) ||
+    String(t.season || "").includes(q) ||
+    (t.category || "").toLowerCase().includes(q) ||
+    (t.event_type || "").toLowerCase().includes(q) ||
+    (t.city || "").toLowerCase().includes(q) ||
+    ((t.categories || []).map((c) => c.name || "").join(" ").toLowerCase().includes(q))
+  , []);
+
+  const { query, setQuery, page, setPage, totalPages, pageItems, filteredCount, totalCount } =
+    usePagedSearch(items, matchFn, 15);
+
   return (
     <div data-testid="admin-tournaments">
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
@@ -138,6 +151,17 @@ export default function AdminTournaments() {
             <Plus size={16}/> Nuevo evento
           </button>
         </div>
+      </div>
+
+      <div className="mb-3">
+        <SearchBar
+          value={query}
+          onChange={setQuery}
+          placeholder="Buscar por nombre, temporada, categoría, tipo o ciudad..."
+          filteredCount={filteredCount}
+          totalCount={totalCount}
+          testIdPrefix="tournaments"
+        />
       </div>
 
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
@@ -156,7 +180,8 @@ export default function AdminTournaments() {
           <tbody>
             {loading && <tr><td colSpan="7" className="text-center py-12 text-slate-400">Cargando...</td></tr>}
             {!loading && items.length === 0 && <tr><td colSpan="7" className="text-center py-12 text-slate-400">Sin eventos. Crea el primero.</td></tr>}
-            {items.map((t) => (
+            {!loading && items.length > 0 && pageItems.length === 0 && <tr><td colSpan="7" className="text-center py-12 text-slate-400">Sin resultados para la búsqueda.</td></tr>}
+            {pageItems.map((t) => (
               <tr key={t.id} className="border-t border-slate-100 hover:bg-slate-50" data-testid={`tour-row-${t.id}`}>
                 <td className="px-4 py-2 font-semibold flex items-center gap-2">
                   <Trophy size={14} className={t.archived ? "text-slate-400" : "text-fsc-azul"} />
@@ -192,6 +217,8 @@ export default function AdminTournaments() {
           </tbody>
         </table>
       </div>
+
+      <Pagination page={page} totalPages={totalPages} onPage={setPage} testIdPrefix="tournaments" />
 
       {editing && (
         <Modal onClose={() => setEditing(null)} title={editing.id ? "Editar evento" : "Nuevo evento"}>

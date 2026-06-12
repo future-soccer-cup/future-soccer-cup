@@ -4,6 +4,7 @@ import { Plus, Trash2, Edit3, CalendarClock, Shuffle } from "lucide-react";
 import { toast } from "sonner";
 import CategorySelect from "../../components/CategorySelect";
 import { Modal, Field } from "./AdminTeams";
+import { usePagedSearch, SearchBar, Pagination } from "../../components/PagedTable";
 
 const EMPTY = { tournament_id: "", home_team_id: "", away_team_id: "", match_date: "", venue: "", group_name: "", stage: "grupos", status: "programado", home_score: null, away_score: null };
 
@@ -120,48 +121,12 @@ export default function AdminMatches() {
         </div>
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-blue-50 text-xs uppercase tracking-wider">
-            <tr>
-              <th className="text-left px-4 py-2">Fecha</th>
-              <th className="text-left px-4 py-2">Local</th>
-              <th className="text-center px-4 py-2">Score</th>
-              <th className="text-left px-4 py-2">Visitante</th>
-              <th className="text-left px-4 py-2">Estado</th>
-              <th className="text-left px-4 py-2">Sede</th>
-              <th className="text-right px-4 py-2">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {matches.map((m) => (
-              <tr key={m.id} className="border-t border-slate-100" data-testid={`match-row-${m.id}`}>
-                <td className="px-4 py-2">{m.match_date ? new Date(m.match_date).toLocaleString("es") : "—"}</td>
-                <td className="px-4 py-2 font-semibold">{m.home_team_name}</td>
-                <td className="px-4 py-2 text-center font-display font-black tabular-nums">
-                  {m.status === "finalizado" ? `${m.home_score} - ${m.away_score}` : "vs"}
-                </td>
-                <td className="px-4 py-2 font-semibold">{m.away_team_name}</td>
-                <td className="px-4 py-2"><span className="text-xs uppercase tracking-wider font-bold">{m.status}</span></td>
-                <td className="px-4 py-2 text-slate-500">{m.venue || "—"}</td>
-                <td className="px-4 py-2 text-right space-x-2">
-                  <button
-                    onClick={() => setManualEdit({ ...m, match_date: toLocalInput(m.match_date) })}
-                    className="text-slate-600 hover:text-blue-700"
-                    title="Editar fecha/hora/cancha"
-                    data-testid={`edit-match-${m.id}`}
-                  >
-                    <CalendarClock size={16}/>
-                  </button>
-                  <button onClick={() => setScoring({ ...m, scorers: m.scorers || [] })} className="text-blue-700" data-testid={`score-match-${m.id}`}><Edit3 size={16}/></button>
-                  <button onClick={() => remove(m.id)} className="text-red-600"><Trash2 size={16}/></button>
-                </td>
-              </tr>
-            ))}
-            {matches.length === 0 && <tr><td colSpan="7" className="text-center py-12 text-slate-400">Sin partidos</td></tr>}
-          </tbody>
-        </table>
-      </div>
+      <MatchesTable
+        matches={matches}
+        onEdit={(m) => setManualEdit({ ...m, match_date: toLocalInput(m.match_date) })}
+        onScore={(m) => setScoring({ ...m, scorers: m.scorers || [] })}
+        onRemove={remove}
+      />
 
       {editing && (
         <Modal onClose={() => setEditing(null)} title="Programar partido">
@@ -514,5 +479,77 @@ function CardsEditor({ scoring, setScoring }) {
         </div>
       ))}
     </div>
+  );
+}
+
+
+function MatchesTable({ matches, onEdit, onScore, onRemove }) {
+  const matchFn = useCallback((m, q) =>
+    (m.home_team_name || "").toLowerCase().includes(q) ||
+    (m.away_team_name || "").toLowerCase().includes(q) ||
+    (m.venue || "").toLowerCase().includes(q) ||
+    (m.status || "").toLowerCase().includes(q) ||
+    (m.match_date || "").toLowerCase().includes(q) ||
+    (m.group_name || "").toLowerCase().includes(q) ||
+    (m.stage || "").toLowerCase().includes(q)
+  , []);
+
+  const { query, setQuery, page, setPage, totalPages, pageItems, filteredCount, totalCount } =
+    usePagedSearch(matches, matchFn, 20);
+
+  return (
+    <>
+      <div className="mb-3">
+        <SearchBar
+          value={query}
+          onChange={setQuery}
+          placeholder="Buscar por equipo, sede, estado o fecha..."
+          filteredCount={filteredCount}
+          totalCount={totalCount}
+          testIdPrefix="matches"
+        />
+      </div>
+
+      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-blue-50 text-xs uppercase tracking-wider">
+            <tr>
+              <th className="text-left px-4 py-2">Fecha</th>
+              <th className="text-left px-4 py-2">Local</th>
+              <th className="text-center px-4 py-2">Score</th>
+              <th className="text-left px-4 py-2">Visitante</th>
+              <th className="text-left px-4 py-2">Estado</th>
+              <th className="text-left px-4 py-2">Sede</th>
+              <th className="text-right px-4 py-2">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pageItems.map((m) => (
+              <tr key={m.id} className="border-t border-slate-100" data-testid={`match-row-${m.id}`}>
+                <td className="px-4 py-2">{m.match_date ? new Date(m.match_date).toLocaleString("es") : "—"}</td>
+                <td className="px-4 py-2 font-semibold">{m.home_team_name}</td>
+                <td className="px-4 py-2 text-center font-display font-black tabular-nums">
+                  {m.status === "finalizado" ? `${m.home_score} - ${m.away_score}` : "vs"}
+                </td>
+                <td className="px-4 py-2 font-semibold">{m.away_team_name}</td>
+                <td className="px-4 py-2"><span className="text-xs uppercase tracking-wider font-bold">{m.status}</span></td>
+                <td className="px-4 py-2 text-slate-500">{m.venue || "—"}</td>
+                <td className="px-4 py-2 text-right space-x-2">
+                  <button onClick={() => onEdit(m)} className="text-slate-600 hover:text-blue-700" title="Editar fecha/hora/cancha" data-testid={`edit-match-${m.id}`}>
+                    <CalendarClock size={16}/>
+                  </button>
+                  <button onClick={() => onScore(m)} className="text-blue-700" data-testid={`score-match-${m.id}`}><Edit3 size={16}/></button>
+                  <button onClick={() => onRemove(m.id)} className="text-red-600"><Trash2 size={16}/></button>
+                </td>
+              </tr>
+            ))}
+            {matches.length === 0 && <tr><td colSpan="7" className="text-center py-12 text-slate-400">Sin partidos</td></tr>}
+            {matches.length > 0 && pageItems.length === 0 && <tr><td colSpan="7" className="text-center py-12 text-slate-400">Sin resultados para la búsqueda.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+
+      <Pagination page={page} totalPages={totalPages} onPage={setPage} testIdPrefix="matches" />
+    </>
   );
 }

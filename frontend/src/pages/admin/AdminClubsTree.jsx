@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, useMemo } from "react";
 import api, { formatApiError } from "../../lib/api";
 import { ChevronDown, ChevronRight, Check, X, Trash2, Plus, Edit3, Users, Mail, Phone, Shield, RefreshCw } from "lucide-react";
 import { toast, Toaster } from "sonner";
+import { Pagination } from "../../components/PagedTable";
 
 const STATUS_BADGE = {
   aprobado: "bg-emerald-100 text-emerald-700",
@@ -88,6 +89,16 @@ export default function AdminClubsTree() {
     });
   }, [clubs, query, statusFilter]);
 
+  // Paginación: 10 clubes por página. Página se "clampa" automáticamente al cambiar filtros.
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 10;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageItems = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  const setQueryReset = (v) => { setQuery(v); setPage(1); };
+  const setStatusFilterReset = (v) => { setStatusFilter(v); setPage(1); };
+
   return (
     <div data-testid="admin-clubs-tree">
       <Toaster position="top-right" />
@@ -104,7 +115,7 @@ export default function AdminClubsTree() {
       <div className="flex items-center gap-2 flex-wrap mb-4">
         <input
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => setQueryReset(e.target.value)}
           placeholder="Buscar club por nombre, ciudad..."
           className="px-3 py-2 border border-slate-200 rounded-md text-sm flex-1 min-w-[240px]"
           data-testid="clubs-search"
@@ -112,7 +123,7 @@ export default function AdminClubsTree() {
         {["", "pendiente", "aprobado", "rechazado"].map((s) => (
           <button
             key={s || "all"}
-            onClick={() => setStatusFilter(s)}
+            onClick={() => setStatusFilterReset(s)}
             className={`px-3 py-1.5 text-xs font-bold uppercase tracking-wide rounded-md border-2 ${statusFilter === s ? "bg-fsc-azul text-white border-fsc-azul" : "bg-white border-slate-200"}`}
             data-testid={`clubs-filter-${s || "all"}`}
           >
@@ -125,7 +136,7 @@ export default function AdminClubsTree() {
       <div className="space-y-3">
         {loading && <div className="text-center py-12 text-slate-400">Cargando...</div>}
         {!loading && filtered.length === 0 && <div className="text-center py-12 text-slate-400">Sin clubes para los filtros aplicados.</div>}
-        {filtered.map((c) => (
+        {pageItems.map((c) => (
           <ClubNode
             key={c.id}
             club={c}
@@ -141,6 +152,8 @@ export default function AdminClubsTree() {
           />
         ))}
       </div>
+
+      <Pagination page={safePage} totalPages={totalPages} onPage={setPage} testIdPrefix="clubs" />
 
       {editingPlayer && (
         <PlayerEditModal

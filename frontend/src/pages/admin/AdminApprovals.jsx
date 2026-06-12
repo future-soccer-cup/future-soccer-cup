@@ -62,7 +62,7 @@ export default function AdminApprovals() {
   }, [tab, tmap]);
 
   const { query, setQuery, page, setPage, totalPages, pageItems, filtered, filteredCount, totalCount } =
-    usePagedSearch(items, matchFn, 15);
+    usePagedSearch(items, matchFn, 10);
 
   const exportColumns = tab === "clubs" ? [
     { key: "name", label: "Club" },
