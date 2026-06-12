@@ -439,6 +439,14 @@ export default function MyTeam() {
             </form>
           </Modal>
         )}
+
+        {editingClubTeam && (
+          <ClubTeamNameModal
+            team={editingClubTeam}
+            onClose={() => setEditingClubTeam(null)}
+            onSaved={async () => { setEditingClubTeam(null); await loadTeam(); }}
+          />
+        )}
       </div>
     );
   }
@@ -908,45 +916,11 @@ export default function MyTeam() {
           Los roles Directivo y Cuerpo Técnico NO tienen permitido visualizar ni descargar carnets. */}
 
       {editingClubTeam && (
-        <Modal title={`Editar nombre — ${editingClubTeam.category}`} onClose={() => setEditingClubTeam(null)}>
-          <form
-            onSubmit={async (e) => {
-              e.preventDefault();
-              const newName = (editingClubTeam.name || "").trim();
-              if (!newName) { toast.error("El nombre del equipo es obligatorio"); return; }
-              try {
-                // PUT /teams/{id} requiere el payload completo de TeamIn
-                const payload = {
-                  name: newName,
-                  category: editingClubTeam.category,
-                  city: editingClubTeam.city || "",
-                  coach: editingClubTeam.coach || "",
-                  color: editingClubTeam.color || "#1d4ed8",
-                  logo_url: editingClubTeam.logo_url || "",
-                };
-                await api.put(`/teams/${editingClubTeam.id}`, payload);
-                toast.success("Nombre del equipo actualizado");
-                setEditingClubTeam(null);
-                await loadTeam();
-              } catch (err) {
-                toast.error(formatApiError(err.response?.data?.detail) || "No se pudo actualizar");
-              }
-            }}
-            className="space-y-3"
-          >
-            <Field
-              label="Nombre del equipo"
-              required
-              value={editingClubTeam.name}
-              onChange={(v) => setEditingClubTeam({ ...editingClubTeam, name: v })}
-              testId="edit-club-team-name-input"
-            />
-            <div className="flex justify-end gap-2 pt-2">
-              <button type="button" onClick={() => setEditingClubTeam(null)} className="px-4 py-2 text-xs font-bold uppercase tracking-wide text-slate-600">Cancelar</button>
-              <button type="submit" className="fsc-btn-primary px-4 py-2 rounded-md text-xs" data-testid="save-club-team-name-btn">Guardar</button>
-            </div>
-          </form>
-        </Modal>
+        <ClubTeamNameModal
+          team={editingClubTeam}
+          onClose={() => setEditingClubTeam(null)}
+          onSaved={async () => { setEditingClubTeam(null); await loadTeam(); }}
+        />
       )}
 
       {editingTeam && (
@@ -1258,3 +1232,57 @@ function ClubLogoEditor({ club, user, compact = false, onUpdated }) {
     </>
   );
 }
+
+function ClubTeamNameModal({ team, onClose, onSaved }) {
+  const [name, setName] = useState(team?.name || "");
+  const [saving, setSaving] = useState(false);
+
+  const save = async (e) => {
+    e.preventDefault();
+    const trimmed = (name || "").trim();
+    if (!trimmed) { toast.error("El nombre del equipo es obligatorio"); return; }
+    setSaving(true);
+    try {
+      const payload = {
+        name: trimmed,
+        category: team.category,
+        city: team.city || "",
+        coach: team.coach || "",
+        color: team.color || "#1d4ed8",
+        logo_url: team.logo_url || "",
+      };
+      await api.put(`/teams/${team.id}`, payload);
+      toast.success("Nombre del equipo actualizado");
+      await onSaved?.();
+    } catch (err) {
+      toast.error(formatApiError(err.response?.data?.detail) || "No se pudo actualizar");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal title={`Editar nombre — ${team?.category || ""}`} onClose={() => !saving && onClose()}>
+      <form onSubmit={save} className="space-y-3">
+        <label className="block">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Nombre del equipo</span>
+          <input
+            required
+            autoFocus
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md"
+            data-testid="edit-club-team-name-input"
+          />
+        </label>
+        <div className="flex justify-end gap-2 pt-2">
+          <button type="button" onClick={onClose} disabled={saving} className="px-4 py-2 text-xs font-bold uppercase tracking-wide text-slate-600">Cancelar</button>
+          <button type="submit" disabled={saving} className="fsc-btn-primary px-4 py-2 rounded-md text-xs disabled:opacity-50" data-testid="save-club-team-name-btn">
+            {saving ? "Guardando..." : "Guardar"}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+

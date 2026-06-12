@@ -25,6 +25,7 @@ export default function AdminClubsTree() {
   const [statusFilter, setStatusFilter] = useState("");
   const [clubUsers, setClubUsers] = useState({}); // {club_id: [users]}
   const [editingPlayer, setEditingPlayer] = useState(null); // {team_id, player|null}
+  const [editingTeamName, setEditingTeamName] = useState(null); // {id, name, category, ...}
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -149,6 +150,7 @@ export default function AdminClubsTree() {
             onTeamStatus={setTeamStatus}
             onDeletePlayer={deletePlayer}
             onEditPlayer={(team, player) => setEditingPlayer({ team, player })}
+            onEditTeamName={(team) => setEditingTeamName(team)}
           />
         ))}
       </div>
@@ -163,11 +165,19 @@ export default function AdminClubsTree() {
           onSaved={() => { setEditingPlayer(null); load(); }}
         />
       )}
+
+      {editingTeamName && (
+        <TeamNameEditModal
+          team={editingTeamName}
+          onClose={() => setEditingTeamName(null)}
+          onSaved={() => { setEditingTeamName(null); load(); }}
+        />
+      )}
     </div>
   );
 }
 
-function ClubNode({ club, users, expanded, onToggle, onApprove, onReject, onPending, onTeamStatus, onDeletePlayer, onEditPlayer }) {
+function ClubNode({ club, users, expanded, onToggle, onApprove, onReject, onPending, onTeamStatus, onDeletePlayer, onEditPlayer, onEditTeamName }) {
   const teams = club.teams || [];
   // Group teams by (event_type, category)
   const byEvent = useMemo(() => {
@@ -261,7 +271,7 @@ function ClubNode({ club, users, expanded, onToggle, onApprove, onReject, onPend
                   <div className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">🏷 Categoría: {cat}</div>
                   <div className="ml-4 space-y-2">
                     {evTeams.map((t) => (
-                      <TeamNode key={t.id} team={t} onTeamStatus={onTeamStatus} onDeletePlayer={onDeletePlayer} onEditPlayer={onEditPlayer} />
+                      <TeamNode key={t.id} team={t} onTeamStatus={onTeamStatus} onDeletePlayer={onDeletePlayer} onEditPlayer={onEditPlayer} onEditTeamName={onEditTeamName} />
                     ))}
                   </div>
                 </div>
@@ -274,7 +284,7 @@ function ClubNode({ club, users, expanded, onToggle, onApprove, onReject, onPend
   );
 }
 
-function TeamNode({ team, onTeamStatus, onDeletePlayer, onEditPlayer }) {
+function TeamNode({ team, onTeamStatus, onDeletePlayer, onEditPlayer, onEditTeamName }) {
   const [open, setOpen] = useState(false);
   const status = team.status || "pendiente";
   const players = team.players || [];
@@ -286,6 +296,9 @@ function TeamNode({ team, onTeamStatus, onDeletePlayer, onEditPlayer }) {
           {open ? <ChevronDown size={14}/> : <ChevronRight size={14}/>}
         </button>
         <span className="font-semibold text-sm">{team.name}</span>
+        <button onClick={() => onEditTeamName(team)} className="text-slate-400 hover:text-fsc-azul p-1" title="Editar nombre del equipo" data-testid={`team-edit-name-${team.id}`}>
+          <Edit3 size={12}/>
+        </button>
         <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${STATUS_BADGE[status]}`}>{status}</span>
         <span className="text-xs text-slate-500">· {players.length} jugadores · {staff.length} staff</span>
         <div className="ml-auto flex items-center gap-1">
@@ -397,6 +410,60 @@ function PlayerEditModal({ team, player, onClose, onSaved }) {
         <div className="flex justify-end gap-2 pt-2">
           <button type="button" onClick={onClose} className="px-4 py-2 text-xs font-bold uppercase tracking-wide text-slate-600">Cancelar</button>
           <button type="submit" className="fsc-btn-primary px-4 py-2 rounded-md text-xs" data-testid="player-save">{player ? "Guardar" : "Agregar"}</button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+
+function TeamNameEditModal({ team, onClose, onSaved }) {
+  const [name, setName] = useState(team?.name || "");
+  const [saving, setSaving] = useState(false);
+
+  const save = async (e) => {
+    e.preventDefault();
+    const trimmed = (name || "").trim();
+    if (!trimmed) { toast.error("El nombre es obligatorio"); return; }
+    setSaving(true);
+    try {
+      await api.put(`/teams/${team.id}`, {
+        name: trimmed,
+        category: team.category,
+        city: team.city || "",
+        coach: team.coach || "",
+        color: team.color || "#1d4ed8",
+        logo_url: team.logo_url || "",
+      });
+      toast.success("Nombre del equipo actualizado");
+      onSaved?.();
+    } catch (err) {
+      toast.error(formatApiError(err.response?.data?.detail) || "No se pudo actualizar");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4" onClick={() => !saving && onClose()} data-testid="team-name-edit-modal">
+      <form onClick={(e) => e.stopPropagation()} onSubmit={save} className="bg-white rounded-2xl max-w-md w-full p-6 space-y-3">
+        <h3 className="font-display text-xl font-black uppercase tracking-tight">Editar nombre del equipo</h3>
+        <p className="text-xs text-slate-500">Categoría: <strong>{team?.category}</strong></p>
+        <label className="block">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Nombre del equipo</span>
+          <input
+            autoFocus required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md"
+            data-testid="admin-team-name-input"
+          />
+        </label>
+        <div className="flex justify-end gap-2 pt-2">
+          <button type="button" onClick={onClose} disabled={saving} className="px-4 py-2 text-xs font-bold uppercase tracking-wide text-slate-600">Cancelar</button>
+          <button type="submit" disabled={saving} className="fsc-btn-primary px-4 py-2 rounded-md text-xs disabled:opacity-50" data-testid="admin-save-team-name-btn">
+            {saving ? "Guardando..." : "Guardar"}
+          </button>
         </div>
       </form>
     </div>
