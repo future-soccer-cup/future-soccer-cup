@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import api, { formatApiError, imgSrc } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import { toast, Toaster } from "sonner";
-import { Plus, Pencil, Trash2, Users2, CreditCard, CheckCircle2, AlertCircle, FileUp, Download, Receipt as ReceiptIcon, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Pencil, Trash2, Users2, CreditCard, CheckCircle2, AlertCircle, FileUp, Download, Receipt as ReceiptIcon, ChevronDown, ChevronUp, Edit3 } from "lucide-react";
 import { Link } from "react-router-dom";
 import ImageUpload from "../components/ImageUpload";
 import CategorySelect from "../components/CategorySelect";
@@ -18,6 +18,7 @@ export default function MyTeam() {
   const [team, setTeam] = useState(null);
   const [players, setPlayers] = useState([]);
   const [editingTeam, setEditingTeam] = useState(false);
+  const [editingClubTeam, setEditingClubTeam] = useState(null); // {id, name, category, ...} para editar nombre desde la lista
   const [teamForm, setTeamForm] = useState(null);
   const [editingPlayer, setEditingPlayer] = useState(null);
   const [editingStaff, setEditingStaff] = useState(null); // {idx?, data}
@@ -255,8 +256,18 @@ export default function MyTeam() {
             <h2 className="font-display text-2xl font-black uppercase tracking-tight">Equipos del club</h2>
             <div className="mt-3 space-y-2">
               {clubTeams.map((t) => (
-                <div key={t.id} className="bg-white border border-slate-200 rounded-lg p-3 text-sm" data-testid={`club-team-${t.id}`}>
-                  <strong>{t.name}</strong> · {t.category} · status: <span className="uppercase font-bold text-fsc-azul">{t.status || "pendiente"}</span>
+                <div key={t.id} className="bg-white border border-slate-200 rounded-lg p-3 text-sm flex items-center justify-between gap-3" data-testid={`club-team-${t.id}`}>
+                  <div className="min-w-0 flex-1">
+                    <strong>{t.name}</strong> · {t.category} · status: <span className="uppercase font-bold text-fsc-azul">{t.status || "pendiente"}</span>
+                  </div>
+                  <button
+                    onClick={() => setEditingClubTeam(t)}
+                    className="text-xs px-3 py-1.5 border border-slate-300 rounded-md hover:bg-slate-50 flex items-center gap-1 shrink-0"
+                    data-testid={`edit-club-team-${t.id}`}
+                    title="Editar nombre del equipo"
+                  >
+                    <Edit3 size={12}/> Editar nombre
+                  </button>
                 </div>
               ))}
             </div>
@@ -732,8 +743,18 @@ export default function MyTeam() {
                 <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{ {festival:"Festival", premier_par:"Premier Par", premier_impar:"Premier Impar"}[t.event_type] || t.event_type }</span>
                 <StatusPill status={t.status} />
               </div>
-              <div className="mt-1 font-display text-lg font-black uppercase tracking-tight">Año {t.birth_year}</div>
-              <div className="text-xs text-slate-500">{t.designation}</div>
+              <div className="mt-1 flex items-center justify-between gap-2">
+                <div className="font-display text-lg font-black uppercase tracking-tight truncate">{t.name}</div>
+                <button
+                  onClick={() => setEditingClubTeam(t)}
+                  className="shrink-0 text-slate-500 hover:text-fsc-azul p-1"
+                  title="Editar nombre del equipo"
+                  data-testid={`edit-club-team-${t.id}`}
+                >
+                  <Edit3 size={14}/>
+                </button>
+              </div>
+              <div className="text-xs text-slate-500">Año {t.birth_year} · {t.designation}</div>
               <div className="mt-2 text-xs flex items-center justify-between">
                 <span className="text-slate-500">Inscripción</span>
                 <span className={`font-bold tabular-nums ${t.registration_payment_status === "paid" ? "text-green-600" : "text-amber-600"}`}>{t.registration_payment_status === "paid" ? "Pagada" : fmtCOP(t.registration_fee)}</span>
@@ -885,6 +906,48 @@ export default function MyTeam() {
 
       {/* Los carnets son gestionados únicamente por el administrador en /admin/carnets.
           Los roles Directivo y Cuerpo Técnico NO tienen permitido visualizar ni descargar carnets. */}
+
+      {editingClubTeam && (
+        <Modal title={`Editar nombre — ${editingClubTeam.category}`} onClose={() => setEditingClubTeam(null)}>
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const newName = (editingClubTeam.name || "").trim();
+              if (!newName) { toast.error("El nombre del equipo es obligatorio"); return; }
+              try {
+                // PUT /teams/{id} requiere el payload completo de TeamIn
+                const payload = {
+                  name: newName,
+                  category: editingClubTeam.category,
+                  city: editingClubTeam.city || "",
+                  coach: editingClubTeam.coach || "",
+                  color: editingClubTeam.color || "#1d4ed8",
+                  logo_url: editingClubTeam.logo_url || "",
+                };
+                await api.put(`/teams/${editingClubTeam.id}`, payload);
+                toast.success("Nombre del equipo actualizado");
+                setEditingClubTeam(null);
+                await loadTeam();
+              } catch (err) {
+                toast.error(formatApiError(err.response?.data?.detail) || "No se pudo actualizar");
+              }
+            }}
+            className="space-y-3"
+          >
+            <Field
+              label="Nombre del equipo"
+              required
+              value={editingClubTeam.name}
+              onChange={(v) => setEditingClubTeam({ ...editingClubTeam, name: v })}
+              testId="edit-club-team-name-input"
+            />
+            <div className="flex justify-end gap-2 pt-2">
+              <button type="button" onClick={() => setEditingClubTeam(null)} className="px-4 py-2 text-xs font-bold uppercase tracking-wide text-slate-600">Cancelar</button>
+              <button type="submit" className="fsc-btn-primary px-4 py-2 rounded-md text-xs" data-testid="save-club-team-name-btn">Guardar</button>
+            </div>
+          </form>
+        </Modal>
+      )}
 
       {editingTeam && (
         <Modal title="Editar equipo" onClose={() => setEditingTeam(false)}>
