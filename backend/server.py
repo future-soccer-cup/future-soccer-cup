@@ -1002,6 +1002,26 @@ async def update_team_name(team_id: str, payload: dict, user: dict = Depends(get
     t = await db.teams.find_one({"id": team_id}, {"_id": 0})
     return t
 
+@api.patch("/teams/{team_id}/staff")
+async def update_team_staff(team_id: str, payload: dict, user: dict = Depends(get_current_user)):
+    """Actualiza el array completo `cuerpo_tecnico` del equipo. Admin o usuarios del mismo club."""
+    target = await db.teams.find_one({"id": team_id}, {"_id": 0, "club_id": 1})
+    if not target:
+        raise HTTPException(status_code=404, detail="Equipo no encontrado")
+    if user.get("role") != "admin":
+        if user.get("role") != "team":
+            raise HTTPException(status_code=403, detail="No autorizado")
+        same_team = user.get("team_id") == team_id
+        same_club = user.get("club_id") and target.get("club_id") == user["club_id"]
+        if not (same_team or same_club):
+            raise HTTPException(status_code=403, detail="Solo puedes editar equipos de tu club")
+    staff = payload.get("cuerpo_tecnico")
+    if not isinstance(staff, list):
+        raise HTTPException(status_code=400, detail="cuerpo_tecnico debe ser una lista")
+    await db.teams.update_one({"id": team_id}, {"$set": {"cuerpo_tecnico": staff}})
+    t = await db.teams.find_one({"id": team_id}, {"_id": 0})
+    return t
+
 @api.delete("/teams/{team_id}")
 async def delete_team(team_id: str, _: dict = Depends(require_admin)):
     res = await db.teams.delete_one({"id": team_id})
@@ -1019,24 +1039,44 @@ async def list_players(team_id: Optional[str] = None, status: Optional[str] = No
     is_admin = False
     is_team = False
     user_team_id = None
+    user_club_id = None
+    user_id = None
     try:
         token = request.cookies.get("access_token") if request else None
         if token:
             payload = jwt.decode(token, get_jwt_secret(), algorithms=[JWT_ALGORITHM])
-            user_doc = await db.users.find_one({"id": payload["sub"]}, {"role": 1, "team_id": 1})
+            user_id = payload["sub"]
+            user_doc = await db.users.find_one({"id": user_id}, {"role": 1, "team_id": 1, "club_id": 1})
             if user_doc:
                 is_admin = user_doc.get("role") == "admin"
                 if user_doc.get("role") == "team":
                     is_team = True
                     user_team_id = user_doc.get("team_id")
+                    user_club_id = user_doc.get("club_id")
     except Exception:
         pass
     # Admin filter override
     if status and is_admin:
         q["status"] = status
-    # Team manager: see their own players regardless of status
-    elif is_team and team_id == user_team_id:
-        pass
+    # Team manager: ve jugadores PENDIENTES y APROBADOS de cualquier equipo de SU club.
+    # Si se filtra por team_id concreto, ese debe pertenecer a su club (o ser su propio team).
+    elif is_team:
+        if team_id and team_id == user_team_id:
+            pass  # acceso directo
+        elif team_id and user_club_id:
+            # Verificar que team_id pertenece al club del usuario.
+            t_doc = await db.teams.find_one({"id": team_id}, {"_id": 0, "club_id": 1})
+            if not t_doc or t_doc.get("club_id") != user_club_id:
+                q["$or"] = [{"status": "aprobado"}, {"status": {"$exists": False}}]
+        elif not team_id and user_club_id:
+            # Sin team_id explícito: limitar a equipos del club del usuario.
+            team_ids_club = [t["id"] async for t in db.teams.find({"club_id": user_club_id}, {"_id": 0, "id": 1})]
+            if team_ids_club:
+                q["team_id"] = {"$in": team_ids_club}
+            else:
+                q["$or"] = [{"status": "aprobado"}, {"status": {"$exists": False}}]
+        elif not team_id:
+            q["$or"] = [{"status": "aprobado"}, {"status": {"$exists": False}}]
     else:
         # Public: only approved
         q["$or"] = [{"status": "aprobado"}, {"status": {"$exists": False}}]

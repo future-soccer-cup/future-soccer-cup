@@ -3,6 +3,28 @@ import api, { formatApiError } from "../../lib/api";
 import { ChevronDown, ChevronRight, Check, X, Trash2, Plus, Edit3, Users, Mail, Phone, Shield, RefreshCw } from "lucide-react";
 import { toast, Toaster } from "sonner";
 import { Pagination } from "../../components/PagedTable";
+import ImageUpload from "../../components/ImageUpload";
+
+const POSITIONS = [
+  "Portero",
+  "Defensa central",
+  "Lateral derecho",
+  "Lateral izquierdo",
+  "Carrilero derecho",
+  "Carrilero izquierdo",
+  "Mediocampista defensivo",
+  "Mediocampista central",
+  "Mediocampista mixto",
+  "Mediocampista ofensivo",
+  "Volante por derecha",
+  "Volante por izquierda",
+  "Extremo derecho",
+  "Extremo izquierdo",
+  "Mediapunta / Enganche",
+  "Segundo delantero",
+  "Delantero centro",
+  "Delantero",
+];
 
 const STATUS_BADGE = {
   aprobado: "bg-emerald-100 text-emerald-700",
@@ -26,6 +48,7 @@ export default function AdminClubsTree() {
   const [clubUsers, setClubUsers] = useState({}); // {club_id: [users]}
   const [editingPlayer, setEditingPlayer] = useState(null); // {team_id, player|null}
   const [editingTeamName, setEditingTeamName] = useState(null); // {id, name, category, ...}
+  const [editingStaff, setEditingStaff] = useState(null); // {team, idx, data}
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -73,6 +96,18 @@ export default function AdminClubsTree() {
     try {
       await api.delete(`/players/${pid}`);
       toast.success("Jugador eliminado");
+      load();
+    } catch (err) {
+      toast.error(formatApiError(err.response?.data?.detail) || "Error");
+    }
+  };
+
+  const deleteStaff = async (team, idx) => {
+    if (!window.confirm("¿Eliminar miembro del cuerpo técnico?")) return;
+    try {
+      const list = (team.cuerpo_tecnico || []).filter((_, i) => i !== idx);
+      await api.patch(`/teams/${team.id}/staff`, { cuerpo_tecnico: list });
+      toast.success("Eliminado");
       load();
     } catch (err) {
       toast.error(formatApiError(err.response?.data?.detail) || "Error");
@@ -151,6 +186,8 @@ export default function AdminClubsTree() {
             onDeletePlayer={deletePlayer}
             onEditPlayer={(team, player) => setEditingPlayer({ team, player })}
             onEditTeamName={(team) => setEditingTeamName(team)}
+            onEditStaff={(team, idx) => setEditingStaff({ team, idx, data: idx != null ? (team.cuerpo_tecnico || [])[idx] : { name: "", role: "Director técnico", document: "", phone: "", photo_url: "" } })}
+            onDeleteStaff={deleteStaff}
           />
         ))}
       </div>
@@ -173,11 +210,21 @@ export default function AdminClubsTree() {
           onSaved={() => { setEditingTeamName(null); load(); }}
         />
       )}
+
+      {editingStaff && (
+        <StaffEditModal
+          team={editingStaff.team}
+          idx={editingStaff.idx}
+          initial={editingStaff.data}
+          onClose={() => setEditingStaff(null)}
+          onSaved={() => { setEditingStaff(null); load(); }}
+        />
+      )}
     </div>
   );
 }
 
-function ClubNode({ club, users, expanded, onToggle, onApprove, onReject, onPending, onTeamStatus, onDeletePlayer, onEditPlayer, onEditTeamName }) {
+function ClubNode({ club, users, expanded, onToggle, onApprove, onReject, onPending, onTeamStatus, onDeletePlayer, onEditPlayer, onEditTeamName, onEditStaff, onDeleteStaff }) {
   const teams = club.teams || [];
   // Group teams by (event_type, category)
   const byEvent = useMemo(() => {
@@ -271,7 +318,7 @@ function ClubNode({ club, users, expanded, onToggle, onApprove, onReject, onPend
                   <div className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">🏷 Categoría: {cat}</div>
                   <div className="ml-4 space-y-2">
                     {evTeams.map((t) => (
-                      <TeamNode key={t.id} team={t} onTeamStatus={onTeamStatus} onDeletePlayer={onDeletePlayer} onEditPlayer={onEditPlayer} onEditTeamName={onEditTeamName} />
+                      <TeamNode key={t.id} team={t} onTeamStatus={onTeamStatus} onDeletePlayer={onDeletePlayer} onEditPlayer={onEditPlayer} onEditTeamName={onEditTeamName} onEditStaff={onEditStaff} onDeleteStaff={onDeleteStaff} />
                     ))}
                   </div>
                 </div>
@@ -284,7 +331,7 @@ function ClubNode({ club, users, expanded, onToggle, onApprove, onReject, onPend
   );
 }
 
-function TeamNode({ team, onTeamStatus, onDeletePlayer, onEditPlayer, onEditTeamName }) {
+function TeamNode({ team, onTeamStatus, onDeletePlayer, onEditPlayer, onEditTeamName, onEditStaff, onDeleteStaff }) {
   const [open, setOpen] = useState(false);
   const status = team.status || "pendiente";
   const players = team.players || [];
@@ -305,6 +352,7 @@ function TeamNode({ team, onTeamStatus, onDeletePlayer, onEditPlayer, onEditTeam
           {status !== "aprobado" && <button onClick={() => onTeamStatus(team.id, "aprobado")} className="text-emerald-600 hover:bg-emerald-50 p-1 rounded text-xs" title="Aprobar inscripción" data-testid={`team-approve-${team.id}`}><Check size={14}/></button>}
           {status !== "rechazado" && <button onClick={() => onTeamStatus(team.id, "rechazado")} className="text-fsc-rojo hover:bg-red-50 p-1 rounded text-xs" title="Rechazar" data-testid={`team-reject-${team.id}`}><X size={14}/></button>}
           <button onClick={() => onEditPlayer(team, null)} className="text-fsc-azul hover:bg-blue-50 p-1 rounded text-xs flex items-center gap-1" title="Agregar jugador" data-testid={`team-add-player-${team.id}`}><Plus size={14}/> Jugador</button>
+          <button onClick={() => onEditStaff(team, null)} className="text-emerald-600 hover:bg-emerald-50 p-1 rounded text-xs flex items-center gap-1" title="Agregar cuerpo técnico" data-testid={`team-add-staff-${team.id}`}><Plus size={14}/> Staff</button>
         </div>
       </div>
 
@@ -320,8 +368,8 @@ function TeamNode({ team, onTeamStatus, onDeletePlayer, onEditPlayer, onEditTeam
                     ? <img src={imgSrc(p.photo_url)} alt="" className="h-8 w-8 rounded-full object-cover border" />
                     : <div className="h-8 w-8 rounded-full bg-fsc-gris flex items-center justify-center text-fsc-azul text-[10px] font-bold">{(p.name || "?").charAt(0)}</div>}
                   <div className="flex-1 min-w-0">
-                    <div className="font-semibold truncate">{p.name} <span className="text-slate-400 text-[10px]">· #{p.shirt_number || "—"}</span></div>
-                    <div className="text-slate-500 text-[10px]">{p.position || "—"} · doc {p.document || "—"}</div>
+                    <div className="font-semibold truncate">{p.name} <span className="text-slate-400 text-[10px]">· #{p.jersey_number || "—"}</span></div>
+                    <div className="text-slate-500 text-[10px]">{p.position || "—"} · doc {p.document_id || "—"}</div>
                   </div>
                   <button onClick={() => onEditPlayer(team, p)} className="text-fsc-azul p-1" title="Editar" data-testid={`player-edit-${p.id}`}><Edit3 size={12}/></button>
                   <button onClick={() => onDeletePlayer(p.id)} className="text-fsc-rojo p-1" title="Eliminar" data-testid={`player-delete-${p.id}`}><Trash2 size={12}/></button>
@@ -334,9 +382,16 @@ function TeamNode({ team, onTeamStatus, onDeletePlayer, onEditPlayer, onEditTeam
             {staff.length === 0 && <div className="text-xs text-slate-400 italic">Sin staff.</div>}
             <div className="space-y-1">
               {staff.map((s, i) => (
-                <div key={s.document || `${s.name}-${i}`} className="bg-slate-50 border border-slate-200 rounded p-2 text-xs">
-                  <div className="font-semibold">{s.name}</div>
-                  <div className="text-slate-500">{s.role || "—"} · doc {s.document || "—"} {s.phone && <span className="flex items-center gap-1 inline-flex"><Phone size={10}/> {s.phone}</span>}</div>
+                <div key={s.document || `${s.name}-${i}`} className="bg-slate-50 border border-slate-200 rounded p-2 text-xs flex items-center gap-2" data-testid={`staff-row-${team.id}-${i}`}>
+                  {s.photo_url
+                    ? <img src={imgSrc(s.photo_url)} alt="" className="h-8 w-8 rounded-full object-cover border" />
+                    : <div className="h-8 w-8 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-700 text-[10px] font-bold">{(s.name || "?").charAt(0)}</div>}
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold truncate">{s.name}</div>
+                    <div className="text-slate-500 text-[10px]">{s.role || "—"} · doc {s.document || "—"} {s.phone && <span className="ml-1 inline-flex items-center gap-0.5"><Phone size={10}/>{s.phone}</span>}</div>
+                  </div>
+                  <button onClick={() => onEditStaff(team, i)} className="text-fsc-azul p-1" title="Editar" data-testid={`staff-edit-${team.id}-${i}`}><Edit3 size={12}/></button>
+                  <button onClick={() => onDeleteStaff(team, i)} className="text-fsc-rojo p-1" title="Eliminar" data-testid={`staff-delete-${team.id}-${i}`}><Trash2 size={12}/></button>
                 </div>
               ))}
             </div>
@@ -347,69 +402,127 @@ function TeamNode({ team, onTeamStatus, onDeletePlayer, onEditPlayer, onEditTeam
   );
 }
 
-const POSITIONS = ["Arquero", "Defensa", "Mediocampista", "Delantero"];
+const POSITIONS_OLD = ["Arquero", "Defensa", "Mediocampista", "Delantero"];
 
 function PlayerEditModal({ team, player, onClose, onSaved }) {
   const [form, setForm] = useState(() => ({
     name: player?.name || "",
-    shirt_number: player?.shirt_number || "",
-    document: player?.document || "",
-    position: player?.position || "",
+    team_id: team.id,
+    jersey_number: player?.jersey_number || 1,
+    position: player?.position || "Mediocampista",
     birth_date: player?.birth_date || "",
     photo_url: player?.photo_url || "",
-    team_id: team.id,
-    category: team.category,
+    document_id: player?.document_id || "",
+    nickname: player?.nickname || "",
+    gender: player?.gender || "",
+    eps: player?.eps || "",
+    guardian_name: player?.guardian_name || "",
+    guardian_doc: player?.guardian_doc || "",
+    guardian_relation: player?.guardian_relation || "",
+    guardian_phone: player?.guardian_phone || "",
   }));
+  const [saving, setSaving] = useState(false);
+
   const submit = async (e) => {
     e.preventDefault();
+    setSaving(true);
     try {
+      const payload = { ...form, jersey_number: Number(form.jersey_number) };
       if (player?.id) {
-        await api.put(`/players/${player.id}`, form);
+        await api.put(`/players/${player.id}`, payload);
         toast.success("Jugador actualizado");
       } else {
-        await api.post("/players", form);
+        await api.post("/players", payload);
         toast.success("Jugador agregado");
       }
       onSaved();
     } catch (err) {
       toast.error(formatApiError(err.response?.data?.detail) || "Error");
+    } finally {
+      setSaving(false);
     }
   };
+
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4" onClick={onClose} data-testid="player-edit-modal">
-      <form onClick={(e) => e.stopPropagation()} onSubmit={submit} className="bg-white rounded-2xl max-w-md w-full p-6 space-y-3">
+    <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4 overflow-y-auto" onClick={() => !saving && onClose()} data-testid="player-edit-modal">
+      <form onClick={(e) => e.stopPropagation()} onSubmit={submit} className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-3 my-8">
         <h2 className="font-display text-2xl font-black uppercase tracking-tight">{player ? "Editar jugador" : "Agregar jugador"}</h2>
-        <p className="text-xs text-slate-500">Equipo: <strong>{team.name}</strong></p>
+        <p className="text-xs text-slate-500">Equipo: <strong>{team.name}</strong> · Categoría: <strong>{team.category}</strong></p>
+
         <label className="block">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Nombre</span>
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Nombre completo *</span>
           <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="player-name" />
         </label>
-        <div className="grid grid-cols-3 gap-2">
+
+        <div className="grid grid-cols-2 gap-3">
           <label className="block">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Dorsal</span>
-            <input type="number" min="0" value={form.shirt_number} onChange={(e) => setForm({ ...form, shirt_number: Number(e.target.value) })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md text-sm" />
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Apodo / Nick</span>
+            <input value={form.nickname} onChange={(e) => setForm({ ...form, nickname: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md text-sm" data-testid="player-nickname" />
           </label>
-          <label className="block col-span-2">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Documento</span>
-            <input value={form.document} onChange={(e) => setForm({ ...form, document: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md text-sm" />
+          <label className="block">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Género</span>
+            <select value={form.gender} onChange={(e) => setForm({ ...form, gender: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md text-sm" data-testid="player-gender">
+              <option value="">—</option><option value="M">Masculino</option><option value="F">Femenino</option>
+            </select>
           </label>
         </div>
-        <div className="grid grid-cols-2 gap-2">
+
+        <div className="grid grid-cols-2 gap-3">
           <label className="block">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Posición</span>
-            <select value={form.position} onChange={(e) => setForm({ ...form, position: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md text-sm">
-              <option value="">—</option>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Dorsal *</span>
+            <input required type="number" min="0" value={form.jersey_number} onChange={(e) => setForm({ ...form, jersey_number: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md text-sm" data-testid="player-jersey" />
+          </label>
+          <label className="block">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Posición *</span>
+            <select required value={form.position} onChange={(e) => setForm({ ...form, position: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md text-sm" data-testid="player-position">
               {POSITIONS.map((p) => <option key={p} value={p}>{p}</option>)}
             </select>
           </label>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
           <label className="block">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Fecha nac.</span>
-            <input type="date" value={form.birth_date} onChange={(e) => setForm({ ...form, birth_date: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md text-sm" />
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Fecha nacimiento *</span>
+            <input required type="date" value={form.birth_date} onChange={(e) => setForm({ ...form, birth_date: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md text-sm" data-testid="player-birth" />
+          </label>
+          <label className="block">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Documento</span>
+            <input value={form.document_id} onChange={(e) => setForm({ ...form, document_id: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md text-sm" data-testid="player-doc" />
           </label>
         </div>
+
+        <label className="block">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">EPS</span>
+          <input value={form.eps} onChange={(e) => setForm({ ...form, eps: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md text-sm" data-testid="player-eps" />
+        </label>
+
+        <ImageUpload value={form.photo_url} onChange={(v) => setForm({ ...form, photo_url: v })} label="Foto del jugador (para el carnet)" testId="player-photo" />
+
+        <div className="border-t border-slate-200 pt-3 mt-2">
+          <h4 className="font-display text-sm font-black uppercase tracking-tight mb-2">Acudiente / Contacto</h4>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Nombre</span>
+              <input value={form.guardian_name} onChange={(e) => setForm({ ...form, guardian_name: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md text-sm" data-testid="player-guardian-name" />
+            </label>
+            <label className="block">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Documento</span>
+              <input value={form.guardian_doc} onChange={(e) => setForm({ ...form, guardian_doc: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md text-sm" data-testid="player-guardian-doc" />
+            </label>
+            <label className="block">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Parentesco</span>
+              <input value={form.guardian_relation} onChange={(e) => setForm({ ...form, guardian_relation: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md text-sm" data-testid="player-guardian-relation" />
+            </label>
+            <label className="block">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Teléfono</span>
+              <input value={form.guardian_phone} onChange={(e) => setForm({ ...form, guardian_phone: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md text-sm" data-testid="player-guardian-phone" />
+            </label>
+          </div>
+        </div>
+
         <div className="flex justify-end gap-2 pt-2">
-          <button type="button" onClick={onClose} className="px-4 py-2 text-xs font-bold uppercase tracking-wide text-slate-600">Cancelar</button>
-          <button type="submit" className="fsc-btn-primary px-4 py-2 rounded-md text-xs" data-testid="player-save">{player ? "Guardar" : "Agregar"}</button>
+          <button type="button" onClick={onClose} disabled={saving} className="px-4 py-2 text-xs font-bold uppercase tracking-wide text-slate-600">Cancelar</button>
+          <button type="submit" disabled={saving} className="fsc-btn-primary px-4 py-2 rounded-md text-xs disabled:opacity-50" data-testid="player-save">{saving ? "Guardando..." : (player ? "Guardar" : "Agregar")}</button>
         </div>
       </form>
     </div>
@@ -462,3 +575,73 @@ function TeamNameEditModal({ team, onClose, onSaved }) {
     </div>
   );
 }
+
+function StaffEditModal({ team, idx, initial, onClose, onSaved }) {
+  const [form, setForm] = useState(() => ({
+    name: initial?.name || "",
+    role: initial?.role || "Director técnico",
+    document: initial?.document || "",
+    phone: initial?.phone || "",
+    photo_url: initial?.photo_url || "",
+  }));
+  const [saving, setSaving] = useState(false);
+
+  const save = async (e) => {
+    e.preventDefault();
+    if (!form.name.trim()) { toast.error("Nombre obligatorio"); return; }
+    setSaving(true);
+    try {
+      const list = Array.isArray(team.cuerpo_tecnico) ? [...team.cuerpo_tecnico] : [];
+      if (idx != null) list[idx] = form;
+      else list.push(form);
+      await api.patch(`/teams/${team.id}/staff`, { cuerpo_tecnico: list });
+      toast.success(idx != null ? "Staff actualizado" : "Staff agregado");
+      onSaved?.();
+    } catch (err) {
+      toast.error(formatApiError(err.response?.data?.detail) || "Error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4 overflow-y-auto" onClick={() => !saving && onClose()} data-testid="staff-edit-modal">
+      <form onClick={(e) => e.stopPropagation()} onSubmit={save} className="bg-white rounded-2xl max-w-md w-full p-6 space-y-3 my-8">
+        <h2 className="font-display text-2xl font-black uppercase tracking-tight">{idx != null ? "Editar staff" : "Agregar cuerpo técnico"}</h2>
+        <p className="text-xs text-slate-500">Equipo: <strong>{team.name}</strong></p>
+        <label className="block">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Nombre completo *</span>
+          <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="staff-name" />
+        </label>
+        <label className="block">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Rol</span>
+          <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="staff-role">
+            <option>Director técnico</option>
+            <option>Asistente técnico</option>
+            <option>Preparador físico</option>
+            <option>Preparador de arqueros</option>
+            <option>Médico / Fisioterapeuta</option>
+            <option>Utilero</option>
+            <option>Delegado</option>
+          </select>
+        </label>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="block">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Documento</span>
+            <input value={form.document} onChange={(e) => setForm({ ...form, document: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md text-sm" data-testid="staff-doc" />
+          </label>
+          <label className="block">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Teléfono</span>
+            <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md text-sm" data-testid="staff-phone" />
+          </label>
+        </div>
+        <ImageUpload value={form.photo_url} onChange={(v) => setForm({ ...form, photo_url: v })} label="Foto del staff (para el carnet)" testId="staff-photo" />
+        <div className="flex justify-end gap-2 pt-2">
+          <button type="button" onClick={onClose} disabled={saving} className="px-4 py-2 text-xs font-bold uppercase tracking-wide text-slate-600">Cancelar</button>
+          <button type="submit" disabled={saving} className="fsc-btn-primary px-4 py-2 rounded-md text-xs disabled:opacity-50" data-testid="staff-save">{saving ? "Guardando..." : (idx != null ? "Guardar" : "Agregar")}</button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
