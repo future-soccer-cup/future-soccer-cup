@@ -2359,6 +2359,19 @@ async def delete_club(cid: str, _: dict = Depends(require_admin)):
         raise HTTPException(status_code=404, detail="Club no encontrado")
     return {"ok": True}
 
+@api.patch("/clubs/{cid}/logo")
+async def update_club_logo(cid: str, payload: dict, user: dict = Depends(get_current_user)):
+    """Solo admin o el Director (manager_user_id del club) pueden actualizar el logo.
+    El Cuerpo Técnico NO tiene este permiso, aunque pertenezca al club."""
+    club = await db.clubs.find_one({"id": cid}, {"_id": 0})
+    if not club:
+        raise HTTPException(status_code=404, detail="Club no encontrado")
+    if user.get("role") != "admin" and club.get("manager_user_id") != user["id"]:
+        raise HTTPException(status_code=403, detail="Solo el Director del club puede actualizar el logo.")
+    logo_url = (payload.get("logo_url") or "").strip()
+    await db.clubs.update_one({"id": cid}, {"$set": {"logo_url": logo_url}})
+    return {"ok": True, "logo_url": logo_url}
+
 @api.put("/clubs/{cid}/status")
 async def set_club_status(cid: str, status: str, user: dict = Depends(require_admin)):
     if status not in {"pendiente", "aprobado", "rechazado"}:

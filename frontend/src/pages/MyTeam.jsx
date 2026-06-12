@@ -221,10 +221,7 @@ export default function MyTeam() {
         )}
         {/* Header con logo del club + nombre del usuario + rol */}
         <div className="flex items-center gap-4 mb-6" data-testid="my-team-header">
-          {club?.logo_url
-            ? <img src={imgSrc(club.logo_url)} alt={club.name} className="h-20 w-20 rounded-xl object-cover border-2 border-fsc-azul shadow" data-testid="my-team-club-logo" />
-            : <div className="h-20 w-20 rounded-xl bg-fsc-azul/10 border-2 border-fsc-azul flex items-center justify-center font-display text-3xl font-black text-fsc-azul" data-testid="my-team-club-logo-fallback">{(club?.name || user.name || "?").charAt(0).toUpperCase()}</div>
-          }
+          <ClubLogoEditor club={club} user={user} onUpdated={(url) => setClub((c) => c ? { ...c, logo_url: url } : c)} />
           <div className="min-w-0">
             <div className="text-xs font-bold uppercase tracking-[0.2em] text-fsc-azul">Mi Club</div>
             <h1 className="font-display text-3xl md:text-4xl font-black uppercase tracking-tighter truncate">{club?.name || "Mi Club"}</h1>
@@ -578,9 +575,7 @@ export default function MyTeam() {
         <div className="flex-1">
           {club && (
             <div className="flex items-center gap-2 mb-1.5" data-testid="my-team-club-strip">
-              {club.logo_url
-                ? <img src={imgSrc(club.logo_url)} alt={club.name} className="h-7 w-7 rounded object-cover border border-slate-200" data-testid="my-team-club-logo" />
-                : <div className="h-7 w-7 rounded bg-fsc-azul/10 border border-fsc-azul/30 flex items-center justify-center font-bold text-fsc-azul text-xs" data-testid="my-team-club-logo-fallback">{(club.name || "?").charAt(0).toUpperCase()}</div>}
+              <ClubLogoEditor club={club} user={user} compact onUpdated={(url) => setClub((c) => c ? { ...c, logo_url: url } : c)} />
               <span className="text-xs font-bold uppercase tracking-wider text-fsc-azul-oscuro">{club.name}</span>
               <span className="text-slate-300">·</span>
               <span className="text-xs font-semibold text-slate-700" data-testid="my-team-user-name">{user.name}</span>
@@ -1123,5 +1118,80 @@ function FirstTeamCreator({ clubId, tournaments, onCreated }) {
         <button onClick={() => setOpen(false)} className="px-4 py-2 text-sm text-slate-600">Cancelar</button>
       </div>
     </div>
+  );
+}
+
+
+/**
+ * Logo del club editable SOLO por Director (manager_user_id) o admin.
+ * Cuerpo Técnico ve el logo pero no puede cambiarlo.
+ * `compact` = render pequeño (28x28) para el header con team.
+ */
+function ClubLogoEditor({ club, user, compact = false, onUpdated }) {
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [draft, setDraft] = useState("");
+  const canEdit = !!club && (user?.role === "admin" || club?.manager_user_id === user?.id);
+  const sizeCls = compact
+    ? "h-7 w-7 rounded border border-slate-200 text-xs"
+    : "h-20 w-20 rounded-xl border-2 border-fsc-azul text-3xl shadow";
+  const baseFallback = `${sizeCls} bg-fsc-azul/10 flex items-center justify-center font-display font-black text-fsc-azul`;
+
+  const save = async () => {
+    if (!club?.id) return;
+    setSaving(true);
+    try {
+      await api.patch(`/clubs/${club.id}/logo`, { logo_url: draft });
+      toast.success("Logo actualizado");
+      onUpdated?.(draft);
+      setOpen(false);
+    } catch (err) {
+      toast.error(formatApiError(err.response?.data?.detail) || "Error al actualizar logo");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const trigger = (
+    <button
+      type="button"
+      onClick={() => { setDraft(club?.logo_url || ""); setOpen(true); }}
+      disabled={!canEdit}
+      title={canEdit ? "Cambiar logo del club" : "Solo el Director del club puede cambiar el logo"}
+      className={`relative group ${canEdit ? "cursor-pointer" : "cursor-default"}`}
+      data-testid="club-logo-trigger"
+    >
+      {club?.logo_url
+        ? <img src={imgSrc(club.logo_url)} alt={club?.name || ""} className={`${sizeCls} object-cover`} data-testid="my-team-club-logo" />
+        : <div className={baseFallback} data-testid="my-team-club-logo-fallback">{(club?.name || user?.name || "?").charAt(0).toUpperCase()}</div>
+      }
+      {canEdit && (
+        <span className="absolute inset-0 rounded-xl bg-black/0 group-hover:bg-black/40 text-white text-[10px] font-bold uppercase tracking-wider flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
+          Editar
+        </span>
+      )}
+    </button>
+  );
+
+  return (
+    <>
+      {trigger}
+      {open && (
+        <Modal title="Logo del club" onClose={() => !saving && setOpen(false)}>
+          <div className="space-y-4">
+            <p className="text-xs text-slate-500">
+              Sube el logo o escudo oficial de <strong>{club?.name}</strong>. Se mostrará en el panel del club y en los listados del admin.
+            </p>
+            <ImageUpload value={draft} onChange={setDraft} label="Logo del club" testId="club-logo-upload" />
+            <div className="flex justify-end gap-2 pt-2">
+              <button type="button" onClick={() => setOpen(false)} disabled={saving} className="px-4 py-2 text-xs font-bold uppercase tracking-wide text-slate-600">Cancelar</button>
+              <button type="button" onClick={save} disabled={saving} className="fsc-btn-primary px-4 py-2 rounded-md text-xs disabled:opacity-50" data-testid="club-logo-save">
+                {saving ? "Guardando..." : "Guardar logo"}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </>
   );
 }
