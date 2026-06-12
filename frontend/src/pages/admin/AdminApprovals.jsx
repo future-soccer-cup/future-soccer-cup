@@ -160,8 +160,8 @@ export default function AdminApprovals() {
         {tab === "teams" && pageItems.map((t) => (
           <div key={t.id} className="bg-white border border-slate-200 rounded-lg p-4 grid md:grid-cols-12 gap-3 items-center" data-testid={`approval-team-${t.id}`}>
             <div className="md:col-span-1">
-              <div className="h-12 w-12 rounded flex items-center justify-center text-sm font-display font-black text-white" style={{ background: t.color || "#1d4ed8" }}>
-                {t.logo_url ? <img src={t.logo_url} alt="" className="h-full w-full object-contain p-0.5" /> : t.name[0]}
+              <div className="h-12 w-12 rounded-lg overflow-hidden flex items-center justify-center text-sm font-display font-black text-white" style={{ background: t.color || "#1d4ed8" }}>
+                {t.logo_url ? <img src={imgSrc(t.logo_url)} alt="" className="h-full w-full object-cover" /> : t.name[0]}
               </div>
             </div>
             <div className="md:col-span-4">
@@ -249,8 +249,8 @@ function ApprovalClubCard({ club: c, onApprove, onReject }) {
       <div className="p-4 grid md:grid-cols-12 gap-3 items-center">
         <button onClick={toggle} className="md:col-span-1 flex items-center gap-1 text-slate-500" data-testid={`approval-club-toggle-${c.id}`}>
           {open ? <ChevronDown size={14}/> : <ChevronRight size={14}/>}
-          <div className="h-10 w-10 rounded flex items-center justify-center text-sm font-display font-black text-white" style={{ background: c.color || "#0640c8" }}>
-            {c.logo_url ? <img src={imgSrc(c.logo_url)} alt="" className="h-full w-full object-contain p-0.5" /> : c.name[0]}
+          <div className="h-10 w-10 rounded-lg overflow-hidden flex items-center justify-center text-sm font-display font-black text-white" style={{ background: c.color || "#0640c8" }}>
+            {c.logo_url ? <img src={imgSrc(c.logo_url)} alt="" className="h-full w-full object-cover" /> : c.name[0]}
           </div>
         </button>
         <div className="md:col-span-4">
