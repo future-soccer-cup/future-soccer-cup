@@ -156,7 +156,7 @@ export function Carnet({ player, team, qrValue, staffRole }) {
           <div className="text-[10px] uppercase tracking-widest text-white/60">Equipo</div>
           <div className="font-display text-lg font-black uppercase truncate">{team?.name || "—"}</div>
           <div className="text-[10px] text-white/70 mt-1">DOC: {player.document_id || player.document || "—"}</div>
-          {player.comet_number && <div className="text-[10px] text-white/70">COMET: <span className="font-mono">{player.comet_number}</span></div>}
+          <div className="text-[10px] text-white/70" data-testid="carnet-comet">COMET: <span className="font-mono">{player.comet_number || "—"}</span></div>
           {!isStaff && <div className="text-[10px] text-white/70">NAC: {player.birth_date || "—"}</div>}
         </div>
         <div className="bg-white p-1.5 rounded">
