@@ -260,14 +260,31 @@ export default function MyTeam() {
                   <div className="min-w-0 flex-1">
                     <strong>{t.name}</strong> · {t.category} · status: <span className="uppercase font-bold text-fsc-azul">{t.status || "pendiente"}</span>
                   </div>
-                  <button
-                    onClick={() => setEditingClubTeam(t)}
-                    className="text-xs px-3 py-1.5 border border-slate-300 rounded-md hover:bg-slate-50 flex items-center gap-1 shrink-0"
-                    data-testid={`edit-club-team-${t.id}`}
-                    title="Editar nombre del equipo"
-                  >
-                    <Edit3 size={12}/> Editar nombre
-                  </button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={async () => {
+                        try {
+                          const res = await api.get(`/teams/${t.id}/roster.pdf`, { responseType: "blob" });
+                          const url = URL.createObjectURL(res.data);
+                          const a = document.createElement("a"); a.href = url; a.download = `roster_${t.name}.pdf`; a.click();
+                          URL.revokeObjectURL(url);
+                        } catch { toast.error("No se pudo generar el PDF"); }
+                      }}
+                      className="text-xs px-3 py-1.5 bg-fsc-rojo hover:bg-rose-700 text-white rounded-md flex items-center gap-1"
+                      data-testid={`club-team-roster-pdf-${t.id}`}
+                      title="Descargar roster (cuerpo técnico + jugadores) en PDF"
+                    >
+                      <Download size={12}/> PDF Roster
+                    </button>
+                    <button
+                      onClick={() => setEditingClubTeam(t)}
+                      className="text-xs px-3 py-1.5 border border-slate-300 rounded-md hover:bg-slate-50 flex items-center gap-1"
+                      data-testid={`edit-club-team-${t.id}`}
+                      title="Editar nombre del equipo"
+                    >
+                      <Edit3 size={12}/> Editar nombre
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -786,6 +803,21 @@ export default function MyTeam() {
                 <span className="text-slate-500">Inscripción</span>
                 <span className={`font-bold tabular-nums ${t.registration_payment_status === "paid" ? "text-green-600" : "text-amber-600"}`}>{t.registration_payment_status === "paid" ? "Pagada" : fmtCOP(t.registration_fee)}</span>
               </div>
+              <button
+                onClick={async () => {
+                  try {
+                    const res = await api.get(`/teams/${t.id}/roster.pdf`, { responseType: "blob" });
+                    const url = URL.createObjectURL(res.data);
+                    const a = document.createElement("a"); a.href = url; a.download = `roster_${t.name}.pdf`; a.click();
+                    URL.revokeObjectURL(url);
+                  } catch { toast.error("No se pudo generar el PDF"); }
+                }}
+                className="mt-2 w-full text-xs px-3 py-1.5 bg-fsc-rojo hover:bg-rose-700 text-white rounded-md flex items-center justify-center gap-1"
+                data-testid={`club-team-roster-pdf-${t.id}`}
+                title="Descargar roster (cuerpo técnico + jugadores) en PDF"
+              >
+                <Download size={12}/> PDF Roster
+              </button>
             </div>
           ))}
         </div>

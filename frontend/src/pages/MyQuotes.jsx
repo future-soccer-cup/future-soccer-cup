@@ -160,6 +160,19 @@ export default function MyQuotes() {
 
               {isOpen && (
                 <div className="border-t border-slate-200 bg-slate-50 p-5 space-y-4" data-testid={`payments-panel-${q.id}`}>
+                  {/* Otros Cobros agregados por el Administrador */}
+                  {Number(q.other_charges_amount || 0) > 0 && (
+                    <div className="bg-amber-50 border-2 border-amber-300 rounded-lg p-4 flex items-start justify-between gap-3" data-testid={`other-charges-${q.id}`}>
+                      <div className="min-w-0">
+                        <div className="text-[10px] uppercase tracking-widest text-amber-700 font-bold">Otros cobros (agregados por el Administrador)</div>
+                        <div className="text-sm text-amber-900 mt-1"><strong>Concepto:</strong> {q.other_charges_concept || "—"}</div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <div className="text-[10px] uppercase tracking-widest text-amber-700 font-bold">Valor</div>
+                        <div className="font-display text-2xl font-black text-amber-900 tabular-nums" data-testid={`other-charges-amount-${q.id}`}>{fmtCur(q.other_charges_amount, q.currency)}</div>
+                      </div>
+                    </div>
+                  )}
                   <div className="grid sm:grid-cols-3 gap-3 text-center">
                     <div className="bg-white border border-slate-200 rounded-lg p-3">
                       <div className="text-[10px] uppercase tracking-widest text-slate-500">Total</div>

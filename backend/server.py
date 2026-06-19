@@ -1076,15 +1076,25 @@ async def team_roster_pdf(team_id: str, user: dict = Depends(get_current_user)):
     doc.addPageTemplates([PageTemplate(id="default", frames=[frame], onPage=_hf)])
 
     story = []
+    # Estilos dedicados para el banner del equipo (evita superposición de fuentes mixtas)
+    BANNER_LABEL = ParagraphStyle("RBANNER_LABEL", parent=N, fontSize=9, textColor=colors.HexColor("#9bb6ff"), leading=11)
+    BANNER_BIG = ParagraphStyle("RBANNER_BIG", parent=N, fontSize=18, textColor=colors.white, fontName="Helvetica-Bold", leading=22)
+    BANNER_MED = ParagraphStyle("RBANNER_MED", parent=N, fontSize=14, textColor=colors.white, fontName="Helvetica-Bold", leading=17)
+
     # Banner del equipo
-    banner = Table([[
-        Paragraph(f"<font color='#9bb6ff' size='9'><b>EQUIPO</b></font><br/>"
-                  f"<font color='white' size='18'><b>{team.get('name','—')}</b></font><br/>"
-                  f"<font color='#9bb6ff' size='9'>Categoría: {team.get('category','—')}  ·  Año: {team.get('birth_year') or '—'}</font>", N),
-        Paragraph(f"<font color='#9bb6ff' size='9'>Club</font><br/>"
-                  f"<font color='white' size='14'><b>{(club_doc or {}).get('name') or team.get('club_name') or '—'}</b></font><br/>"
-                  f"<font color='#9bb6ff' size='9'>{team.get('city') or ''}</font>", N),
-    ]], colWidths=[4.0 * inch, 3.5 * inch])
+    left_cell = [
+        Paragraph("<b>EQUIPO</b>", BANNER_LABEL),
+        Paragraph(f"{team.get('name','—')}", BANNER_BIG),
+        Spacer(1, 2),
+        Paragraph(f"Categoría: {team.get('category','—')}  ·  Año: {team.get('birth_year') or '—'}", BANNER_LABEL),
+    ]
+    right_cell = [
+        Paragraph("Club", BANNER_LABEL),
+        Paragraph(f"{(club_doc or {}).get('name') or team.get('club_name') or '—'}", BANNER_MED),
+        Spacer(1, 2),
+        Paragraph(f"{team.get('city') or ''}", BANNER_LABEL),
+    ]
+    banner = Table([[left_cell, right_cell]], colWidths=[4.0 * inch, 3.5 * inch])
     banner.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, -1), BRAND_DARK),
         ("LEFTPADDING", (0, 0), (-1, -1), 12), ("RIGHTPADDING", (0, 0), (-1, -1), 12),
@@ -1124,31 +1134,35 @@ async def team_roster_pdf(team_id: str, user: dict = Depends(get_current_user)):
     # === Jugadores ===
     story.append(Paragraph(f"JUGADORES ({len(players)})", H2))
     if players:
+        CELL = ParagraphStyle("CELL", parent=N, fontSize=7.5, leading=9)
+        CELL_C = ParagraphStyle("CELL_C", parent=CELL, alignment=TA_LEFT)
         data = [["#", "Nombre", "Apodo", "Pos.", "Doc.", "N° COMET", "F. nac.", "EPS"]]
         for p in players:
             data.append([
                 str(p.get("jersey_number") or ""),
-                p.get("name") or "—",
-                p.get("nickname") or "—",
-                p.get("position") or "—",
-                p.get("document_id") or "—",
-                p.get("comet_number") or "—",
-                p.get("birth_date") or "—",
-                p.get("eps") or "—",
+                Paragraph(p.get("name") or "—", CELL_C),
+                Paragraph(p.get("nickname") or "—", CELL_C),
+                Paragraph(p.get("position") or "—", CELL_C),
+                Paragraph(p.get("document_id") or "—", CELL_C),
+                Paragraph(p.get("comet_number") or "—", CELL_C),
+                Paragraph(p.get("birth_date") or "—", CELL_C),
+                Paragraph(p.get("eps") or "—", CELL_C),
             ])
-        col_widths = [0.4 * inch, 1.8 * inch, 1.0 * inch, 0.9 * inch, 1.0 * inch, 0.9 * inch, 0.8 * inch, 0.7 * inch]
+        col_widths = [0.35 * inch, 1.55 * inch, 0.85 * inch, 1.05 * inch, 0.95 * inch, 0.85 * inch, 0.85 * inch, 1.05 * inch]
         t = Table(data, colWidths=col_widths, repeatRows=1)
         t.setStyle(TableStyle([
             ("BACKGROUND", (0, 0), (-1, 0), BRAND_BLUE),
             ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
             ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, -1), 7.5),
+            ("FONTSIZE", (0, 0), (-1, 0), 8),
             ("ALIGN", (0, 0), (0, -1), "CENTER"),
             ("FONTNAME", (0, 1), (0, -1), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 1), (0, -1), 8),
             ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT]),
             ("BOX", (0, 0), (-1, -1), 0.5, BORDER),
             ("LINEBELOW", (0, 0), (-1, 0), 0.5, colors.white),
-            ("LEFTPADDING", (0, 0), (-1, -1), 5), ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("LEFTPADDING", (0, 0), (-1, -1), 4), ("RIGHTPADDING", (0, 0), (-1, -1), 4),
             ("TOPPADDING", (0, 0), (-1, -1), 3), ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
         ]))
         story.append(t)
@@ -3495,21 +3509,30 @@ async def quote_pdf(qid: str, user: dict = Depends(get_current_user)):
     story = []
 
     # === BANNER COTIZACIÓN + TOTAL DESTACADO ===
-    banner_inner = Table([
-        [
-            Paragraph(f"<font color='white' size='9'><b>COTIZACIÓN</b></font><br/>"
-                      f"<font color='#9bb6ff' size='8'>ID: {q.get('id','')[:8].upper()}</font><br/>"
-                      f"<font color='#9bb6ff' size='8'>Fecha: {(q.get('created_at') or '')[:10]}</font><br/>"
-                      f"<font color='white' size='9'><b>Estado:</b> {q.get('status','pendiente').upper()}</font>", N),
-            Paragraph(f"<font color='#9bb6ff' size='8'>TOTAL {cur}</font><br/>"
-                      f"<font color='white' size='22'><b>{_fmt_money_pdf(q.get('total_amount',0), cur)}</b></font>", N),
-        ]
-    ], colWidths=[3.4 * inch, 4.1 * inch])
+    # Estilos dedicados con leading apropiado para cada tamaño de fuente.
+    BANNER_LABEL = ParagraphStyle("BANNER_LABEL", parent=N, fontSize=8, textColor=colors.HexColor("#9bb6ff"), leading=10)
+    BANNER_LABEL_R = ParagraphStyle("BANNER_LABEL_R", parent=BANNER_LABEL, alignment=TA_RIGHT)
+    BANNER_TEXT = ParagraphStyle("BANNER_TEXT", parent=N, fontSize=9, textColor=colors.white, leading=11)
+    BANNER_BIG_R = ParagraphStyle("BANNER_BIG_R", parent=N, fontSize=22, textColor=colors.white, fontName="Helvetica-Bold", alignment=TA_RIGHT, leading=26)
+
+    left_cell = [
+        Paragraph("<b>COTIZACIÓN</b>", BANNER_TEXT),
+        Paragraph(f"ID: {q.get('id','')[:8].upper()}", BANNER_LABEL),
+        Paragraph(f"Fecha: {(q.get('created_at') or '')[:10]}", BANNER_LABEL),
+        Paragraph(f"<b>Estado:</b> {q.get('status','pendiente').upper()}", BANNER_TEXT),
+    ]
+    right_cell = [
+        Paragraph(f"TOTAL {cur}", BANNER_LABEL_R),
+        Spacer(1, 2),
+        Paragraph(f"{_fmt_money_pdf(q.get('total_amount',0), cur)}", BANNER_BIG_R),
+    ]
+    banner_inner = Table([[left_cell, right_cell]], colWidths=[3.4 * inch, 4.1 * inch])
     banner_inner.setStyle(TableStyle([
         ("BACKGROUND", (0, 0), (-1, -1), BRAND_DARK),
         ("LEFTPADDING", (0, 0), (-1, -1), 12), ("RIGHTPADDING", (0, 0), (-1, -1), 12),
         ("TOPPADDING", (0, 0), (-1, -1), 10), ("BOTTOMPADDING", (0, 0), (-1, -1), 12),
-        ("ALIGN", (1, 0), (1, 0), "RIGHT"), ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("VALIGN", (0, 0), (0, -1), "TOP"),
+        ("VALIGN", (1, 0), (1, -1), "MIDDLE"),
     ]))
     story.append(banner_inner)
     story.append(Spacer(1, 12))
