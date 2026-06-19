@@ -207,7 +207,24 @@ def get_object(path: str):
     resp.raise_for_status()
     return resp.content, resp.headers.get("Content-Type", "application/octet-stream")
 
-MIME = {"jpg": "image/jpeg", "jpeg": "image/jpeg", "png": "image/png", "gif": "image/gif", "webp": "image/webp", "pdf": "application/pdf"}
+MIME = {
+    # Bitmap / common
+    "jpg": "image/jpeg", "jpeg": "image/jpeg",
+    "png": "image/png",
+    "gif": "image/gif",
+    "webp": "image/webp",
+    "bmp": "image/bmp",
+    "tif": "image/tiff", "tiff": "image/tiff",
+    "heic": "image/heic", "heif": "image/heif",
+    "svg": "image/svg+xml",
+    # RAW formats (most camera makers)
+    "raw": "image/x-panasonic-rw2", "cr2": "image/x-canon-cr2", "cr3": "image/x-canon-cr3",
+    "nef": "image/x-nikon-nef", "arw": "image/x-sony-arw", "dng": "image/x-adobe-dng",
+    "orf": "image/x-olympus-orf", "rw2": "image/x-panasonic-rw2", "raf": "image/x-fuji-raf",
+    "pef": "image/x-pentax-pef", "srw": "image/x-samsung-srw",
+    # Document
+    "pdf": "application/pdf",
+}
 
 # -------------------- Setup --------------------
 mongo_url = os.environ['MONGO_URL']
@@ -676,6 +693,9 @@ class QuoteIn(BaseModel):
     includes_tour: bool = False
     notes: Optional[str] = ""
     contact_phone: Optional[str] = ""
+    # === Otros cobros (manual, admin/director) ===
+    other_charges_amount: Optional[float] = 0.0
+    other_charges_concept: Optional[str] = ""
 
 class PostIn(BaseModel):
     title: str
@@ -2925,7 +2945,8 @@ def _calculate_quote(payload: QuoteIn, catalog: dict) -> dict:
             else:
                 registration = float(event.get("registration_fee_per_team", 0) or 0)
 
-    total = lodging_total + meals_total + transport_total + tours_total + registration
+    other_charges = float(payload.other_charges_amount or 0)
+    total = lodging_total + meals_total + transport_total + tours_total + registration + other_charges
 
     # Display labels
     if payload.events:
@@ -2972,6 +2993,8 @@ def _calculate_quote(payload: QuoteIn, catalog: dict) -> dict:
         "registration_fee": registration,
         "registration_breakdown": registration_breakdown,
         "events_breakdown": events_breakdown,
+        "other_charges_amount": other_charges,
+        "other_charges_concept": (payload.other_charges_concept or ""),
         "total_amount": total,
         "currency": currency,
         "event_name": display_event_name,
@@ -3030,7 +3053,9 @@ async def update_quote(qid: str, payload: QuoteIn, user: dict = Depends(get_curr
     updates = {
         **payload.model_dump(),
         **breakdown,
-        "status": "pendiente",  # cualquier edición vuelve a pendiente para re-aprobación admin
+        # Si edita el admin: preservar estado actual (puede ser aprobada).
+        # Si edita el dueño: vuelve a pendiente para re-aprobación.
+        "status": existing.get("status") if is_admin else "pendiente",
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
     actor = await _record_audit("quote", qid, "owner_edit", existing.get("status"), "pendiente", user)
@@ -3123,6 +3148,173 @@ async def get_quote_detail(qid: str, _: dict = Depends(get_current_user)):
         pass
 
     return q
+
+def _fmt_money_pdf(amount, currency):
+    try:
+        n = float(amount or 0)
+    except Exception:
+        n = 0.0
+    if currency == "USD":
+        return f"US$ {n:,.2f} USD"
+    # COP: separador con punto
+    return f"$ {int(round(n)):,} COP".replace(",", ".")
+
+@api.get("/quotes/{qid}/pdf")
+async def quote_pdf(qid: str, user: dict = Depends(get_current_user)):
+    """Genera un PDF de la cotización. Accesible al admin y al dueño de la cotización (DT)."""
+    # Reutilizamos la lógica enriquecida del detail.
+    q = await get_quote_detail(qid, user)  # type: ignore
+    # Permisos: admin OR dueño OR mismo club_id.
+    is_admin = user.get("role") == "admin"
+    is_owner = q.get("user_id") == user.get("id")
+    if not (is_admin or is_owner):
+        # Permitir a usuarios del mismo club ver el PDF.
+        u_club = user.get("club_id")
+        if not u_club:
+            raise HTTPException(status_code=403, detail="No autorizado")
+        # Resolver club del owner.
+        owner_doc = await db.users.find_one({"id": q.get("user_id")}, {"_id": 0, "club_id": 1}) if q.get("user_id") else None
+        if not owner_doc or owner_doc.get("club_id") != u_club:
+            raise HTTPException(status_code=403, detail="No autorizado")
+
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib import colors
+    from reportlab.lib.units import inch
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    from io import BytesIO
+
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=letter, leftMargin=0.6*inch, rightMargin=0.6*inch, topMargin=0.6*inch, bottomMargin=0.6*inch)
+
+    styles = getSampleStyleSheet()
+    h1 = ParagraphStyle("h1", parent=styles["Heading1"], fontSize=18, textColor=colors.HexColor("#0640c8"), spaceAfter=8)
+    h2 = ParagraphStyle("h2", parent=styles["Heading2"], fontSize=12, textColor=colors.HexColor("#0640c8"), spaceBefore=10, spaceAfter=4)
+    n = ParagraphStyle("n", parent=styles["Normal"], fontSize=9)
+    small = ParagraphStyle("small", parent=styles["Normal"], fontSize=8, textColor=colors.grey)
+
+    cur = q.get("currency") or "COP"
+    story = []
+    story.append(Paragraph("FUTURE SOCCER CUP — Cotización", h1))
+    story.append(Paragraph(f"<b>ID:</b> {q.get('id','')[:8]}  ·  <b>Estado:</b> {q.get('status','pendiente').upper()}  ·  <b>Moneda:</b> {cur}", small))
+    story.append(Paragraph(f"<b>Fecha:</b> {(q.get('created_at') or '')[:10]}", small))
+    story.append(Spacer(1, 8))
+
+    # Cliente
+    story.append(Paragraph("Cliente", h2))
+    cliente_rows = [
+        ["Club", q.get("club_name") or "—"],
+        ["Teléfono", q.get("contact_phone") or "—"],
+    ]
+    tbl = Table(cliente_rows, colWidths=[1.6*inch, 5.0*inch])
+    tbl.setStyle(TableStyle([
+        ("BACKGROUND", (0,0), (0,-1), colors.HexColor("#eef2ff")),
+        ("FONTNAME", (0,0), (0,-1), "Helvetica-Bold"),
+        ("BOX", (0,0), (-1,-1), 0.4, colors.HexColor("#cbd5e1")),
+        ("GRID", (0,0), (-1,-1), 0.2, colors.HexColor("#e2e8f0")),
+        ("FONTSIZE", (0,0), (-1,-1), 9),
+        ("PADDING", (0,0), (-1,-1), 4),
+    ]))
+    story.append(tbl)
+
+    # Hospedaje
+    lodgings = q.get("lodgings_breakdown") or []
+    if lodgings:
+        story.append(Paragraph("Paquetes de hospedaje", h2))
+        for i, b in enumerate(lodgings, 1):
+            head = f"<b>Paquete {i}:</b> {b.get('tier_name','')} · {b.get('pax',0)} pax"
+            story.append(Paragraph(head, n))
+            if b.get("tier_description"):
+                story.append(Paragraph(f"<i>{b['tier_description']}</i>", small))
+            if b.get("tier_accommodation"):
+                story.append(Paragraph(f"<b>Acomodación:</b> {b['tier_accommodation']}", small))
+            data = [
+                ["Valor Paquete", _fmt_money_pdf(b.get("rate_per_person_5nights",0), cur)],
+                ["Noche adicional", _fmt_money_pdf(b.get("rate_per_person_additional_night",0), cur)],
+                ["Subtotal", _fmt_money_pdf(b.get("subtotal",0), cur)],
+            ]
+            t = Table(data, colWidths=[2.5*inch, 4.1*inch])
+            t.setStyle(TableStyle([("FONTSIZE",(0,0),(-1,-1),9),("GRID",(0,0),(-1,-1),0.2,colors.HexColor("#e2e8f0")),("PADDING",(0,0),(-1,-1),3)]))
+            story.append(t)
+            story.append(Spacer(1, 4))
+
+    # Alimentación
+    meals = q.get("meals_breakdown") or []
+    if meals:
+        story.append(Paragraph("Alimentación", h2))
+        data = [["Concepto", "Pax", "Subtotal"]]
+        for m in meals:
+            data.append([m.get("name") or m.get("meal_type",""), str(m.get("pax",0)), _fmt_money_pdf(m.get("subtotal",0), cur)])
+        t = Table(data, colWidths=[4.0*inch, 1.0*inch, 1.6*inch])
+        t.setStyle(TableStyle([("FONTSIZE",(0,0),(-1,-1),9),("BACKGROUND",(0,0),(-1,0),colors.HexColor("#eef2ff")),("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),("GRID",(0,0),(-1,-1),0.2,colors.HexColor("#e2e8f0")),("PADDING",(0,0),(-1,-1),3)]))
+        story.append(t)
+
+    # Transporte
+    transp = q.get("transport_entries_breakdown") or []
+    if transp:
+        story.append(Paragraph("Transporte", h2))
+        data = [["Ruta", "Pax", "Fecha", "Subtotal"]]
+        for r in transp:
+            data.append([r.get("route_name") or r.get("route_id",""), str(r.get("pax",0)), r.get("date") or "—", _fmt_money_pdf(r.get("subtotal",0), cur)])
+        t = Table(data, colWidths=[3.0*inch, 0.8*inch, 1.2*inch, 1.6*inch])
+        t.setStyle(TableStyle([("FONTSIZE",(0,0),(-1,-1),9),("BACKGROUND",(0,0),(-1,0),colors.HexColor("#eef2ff")),("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),("GRID",(0,0),(-1,-1),0.2,colors.HexColor("#e2e8f0")),("PADDING",(0,0),(-1,-1),3)]))
+        story.append(t)
+
+    # Tours
+    tours = q.get("tour_subtotals") or []
+    if tours:
+        story.append(Paragraph("Tours", h2))
+        data = [["Tour", "Pax", "Subtotal"]]
+        for t_ in tours:
+            data.append([t_.get("tour_name") or t_.get("tour_id",""), str(t_.get("pax",0)), _fmt_money_pdf(t_.get("subtotal",0), cur)])
+        t = Table(data, colWidths=[4.0*inch, 1.0*inch, 1.6*inch])
+        t.setStyle(TableStyle([("FONTSIZE",(0,0),(-1,-1),9),("BACKGROUND",(0,0),(-1,0),colors.HexColor("#eef2ff")),("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),("GRID",(0,0),(-1,-1),0.2,colors.HexColor("#e2e8f0")),("PADDING",(0,0),(-1,-1),3)]))
+        story.append(t)
+
+    # Inscripción
+    reg = q.get("registration_fee") or 0
+    if reg:
+        story.append(Paragraph("Inscripción", h2))
+        story.append(Paragraph(f"Total inscripción: <b>{_fmt_money_pdf(reg, cur)}</b>", n))
+
+    # Otros cobros
+    other_amt = float(q.get("other_charges_amount") or 0)
+    if other_amt:
+        story.append(Paragraph("Otros cobros", h2))
+        concept = q.get("other_charges_concept") or "—"
+        story.append(Paragraph(f"<b>Concepto:</b> {concept}", n))
+        story.append(Paragraph(f"<b>Valor:</b> {_fmt_money_pdf(other_amt, cur)}", n))
+
+    # TOTAL
+    story.append(Spacer(1, 10))
+    total = q.get("total_amount") or 0
+    tbl_total = Table([["TOTAL", _fmt_money_pdf(total, cur)]], colWidths=[4.4*inch, 2.2*inch])
+    tbl_total.setStyle(TableStyle([
+        ("BACKGROUND", (0,0), (-1,-1), colors.HexColor("#0640c8")),
+        ("TEXTCOLOR", (0,0), (-1,-1), colors.white),
+        ("FONTNAME", (0,0), (-1,-1), "Helvetica-Bold"),
+        ("FONTSIZE", (0,0), (-1,-1), 14),
+        ("ALIGN", (1,0), (1,0), "RIGHT"),
+        ("PADDING", (0,0), (-1,-1), 8),
+    ]))
+    story.append(tbl_total)
+
+    if q.get("notes"):
+        story.append(Spacer(1, 12))
+        story.append(Paragraph("Observaciones", h2))
+        story.append(Paragraph(str(q.get("notes")), n))
+
+    story.append(Spacer(1, 16))
+    story.append(Paragraph("Documento generado por FUTURE SOCCER CUP. Esta cotización es válida sujeta a condiciones del evento.", small))
+
+    doc.build(story)
+    pdf_bytes = buf.getvalue()
+    buf.close()
+    from fastapi.responses import Response
+    return Response(content=pdf_bytes, media_type="application/pdf", headers={
+        "Content-Disposition": f"attachment; filename=cotizacion_{qid[:8]}.pdf"
+    })
+
 
 @api.get("/quotes")
 async def all_quotes(_: dict = Depends(require_admin)):
@@ -3683,7 +3875,7 @@ async def social_instagram():
 async def upload_file(file: UploadFile = File(...), user: dict = Depends(get_current_user)):
     ext = (file.filename.rsplit(".", 1)[-1] if "." in (file.filename or "") else "bin").lower()
     if ext not in MIME:
-        raise HTTPException(status_code=400, detail="Solo se aceptan imágenes o PDF (jpg, jpeg, png, gif, webp, pdf)")
+        raise HTTPException(status_code=400, detail="Formato no soportado. Acepta: JPG, PNG, GIF, BMP, TIFF, WebP, HEIC, SVG, RAW (CR2/CR3/NEF/ARW/DNG/ORF/RW2/RAF/PEF/SRW) o PDF.")
     data = await file.read()
     if len(data) > 5 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="Archivo mayor a 5MB")

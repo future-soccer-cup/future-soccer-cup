@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../../lib/api";
 import { toast, Toaster } from "sonner";
 import { usePagedSearch, SearchBar, Pagination } from "../../components/PagedTable";
 import ExportCsvButton from "../../components/ExportCsvButton";
-import { Eye, X } from "lucide-react";
+import { Eye, X, Download, Edit3 } from "lucide-react";
 
 const STATUSES = ["pendiente", "aprobada", "rechazada", "pagada"];
 const fmtMoney = (n, cur) => cur === "USD"
@@ -155,16 +156,34 @@ export default function AdminQuotes() {
 }
 
 function QuoteDetailModal({ q, onClose }) {
+  const navigate = useNavigate();
+  const handleDownloadPDF = async () => {
+    try {
+      const res = await api.get(`/quotes/${q.id}/pdf`, { responseType: "blob" });
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `cotizacion_${q.id.slice(0, 8)}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      toast.error("No se pudo generar el PDF");
+    }
+  };
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={onClose} data-testid="quote-detail-modal">
       <div className="bg-white max-w-4xl w-full max-h-[90vh] overflow-y-auto rounded-2xl border-2 border-fsc-azul" onClick={(e) => e.stopPropagation()}>
-        <div className="sticky top-0 bg-fsc-negro text-white px-6 py-4 flex items-center justify-between">
-          <div>
+        <div className="sticky top-0 bg-fsc-negro text-white px-6 py-4 flex items-center justify-between gap-3">
+          <div className="min-w-0 flex-1">
             <div className="font-cursive text-xl text-fsc-azul">cotización</div>
-            <div className="font-display text-2xl tracking-wider">{q.user_name} · {q.lodging_name}</div>
-            <div className="text-xs text-fsc-gris mt-0.5">{q.user_email} · {new Date(q.created_at).toLocaleString("es-CO")}</div>
+            <div className="font-display text-2xl tracking-wider truncate">{q.user_name} · {q.lodging_name}</div>
+            <div className="text-xs text-fsc-gris mt-0.5 truncate">{q.user_email} · {new Date(q.created_at).toLocaleString("es-CO")}</div>
           </div>
-          <button onClick={onClose} className="text-white hover:text-fsc-azul" data-testid="quote-detail-close"><X size={22}/></button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button onClick={handleDownloadPDF} className="text-xs font-bold uppercase tracking-wider px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 rounded flex items-center gap-1" data-testid="quote-download-pdf"><Download size={14}/> PDF</button>
+            <button onClick={() => { onClose(); navigate(`/cotizar?id=${q.id}`); }} className="text-xs font-bold uppercase tracking-wider px-3 py-1.5 bg-fsc-azul hover:bg-fsc-azul-oscuro rounded flex items-center gap-1" data-testid="quote-edit-btn"><Edit3 size={14}/> Editar</button>
+            <button onClick={onClose} className="text-white hover:text-fsc-azul" data-testid="quote-detail-close"><X size={22}/></button>
+          </div>
         </div>
         <div className="p-6 space-y-5 text-sm">
           <DetailGrid items={[
@@ -182,6 +201,9 @@ function QuoteDetailModal({ q, onClose }) {
               <KV k="Transporte" v={fmt(q.transport_subtotal, q.currency)} />
               <KV k="Tours" v={fmt(q.tours_subtotal, q.currency)} />
               <KV k="Inscripción" v={fmt(q.registration_fee, q.currency)} />
+              {(q.other_charges_amount > 0) && (
+                <KV k={`Otros cobros${q.other_charges_concept ? ` (${q.other_charges_concept})` : ""}`} v={fmt(q.other_charges_amount, q.currency)} />
+              )}
               <KV k={`TOTAL (${q.currency || "COP"})`} v={fmt(q.total_amount, q.currency)} highlight />
             </div>
           </DetailSection>

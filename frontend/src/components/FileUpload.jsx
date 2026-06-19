@@ -7,7 +7,7 @@ import { toast } from "sonner";
  * Generic file upload (image or PDF). POSTs to /api/upload and returns the URL.
  * Use for payment receipts (comprobantes) where the user may upload a scanned PDF.
  */
-export default function FileUpload({ value, onChange, label = "Comprobante", testId = "file-upload", accept = "image/*,application/pdf" }) {
+export default function FileUpload({ value, onChange, label = "Comprobante", testId = "file-upload", accept = "image/*,.jpg,.jpeg,.png,.gif,.bmp,.tif,.tiff,.webp,.heic,.heif,.raw,.cr2,.cr3,.nef,.arw,.dng,.orf,.rw2,.raf,.pef,.srw,application/pdf,.pdf" }) {
   const inputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
 

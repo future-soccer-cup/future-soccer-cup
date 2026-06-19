@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api, { formatApiError } from "../lib/api";
 import { toast, Toaster } from "sonner";
-import { CreditCard, ChevronDown, ChevronUp, Receipt as ReceiptIcon } from "lucide-react";
+import { CreditCard, ChevronDown, ChevronUp, Receipt as ReceiptIcon, Download } from "lucide-react";
 import PaymentForm from "../components/PaymentForm";
 import PaymentsList from "../components/PaymentsList";
 
@@ -130,6 +130,21 @@ export default function MyQuotes() {
                     data-testid={`toggle-payments-${q.id}`}
                   >
                     <ReceiptIcon size={12}/> Abonos {isOpen ? <ChevronUp size={12}/> : <ChevronDown size={12}/>}
+                  </button>
+                  <button
+                    onClick={async () => {
+                      try {
+                        const res = await api.get(`/quotes/${q.id}/pdf`, { responseType: "blob" });
+                        const url = URL.createObjectURL(res.data);
+                        const a = document.createElement("a");
+                        a.href = url; a.download = `cotizacion_${q.id.slice(0, 8)}.pdf`; a.click();
+                        URL.revokeObjectURL(url);
+                      } catch { toast.error("No se pudo generar el PDF"); }
+                    }}
+                    className="w-full text-xs font-bold uppercase tracking-wide text-emerald-700 hover:text-emerald-900 flex items-center gap-1 justify-center"
+                    data-testid={`download-pdf-${q.id}`}
+                  >
+                    <Download size={12}/> Descargar PDF
                   </button>
                   {q.status !== "pagada" && (
                     <Link

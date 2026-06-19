@@ -70,7 +70,14 @@ export default function ImageUpload({ value, onChange, label = "Imagen", testId 
           {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
           {uploading ? "Cargando..." : value ? "Cambiar" : "Subir imagen"}
         </button>
-        <input ref={inputRef} type="file" accept="image/*" hidden onChange={handleFile} data-testid={`${testId}-input`} />
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*,.jpg,.jpeg,.png,.gif,.bmp,.tif,.tiff,.webp,.heic,.heif,.raw,.cr2,.cr3,.nef,.arw,.dng,.orf,.rw2,.raf,.pef,.srw"
+          hidden
+          onChange={handleFile}
+          data-testid={`${testId}-input`}
+        />
       </div>
     </div>
   );
