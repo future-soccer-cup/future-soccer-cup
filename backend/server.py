@@ -226,6 +226,24 @@ MIME = {
     "pdf": "application/pdf",
 }
 
+# Logo en caché global para evitar descargar el archivo remoto en CADA generación de PDF (era el principal cuello de botella).
+FSC_LOGO_URL = "https://customer-assets.emergentagent.com/job_dd2523b3-e20b-4cc5-9d6d-534c6d02a185/artifacts/y4ulg6l9_FUTRE%20SOCCER%20CUP%202025_Mesa%20de%20trabajo%201.png"
+_LOGO_CACHE = {"bytes": None, "tried": False}
+
+def _get_fsc_logo_bytes():
+    if _LOGO_CACHE["bytes"] is not None or _LOGO_CACHE["tried"]:
+        return _LOGO_CACHE["bytes"]
+    try:
+        import httpx
+        r = httpx.get(FSC_LOGO_URL, timeout=2.0)
+        if r.status_code == 200:
+            _LOGO_CACHE["bytes"] = r.content
+    except Exception:
+        pass
+    _LOGO_CACHE["tried"] = True
+    return _LOGO_CACHE["bytes"]
+
+
 # -------------------- Setup --------------------
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
@@ -1003,15 +1021,7 @@ async def team_roster_pdf(team_id: str, user: dict = Depends(get_current_user)):
     instagram = home.get("instagram") or ""
     facebook = home.get("facebook") or ""
 
-    logo_bytes = None
-    try:
-        import httpx
-        FSC_LOGO_URL = "https://customer-assets.emergentagent.com/job_dd2523b3-e20b-4cc5-9d6d-534c6d02a185/artifacts/y4ulg6l9_FUTRE%20SOCCER%20CUP%202025_Mesa%20de%20trabajo%201.png"
-        r = httpx.get(FSC_LOGO_URL, timeout=4.0)
-        if r.status_code == 200:
-            logo_bytes = r.content
-    except Exception:
-        logo_bytes = None
+    logo_bytes = _get_fsc_logo_bytes()
 
     from reportlab.lib.pagesizes import letter
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -1284,9 +1294,11 @@ async def list_players(team_id: Optional[str] = None, status: Optional[str] = No
                     user_club_id = user_doc.get("club_id")
     except Exception:
         pass
-    # Admin filter override
-    if status and is_admin:
-        q["status"] = status
+    # Admin: ve TODOS los jugadores (cualquier status). Si se pasa ?status=X, se filtra por ese status.
+    if is_admin:
+        if status:
+            q["status"] = status
+        # else: sin filtro → todos
     # Team manager: ve jugadores PENDIENTES y APROBADOS de cualquier equipo de SU club.
     # Si se filtra por team_id concreto, ese debe pertenecer a su club (o ser su propio team).
     elif is_team:
@@ -3413,16 +3425,8 @@ async def quote_pdf(qid: str, user: dict = Depends(get_current_user)):
     facebook = home.get("facebook") or ""
     youtube = home.get("youtube") or ""
 
-    # Descargar el logo (cacheable)
-    logo_bytes = None
-    try:
-        import httpx
-        FSC_LOGO_URL = "https://customer-assets.emergentagent.com/job_dd2523b3-e20b-4cc5-9d6d-534c6d02a185/artifacts/y4ulg6l9_FUTRE%20SOCCER%20CUP%202025_Mesa%20de%20trabajo%201.png"
-        r = httpx.get(FSC_LOGO_URL, timeout=4.0)
-        if r.status_code == 200:
-            logo_bytes = r.content
-    except Exception:
-        logo_bytes = None
+    # Logo cacheado en memoria
+    logo_bytes = _get_fsc_logo_bytes()
 
     from reportlab.lib.pagesizes import letter
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
