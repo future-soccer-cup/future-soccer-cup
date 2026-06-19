@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import api from "../../lib/api";
 import { toast, Toaster } from "sonner";
 import { usePagedSearch, SearchBar, Pagination } from "../../components/PagedTable";
 import ExportCsvButton from "../../components/ExportCsvButton";
-import { Eye, X, Download, Edit3 } from "lucide-react";
+import CurrencyInput from "../../components/CurrencyInput";
+import { Eye, X, Download } from "lucide-react";
 
 const STATUSES = ["pendiente", "aprobada", "rechazada", "pagada"];
 const fmtMoney = (n, cur) => cur === "USD"
@@ -150,13 +150,21 @@ export default function AdminQuotes() {
 
       <Pagination page={page} totalPages={totalPages} onPage={setPage} testIdPrefix="quotes" />
 
-      {detail && <QuoteDetailModal q={detail} onClose={() => setDetail(null)} />}
+      {detail && <QuoteDetailModal q={detail} onClose={() => setDetail(null)} onChanged={async () => {
+        const r = await api.get(`/quotes/${detail.id}`);
+        setDetail(r.data);
+        load();
+      }} />}
     </div>
   );
 }
 
-function QuoteDetailModal({ q, onClose }) {
-  const navigate = useNavigate();
+function QuoteDetailModal({ q, onClose, onChanged }) {
+  const [editingCharges, setEditingCharges] = useState(false);
+  const [chargesAmount, setChargesAmount] = useState(q.other_charges_amount || 0);
+  const [chargesConcept, setChargesConcept] = useState(q.other_charges_concept || "");
+  const [saving, setSaving] = useState(false);
+
   const handleDownloadPDF = async () => {
     try {
       const res = await api.get(`/quotes/${q.id}/pdf`, { responseType: "blob" });
@@ -170,6 +178,24 @@ function QuoteDetailModal({ q, onClose }) {
       toast.error("No se pudo generar el PDF");
     }
   };
+
+  const saveCharges = async () => {
+    setSaving(true);
+    try {
+      await api.patch(`/quotes/${q.id}/other-charges`, {
+        other_charges_amount: Number(chargesAmount) || 0,
+        other_charges_concept: chargesConcept,
+      });
+      toast.success("Otros cobros actualizados");
+      setEditingCharges(false);
+      onChanged?.();
+    } catch (err) {
+      toast.error("No se pudo guardar");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={onClose} data-testid="quote-detail-modal">
       <div className="bg-white max-w-4xl w-full max-h-[90vh] overflow-y-auto rounded-2xl border-2 border-fsc-azul" onClick={(e) => e.stopPropagation()}>
@@ -181,7 +207,6 @@ function QuoteDetailModal({ q, onClose }) {
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <button onClick={handleDownloadPDF} className="text-xs font-bold uppercase tracking-wider px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 rounded flex items-center gap-1" data-testid="quote-download-pdf"><Download size={14}/> PDF</button>
-            <button onClick={() => { onClose(); navigate(`/cotizar?id=${q.id}`); }} className="text-xs font-bold uppercase tracking-wider px-3 py-1.5 bg-fsc-azul hover:bg-fsc-azul-oscuro rounded flex items-center gap-1" data-testid="quote-edit-btn"><Edit3 size={14}/> Editar</button>
             <button onClick={onClose} className="text-white hover:text-fsc-azul" data-testid="quote-detail-close"><X size={22}/></button>
           </div>
         </div>
@@ -201,11 +226,60 @@ function QuoteDetailModal({ q, onClose }) {
               <KV k="Transporte" v={fmt(q.transport_subtotal, q.currency)} />
               <KV k="Tours" v={fmt(q.tours_subtotal, q.currency)} />
               <KV k="Inscripción" v={fmt(q.registration_fee, q.currency)} />
-              {(q.other_charges_amount > 0) && (
+              {(q.other_charges_amount > 0) && !editingCharges && (
                 <KV k={`Otros cobros${q.other_charges_concept ? ` (${q.other_charges_concept})` : ""}`} v={fmt(q.other_charges_amount, q.currency)} />
               )}
               <KV k={`TOTAL (${q.currency || "COP"})`} v={fmt(q.total_amount, q.currency)} highlight />
             </div>
+          </DetailSection>
+
+          {/* === OTROS COBROS (solo Admin agrega/edita) === */}
+          <DetailSection title="Otros cobros">
+            {!editingCharges ? (
+              <div className="flex items-center justify-between gap-3 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                <div className="min-w-0">
+                  <div className="text-[10px] uppercase tracking-widest text-amber-700 font-bold">Valor adicional</div>
+                  <div className="font-bold text-amber-900 tabular-nums">{fmt(q.other_charges_amount || 0, q.currency)}</div>
+                  {q.other_charges_concept && <div className="text-xs text-amber-800/80 italic mt-0.5">{q.other_charges_concept}</div>}
+                </div>
+                <button onClick={() => setEditingCharges(true)} className="text-xs font-bold uppercase tracking-wider px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded" data-testid="add-other-charges-btn">
+                  {q.other_charges_amount > 0 ? "Editar" : "Agregar"}
+                </button>
+              </div>
+            ) : (
+              <div className="bg-amber-50 border-2 border-amber-300 rounded-lg p-4 space-y-3">
+                <p className="text-[11px] text-amber-900">
+                  Solo afecta este campo. <strong>No recalcula</strong> paquetes, hospedaje ni inscripción.
+                </p>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <label className="block">
+                    <span className="text-xs font-bold uppercase tracking-wider text-amber-800">Valor ({q.currency || "COP"})</span>
+                    <CurrencyInput
+                      value={chargesAmount}
+                      onChange={setChargesAmount}
+                      className="w-full"
+                      data-testid="other-charges-amount-input"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="text-xs font-bold uppercase tracking-wider text-amber-800">Concepto</span>
+                    <input
+                      value={chargesConcept}
+                      onChange={(e) => setChargesConcept(e.target.value)}
+                      placeholder="Ej: Seguro de viaje, kit del torneo..."
+                      className="mt-1 w-full px-3 py-2 border border-amber-200 rounded-md"
+                      data-testid="other-charges-concept-input"
+                    />
+                  </label>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button onClick={() => { setEditingCharges(false); setChargesAmount(q.other_charges_amount || 0); setChargesConcept(q.other_charges_concept || ""); }} className="px-3 py-1.5 text-xs font-bold uppercase text-slate-600" disabled={saving}>Cancelar</button>
+                  <button onClick={saveCharges} disabled={saving} className="px-4 py-1.5 text-xs font-bold uppercase tracking-wider bg-amber-600 hover:bg-amber-700 text-white rounded disabled:opacity-50" data-testid="other-charges-save-btn">
+                    {saving ? "Guardando..." : "Guardar"}
+                  </button>
+                </div>
+              </div>
+            )}
           </DetailSection>
 
           {/* Eventos seleccionados (nuevo modelo array) */}

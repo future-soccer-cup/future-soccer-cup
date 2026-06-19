@@ -3064,6 +3064,32 @@ async def update_quote(qid: str, payload: QuoteIn, user: dict = Depends(get_curr
     doc = await db.quotes.find_one({"id": qid}, {"_id": 0})
     return doc
 
+@api.patch("/quotes/{qid}/other-charges")
+async def patch_other_charges(qid: str, payload: dict, user: dict = Depends(get_current_user)):
+    """Edita SOLO Otros Cobros (amount + concept) sin recalcular el resto del breakdown.
+    Solo admin. El total se ajusta sumando/restando la diferencia con el valor previo."""
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Solo el administrador puede agregar otros cobros")
+    existing = await db.quotes.find_one({"id": qid}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Cotización no encontrada")
+    try:
+        new_amount = float(payload.get("other_charges_amount") or 0)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=400, detail="Valor inválido")
+    new_concept = str(payload.get("other_charges_concept") or "").strip()
+    prev_amount = float(existing.get("other_charges_amount") or 0)
+    prev_total = float(existing.get("total_amount") or 0)
+    new_total = prev_total - prev_amount + new_amount
+    await db.quotes.update_one({"id": qid}, {"$set": {
+        "other_charges_amount": new_amount,
+        "other_charges_concept": new_concept,
+        "total_amount": new_total,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }})
+    doc = await db.quotes.find_one({"id": qid}, {"_id": 0})
+    return doc
+
 @api.get("/quotes/mine")
 async def my_quotes(user: dict = Depends(get_current_user)):
     # Devuelve cotizaciones propias + del mismo club (para que Cuerpo Técnico también vea las del Directivo).
@@ -3161,151 +3187,284 @@ def _fmt_money_pdf(amount, currency):
 
 @api.get("/quotes/{qid}/pdf")
 async def quote_pdf(qid: str, user: dict = Depends(get_current_user)):
-    """Genera un PDF de la cotización. Accesible al admin y al dueño de la cotización (DT)."""
-    # Reutilizamos la lógica enriquecida del detail.
+    """Genera un PDF de la cotización con identidad visual FSC + datos de contacto del Home."""
     q = await get_quote_detail(qid, user)  # type: ignore
-    # Permisos: admin OR dueño OR mismo club_id.
     is_admin = user.get("role") == "admin"
     is_owner = q.get("user_id") == user.get("id")
     if not (is_admin or is_owner):
-        # Permitir a usuarios del mismo club ver el PDF.
         u_club = user.get("club_id")
         if not u_club:
             raise HTTPException(status_code=403, detail="No autorizado")
-        # Resolver club del owner.
         owner_doc = await db.users.find_one({"id": q.get("user_id")}, {"_id": 0, "club_id": 1}) if q.get("user_id") else None
         if not owner_doc or owner_doc.get("club_id") != u_club:
             raise HTTPException(status_code=403, detail="No autorizado")
 
+    # Cargar Home settings para contacto/redes
+    home = await db.home_settings.find_one({"id": HOME_SETTINGS_ID}, {"_id": 0}) or {}
+    contact_email = home.get("contact_email") or "info@futuresoccercup.com"
+    contact_phone = home.get("contact_phone") or "+57 (000) 000-0000"
+    instagram = home.get("instagram") or ""
+    facebook = home.get("facebook") or ""
+    youtube = home.get("youtube") or ""
+
+    # Descargar el logo (cacheable)
+    logo_bytes = None
+    try:
+        import httpx
+        FSC_LOGO_URL = "https://customer-assets.emergentagent.com/job_dd2523b3-e20b-4cc5-9d6d-534c6d02a185/artifacts/y4ulg6l9_FUTRE%20SOCCER%20CUP%202025_Mesa%20de%20trabajo%201.png"
+        r = httpx.get(FSC_LOGO_URL, timeout=4.0)
+        if r.status_code == 200:
+            logo_bytes = r.content
+    except Exception:
+        logo_bytes = None
+
     from reportlab.lib.pagesizes import letter
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.enums import TA_RIGHT, TA_LEFT, TA_CENTER
     from reportlab.lib import colors
     from reportlab.lib.units import inch
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    from reportlab.platypus import (
+        BaseDocTemplate, PageTemplate, Frame, Paragraph, Spacer, Table, TableStyle, Image
+    )
     from io import BytesIO
 
+    BRAND_BLUE = colors.HexColor("#0640c8")
+    BRAND_DARK = colors.HexColor("#0a1426")
+    BRAND_RED = colors.HexColor("#e11d48")
+    LIGHT_BG = colors.HexColor("#f5f8ff")
+    BORDER = colors.HexColor("#cbd5e1")
+
     buf = BytesIO()
-    doc = SimpleDocTemplate(buf, pagesize=letter, leftMargin=0.6*inch, rightMargin=0.6*inch, topMargin=0.6*inch, bottomMargin=0.6*inch)
 
     styles = getSampleStyleSheet()
-    h1 = ParagraphStyle("h1", parent=styles["Heading1"], fontSize=18, textColor=colors.HexColor("#0640c8"), spaceAfter=8)
-    h2 = ParagraphStyle("h2", parent=styles["Heading2"], fontSize=12, textColor=colors.HexColor("#0640c8"), spaceBefore=10, spaceAfter=4)
-    n = ParagraphStyle("n", parent=styles["Normal"], fontSize=9)
-    small = ParagraphStyle("small", parent=styles["Normal"], fontSize=8, textColor=colors.grey)
+    H1 = ParagraphStyle("H1", parent=styles["Heading1"], fontSize=22, textColor=colors.white, leading=24, alignment=TA_LEFT, spaceAfter=0)
+    H2 = ParagraphStyle("H2", parent=styles["Heading2"], fontSize=11, textColor=BRAND_BLUE, leading=14, spaceBefore=12, spaceAfter=4, fontName="Helvetica-Bold")
+    N = ParagraphStyle("N", parent=styles["Normal"], fontSize=9, leading=12)
+    NB = ParagraphStyle("NB", parent=N, fontName="Helvetica-Bold")
+    SMALL = ParagraphStyle("SMALL", parent=N, fontSize=7.5, textColor=colors.grey, leading=10)
+    WHITE_SMALL = ParagraphStyle("WHITE_SMALL", parent=N, fontSize=8, textColor=colors.white, leading=10)
+    WHITE_BIG = ParagraphStyle("WHITE_BIG", parent=N, fontSize=18, textColor=colors.white, fontName="Helvetica-Bold", alignment=TA_RIGHT, leading=20)
+
+    def _header_footer(canvas, doc_):
+        canvas.saveState()
+        # === HEADER ===
+        canvas.setFillColor(BRAND_DARK)
+        canvas.rect(0, letter[1] - 1.1 * inch, letter[0], 1.1 * inch, fill=1, stroke=0)
+        # Logo
+        if logo_bytes:
+            try:
+                from reportlab.lib.utils import ImageReader
+                img = ImageReader(BytesIO(logo_bytes))
+                canvas.drawImage(img, 0.5 * inch, letter[1] - 1.0 * inch, width=0.9 * inch, height=0.9 * inch, preserveAspectRatio=True, mask='auto')
+            except Exception:
+                pass
+        # Texto del header
+        canvas.setFillColor(colors.white)
+        canvas.setFont("Helvetica-Bold", 18)
+        canvas.drawString(1.55 * inch, letter[1] - 0.55 * inch, "FUTURE SOCCER CUP")
+        canvas.setFont("Helvetica-Oblique", 10)
+        canvas.setFillColor(colors.HexColor("#9bb6ff"))
+        canvas.drawString(1.55 * inch, letter[1] - 0.78 * inch, "Somos más que un torneo")
+        canvas.setFont("Helvetica", 8)
+        canvas.setFillColor(colors.white)
+        canvas.drawString(1.55 * inch, letter[1] - 0.98 * inch, "Iniciativa del Grupo Empresarial Ancla — Colombia")
+        # Right-side label
+        canvas.setFillColor(colors.HexColor("#9bb6ff"))
+        canvas.setFont("Helvetica-Bold", 9)
+        canvas.drawRightString(letter[0] - 0.5 * inch, letter[1] - 0.55 * inch, "COTIZACIÓN")
+        # Línea azul fuerte
+        canvas.setFillColor(BRAND_BLUE)
+        canvas.rect(0, letter[1] - 1.13 * inch, letter[0], 0.03 * inch, fill=1, stroke=0)
+
+        # === FOOTER ===
+        canvas.setFillColor(BRAND_BLUE)
+        canvas.rect(0, 0, letter[0], 0.55 * inch, fill=1, stroke=0)
+        canvas.setFillColor(colors.white)
+        canvas.setFont("Helvetica-Bold", 8)
+        canvas.drawString(0.5 * inch, 0.34 * inch, contact_email)
+        canvas.setFont("Helvetica", 8)
+        canvas.drawString(0.5 * inch, 0.18 * inch, contact_phone)
+        # Redes a la derecha
+        social_parts = []
+        if instagram: social_parts.append(f"IG: {instagram}")
+        if facebook: social_parts.append(f"FB: {facebook}")
+        if youtube: social_parts.append(f"YT: {youtube}")
+        if social_parts:
+            canvas.drawRightString(letter[0] - 0.5 * inch, 0.34 * inch, "  ·  ".join(social_parts))
+        canvas.setFont("Helvetica-Oblique", 7)
+        canvas.drawRightString(letter[0] - 0.5 * inch, 0.18 * inch, f"www.futuresoccercup.com   ·   FSC {datetime.now(timezone.utc).year}")
+        canvas.restoreState()
+
+    doc = BaseDocTemplate(buf, pagesize=letter, leftMargin=0.5 * inch, rightMargin=0.5 * inch, topMargin=1.25 * inch, bottomMargin=0.7 * inch)
+    frame = Frame(doc.leftMargin, doc.bottomMargin, doc.width, doc.height, id="main")
+    doc.addPageTemplates([PageTemplate(id="default", frames=[frame], onPage=_header_footer)])
 
     cur = q.get("currency") or "COP"
     story = []
-    story.append(Paragraph("FUTURE SOCCER CUP — Cotización", h1))
-    story.append(Paragraph(f"<b>ID:</b> {q.get('id','')[:8]}  ·  <b>Estado:</b> {q.get('status','pendiente').upper()}  ·  <b>Moneda:</b> {cur}", small))
-    story.append(Paragraph(f"<b>Fecha:</b> {(q.get('created_at') or '')[:10]}", small))
-    story.append(Spacer(1, 8))
 
-    # Cliente
-    story.append(Paragraph("Cliente", h2))
+    # === BANNER COTIZACIÓN + TOTAL DESTACADO ===
+    banner_inner = Table([
+        [
+            Paragraph(f"<font color='white' size='9'><b>COTIZACIÓN</b></font><br/>"
+                      f"<font color='#9bb6ff' size='8'>ID: {q.get('id','')[:8].upper()}</font><br/>"
+                      f"<font color='#9bb6ff' size='8'>Fecha: {(q.get('created_at') or '')[:10]}</font><br/>"
+                      f"<font color='white' size='9'><b>Estado:</b> {q.get('status','pendiente').upper()}</font>", N),
+            Paragraph(f"<font color='#9bb6ff' size='8'>TOTAL {cur}</font><br/>"
+                      f"<font color='white' size='22'><b>{_fmt_money_pdf(q.get('total_amount',0), cur)}</b></font>", N),
+        ]
+    ], colWidths=[3.4 * inch, 4.1 * inch])
+    banner_inner.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), BRAND_DARK),
+        ("LEFTPADDING", (0, 0), (-1, -1), 12), ("RIGHTPADDING", (0, 0), (-1, -1), 12),
+        ("TOPPADDING", (0, 0), (-1, -1), 10), ("BOTTOMPADDING", (0, 0), (-1, -1), 12),
+        ("ALIGN", (1, 0), (1, 0), "RIGHT"), ("VALIGN", (0, 0), (-1, -1), "TOP"),
+    ]))
+    story.append(banner_inner)
+    story.append(Spacer(1, 12))
+
+    # === CLIENTE ===
+    story.append(Paragraph("CLIENTE", H2))
     cliente_rows = [
+        ["Cliente", q.get("user_name") or "—"],
         ["Club", q.get("club_name") or "—"],
         ["Teléfono", q.get("contact_phone") or "—"],
+        ["Email", q.get("user_email") or "—"],
     ]
-    tbl = Table(cliente_rows, colWidths=[1.6*inch, 5.0*inch])
-    tbl.setStyle(TableStyle([
-        ("BACKGROUND", (0,0), (0,-1), colors.HexColor("#eef2ff")),
-        ("FONTNAME", (0,0), (0,-1), "Helvetica-Bold"),
-        ("BOX", (0,0), (-1,-1), 0.4, colors.HexColor("#cbd5e1")),
-        ("GRID", (0,0), (-1,-1), 0.2, colors.HexColor("#e2e8f0")),
-        ("FONTSIZE", (0,0), (-1,-1), 9),
-        ("PADDING", (0,0), (-1,-1), 4),
+    tbl_cli = Table(cliente_rows, colWidths=[1.2 * inch, 6.3 * inch])
+    tbl_cli.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (0, -1), LIGHT_BG),
+        ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+        ("BOX", (0, 0), (-1, -1), 0.5, BORDER),
+        ("LINEBELOW", (0, 0), (-1, -2), 0.3, BORDER),
+        ("FONTSIZE", (0, 0), (-1, -1), 9),
+        ("LEFTPADDING", (0, 0), (-1, -1), 8), ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+        ("TOPPADDING", (0, 0), (-1, -1), 5), ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
     ]))
-    story.append(tbl)
+    story.append(tbl_cli)
 
-    # Hospedaje
+    # === HOSPEDAJE ===
     lodgings = q.get("lodgings_breakdown") or []
     if lodgings:
-        story.append(Paragraph("Paquetes de hospedaje", h2))
+        story.append(Paragraph("PAQUETES DE HOSPEDAJE", H2))
         for i, b in enumerate(lodgings, 1):
-            head = f"<b>Paquete {i}:</b> {b.get('tier_name','')} · {b.get('pax',0)} pax"
-            story.append(Paragraph(head, n))
-            if b.get("tier_description"):
-                story.append(Paragraph(f"<i>{b['tier_description']}</i>", small))
-            if b.get("tier_accommodation"):
-                story.append(Paragraph(f"<b>Acomodación:</b> {b['tier_accommodation']}", small))
+            label_cell = Paragraph(
+                f"<font color='#0640c8'><b>Paquete {i}</b></font> · <b>{b.get('tier_name','')}</b> "
+                f"· {b.get('pax', 0)} pax"
+                + (f"<br/><font size='7.5' color='#475569'><i>{b.get('tier_description','')}</i></font>" if b.get('tier_description') else "")
+                + (f"<br/><font size='7.5'><b>Acomodación:</b> {b.get('tier_accommodation','')}</font>" if b.get('tier_accommodation') else ""),
+                N
+            )
             data = [
-                ["Valor Paquete", _fmt_money_pdf(b.get("rate_per_person_5nights",0), cur)],
-                ["Noche adicional", _fmt_money_pdf(b.get("rate_per_person_additional_night",0), cur)],
-                ["Subtotal", _fmt_money_pdf(b.get("subtotal",0), cur)],
+                [label_cell, Paragraph(f"<para align='right'><b>Subtotal</b><br/>{_fmt_money_pdf(b.get('subtotal',0), cur)}</para>", N)],
             ]
-            t = Table(data, colWidths=[2.5*inch, 4.1*inch])
-            t.setStyle(TableStyle([("FONTSIZE",(0,0),(-1,-1),9),("GRID",(0,0),(-1,-1),0.2,colors.HexColor("#e2e8f0")),("PADDING",(0,0),(-1,-1),3)]))
-            story.append(t)
-            story.append(Spacer(1, 4))
+            tbl = Table(data, colWidths=[5.0 * inch, 2.5 * inch])
+            tbl.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, -1), LIGHT_BG),
+                ("BOX", (0, 0), (-1, -1), 0.5, BRAND_BLUE),
+                ("LEFTPADDING", (0, 0), (-1, -1), 8), ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+                ("TOPPADDING", (0, 0), (-1, -1), 6), ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ]))
+            story.append(tbl)
+            # Detalle valor paquete / noche adicional
+            rows = [
+                ["Valor Paquete", _fmt_money_pdf(b.get("rate_per_person_5nights", 0), cur)],
+                ["Noche adicional", _fmt_money_pdf(b.get("rate_per_person_additional_night", 0), cur)],
+            ]
+            detail_tbl = Table(rows, colWidths=[5.0 * inch, 2.5 * inch])
+            detail_tbl.setStyle(TableStyle([
+                ("FONTSIZE", (0, 0), (-1, -1), 8.5),
+                ("LINEBELOW", (0, 0), (-1, -1), 0.3, BORDER),
+                ("ALIGN", (1, 0), (1, -1), "RIGHT"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 8), ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+                ("TOPPADDING", (0, 0), (-1, -1), 3), ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+            ]))
+            story.append(detail_tbl)
+            story.append(Spacer(1, 6))
 
-    # Alimentación
+    # === ALIMENTACIÓN ===
     meals = q.get("meals_breakdown") or []
     if meals:
-        story.append(Paragraph("Alimentación", h2))
+        story.append(Paragraph("ALIMENTACIÓN", H2))
         data = [["Concepto", "Pax", "Subtotal"]]
         for m in meals:
             data.append([m.get("name") or m.get("meal_type",""), str(m.get("pax",0)), _fmt_money_pdf(m.get("subtotal",0), cur)])
-        t = Table(data, colWidths=[4.0*inch, 1.0*inch, 1.6*inch])
-        t.setStyle(TableStyle([("FONTSIZE",(0,0),(-1,-1),9),("BACKGROUND",(0,0),(-1,0),colors.HexColor("#eef2ff")),("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),("GRID",(0,0),(-1,-1),0.2,colors.HexColor("#e2e8f0")),("PADDING",(0,0),(-1,-1),3)]))
-        story.append(t)
+        story.append(_section_table(data, [4.7 * inch, 0.8 * inch, 2.0 * inch], BRAND_BLUE, BORDER))
 
-    # Transporte
+    # === TRANSPORTE ===
     transp = q.get("transport_entries_breakdown") or []
     if transp:
-        story.append(Paragraph("Transporte", h2))
+        story.append(Paragraph("TRANSPORTE", H2))
         data = [["Ruta", "Pax", "Fecha", "Subtotal"]]
         for r in transp:
             data.append([r.get("route_name") or r.get("route_id",""), str(r.get("pax",0)), r.get("date") or "—", _fmt_money_pdf(r.get("subtotal",0), cur)])
-        t = Table(data, colWidths=[3.0*inch, 0.8*inch, 1.2*inch, 1.6*inch])
-        t.setStyle(TableStyle([("FONTSIZE",(0,0),(-1,-1),9),("BACKGROUND",(0,0),(-1,0),colors.HexColor("#eef2ff")),("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),("GRID",(0,0),(-1,-1),0.2,colors.HexColor("#e2e8f0")),("PADDING",(0,0),(-1,-1),3)]))
-        story.append(t)
+        story.append(_section_table(data, [3.5 * inch, 0.7 * inch, 1.3 * inch, 2.0 * inch], BRAND_BLUE, BORDER))
 
-    # Tours
+    # === TOURS ===
     tours = q.get("tour_subtotals") or []
     if tours:
-        story.append(Paragraph("Tours", h2))
+        story.append(Paragraph("TOURS", H2))
         data = [["Tour", "Pax", "Subtotal"]]
         for t_ in tours:
             data.append([t_.get("tour_name") or t_.get("tour_id",""), str(t_.get("pax",0)), _fmt_money_pdf(t_.get("subtotal",0), cur)])
-        t = Table(data, colWidths=[4.0*inch, 1.0*inch, 1.6*inch])
-        t.setStyle(TableStyle([("FONTSIZE",(0,0),(-1,-1),9),("BACKGROUND",(0,0),(-1,0),colors.HexColor("#eef2ff")),("FONTNAME",(0,0),(-1,0),"Helvetica-Bold"),("GRID",(0,0),(-1,-1),0.2,colors.HexColor("#e2e8f0")),("PADDING",(0,0),(-1,-1),3)]))
-        story.append(t)
+        story.append(_section_table(data, [4.7 * inch, 0.8 * inch, 2.0 * inch], BRAND_BLUE, BORDER))
 
-    # Inscripción
-    reg = q.get("registration_fee") or 0
+    # === INSCRIPCIÓN ===
+    reg = float(q.get("registration_fee") or 0)
     if reg:
-        story.append(Paragraph("Inscripción", h2))
-        story.append(Paragraph(f"Total inscripción: <b>{_fmt_money_pdf(reg, cur)}</b>", n))
+        story.append(Paragraph("INSCRIPCIÓN", H2))
+        reg_tbl = Table([["Inscripción total", _fmt_money_pdf(reg, cur)]], colWidths=[5.5 * inch, 2.0 * inch])
+        reg_tbl.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), LIGHT_BG),
+            ("BOX", (0, 0), (-1, -1), 0.5, BORDER),
+            ("ALIGN", (1, 0), (1, -1), "RIGHT"), ("FONTNAME", (1, 0), (1, -1), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 9.5),
+            ("LEFTPADDING", (0, 0), (-1, -1), 8), ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+            ("TOPPADDING", (0, 0), (-1, -1), 6), ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ]))
+        story.append(reg_tbl)
 
-    # Otros cobros
+    # === OTROS COBROS ===
     other_amt = float(q.get("other_charges_amount") or 0)
     if other_amt:
-        story.append(Paragraph("Otros cobros", h2))
-        concept = q.get("other_charges_concept") or "—"
-        story.append(Paragraph(f"<b>Concepto:</b> {concept}", n))
-        story.append(Paragraph(f"<b>Valor:</b> {_fmt_money_pdf(other_amt, cur)}", n))
+        story.append(Paragraph("OTROS COBROS", H2))
+        oc_data = [
+            [Paragraph(f"<b>Concepto:</b><br/>{q.get('other_charges_concept') or '—'}", N),
+             Paragraph(f"<para align='right'><b>Valor</b><br/><font size='12'>{_fmt_money_pdf(other_amt, cur)}</font></para>", N)],
+        ]
+        oc_tbl = Table(oc_data, colWidths=[5.0 * inch, 2.5 * inch])
+        oc_tbl.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#fffbeb")),
+            ("BOX", (0, 0), (-1, -1), 0.7, colors.HexColor("#f59e0b")),
+            ("LEFTPADDING", (0, 0), (-1, -1), 10), ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+            ("TOPPADDING", (0, 0), (-1, -1), 8), ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+        ]))
+        story.append(oc_tbl)
 
-    # TOTAL
+    # === TOTAL ===
     story.append(Spacer(1, 10))
-    total = q.get("total_amount") or 0
-    tbl_total = Table([["TOTAL", _fmt_money_pdf(total, cur)]], colWidths=[4.4*inch, 2.2*inch])
-    tbl_total.setStyle(TableStyle([
-        ("BACKGROUND", (0,0), (-1,-1), colors.HexColor("#0640c8")),
-        ("TEXTCOLOR", (0,0), (-1,-1), colors.white),
-        ("FONTNAME", (0,0), (-1,-1), "Helvetica-Bold"),
-        ("FONTSIZE", (0,0), (-1,-1), 14),
-        ("ALIGN", (1,0), (1,0), "RIGHT"),
-        ("PADDING", (0,0), (-1,-1), 8),
+    total_tbl = Table([[
+        Paragraph("<font color='white' size='12'><b>TOTAL A PAGAR</b></font>", N),
+        Paragraph(f"<para align='right'><font color='white' size='18'><b>{_fmt_money_pdf(q.get('total_amount',0), cur)}</b></font></para>", N),
+    ]], colWidths=[3.5 * inch, 4.0 * inch])
+    total_tbl.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), BRAND_RED),
+        ("LEFTPADDING", (0, 0), (-1, -1), 14), ("RIGHTPADDING", (0, 0), (-1, -1), 14),
+        ("TOPPADDING", (0, 0), (-1, -1), 10), ("BOTTOMPADDING", (0, 0), (-1, -1), 12),
     ]))
-    story.append(tbl_total)
+    story.append(total_tbl)
 
+    # === NOTAS ===
     if q.get("notes"):
-        story.append(Spacer(1, 12))
-        story.append(Paragraph("Observaciones", h2))
-        story.append(Paragraph(str(q.get("notes")), n))
+        story.append(Spacer(1, 10))
+        story.append(Paragraph("OBSERVACIONES", H2))
+        story.append(Paragraph(str(q.get("notes")), N))
 
-    story.append(Spacer(1, 16))
-    story.append(Paragraph("Documento generado por FUTURE SOCCER CUP. Esta cotización es válida sujeta a condiciones del evento.", small))
+    story.append(Spacer(1, 14))
+    story.append(Paragraph(
+        "Esta cotización es informativa y sujeta a las condiciones generales del evento. "
+        "Confirmamos su validez al recibir el pago correspondiente. Para más información, contáctenos por los medios indicados en el pie de página.",
+        SMALL
+    ))
 
     doc.build(story)
     pdf_bytes = buf.getvalue()
@@ -3314,6 +3473,27 @@ async def quote_pdf(qid: str, user: dict = Depends(get_current_user)):
     return Response(content=pdf_bytes, media_type="application/pdf", headers={
         "Content-Disposition": f"attachment; filename=cotizacion_{qid[:8]}.pdf"
     })
+
+
+def _section_table(data, col_widths, header_bg, border):
+    """Helper para tablas de secciones con header de color."""
+    from reportlab.lib import colors as _c
+    from reportlab.platypus import Table, TableStyle
+    t = Table(data, colWidths=col_widths, repeatRows=1)
+    t.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), header_bg),
+        ("TEXTCOLOR", (0, 0), (-1, 0), _c.white),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, 0), 8.5),
+        ("FONTSIZE", (0, 1), (-1, -1), 8.5),
+        ("ALIGN", (-1, 0), (-1, -1), "RIGHT"),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [_c.white, _c.HexColor("#f9fafb")]),
+        ("BOX", (0, 0), (-1, -1), 0.5, border),
+        ("LINEBELOW", (0, 0), (-1, 0), 0.3, _c.white),
+        ("LEFTPADDING", (0, 0), (-1, -1), 7), ("RIGHTPADDING", (0, 0), (-1, -1), 7),
+        ("TOPPADDING", (0, 0), (-1, -1), 4), ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+    ]))
+    return t
 
 
 @api.get("/quotes")

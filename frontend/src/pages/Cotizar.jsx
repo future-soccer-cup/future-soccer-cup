@@ -404,31 +404,6 @@ export default function Cotizar() {
               <textarea value={form.notes} onChange={(e) => setFormUser({ ...form, notes: e.target.value })} rows={3} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="cotizar-notes" />
             </label>
           </Section>
-
-          {/* 7. Otros cobros (Admin/Editar) */}
-          <Section icon={BadgeCheck} title="7) Otros cobros" testId="block-other-charges" subtitle="Valor adicional manual (incluido en el total)">
-            <div className="grid sm:grid-cols-2 gap-3">
-              <label className="block">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Valor ({form.currency})</span>
-                <CurrencyInput
-                  value={form.other_charges_amount || 0}
-                  onChange={(v) => setFormUser({ ...form, other_charges_amount: v })}
-                  className="w-full"
-                  data-testid="cotizar-other-charges-amount"
-                />
-              </label>
-              <label className="block">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Concepto</span>
-                <input
-                  value={form.other_charges_concept || ""}
-                  onChange={(e) => setFormUser({ ...form, other_charges_concept: e.target.value })}
-                  placeholder="Ej: Seguro de viaje, kit del torneo..."
-                  className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md"
-                  data-testid="cotizar-other-charges-concept"
-                />
-              </label>
-            </div>
-          </Section>
         </div>
 
         {/* Sticky summary */}
