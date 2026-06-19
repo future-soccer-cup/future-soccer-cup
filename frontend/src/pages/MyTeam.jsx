@@ -9,7 +9,7 @@ import CategorySelect from "../components/CategorySelect";
 import PaymentForm from "../components/PaymentForm";
 import PaymentsList from "../components/PaymentsList";
 
-const EMPTY_PLAYER = { name: "", team_id: "", jersey_number: 1, position: "Mediocampista", birth_date: "", photo_url: "", document_id: "", nickname: "", gender: "", eps: "", guardian_name: "", guardian_doc: "", guardian_relation: "", guardian_phone: "" };
+const EMPTY_PLAYER = { name: "", team_id: "", jersey_number: 1, position: "Mediocampista", birth_date: "", photo_url: "", document_id: "", nickname: "", gender: "", eps: "", comet_number: "", guardian_name: "", guardian_relation: "", guardian_phone: "" };
 const EMPTY_STAFF = { name: "", document: "", role: "Director técnico", phone: "", team_id: "", photo_url: "" };
 const fmtCOP = (n) => `$${Number(n || 0).toLocaleString("es-CO")} COP`;
 
@@ -395,14 +395,16 @@ export default function MyTeam() {
                 <Field label="Fecha nacimiento" type="date" value={editingPlayer.birth_date} onChange={(v) => setEditingPlayer({ ...editingPlayer, birth_date: v })} testId="player-birthdate-input" />
                 <Field label="Documento de identidad" value={editingPlayer.document_id} onChange={(v) => setEditingPlayer({ ...editingPlayer, document_id: v })} testId="player-doc-input" />
               </div>
-              <Field label="EPS" value={editingPlayer.eps} onChange={(v) => setEditingPlayer({ ...editingPlayer, eps: v })} testId="player-eps-input" />
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="EPS" value={editingPlayer.eps} onChange={(v) => setEditingPlayer({ ...editingPlayer, eps: v })} testId="player-eps-input" />
+                <Field label="Número COMET" value={editingPlayer.comet_number} onChange={(v) => setEditingPlayer({ ...editingPlayer, comet_number: v })} testId="player-comet-input" />
+              </div>
               <ImageUpload value={editingPlayer.photo_url} onChange={(v) => setEditingPlayer({ ...editingPlayer, photo_url: v })} label="Foto del jugador (para el carnet)" testId="player-photo-upload" />
 
               <div className="border-t border-slate-200 pt-3 mt-3">
                 <h4 className="font-display text-base font-black uppercase tracking-tight mb-2">Acudiente / Contacto</h4>
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Nombre acudiente" value={editingPlayer.guardian_name} onChange={(v) => setEditingPlayer({ ...editingPlayer, guardian_name: v })} testId="player-guardian-name-input" />
-                  <Field label="Documento acudiente" value={editingPlayer.guardian_doc} onChange={(v) => setEditingPlayer({ ...editingPlayer, guardian_doc: v })} testId="player-guardian-doc-input" />
                   <Field label="Parentesco" value={editingPlayer.guardian_relation} onChange={(v) => setEditingPlayer({ ...editingPlayer, guardian_relation: v })} testId="player-guardian-relation-input" />
                   <Field label="Teléfono de contacto" value={editingPlayer.guardian_phone} onChange={(v) => setEditingPlayer({ ...editingPlayer, guardian_phone: v })} testId="player-guardian-phone-input" />
                 </div>
@@ -434,6 +436,7 @@ export default function MyTeam() {
                 <Field label="Documento" value={editingStaff.data.document} onChange={(v) => setEditingStaff({ ...editingStaff, data: { ...editingStaff.data, document: v } })} testId="staff-document-input" />
                 <Field label="Teléfono" value={editingStaff.data.phone} onChange={(v) => setEditingStaff({ ...editingStaff, data: { ...editingStaff.data, phone: v } })} testId="staff-phone-input" />
               </div>
+              <Field label="Número COMET" value={editingStaff.data.comet_number} onChange={(v) => setEditingStaff({ ...editingStaff, data: { ...editingStaff.data, comet_number: v } })} testId="staff-comet-input" />
               <ImageUpload value={editingStaff.data.photo_url} onChange={(v) => setEditingStaff({ ...editingStaff, data: { ...editingStaff.data, photo_url: v } })} label="Foto para el carnet (sin fondo)" testId="staff-photo-upload" />
               <button className="fsc-btn-primary w-full py-2 rounded-md" data-testid="save-staff-btn">Guardar</button>
             </form>
@@ -607,7 +610,23 @@ export default function MyTeam() {
           <h1 className="font-display text-4xl md:text-5xl font-black uppercase tracking-tighter">{team.name}</h1>
           <div className="text-sm text-slate-600">{team.city || "—"} {team.coach && `· DT: ${team.coach}`}</div>
         </div>
-        <button onClick={() => setEditingTeam(true)} className="fsc-btn-primary px-4 py-2 rounded-md text-sm" data-testid="edit-team-btn">Editar equipo</button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={async () => {
+              try {
+                const res = await api.get(`/teams/${team.id}/roster.pdf`, { responseType: "blob" });
+                const url = URL.createObjectURL(res.data);
+                const a = document.createElement("a"); a.href = url; a.download = `roster_${team.name}.pdf`; a.click();
+                URL.revokeObjectURL(url);
+              } catch { toast.error("No se pudo generar el PDF"); }
+            }}
+            className="bg-fsc-rojo hover:bg-rose-700 text-white px-3 py-2 rounded-md text-sm flex items-center gap-1"
+            data-testid="my-team-roster-pdf-btn"
+          >
+            <Download size={14}/> PDF Roster
+          </button>
+          <button onClick={() => setEditingTeam(true)} className="fsc-btn-primary px-4 py-2 rounded-md text-sm" data-testid="edit-team-btn">Editar equipo</button>
+        </div>
       </div>
 
       {/* Banner inscripción al evento */}
@@ -996,14 +1015,16 @@ export default function MyTeam() {
               <Field label="Fecha nacimiento" type="date" value={editingPlayer.birth_date} onChange={(v) => setEditingPlayer({ ...editingPlayer, birth_date: v })} />
               <Field label="Documento" value={editingPlayer.document_id} onChange={(v) => setEditingPlayer({ ...editingPlayer, document_id: v })} />
             </div>
-            <Field label="EPS" value={editingPlayer.eps} onChange={(v) => setEditingPlayer({ ...editingPlayer, eps: v })} />
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="EPS" value={editingPlayer.eps} onChange={(v) => setEditingPlayer({ ...editingPlayer, eps: v })} />
+              <Field label="Número COMET" value={editingPlayer.comet_number} onChange={(v) => setEditingPlayer({ ...editingPlayer, comet_number: v })} testId="player-comet-input-2" />
+            </div>
             <ImageUpload value={editingPlayer.photo_url} onChange={(v) => setEditingPlayer({ ...editingPlayer, photo_url: v })} label="Foto del jugador (sin fondo)" testId="player-photo-upload" />
 
             <div className="border-t border-slate-200 pt-3 mt-3">
               <h4 className="font-display text-base font-black uppercase tracking-tight mb-2">Acudiente / Contacto</h4>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Nombre acudiente" value={editingPlayer.guardian_name} onChange={(v) => setEditingPlayer({ ...editingPlayer, guardian_name: v })} />
-                <Field label="Documento acudiente" value={editingPlayer.guardian_doc} onChange={(v) => setEditingPlayer({ ...editingPlayer, guardian_doc: v })} />
                 <Field label="Parentesco" value={editingPlayer.guardian_relation} onChange={(v) => setEditingPlayer({ ...editingPlayer, guardian_relation: v })} />
                 <Field label="Teléfono" value={editingPlayer.guardian_phone} onChange={(v) => setEditingPlayer({ ...editingPlayer, guardian_phone: v })} />
               </div>
@@ -1047,6 +1068,7 @@ export default function MyTeam() {
               <Field label="Documento" value={editingStaff.data.document} onChange={(v) => setEditingStaff({ ...editingStaff, data: { ...editingStaff.data, document: v } })} testId="staff-document-input" />
               <Field label="Teléfono" value={editingStaff.data.phone} onChange={(v) => setEditingStaff({ ...editingStaff, data: { ...editingStaff.data, phone: v } })} testId="staff-phone-input" />
             </div>
+            <Field label="Número COMET" value={editingStaff.data.comet_number} onChange={(v) => setEditingStaff({ ...editingStaff, data: { ...editingStaff.data, comet_number: v } })} testId="staff-comet-input-2" />
             <ImageUpload value={editingStaff.data.photo_url} onChange={(v) => setEditingStaff({ ...editingStaff, data: { ...editingStaff.data, photo_url: v } })} label="Foto para el carnet (sin fondo)" testId="staff-photo-upload" />
             <button className="fsc-btn-primary w-full py-2 rounded-md" data-testid="save-staff-btn">Guardar</button>
           </form>

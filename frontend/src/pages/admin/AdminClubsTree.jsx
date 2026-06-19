@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, useMemo } from "react";
 import api, { formatApiError } from "../../lib/api";
-import { ChevronDown, ChevronRight, Check, X, Trash2, Plus, Edit3, Users, Mail, Phone, Shield, RefreshCw } from "lucide-react";
+import { ChevronDown, ChevronRight, Check, X, Trash2, Plus, Edit3, Users, Mail, Phone, Shield, RefreshCw, Download } from "lucide-react";
 import { toast, Toaster } from "sonner";
 import { Pagination } from "../../components/PagedTable";
 import ImageUpload from "../../components/ImageUpload";
@@ -353,6 +353,21 @@ function TeamNode({ team, onTeamStatus, onDeletePlayer, onEditPlayer, onEditTeam
           {status !== "rechazado" && <button onClick={() => onTeamStatus(team.id, "rechazado")} className="text-fsc-rojo hover:bg-red-50 p-1 rounded text-xs" title="Rechazar" data-testid={`team-reject-${team.id}`}><X size={14}/></button>}
           <button onClick={() => onEditPlayer(team, null)} className="text-fsc-azul hover:bg-blue-50 p-1 rounded text-xs flex items-center gap-1" title="Agregar jugador" data-testid={`team-add-player-${team.id}`}><Plus size={14}/> Jugador</button>
           <button onClick={() => onEditStaff(team, null)} className="text-emerald-600 hover:bg-emerald-50 p-1 rounded text-xs flex items-center gap-1" title="Agregar cuerpo técnico" data-testid={`team-add-staff-${team.id}`}><Plus size={14}/> Staff</button>
+          <button
+            onClick={async () => {
+              try {
+                const res = await api.get(`/teams/${team.id}/roster.pdf`, { responseType: "blob" });
+                const url = URL.createObjectURL(res.data);
+                const a = document.createElement("a"); a.href = url; a.download = `roster_${team.name}.pdf`; a.click();
+                URL.revokeObjectURL(url);
+              } catch { toast.error("No se pudo generar el PDF"); }
+            }}
+            className="text-fsc-rojo hover:bg-rose-50 p-1 rounded text-xs flex items-center gap-1"
+            title="Descargar roster PDF"
+            data-testid={`team-roster-pdf-${team.id}`}
+          >
+            <Download size={14}/> PDF
+          </button>
         </div>
       </div>
 
@@ -416,8 +431,8 @@ function PlayerEditModal({ team, player, onClose, onSaved }) {
     nickname: player?.nickname || "",
     gender: player?.gender || "",
     eps: player?.eps || "",
+    comet_number: player?.comet_number || "",
     guardian_name: player?.guardian_name || "",
-    guardian_doc: player?.guardian_doc || "",
     guardian_relation: player?.guardian_relation || "",
     guardian_phone: player?.guardian_phone || "",
   }));
@@ -635,6 +650,10 @@ function StaffEditModal({ team, idx, initial, onClose, onSaved }) {
             <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md text-sm" data-testid="staff-phone" />
           </label>
         </div>
+        <label className="block">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Número COMET</span>
+          <input value={form.comet_number} onChange={(e) => setForm({ ...form, comet_number: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md text-sm" data-testid="staff-comet" />
+        </label>
         <ImageUpload value={form.photo_url} onChange={(v) => setForm({ ...form, photo_url: v })} label="Foto del staff (para el carnet)" testId="staff-photo" />
         <div className="flex justify-end gap-2 pt-2">
           <button type="button" onClick={onClose} disabled={saving} className="px-4 py-2 text-xs font-bold uppercase tracking-wide text-slate-600">Cancelar</button>
@@ -644,4 +663,3 @@ function StaffEditModal({ team, idx, initial, onClose, onSaved }) {
     </div>
   );
 }
-

@@ -521,6 +521,7 @@ class PlayerIn(BaseModel):
     nickname: Optional[str] = ""
     gender: Optional[str] = ""  # M / F
     eps: Optional[str] = ""
+    comet_number: Optional[str] = ""  # Número COMET (federación)
     guardian_name: Optional[str] = ""
     guardian_doc: Optional[str] = ""
     guardian_relation: Optional[str] = ""
@@ -635,12 +636,14 @@ class QuoteMealEntry(BaseModel):
     meal_addon_id: Optional[str] = ""
     # Legacy: tipo de comida (breakfast/lunch/dinner) usando matriz por tier.
     meal_type: Optional[Literal["breakfast", "lunch", "dinner"]] = None
-    pax: int = Field(ge=1)
+    # ge=0: permitimos que el DT escriba 0 sin romper la cotización (se ignora la línea).
+    pax: int = Field(ge=0)
 
 
 class QuoteTourEntry(BaseModel):
     tour_id: str
-    pax: int = Field(ge=1)
+    # ge=0: permitimos que el DT escriba 0 sin romper la cotización (se ignora la línea).
+    pax: int = Field(ge=0)
 
 
 class QuoteIn(BaseModel):
@@ -975,6 +978,198 @@ async def create_team(payload: TeamIn, _: dict = Depends(require_admin)):
         raise HTTPException(status_code=400, detail="La categoría es obligatoria")
     doc = payload.model_dump()
     doc["id"] = str(uuid.uuid4())
+
+@api.get("/teams/{team_id}/roster.pdf")
+async def team_roster_pdf(team_id: str, user: dict = Depends(get_current_user)):
+    """PDF profesional con cuerpo técnico + jugadores del equipo. Accesible admin o usuarios del club."""
+    team = await db.teams.find_one({"id": team_id}, {"_id": 0})
+    if not team:
+        raise HTTPException(status_code=404, detail="Equipo no encontrado")
+    # Permisos
+    if user.get("role") != "admin":
+        if user.get("role") != "team":
+            raise HTTPException(status_code=403, detail="No autorizado")
+        same_team = user.get("team_id") == team_id
+        same_club = user.get("club_id") and team.get("club_id") == user.get("club_id")
+        if not (same_team or same_club):
+            raise HTTPException(status_code=403, detail="No autorizado")
+
+    players = await db.players.find({"team_id": team_id}, {"_id": 0}).sort("jersey_number", 1).to_list(200)
+    staff = team.get("cuerpo_tecnico") or []
+    club_doc = await db.clubs.find_one({"id": team.get("club_id")}, {"_id": 0, "name": 1, "logo_url": 1}) if team.get("club_id") else None
+    home = await db.home_settings.find_one({"id": HOME_SETTINGS_ID}, {"_id": 0}) or {}
+    contact_email = home.get("contact_email") or "info@futuresoccercup.com"
+    contact_phone = home.get("contact_phone") or "+57 (000) 000-0000"
+    instagram = home.get("instagram") or ""
+    facebook = home.get("facebook") or ""
+
+    logo_bytes = None
+    try:
+        import httpx
+        FSC_LOGO_URL = "https://customer-assets.emergentagent.com/job_dd2523b3-e20b-4cc5-9d6d-534c6d02a185/artifacts/y4ulg6l9_FUTRE%20SOCCER%20CUP%202025_Mesa%20de%20trabajo%201.png"
+        r = httpx.get(FSC_LOGO_URL, timeout=4.0)
+        if r.status_code == 200:
+            logo_bytes = r.content
+    except Exception:
+        logo_bytes = None
+
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.enums import TA_LEFT, TA_RIGHT
+    from reportlab.lib import colors
+    from reportlab.lib.units import inch
+    from reportlab.platypus import BaseDocTemplate, PageTemplate, Frame, Paragraph, Spacer, Table, TableStyle
+    from io import BytesIO
+
+    BRAND_BLUE = colors.HexColor("#0640c8")
+    BRAND_DARK = colors.HexColor("#0a1426")
+    LIGHT = colors.HexColor("#f5f8ff")
+    BORDER = colors.HexColor("#cbd5e1")
+    EMERALD = colors.HexColor("#059669")
+
+    styles = getSampleStyleSheet()
+    H2 = ParagraphStyle("H2", parent=styles["Heading2"], fontSize=11, textColor=BRAND_BLUE, leading=14, spaceBefore=12, spaceAfter=4, fontName="Helvetica-Bold")
+    N = ParagraphStyle("N", parent=styles["Normal"], fontSize=8.5, leading=11)
+    SMALL = ParagraphStyle("SMALL", parent=N, fontSize=7.5, textColor=colors.grey, leading=10)
+
+    buf = BytesIO()
+
+    def _hf(canvas, doc_):
+        canvas.saveState()
+        canvas.setFillColor(BRAND_DARK)
+        canvas.rect(0, letter[1] - 1.1 * inch, letter[0], 1.1 * inch, fill=1, stroke=0)
+        if logo_bytes:
+            try:
+                from reportlab.lib.utils import ImageReader
+                canvas.drawImage(ImageReader(BytesIO(logo_bytes)), 0.5 * inch, letter[1] - 1.0 * inch, width=0.9 * inch, height=0.9 * inch, preserveAspectRatio=True, mask='auto')
+            except Exception:
+                pass
+        canvas.setFillColor(colors.white)
+        canvas.setFont("Helvetica-Bold", 18)
+        canvas.drawString(1.55 * inch, letter[1] - 0.55 * inch, "FUTURE SOCCER CUP")
+        canvas.setFont("Helvetica-Oblique", 10)
+        canvas.setFillColor(colors.HexColor("#9bb6ff"))
+        canvas.drawString(1.55 * inch, letter[1] - 0.78 * inch, "Somos más que un torneo")
+        canvas.setFont("Helvetica-Bold", 9)
+        canvas.drawRightString(letter[0] - 0.5 * inch, letter[1] - 0.55 * inch, "ROSTER OFICIAL")
+        canvas.setFillColor(BRAND_BLUE)
+        canvas.rect(0, letter[1] - 1.13 * inch, letter[0], 0.03 * inch, fill=1, stroke=0)
+        # Footer
+        canvas.setFillColor(BRAND_BLUE)
+        canvas.rect(0, 0, letter[0], 0.55 * inch, fill=1, stroke=0)
+        canvas.setFillColor(colors.white)
+        canvas.setFont("Helvetica-Bold", 8)
+        canvas.drawString(0.5 * inch, 0.34 * inch, contact_email)
+        canvas.setFont("Helvetica", 8)
+        canvas.drawString(0.5 * inch, 0.18 * inch, contact_phone)
+        social_parts = []
+        if instagram: social_parts.append(f"IG: {instagram}")
+        if facebook: social_parts.append(f"FB: {facebook}")
+        if social_parts:
+            canvas.drawRightString(letter[0] - 0.5 * inch, 0.34 * inch, "  ·  ".join(social_parts))
+        canvas.setFont("Helvetica-Oblique", 7)
+        canvas.drawRightString(letter[0] - 0.5 * inch, 0.18 * inch, f"www.futuresoccercup.com  ·  Generado {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M')} UTC")
+        canvas.restoreState()
+
+    doc = BaseDocTemplate(buf, pagesize=letter, leftMargin=0.5 * inch, rightMargin=0.5 * inch, topMargin=1.25 * inch, bottomMargin=0.7 * inch)
+    frame = Frame(doc.leftMargin, doc.bottomMargin, doc.width, doc.height, id="main")
+    doc.addPageTemplates([PageTemplate(id="default", frames=[frame], onPage=_hf)])
+
+    story = []
+    # Banner del equipo
+    banner = Table([[
+        Paragraph(f"<font color='#9bb6ff' size='9'><b>EQUIPO</b></font><br/>"
+                  f"<font color='white' size='18'><b>{team.get('name','—')}</b></font><br/>"
+                  f"<font color='#9bb6ff' size='9'>Categoría: {team.get('category','—')}  ·  Año: {team.get('birth_year') or '—'}</font>", N),
+        Paragraph(f"<font color='#9bb6ff' size='9'>Club</font><br/>"
+                  f"<font color='white' size='14'><b>{(club_doc or {}).get('name') or team.get('club_name') or '—'}</b></font><br/>"
+                  f"<font color='#9bb6ff' size='9'>{team.get('city') or ''}</font>", N),
+    ]], colWidths=[4.0 * inch, 3.5 * inch])
+    banner.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), BRAND_DARK),
+        ("LEFTPADDING", (0, 0), (-1, -1), 12), ("RIGHTPADDING", (0, 0), (-1, -1), 12),
+        ("TOPPADDING", (0, 0), (-1, -1), 10), ("BOTTOMPADDING", (0, 0), (-1, -1), 12),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+    ]))
+    story.append(banner)
+
+    # === Cuerpo Técnico ===
+    story.append(Paragraph(f"CUERPO TÉCNICO ({len(staff)})", H2))
+    if staff:
+        data = [["Nombre", "Rol", "Documento", "N° COMET", "Teléfono"]]
+        for s in staff:
+            data.append([
+                s.get("name") or "—",
+                s.get("role") or "—",
+                s.get("document") or "—",
+                s.get("comet_number") or "—",
+                s.get("phone") or "—",
+            ])
+        t = Table(data, colWidths=[2.2 * inch, 1.6 * inch, 1.4 * inch, 1.1 * inch, 1.2 * inch], repeatRows=1)
+        t.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), EMERALD),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 8),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f0fdf4")]),
+            ("BOX", (0, 0), (-1, -1), 0.5, BORDER),
+            ("LINEBELOW", (0, 0), (-1, 0), 0.5, colors.white),
+            ("LEFTPADDING", (0, 0), (-1, -1), 6), ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+            ("TOPPADDING", (0, 0), (-1, -1), 4), ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ]))
+        story.append(t)
+    else:
+        story.append(Paragraph("<i>Sin cuerpo técnico registrado.</i>", SMALL))
+
+    # === Jugadores ===
+    story.append(Paragraph(f"JUGADORES ({len(players)})", H2))
+    if players:
+        data = [["#", "Nombre", "Apodo", "Pos.", "Doc.", "N° COMET", "F. nac.", "EPS"]]
+        for p in players:
+            data.append([
+                str(p.get("jersey_number") or ""),
+                p.get("name") or "—",
+                p.get("nickname") or "—",
+                p.get("position") or "—",
+                p.get("document_id") or "—",
+                p.get("comet_number") or "—",
+                p.get("birth_date") or "—",
+                p.get("eps") or "—",
+            ])
+        col_widths = [0.4 * inch, 1.8 * inch, 1.0 * inch, 0.9 * inch, 1.0 * inch, 0.9 * inch, 0.8 * inch, 0.7 * inch]
+        t = Table(data, colWidths=col_widths, repeatRows=1)
+        t.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), BRAND_BLUE),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 7.5),
+            ("ALIGN", (0, 0), (0, -1), "CENTER"),
+            ("FONTNAME", (0, 1), (0, -1), "Helvetica-Bold"),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, LIGHT]),
+            ("BOX", (0, 0), (-1, -1), 0.5, BORDER),
+            ("LINEBELOW", (0, 0), (-1, 0), 0.5, colors.white),
+            ("LEFTPADDING", (0, 0), (-1, -1), 5), ("RIGHTPADDING", (0, 0), (-1, -1), 5),
+            ("TOPPADDING", (0, 0), (-1, -1), 3), ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ]))
+        story.append(t)
+    else:
+        story.append(Paragraph("<i>Sin jugadores registrados.</i>", SMALL))
+
+    story.append(Spacer(1, 14))
+    story.append(Paragraph(
+        "Roster oficial generado por la plataforma FUTURE SOCCER CUP. Los datos personales se manejan bajo la Ley 1581 de 2012.",
+        SMALL
+    ))
+
+    doc.build(story)
+    pdf_bytes = buf.getvalue()
+    buf.close()
+    from fastapi.responses import Response
+    safe_name = "".join(c for c in (team.get("name") or "equipo") if c.isalnum() or c in "-_")[:50] or "equipo"
+    return Response(content=pdf_bytes, media_type="application/pdf", headers={
+        "Content-Disposition": f"attachment; filename=roster_{safe_name}.pdf"
+    })
+
     doc["status"] = "aprobado"  # Admin-created teams are auto-approved
     doc["created_at"] = datetime.now(timezone.utc).isoformat()
     await db.teams.insert_one(doc)
@@ -2938,12 +3133,9 @@ def _calculate_quote(payload: QuoteIn, catalog: dict) -> dict:
                 registration += cfee
                 registration_breakdown.append({"name": str(c.get("name", "")), "fee": cfee})
         else:
-            event = EVENT_TYPES.get(payload.event_type) or {}
-            fees_by_year = event.get("fees_by_year") or {}
-            if payload.birth_year and str(payload.birth_year) in fees_by_year:
-                registration = float(fees_by_year[str(payload.birth_year)])
-            else:
-                registration = float(event.get("registration_fee_per_team", 0) or 0)
+            # No hay events ni categories seleccionados → no se cobra inscripción.
+            # (Antes caía al fallback EVENT_TYPES legacy y mostraba un valor "fantasma".)
+            registration = 0.0
 
     other_charges = float(payload.other_charges_amount or 0)
     total = lodging_total + meals_total + transport_total + tours_total + registration + other_charges

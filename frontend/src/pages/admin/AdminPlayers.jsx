@@ -7,7 +7,7 @@ import ImageUpload from "../../components/ImageUpload";
 import { usePagedSearch, SearchBar, Pagination } from "../../components/PagedTable";
 import ExportCsvButton from "../../components/ExportCsvButton";
 
-const EMPTY = { name: "", team_id: "", jersey_number: 1, position: "Mediocampista", birth_date: "", photo_url: "", document_id: "", nickname: "", gender: "", eps: "", guardian_name: "", guardian_doc: "", guardian_relation: "", guardian_phone: "" };
+const EMPTY = { name: "", team_id: "", jersey_number: 1, position: "Mediocampista", birth_date: "", photo_url: "", document_id: "", nickname: "", gender: "", eps: "", comet_number: "", guardian_name: "", guardian_relation: "", guardian_phone: "" };
 
 export default function AdminPlayers() {
   const [players, setPlayers] = useState([]);
@@ -179,14 +179,16 @@ export default function AdminPlayers() {
               <Field label="Fecha nacimiento" type="date" value={editing.birth_date} onChange={(v) => setEditing({ ...editing, birth_date: v })} testId="admin-player-birthdate-input" />
               <Field label="Documento de identidad" value={editing.document_id} onChange={(v) => setEditing({ ...editing, document_id: v })} testId="admin-player-doc-input" />
             </div>
-            <Field label="EPS" value={editing.eps} onChange={(v) => setEditing({ ...editing, eps: v })} testId="admin-player-eps-input" />
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="EPS" value={editing.eps} onChange={(v) => setEditing({ ...editing, eps: v })} testId="admin-player-eps-input" />
+              <Field label="Número COMET" value={editing.comet_number} onChange={(v) => setEditing({ ...editing, comet_number: v })} testId="admin-player-comet-input" />
+            </div>
             <ImageUpload value={editing.photo_url} onChange={(v) => setEditing({ ...editing, photo_url: v })} label="Foto del jugador (para el carnet)" testId="admin-player-photo" />
 
             <div className="border-t border-slate-200 pt-3 mt-3">
               <h4 className="font-display text-base font-black uppercase tracking-tight mb-2">Acudiente / Contacto</h4>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Nombre acudiente" value={editing.guardian_name} onChange={(v) => setEditing({ ...editing, guardian_name: v })} testId="admin-player-guardian-name-input" />
-                <Field label="Documento acudiente" value={editing.guardian_doc} onChange={(v) => setEditing({ ...editing, guardian_doc: v })} testId="admin-player-guardian-doc-input" />
                 <Field label="Parentesco" value={editing.guardian_relation} onChange={(v) => setEditing({ ...editing, guardian_relation: v })} testId="admin-player-guardian-relation-input" />
                 <Field label="Teléfono de contacto" value={editing.guardian_phone} onChange={(v) => setEditing({ ...editing, guardian_phone: v })} testId="admin-player-guardian-phone-input" />
               </div>
