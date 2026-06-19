@@ -424,7 +424,7 @@ function PlayerEditModal({ team, player, onClose, onSaved }) {
     name: player?.name || "",
     team_id: team.id,
     jersey_number: player?.jersey_number || 1,
-    position: player?.position || "Mediocampista",
+    position: player?.position || "Portero",
     birth_date: player?.birth_date || "",
     photo_url: player?.photo_url || "",
     document_id: player?.document_id || "",

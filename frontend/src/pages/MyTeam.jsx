@@ -9,7 +9,7 @@ import CategorySelect from "../components/CategorySelect";
 import PaymentForm from "../components/PaymentForm";
 import PaymentsList from "../components/PaymentsList";
 
-const EMPTY_PLAYER = { name: "", team_id: "", jersey_number: 1, position: "Mediocampista", birth_date: "", photo_url: "", document_id: "", nickname: "", gender: "", eps: "", comet_number: "", guardian_name: "", guardian_relation: "", guardian_phone: "" };
+const EMPTY_PLAYER = { name: "", team_id: "", jersey_number: 1, position: "Portero", birth_date: "", photo_url: "", document_id: "", nickname: "", gender: "", eps: "", comet_number: "", guardian_name: "", guardian_relation: "", guardian_phone: "" };
 const EMPTY_STAFF = { name: "", document: "", role: "Director técnico", phone: "", team_id: "", photo_url: "" };
 const fmtCOP = (n) => `$${Number(n || 0).toLocaleString("es-CO")} COP`;
 

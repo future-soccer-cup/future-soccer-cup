@@ -7,7 +7,7 @@ import ImageUpload from "../../components/ImageUpload";
 import { usePagedSearch, SearchBar, Pagination } from "../../components/PagedTable";
 import ExportCsvButton from "../../components/ExportCsvButton";
 
-const EMPTY = { name: "", team_id: "", jersey_number: 1, position: "Mediocampista", birth_date: "", photo_url: "", document_id: "", nickname: "", gender: "", eps: "", comet_number: "", guardian_name: "", guardian_relation: "", guardian_phone: "" };
+const EMPTY = { name: "", team_id: "", jersey_number: 1, position: "Portero", birth_date: "", photo_url: "", document_id: "", nickname: "", gender: "", eps: "", comet_number: "", guardian_name: "", guardian_relation: "", guardian_phone: "" };
 
 export default function AdminPlayers() {
   const [players, setPlayers] = useState([]);
