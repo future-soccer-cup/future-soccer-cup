@@ -357,10 +357,15 @@ function TeamNode({ team, onTeamStatus, onDeletePlayer, onEditPlayer, onEditTeam
             onClick={async () => {
               try {
                 const res = await api.get(`/teams/${team.id}/roster.pdf`, { responseType: "blob" });
-                const url = URL.createObjectURL(res.data);
-                const a = document.createElement("a"); a.href = url; a.download = `roster_${team.name}.pdf`; a.click();
-                URL.revokeObjectURL(url);
-              } catch { toast.error("No se pudo generar el PDF"); }
+                const blob = res.data instanceof Blob ? res.data : new Blob([res.data], { type: "application/pdf" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `roster_${(team.name || "equipo").replace(/[^a-z0-9_-]/gi, "_")}.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+              } catch (e) { toast.error("No se pudo generar el PDF: " + (e?.message || "error")); }
             }}
             className="text-fsc-rojo hover:bg-rose-50 p-1 rounded text-xs flex items-center gap-1"
             title="Descargar roster PDF"

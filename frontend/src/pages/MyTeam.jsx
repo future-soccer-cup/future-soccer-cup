@@ -13,6 +13,22 @@ const EMPTY_PLAYER = { name: "", team_id: "", jersey_number: 1, position: "Porte
 const EMPTY_STAFF = { name: "", document: "", role: "Director técnico", phone: "", team_id: "", photo_url: "" };
 const fmtCOP = (n) => `$${Number(n || 0).toLocaleString("es-CO")} COP`;
 
+async function downloadTeamRoster(team) {
+  try {
+    const res = await api.get(`/teams/${team.id}/roster.pdf`, { responseType: "blob" });
+    const blob = res.data instanceof Blob ? res.data : new Blob([res.data], { type: "application/pdf" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `roster_${(team.name || "equipo").replace(/[^a-z0-9_-]/gi, "_")}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+  } catch (e) {
+    toast.error("No se pudo generar el PDF: " + (e?.message || "error"));
+  }
+}
+
 export default function MyTeam() {
   const { user } = useAuth();
   const [team, setTeam] = useState(null);
@@ -262,14 +278,7 @@ export default function MyTeam() {
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <button
-                      onClick={async () => {
-                        try {
-                          const res = await api.get(`/teams/${t.id}/roster.pdf`, { responseType: "blob" });
-                          const url = URL.createObjectURL(res.data);
-                          const a = document.createElement("a"); a.href = url; a.download = `roster_${t.name}.pdf`; a.click();
-                          URL.revokeObjectURL(url);
-                        } catch { toast.error("No se pudo generar el PDF"); }
-                      }}
+                      onClick={() => downloadTeamRoster(t)}
                       className="text-xs px-3 py-1.5 bg-fsc-rojo hover:bg-rose-700 text-white rounded-md flex items-center gap-1"
                       data-testid={`club-team-roster-pdf-${t.id}`}
                       title="Descargar roster (cuerpo técnico + jugadores) en PDF"
@@ -629,14 +638,7 @@ export default function MyTeam() {
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <button
-            onClick={async () => {
-              try {
-                const res = await api.get(`/teams/${team.id}/roster.pdf`, { responseType: "blob" });
-                const url = URL.createObjectURL(res.data);
-                const a = document.createElement("a"); a.href = url; a.download = `roster_${team.name}.pdf`; a.click();
-                URL.revokeObjectURL(url);
-              } catch { toast.error("No se pudo generar el PDF"); }
-            }}
+            onClick={() => downloadTeamRoster(team)}
             className="bg-fsc-rojo hover:bg-rose-700 text-white px-3 py-2 rounded-md text-sm flex items-center gap-1"
             data-testid="my-team-roster-pdf-btn"
           >
@@ -804,14 +806,7 @@ export default function MyTeam() {
                 <span className={`font-bold tabular-nums ${t.registration_payment_status === "paid" ? "text-green-600" : "text-amber-600"}`}>{t.registration_payment_status === "paid" ? "Pagada" : fmtCOP(t.registration_fee)}</span>
               </div>
               <button
-                onClick={async () => {
-                  try {
-                    const res = await api.get(`/teams/${t.id}/roster.pdf`, { responseType: "blob" });
-                    const url = URL.createObjectURL(res.data);
-                    const a = document.createElement("a"); a.href = url; a.download = `roster_${t.name}.pdf`; a.click();
-                    URL.revokeObjectURL(url);
-                  } catch { toast.error("No se pudo generar el PDF"); }
-                }}
+                onClick={() => downloadTeamRoster(t)}
                 className="mt-2 w-full text-xs px-3 py-1.5 bg-fsc-rojo hover:bg-rose-700 text-white rounded-md flex items-center justify-center gap-1"
                 data-testid={`club-team-roster-pdf-${t.id}`}
                 title="Descargar roster (cuerpo técnico + jugadores) en PDF"

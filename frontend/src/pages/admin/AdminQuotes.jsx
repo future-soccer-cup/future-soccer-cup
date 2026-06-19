@@ -168,14 +168,16 @@ function QuoteDetailModal({ q, onClose, onChanged }) {
   const handleDownloadPDF = async () => {
     try {
       const res = await api.get(`/quotes/${q.id}/pdf`, { responseType: "blob" });
-      const url = URL.createObjectURL(res.data);
+      const blob = res.data instanceof Blob ? res.data : new Blob([res.data], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
       a.download = `cotizacion_${q.id.slice(0, 8)}.pdf`;
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(url);
+      setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
     } catch (err) {
-      toast.error("No se pudo generar el PDF");
+      toast.error("No se pudo generar el PDF: " + (err?.message || "error"));
     }
   };
 

@@ -135,11 +135,15 @@ export default function MyQuotes() {
                     onClick={async () => {
                       try {
                         const res = await api.get(`/quotes/${q.id}/pdf`, { responseType: "blob" });
-                        const url = URL.createObjectURL(res.data);
+                        const blob = res.data instanceof Blob ? res.data : new Blob([res.data], { type: "application/pdf" });
+                        const url = URL.createObjectURL(blob);
                         const a = document.createElement("a");
-                        a.href = url; a.download = `cotizacion_${q.id.slice(0, 8)}.pdf`; a.click();
-                        URL.revokeObjectURL(url);
-                      } catch { toast.error("No se pudo generar el PDF"); }
+                        a.href = url;
+                        a.download = `cotizacion_${q.id.slice(0, 8)}.pdf`;
+                        document.body.appendChild(a);
+                        a.click();
+                        setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+                      } catch (e) { toast.error("No se pudo generar el PDF: " + (e?.message || "error")); }
                     }}
                     className="w-full text-xs font-bold uppercase tracking-wide text-emerald-700 hover:text-emerald-900 flex items-center gap-1 justify-center"
                     data-testid={`download-pdf-${q.id}`}
