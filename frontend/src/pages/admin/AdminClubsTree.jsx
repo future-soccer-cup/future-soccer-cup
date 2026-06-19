@@ -506,10 +506,16 @@ function PlayerEditModal({ team, player, onClose, onSaved }) {
           </label>
         </div>
 
-        <label className="block">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">EPS</span>
-          <input value={form.eps} onChange={(e) => setForm({ ...form, eps: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md text-sm" data-testid="player-eps" />
-        </label>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="block">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">EPS</span>
+            <input value={form.eps} onChange={(e) => setForm({ ...form, eps: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md text-sm" data-testid="player-eps" />
+          </label>
+          <label className="block">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Número COMET</span>
+            <input value={form.comet_number} onChange={(e) => setForm({ ...form, comet_number: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md text-sm" data-testid="player-comet" />
+          </label>
+        </div>
 
         <ImageUpload value={form.photo_url} onChange={(v) => setForm({ ...form, photo_url: v })} label="Foto del jugador (para el carnet)" testId="player-photo" />
 
@@ -521,14 +527,10 @@ function PlayerEditModal({ team, player, onClose, onSaved }) {
               <input value={form.guardian_name} onChange={(e) => setForm({ ...form, guardian_name: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md text-sm" data-testid="player-guardian-name" />
             </label>
             <label className="block">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Documento</span>
-              <input value={form.guardian_doc} onChange={(e) => setForm({ ...form, guardian_doc: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md text-sm" data-testid="player-guardian-doc" />
-            </label>
-            <label className="block">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Parentesco</span>
               <input value={form.guardian_relation} onChange={(e) => setForm({ ...form, guardian_relation: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md text-sm" data-testid="player-guardian-relation" />
             </label>
-            <label className="block">
+            <label className="block col-span-2">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Teléfono</span>
               <input value={form.guardian_phone} onChange={(e) => setForm({ ...form, guardian_phone: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md text-sm" data-testid="player-guardian-phone" />
             </label>
