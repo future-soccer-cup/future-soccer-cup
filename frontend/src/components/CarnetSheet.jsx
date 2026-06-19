@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { imgSrc } from "../lib/api";
 import { Carnet } from "../pages/PlayerDetail";
-import { Download, Search, FileText, Loader2, Users, ShieldUser, CheckSquare, Square } from "lucide-react";
+import { Download, Search, FileText, Loader2, Users, ShieldUser, CheckSquare, Square, RefreshCw } from "lucide-react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { toast } from "sonner";
@@ -16,7 +16,7 @@ import { toast } from "sonner";
  *   - title: título mostrado arriba (default "Carnets")
  *   - testIdPrefix: prefijo para los data-testid (default "carnet")
  */
-export default function CarnetSheet({ players, teams, clubs: clubsProp = null, tournaments: tournamentsProp = null, lockedTeamId = null, title = "Carnets", testIdPrefix = "carnet", readonly = false, showClubFilter = false }) {
+export default function CarnetSheet({ players, teams, clubs: clubsProp = null, tournaments: tournamentsProp = null, lockedTeamId = null, title = "Carnets", testIdPrefix = "carnet", readonly = false, showClubFilter = false, onRefresh = null }) {
   const [q, setQ] = useState("");
   const [team, setTeam] = useState(lockedTeamId || "");
   const [club, setClub] = useState("");
@@ -91,7 +91,14 @@ export default function CarnetSheet({ players, teams, clubs: clubsProp = null, t
     if (club && (!t || t.club_name !== club)) return false;
     if (tournament && (!t || t.tournament_id !== tournament)) return false;
     if (category && (!t || t.category !== category)) return false;
-    if (q && !p.name?.toLowerCase().includes(q.toLowerCase())) return false;
+    if (q) {
+      const needle = q.toLowerCase();
+      const hay = [
+        p.name, p.nickname, p.position, p.document_id, p.comet_number,
+        String(p.jersey_number ?? ""), t?.name, t?.club_name, t?.category,
+      ].map((x) => (x || "").toString().toLowerCase()).join(" ");
+      if (!hay.includes(needle)) return false;
+    }
     return true;
   }), [players, effectiveTeamFilter, club, tournament, category, tmap, q]);
 
@@ -105,8 +112,14 @@ export default function CarnetSheet({ players, teams, clubs: clubsProp = null, t
       document: s.document,
       photo_url: s.photo_url || "",
     })))
-    .filter((s) => !q || s.name?.toLowerCase().includes(q.toLowerCase()) || s.role?.toLowerCase().includes(q.toLowerCase())),
-  [visibleTeams, effectiveTeamFilter, q]);
+    .filter((s) => {
+      if (!q) return true;
+      const needle = q.toLowerCase();
+      const t = tmap[s.team_id];
+      const hay = [s.name, s.role, s.document, s.comet_number, s.phone, t?.name, t?.club_name].map((x) => (x || "").toString().toLowerCase()).join(" ");
+      return hay.includes(needle);
+    }),
+  [visibleTeams, effectiveTeamFilter, q, tmap]);
 
   const items = tab === "players" ? filteredPlayers : staffList;
   const getUid = (it) => it._staff_uid || it.id;
@@ -237,6 +250,11 @@ export default function CarnetSheet({ players, teams, clubs: clubsProp = null, t
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {onRefresh && (
+            <button onClick={onRefresh} className="px-3 py-2 border-2 border-slate-200 text-slate-700 hover:bg-slate-50 rounded-md text-xs font-bold uppercase tracking-wide flex items-center gap-2" data-testid={`${testIdPrefix}-refresh-btn`} title="Recargar jugadores y cuerpo técnico">
+              <RefreshCw size={14}/> Recargar
+            </button>
+          )}
           <button onClick={() => window.print()} className="px-4 py-2 border-2 border-slate-900 text-slate-900 hover:bg-slate-900 hover:text-white rounded-md text-xs font-bold uppercase tracking-wide flex items-center gap-2" data-testid={`${testIdPrefix}-print-btn`}>
             <FileText size={14}/> Vista impresión
           </button>

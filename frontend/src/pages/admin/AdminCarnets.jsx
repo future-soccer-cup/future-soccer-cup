@@ -9,8 +9,7 @@ export default function AdminCarnets() {
   const [clubs, setClubs] = useState([]);
   const [tournaments, setTournaments] = useState([]);
 
-  useEffect(() => {
-    // Cargamos TODOS los registros (cualquier status). El filtro por estado se hace en la UI cuando aplique.
+  const load = () => {
     Promise.all([
       api.get("/players"),
       api.get("/teams"),
@@ -22,6 +21,10 @@ export default function AdminCarnets() {
       setClubs(c.data || []);
       setTournaments((tn.data || []).filter((x) => !x.archived));
     });
+  };
+
+  useEffect(() => {
+    load();
   }, []);
 
   return (
@@ -35,6 +38,7 @@ export default function AdminCarnets() {
         title="Carnets"
         testIdPrefix="carnet"
         showClubFilter={true}
+        onRefresh={load}
       />
     </div>
   );
