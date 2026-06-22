@@ -1,44 +1,73 @@
-# PRD — FUTRE SOCCER CUP
+# FUTRE SOCCER CUP — PRD
 
-## Problema y objetivo
-Aplicación versátil para FUTRE SOCCER CUP: Portal público + Admin, fixtures, resultados, registro clubes/equipos/jugadores, cotización multi-moneda (USD/COP) multi-evento/hospedaje, pagos manuales con info bancaria, generación PDF carnets, control de roles (Admin/Directivo/CT), identidad visual.
-
-## Stack
-- Frontend: React + Tailwind + shadcn/ui
-- Backend: FastAPI + MongoDB
-- Pagos: Stripe (sk_test_emergent)
-- Storage de fotos: Emergent Object Storage
+## Original Problem Statement
+Build a versatile application for FUTRE SOCCER CUP organizing youth football events. Public & Admin portals, Fixture generation, Match results, Club/Team/Player registration, Quotes with multi-currency (USD/COP), manual Payments with bank receipts, PDF Carnet generation, PDF Quote/Roster generation, role-based access (Admins, Directivos & Cuerpo Técnico), and a comprehensive Visual Identity. Spanish (ES) UI.
 
 ## Roles
-- **Admin**: gestión completa.
-- **Directivo (DT)**: cotiza tras aprobación club, crea equipos, registra jugadores/staff.
-- **Cuerpo Técnico (CT)**: registra jugadores/staff; no cotiza.
+- **Admin**: Full access to all modules.
+- **Director (Directivo)**: Manages club + teams + players. Sees Otros Cobros in quotes. Can download Team Roster PDFs.
+- **Cuerpo Técnico (CT)**: Manages club teams/players (read-mostly), can't change Club logo.
+- **Public**: Read-only Estadísticas (fixture, results, standings) — NO PDF downloads.
 
-## Estado de implementación (Feb 2026)
-- ✅ Cotizar multi-evento + multi-hospedaje, toggle USD/COP en vivo, moneda **bloqueada al editar**.
-- ✅ Catálogo dual COP/USD: todos los inputs USD en Inventario (lodging, meal addons, transport, tours) y en Torneos usan `CurrencyInput` con separador de miles (200.000) sin cero a la izquierda.
-- ✅ Aprobación admin obligatoria antes de pagar.
-- ✅ Pagos manuales con info bancaria, validación estricta de moneda.
-- ✅ PDF carnets (solo admin); Directivo/CT no ven módulo.
-- ✅ Filtros cascada Admin Carnets (Club→Evento→Categoría→Equipo).
-- ✅ Foto jugador y staff (ImageUpload) en 3 modales (MyTeam-Directivo/CT, MyTeam-DT, AdminPlayers) con los 13 campos: Nombre, Apodo, Género, Dorsal, Posición (18 op), Fecha nac., Documento, EPS, Foto, Acudiente (nombre/doc/parentesco/teléfono).
-- ✅ Admin · Cotizaciones · Ver: muestra Club + **Teléfono contacto**, etiqueta "Valor Paquete" (antes "Valor 5n"), elimina "Noches", muestra descripción del paquete y **acomodación** (accommodation_type del catálogo).
-- ✅ Admin · Cotizaciones · Ver: Transporte muestra `route_name` (no más route_id), Tours muestra `tour_name` (no más tour_id). Cotizaciones legacy hacen fallback al id.
-- ✅ Admin · Cotizaciones · Ver: montos formateados con sufijo "USD" o "COP" en cada línea.
-- ✅ Sidebar Admin reordenado.
+## Architecture (high level)
+- Frontend: React 19, Tailwind, Shadcn UI, lucide-react, sonner.
+- Backend: FastAPI + Motor (async MongoDB), reportlab for PDFs, JWT auth.
+- Storage: Emergent Object Storage for images/PDFs.
+- Tests: pytest under `/app/backend/tests/`.
 
-## Backlog priorizado
-- **P1** Notificaciones email (Resend/SendGrid) al aprobar/rechazar clubes/equipos/cotizaciones/pagos.
-- **P2** Stripe Webhook signature verification.
-- **P2** Refactor `server.py` (>4300 líneas) → `/app/backend/routes/`.
-- **P3** Dashboard de estadísticas avanzadas.
-- **P3** Exportación XLSX/CSV.
-- **P3** Notificaciones in-app.
+## What's been implemented (CHANGELOG)
+### 2026-06-22 — Iter27 — Módulo Fixture/Partidos/Resultados/Clasificación (Spec Final)
+- Modelo `Venue` (canchas) + CRUD `/api/venues` (GET público, POST/PUT/DELETE solo admin).
+- Componente `VenuePicker.jsx` con dropdown + modal inline "+ Crear nueva cancha", integrado en FixtureGenerator y AdminMatches.
+- `FixtureGenerateIn.tournament_id` ahora OBLIGATORIO; el endpoint rechaza torneos archivados.
+- `_round_robin_pairs(rounds_n)` soporta N vueltas (1, 2, …) con flip home/away por pasada.
+- Modelo `Match.cards[].type` extendido con `'other'`; UI con 3 botones (Amarilla/Roja/Otra).
+- `Tournament.categories[]` extendido con `points_win/draw/loss` y `fairplay_base/yellow/red/other`. UI por categoría en AdminTournaments (`CategoriesFeesEditor`).
+- `_cat_config()` lee la config por categoría con defaults seguros (3/1/0 puntos, 200/10/20/5 J.L.).
+- `GET /api/stats/standings` recalculada con:
+  - J.L. = base − (#amarillas·desc_amarilla + #rojas·desc_roja + #otras·desc_otra).
+  - Orden de desempate: PTOS → PG → GF → GC (menor) → DG → J.L.
+- Nuevos endpoints PDF (solo Admin/DT/CT vía `_require_auth_for_pdf`):
+  - `GET /tournaments/{tid}/fixture.pdf?category=&group=`
+  - `GET /tournaments/{tid}/standings.pdf?category=&group=`
+  - `GET /tournaments/{tid}/fairplay.pdf?category=&group=`
+- UI nueva `AdminFixtureGenerator.jsx`: flujo guiado Paso 1 Evento (activos) → Paso 2 Categoría → Paso 3 Grupo + Vueltas + Canchas + Horarios.
+- Barra `PdfExportBar` en `/admin/partidos` con selectores Evento/Categoría/Grupo y 3 botones de descarga.
+- Páginas públicas `/fixture` y `/datos-estadisticas` sin botones de descarga.
+- **Bug crítico pre-existente resuelto**: `POST /api/teams` estaba truncado (no insertaba ni retornaba). Ahora funcional.
+- Cache global del logo FSC en memoria → PDFs ~3-4× más rápidos.
 
-## Modelos clave
-- `quotes`: `{currency, contact_phone, lodgings_breakdown:[{tier_name,tier_description,tier_accommodation,...}], transport_entries_breakdown:[{route_id,route_name,...}], tour_subtotals:[{tour_id,tour_name,...}], status}`
-- `pricing_catalog`: `{type, price, price_usd, accommodation_type, description, includes, ...}`
-- `players`: `{name, nickname, gender, jersey_number, position, birth_date, document_id, eps, photo_url, guardian_*}`
+### Sesiones previas
+- Carnets: COMET visible siempre (jugadores y staff); búsqueda por nombre/doc/COMET/dorsal/equipo; botón "Recargar". 
+- Bug "Portero/Mediocampista" resuelto (default position).
+- Admin ve TODOS los jugadores (corregido filtro que escondía 'pendiente').
+- Roster PDF y Quote PDF: banners sin overlap, columnas con word-wrap.
+- Director ve "Otros Cobros" del admin en `/mis-cotizaciones`.
+- "PDF Roster" disponible para Director y CT en sus vistas de equipo.
+- Helper `downloadPdf` robusto (anchor en DOM) para todos los botones PDF.
 
-## Credenciales de prueba
+## Key API endpoints
+- `GET/POST/PUT/DELETE /api/venues`
+- `POST /api/fixtures/generate` (rounds, tournament_id obligatorio, no archivados)
+- `GET /api/stats/standings?tournament_id=&category=&group_name=`
+- `GET /api/tournaments/{tid}/{fixture|standings|fairplay}.pdf`
+- `PUT /api/matches/{id}/result` con cards[].type ∈ {yellow,red,other}
+- `GET /api/teams/{team_id}/roster.pdf`
+- `GET /api/quotes/{qid}/pdf`
+
+## Backlog (priorizado)
+### P1
+- Notificaciones por email (Resend) sobre aprobación/rechazo de equipos/jugadores/cotizaciones/pagos.
+
+### P2
+- Verificación de firma de Webhook de Stripe.
+- Refactor de `server.py` (>5400 líneas) en `/app/backend/routes/`.
+- Snapshot histórico automático al archivar evento (verificar que `historical_standings` se llena automáticamente).
+
+### P3 (ideas)
+- Bracket público "Camino al título" por evento.
+- COMET único por jugador (validación backend).
+- Badge "Pendiente aprobación" en carnets.
+
+## Test credentials
 Ver `/app/memory/test_credentials.md`.

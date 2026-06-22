@@ -1008,6 +1008,11 @@ async def create_team(payload: TeamIn, _: dict = Depends(require_admin)):
         raise HTTPException(status_code=400, detail="La categoría es obligatoria")
     doc = payload.model_dump()
     doc["id"] = str(uuid.uuid4())
+    doc["status"] = "aprobado"
+    doc["created_at"] = datetime.now(timezone.utc).isoformat()
+    await db.teams.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
 
 @api.get("/teams/{team_id}/roster.pdf")
 async def team_roster_pdf(team_id: str, user: dict = Depends(get_current_user)):
