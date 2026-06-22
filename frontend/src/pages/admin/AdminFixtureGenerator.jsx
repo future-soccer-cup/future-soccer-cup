@@ -17,6 +17,7 @@ export default function AdminFixtureGenerator() {
   const [venues, setVenues] = useState([""]);
   const [slots, setSlots] = useState(["10:00"]);
   const [doubleMatchday, setDoubleMatchday] = useState(false);
+  const [rules, setRules] = useState({ points_win: 3, points_draw: 1, points_loss: 0, fairplay_base: 200, fairplay_yellow: 10, fairplay_red: 20, fairplay_other: 5 });
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -32,6 +33,23 @@ export default function AdminFixtureGenerator() {
   }, []);
 
   const tournament = useMemo(() => tournaments.find((t) => t.id === tournamentId), [tournaments, tournamentId]);
+
+  // Cuando cambia el evento o la categoría, precargar las reglas existentes (si las hay)
+  useEffect(() => {
+    if (!tournament || !category) return;
+    const cat = (tournament.categories || []).find((c) => c.name === category);
+    if (cat) {
+      setRules({
+        points_win: cat.points_win ?? 3,
+        points_draw: cat.points_draw ?? 1,
+        points_loss: cat.points_loss ?? 0,
+        fairplay_base: cat.fairplay_base ?? 200,
+        fairplay_yellow: cat.fairplay_yellow ?? 10,
+        fairplay_red: cat.fairplay_red ?? 20,
+        fairplay_other: cat.fairplay_other ?? 5,
+      });
+    }
+  }, [tournament, category]);
 
   // Categorías del torneo (si tiene config en categories) o fallback a la principal
   const tournamentCategories = useMemo(() => {
@@ -69,6 +87,7 @@ export default function AdminFixtureGenerator() {
         venues: venues.filter(Boolean),
         time_slots: slots.filter(Boolean),
         double_matchday: doubleMatchday,
+        ...rules,
         preview: !saveIt,
       });
       setPreview(res.data);
@@ -171,6 +190,23 @@ export default function AdminFixtureGenerator() {
             </span>
           </label>
 
+          {/* Reglas deportivas (puntos + Juego Limpio) — sólo para esta combinación Evento+Categoría */}
+          <div className="border-2 border-emerald-200 bg-emerald-50/40 rounded-lg p-3" data-testid="fg-rules-box">
+            <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-700 mb-2">Reglas deportivas para este fixture</div>
+            <div className="grid grid-cols-3 gap-2 mb-2">
+              <NumField label="Pts G" value={rules.points_win} onChange={(v) => setRules({ ...rules, points_win: v })} testId="fg-pts-win" />
+              <NumField label="Pts E" value={rules.points_draw} onChange={(v) => setRules({ ...rules, points_draw: v })} testId="fg-pts-draw" />
+              <NumField label="Pts P" value={rules.points_loss} onChange={(v) => setRules({ ...rules, points_loss: v })} testId="fg-pts-loss" />
+            </div>
+            <div className="grid grid-cols-4 gap-2">
+              <NumField label="J.L base" value={rules.fairplay_base} onChange={(v) => setRules({ ...rules, fairplay_base: v })} testId="fg-fp-base" />
+              <NumField label="− Amar." value={rules.fairplay_yellow} onChange={(v) => setRules({ ...rules, fairplay_yellow: v })} testId="fg-fp-yellow" />
+              <NumField label="− Roja" value={rules.fairplay_red} onChange={(v) => setRules({ ...rules, fairplay_red: v })} testId="fg-fp-red" />
+              <NumField label="− Otra" value={rules.fairplay_other} onChange={(v) => setRules({ ...rules, fairplay_other: v })} testId="fg-fp-other" />
+            </div>
+            <p className="text-[10px] text-emerald-700/80 mt-2">Estas reglas se guardan junto con esta categoría del evento y aplican a la clasificación y Juego Limpio.</p>
+          </div>
+
           <div className="flex gap-2 pt-2">
             <button onClick={() => generate(false)} disabled={loading} className="flex-1 fsc-btn-primary py-2 rounded-md text-sm flex items-center justify-center gap-2 disabled:opacity-50" data-testid="fg-preview-btn">
               <Wand2 size={16}/> {loading ? "..." : "Vista previa"}
@@ -259,5 +295,21 @@ export default function AdminFixtureGenerator() {
         </div>
       )}
     </div>
+  );
+}
+
+
+function NumField({ label, value, onChange, testId }) {
+  return (
+    <label className="block">
+      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{label}</span>
+      <input
+        type="number"
+        value={value ?? 0}
+        onChange={(e) => onChange(Number(e.target.value || 0))}
+        className="mt-0.5 w-full px-2 py-1.5 border border-slate-300 rounded text-sm tabular-nums"
+        data-testid={testId}
+      />
+    </label>
   );
 }

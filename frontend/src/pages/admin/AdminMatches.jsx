@@ -30,11 +30,38 @@ export default function AdminMatches() {
   const [scoring, setScoring] = useState(null);
   const [manualEdit, setManualEdit] = useState(null);
   const [intergroupOpen, setIntergroupOpen] = useState(false);
+  // Filtros globales del módulo (aplican a la tabla, a clasificación y a J.L)
+  const [filterTid, setFilterTid] = useState("");
+  const [filterCat, setFilterCat] = useState("");
+  const [filterGrp, setFilterGrp] = useState("");
+  const [tab, setTab] = useState("partidos"); // partidos | clasificacion | juego_limpio
+  const [standings, setStandings] = useState([]);
 
   const load = useCallback(() => Promise.all([
     api.get("/matches"), api.get("/teams"), api.get("/tournaments")
   ]).then(([m, t, tr]) => { setMatches(m.data); setTeams(t.data); setTournaments(tr.data); }), []);
   useEffect(() => { load(); }, [load]);
+
+  // Cargar clasificación cuando hay filtros suficientes y se cambia a tabs de stats
+  useEffect(() => {
+    if (tab === "partidos") return;
+    if (!filterTid || !filterCat) { setStandings([]); return; }
+    const params = new URLSearchParams({ tournament_id: filterTid, category: filterCat });
+    if (filterGrp) params.set("group_name", filterGrp);
+    api.get(`/stats/standings?${params.toString()}`).then((r) => setStandings(r.data || []));
+  }, [tab, filterTid, filterCat, filterGrp]);
+
+  // Filtrar la lista de partidos visible
+  const filteredMatches = matches.filter((m) => {
+    if (filterTid && m.tournament_id !== filterTid) return false;
+    if (filterGrp && (m.group_name || "") !== filterGrp) return false;
+    if (filterCat) {
+      // Necesitamos atar partido a categoría vía el equipo local
+      const hTeam = teams.find((t) => t.id === m.home_team_id);
+      if (!hTeam || hTeam.category !== filterCat) return false;
+    }
+    return true;
+  });
 
   const save = async (e) => {
     e.preventDefault();
@@ -122,14 +149,33 @@ export default function AdminMatches() {
         </div>
       </div>
 
-      <PdfExportBar tournaments={tournaments} teams={teams} />
-
-      <MatchesTable
-        matches={matches}
-        onEdit={(m) => setManualEdit({ ...m, match_date: toLocalInput(m.match_date) })}
-        onScore={(m) => setScoring({ ...m, scorers: m.scorers || [] })}
-        onRemove={remove}
+      <FilterAndExportBar
+        tournaments={tournaments} teams={teams}
+        tid={filterTid} setTid={setFilterTid}
+        cat={filterCat} setCat={setFilterCat}
+        grp={filterGrp} setGrp={setFilterGrp}
       />
+
+      <div className="flex gap-1 mb-4 border-b border-slate-200" data-testid="matches-tabs">
+        <TabBtn active={tab === "partidos"} onClick={() => setTab("partidos")} testId="tab-partidos">Partidos · {filteredMatches.length}</TabBtn>
+        <TabBtn active={tab === "clasificacion"} onClick={() => setTab("clasificacion")} testId="tab-clasificacion" disabled={!filterTid || !filterCat}>Clasificación</TabBtn>
+        <TabBtn active={tab === "juego_limpio"} onClick={() => setTab("juego_limpio")} testId="tab-juego-limpio" disabled={!filterTid || !filterCat}>Juego Limpio</TabBtn>
+      </div>
+
+      {tab === "partidos" && (
+        <MatchesTable
+          matches={filteredMatches}
+          onEdit={(m) => setManualEdit({ ...m, match_date: toLocalInput(m.match_date) })}
+          onScore={(m) => setScoring({ ...m, scorers: m.scorers || [] })}
+          onRemove={remove}
+        />
+      )}
+      {tab === "clasificacion" && (
+        <StandingsTable rows={standings} mode="full" />
+      )}
+      {tab === "juego_limpio" && (
+        <StandingsTable rows={standings} mode="fairplay" />
+      )}
 
       {editing && (
         <Modal onClose={() => setEditing(null)} title="Programar partido">
@@ -568,11 +614,7 @@ async function downloadPdf(url, fname) {
   }
 }
 
-function PdfExportBar({ tournaments, teams }) {
-  const [tid, setTid] = useState("");
-  const [cat, setCat] = useState("");
-  const [grp, setGrp] = useState("");
-
+function FilterAndExportBar({ tournaments, teams, tid, setTid, cat, setCat, grp, setGrp }) {
   const activeTournaments = (tournaments || []).filter((t) => !t.archived);
   const tournament = activeTournaments.find((t) => t.id === tid);
   const cats = tournament
@@ -584,18 +626,18 @@ function PdfExportBar({ tournaments, teams }) {
     (teams || []).filter((t) => !cat || t.category === cat).map((t) => t.group_name).filter(Boolean)
   )).sort();
 
-  const params = (extra = "") => {
+  const params = () => {
     const p = new URLSearchParams();
     if (cat) p.set("category", cat);
     if (grp) p.set("group", grp);
     const q = p.toString();
-    return q ? `?${q}${extra}` : extra ? `?${extra.replace(/^&/, "")}` : "";
+    return q ? `?${q}` : "";
   };
 
   return (
     <div className="mb-4 bg-white border border-slate-200 rounded-lg p-3" data-testid="pdf-export-bar">
       <div className="flex items-center gap-2 flex-wrap">
-        <span className="text-[10px] font-bold uppercase tracking-widest text-fsc-azul flex items-center gap-1"><FileDown size={12}/> Exportar PDFs</span>
+        <span className="text-[10px] font-bold uppercase tracking-widest text-fsc-azul flex items-center gap-1"><FileDown size={12}/> Filtros + Exportar PDFs</span>
         <select value={tid} onChange={(e) => { setTid(e.target.value); setCat(""); setGrp(""); }} className="px-2 py-1.5 border border-slate-200 rounded text-xs" data-testid="pdf-export-tournament">
           <option value="">Evento activo...</option>
           {activeTournaments.map((t) => <option key={t.id} value={t.id}>{t.name} · {t.season}</option>)}
@@ -608,6 +650,10 @@ function PdfExportBar({ tournaments, teams }) {
           <option value="">Todos los grupos</option>
           {groupsAvail.map((g) => <option key={g} value={g}>{g}</option>)}
         </select>
+        {(tid || cat || grp) && (
+          <button onClick={() => { setTid(""); setCat(""); setGrp(""); }} className="px-2 py-1.5 text-xs text-slate-500 hover:text-fsc-rojo" data-testid="pdf-export-clear">Limpiar</button>
+        )}
+        <div className="flex-1" />
         <button
           disabled={!tid}
           onClick={() => downloadPdf(`/tournaments/${tid}/fixture.pdf${params()}`, `fixture_${tid.slice(0,8)}.pdf`)}
@@ -633,6 +679,95 @@ function PdfExportBar({ tournaments, teams }) {
           <ShieldCheck size={12}/> Juego Limpio
         </button>
       </div>
+    </div>
+  );
+}
+
+function TabBtn({ active, onClick, children, testId, disabled }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      data-testid={testId}
+      className={`px-4 py-2 text-sm font-bold uppercase tracking-wide rounded-t-md transition border-b-2 -mb-px ${
+        active ? "border-fsc-rojo text-fsc-rojo bg-white" : "border-transparent text-slate-500 hover:text-slate-700"
+      } disabled:opacity-40 disabled:cursor-not-allowed`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function StandingsTable({ rows, mode = "full" }) {
+  if (!rows || rows.length === 0) {
+    return <div className="text-center text-sm text-slate-400 py-12 bg-white border border-slate-200 rounded-lg" data-testid="standings-empty">Selecciona Evento y Categoría para ver la tabla.</div>;
+  }
+  if (mode === "fairplay") {
+    return (
+      <div className="bg-white border border-slate-200 rounded-lg overflow-x-auto" data-testid="fairplay-table">
+        <table className="w-full text-sm">
+          <thead className="bg-emerald-700 text-white text-xs uppercase tracking-wider">
+            <tr>
+              <th className="text-center px-3 py-2">#</th>
+              <th className="text-left px-3 py-2">Equipo</th>
+              <th className="text-center px-3 py-2">🟨</th>
+              <th className="text-center px-3 py-2">🟥</th>
+              <th className="text-center px-3 py-2">Otra</th>
+              <th className="text-center px-3 py-2">J.L</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={r.team_id} className="border-t border-slate-100">
+                <td className="text-center px-3 py-2 font-display font-black text-emerald-700">{i + 1}</td>
+                <td className="px-3 py-2 font-semibold flex items-center gap-2">
+                  {r.team_logo ? <img src={r.team_logo} alt="" className="h-6 w-6 object-contain" /> : <span className="h-6 w-6 rounded bg-slate-200" />}
+                  {r.team_name}
+                </td>
+                <td className="text-center px-3 py-2 tabular-nums">{r.yellow_cards || 0}</td>
+                <td className="text-center px-3 py-2 tabular-nums">{r.red_cards || 0}</td>
+                <td className="text-center px-3 py-2 tabular-nums">{r.other_cards || 0}</td>
+                <td className="text-center px-3 py-2 font-display font-black text-emerald-700 tabular-nums">{r.fair_play ?? 0}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+  return (
+    <div className="bg-white border border-slate-200 rounded-lg overflow-x-auto" data-testid="standings-table">
+      <table className="w-full text-sm">
+        <thead className="bg-fsc-azul text-white text-xs uppercase tracking-wider">
+          <tr>
+            <th className="text-center px-2 py-2">#</th>
+            <th className="text-left px-3 py-2">Equipo</th>
+            {["PJ","PG","PE","PP","GF","GC","DG","J.L","PTOS"].map((h) => (
+              <th key={h} className={`text-center px-2 py-2 ${h === "PTOS" ? "bg-fsc-azul-oscuro" : ""}`}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={r.team_id} className="border-t border-slate-100">
+              <td className="text-center px-2 py-2 font-display font-black text-fsc-azul">{i + 1}</td>
+              <td className="px-3 py-2 font-semibold flex items-center gap-2">
+                {r.team_logo ? <img src={r.team_logo} alt="" className="h-6 w-6 object-contain" /> : <span className="h-6 w-6 rounded bg-slate-200" />}
+                {r.team_name}
+              </td>
+              <td className="text-center px-2 py-2 tabular-nums">{r.played}</td>
+              <td className="text-center px-2 py-2 tabular-nums">{r.won}</td>
+              <td className="text-center px-2 py-2 tabular-nums">{r.drawn}</td>
+              <td className="text-center px-2 py-2 tabular-nums">{r.lost}</td>
+              <td className="text-center px-2 py-2 tabular-nums">{r.gf}</td>
+              <td className="text-center px-2 py-2 tabular-nums">{r.ga}</td>
+              <td className={`text-center px-2 py-2 tabular-nums font-bold ${r.gd > 0 ? "text-emerald-600" : r.gd < 0 ? "text-rose-600" : "text-slate-500"}`}>{r.gd > 0 ? `+${r.gd}` : r.gd}</td>
+              <td className="text-center px-2 py-2 tabular-nums">{r.fair_play ?? 0}</td>
+              <td className="text-center px-2 py-2 tabular-nums font-display font-black text-fsc-azul bg-fsc-azul/5">{r.points}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

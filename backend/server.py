@@ -641,6 +641,15 @@ class FixtureGenerateIn(BaseModel):
     venues: List[str] = []
     time_slots: List[str] = []  # ["08:00", "09:30"]
     rounds: int = 1  # 1 = una vuelta, 2 = ida y vuelta, etc.
+    # Reglas deportivas (puntos + Juego Limpio) — opcional. Si vienen, sobreescriben
+    # la configuración de la categoría dentro del torneo.
+    points_win: Optional[int] = None
+    points_draw: Optional[int] = None
+    points_loss: Optional[int] = None
+    fairplay_base: Optional[int] = None
+    fairplay_yellow: Optional[int] = None
+    fairplay_red: Optional[int] = None
+    fairplay_other: Optional[int] = None
     # Doble jornada: dos jornadas el mismo día (mañana + tarde). Cada equipo juega 2 veces/día.
     # Cuando es True: la jornada r usa el slot time_slots[r % len(time_slots)] (alternando),
     # y dos jornadas consecutivas (r y r+1) caen en la misma fecha.
@@ -1669,6 +1678,22 @@ async def generate_fixture(payload: FixtureGenerateIn, _: dict = Depends(require
     rounds = _round_robin_pairs(payload.team_ids, rounds_n=max(1, int(payload.rounds or 1)))
     byes = _byes_per_round(payload.team_ids)
     tmap = {t["id"]: t for t in teams}
+
+    # Persistir reglas deportivas (si vinieron en el payload y no es vista previa)
+    rule_fields = ["points_win", "points_draw", "points_loss",
+                   "fairplay_base", "fairplay_yellow", "fairplay_red", "fairplay_other"]
+    rules_provided = {k: getattr(payload, k) for k in rule_fields if getattr(payload, k) is not None}
+    if rules_provided and not payload.preview:
+        cats = list(tournament.get("categories") or [])
+        found = False
+        for i, c in enumerate(cats):
+            if (c or {}).get("name") == payload.category:
+                cats[i] = {**c, **rules_provided}
+                found = True
+                break
+        if not found:
+            cats.append({"name": payload.category, "fee": 0, "fee_usd": 0, **rules_provided})
+        await db.tournaments.update_one({"id": tournament_id}, {"$set": {"categories": cats}})
 
     try:
         start = datetime.strptime(payload.start_date, "%Y-%m-%d")

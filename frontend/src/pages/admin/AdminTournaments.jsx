@@ -325,37 +325,9 @@ function CategoriesFeesEditor({ categories, catalog, onChange }) {
                 <Trash2 size={14}/>
               </button>
             </div>
-            {/* Reglas deportivas: puntos y Juego Limpio */}
-            <div className="mt-3 pt-3 border-t border-slate-200">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 mb-1">Reglas deportivas (esta categoría)</div>
-              <div className="grid grid-cols-3 sm:grid-cols-7 gap-2">
-                <NumField label="Pts G" value={c.points_win ?? 3} onChange={(v) => update(i, "points_win", v)} testId={`cfg-pts-win-${i}`} />
-                <NumField label="Pts E" value={c.points_draw ?? 1} onChange={(v) => update(i, "points_draw", v)} testId={`cfg-pts-draw-${i}`} />
-                <NumField label="Pts P" value={c.points_loss ?? 0} onChange={(v) => update(i, "points_loss", v)} testId={`cfg-pts-loss-${i}`} />
-                <NumField label="J.L base" value={c.fairplay_base ?? 200} onChange={(v) => update(i, "fairplay_base", v)} testId={`cfg-fp-base-${i}`} />
-                <NumField label="− Amar." value={c.fairplay_yellow ?? 10} onChange={(v) => update(i, "fairplay_yellow", v)} testId={`cfg-fp-yellow-${i}`} />
-                <NumField label="− Roja" value={c.fairplay_red ?? 20} onChange={(v) => update(i, "fairplay_red", v)} testId={`cfg-fp-red-${i}`} />
-                <NumField label="− Otra" value={c.fairplay_other ?? 5} onChange={(v) => update(i, "fairplay_other", v)} testId={`cfg-fp-other-${i}`} />
-              </div>
-            </div>
           </div>
         ))}
       </div>
     </div>
-  );
-}
-
-function NumField({ label, value, onChange, testId }) {
-  return (
-    <label className="block">
-      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{label}</span>
-      <input
-        type="number"
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value || 0))}
-        className="mt-0.5 w-full px-2 py-1.5 border border-slate-300 rounded text-sm tabular-nums"
-        data-testid={testId}
-      />
-    </label>
   );
 }
