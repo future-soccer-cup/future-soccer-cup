@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import api, { formatApiError } from "../../lib/api";
-import { Plus, Trash2, Edit3, CalendarClock, Shuffle } from "lucide-react";
+import { Plus, Trash2, Edit3, CalendarClock, Shuffle, FileDown, FileText, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import CategorySelect from "../../components/CategorySelect";
+import VenuePicker from "../../components/VenuePicker";
 import { Modal, Field } from "./AdminTeams";
 import { usePagedSearch, SearchBar, Pagination } from "../../components/PagedTable";
 
@@ -104,9 +105,9 @@ export default function AdminMatches() {
 
   return (
     <div data-testid="admin-matches">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <h1 className="font-display text-4xl font-black uppercase tracking-tighter">Partidos</h1>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={() => setIntergroupOpen(true)}
             className="fsc-btn-primary px-4 py-2 rounded-md text-sm flex items-center gap-2"
@@ -120,6 +121,8 @@ export default function AdminMatches() {
           </button>
         </div>
       </div>
+
+      <PdfExportBar tournaments={tournaments} teams={teams} />
 
       <MatchesTable
         matches={matches}
@@ -146,7 +149,10 @@ export default function AdminMatches() {
               </select>
             </label>
             <Field label="Fecha y hora" type="datetime-local" required value={editing.match_date} onChange={(v) => setEditing({ ...editing, match_date: v })} />
-            <Field label="Sede" value={editing.venue} onChange={(v) => setEditing({ ...editing, venue: v })} />
+            <label className="block">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Cancha</span>
+              <VenuePicker value={editing.venue || ""} onChange={(v) => setEditing({ ...editing, venue: v })} testId="new-match-venue" />
+            </label>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Grupo" value={editing.group_name} onChange={(v) => setEditing({ ...editing, group_name: v })} />
               <label className="block">
@@ -177,15 +183,8 @@ export default function AdminMatches() {
             </div>
             <ScorersEditor scoring={scoring} setScoring={setScoring} teams={teams} />
             <CardsEditor scoring={scoring} setScoring={setScoring} />
-            <div className="grid grid-cols-2 gap-3">
-              <label className="block">
-                <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">Juego Limpio Local</span>
-                <input type="number" min="0" max="10" value={scoring.home_fair_play ?? 0} onChange={(e) => setScoring({ ...scoring, home_fair_play: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="home-fairplay-input" />
-              </label>
-              <label className="block">
-                <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">Juego Limpio Visitante</span>
-                <input type="number" min="0" max="10" value={scoring.away_fair_play ?? 0} onChange={(e) => setScoring({ ...scoring, away_fair_play: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="away-fairplay-input" />
-              </label>
+            <div className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded p-2">
+              <strong>Juego Limpio:</strong> se calcula automáticamente a partir de las tarjetas registradas y la configuración de la categoría (base − descuentos). Ya no se digita manualmente.
             </div>
             <button className="fsc-btn-red w-full py-2 rounded-md" data-testid="save-result-btn">Guardar resultado</button>
           </form>
@@ -206,11 +205,10 @@ export default function AdminMatches() {
               onChange={(v) => setManualEdit({ ...manualEdit, match_date: v })}
             />
             <div className="grid grid-cols-2 gap-3">
-              <Field
-                label="Cancha"
-                value={manualEdit.venue || ""}
-                onChange={(v) => setManualEdit({ ...manualEdit, venue: v })}
-              />
+              <label className="block">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Cancha</span>
+                <VenuePicker value={manualEdit.venue || ""} onChange={(v) => setManualEdit({ ...manualEdit, venue: v })} testId="manual-edit-venue" />
+              </label>
               <label className="block">
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Jornada</span>
                 <input
@@ -464,12 +462,13 @@ function CardsEditor({ scoring, setScoring }) {
         <div className="flex gap-2">
           <button type="button" onClick={() => addCard("yellow")} className="text-xs font-bold text-yellow-600 flex items-center gap-1" data-testid="add-yellow-card"><span className="inline-block w-3 h-4 bg-yellow-400 rounded-sm" />+ Amarilla</button>
           <button type="button" onClick={() => addCard("red")} className="text-xs font-bold text-red-600 flex items-center gap-1" data-testid="add-red-card"><span className="inline-block w-3 h-4 bg-red-600 rounded-sm" />+ Roja</button>
+          <button type="button" onClick={() => addCard("other")} className="text-xs font-bold text-slate-600 flex items-center gap-1" data-testid="add-other-card"><span className="inline-block w-3 h-4 bg-slate-400 rounded-sm" />+ Otra</button>
         </div>
       </div>
       {cards.length === 0 && <p className="text-xs text-slate-400 py-1">Sin tarjetas registradas</p>}
       {cards.map((c, i) => (
         <div key={c._uid || `card-${i}`} className="grid grid-cols-12 gap-2 mb-2 items-center">
-          <span className={`col-span-1 inline-block w-3 h-4 rounded-sm ${c.type === "red" ? "bg-red-600" : "bg-yellow-400"}`} />
+          <span className={`col-span-1 inline-block w-3 h-4 rounded-sm ${c.type === "red" ? "bg-red-600" : c.type === "other" ? "bg-slate-400" : "bg-yellow-400"}`} />
           <select value={c.player_id} onChange={(e) => updateCard(i, "player_id", e.target.value)} className="col-span-7 px-2 py-1 border border-slate-200 rounded text-sm">
             <option value="">Jugador...</option>
             {players.map((p) => <option key={p.id} value={p.id}>{p.name} (#{p.jersey_number})</option>)}
@@ -551,5 +550,89 @@ function MatchesTable({ matches, onEdit, onScore, onRemove }) {
 
       <Pagination page={page} totalPages={totalPages} onPage={setPage} testIdPrefix="matches" />
     </>
+  );
+}
+
+
+async function downloadPdf(url, fname) {
+  try {
+    const res = await api.get(url, { responseType: "blob" });
+    const blob = res.data instanceof Blob ? res.data : new Blob([res.data], { type: "application/pdf" });
+    const u = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = u; a.download = fname;
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(u); }, 100);
+  } catch (err) {
+    toast.error("No se pudo generar el PDF: " + (err?.message || "error"));
+  }
+}
+
+function PdfExportBar({ tournaments, teams }) {
+  const [tid, setTid] = useState("");
+  const [cat, setCat] = useState("");
+  const [grp, setGrp] = useState("");
+
+  const activeTournaments = (tournaments || []).filter((t) => !t.archived);
+  const tournament = activeTournaments.find((t) => t.id === tid);
+  const cats = tournament
+    ? ((tournament.categories || []).map((c) => c.name).filter(Boolean).length
+        ? (tournament.categories || []).map((c) => c.name).filter(Boolean)
+        : (tournament.category ? [tournament.category] : []))
+    : [];
+  const groupsAvail = Array.from(new Set(
+    (teams || []).filter((t) => !cat || t.category === cat).map((t) => t.group_name).filter(Boolean)
+  )).sort();
+
+  const params = (extra = "") => {
+    const p = new URLSearchParams();
+    if (cat) p.set("category", cat);
+    if (grp) p.set("group", grp);
+    const q = p.toString();
+    return q ? `?${q}${extra}` : extra ? `?${extra.replace(/^&/, "")}` : "";
+  };
+
+  return (
+    <div className="mb-4 bg-white border border-slate-200 rounded-lg p-3" data-testid="pdf-export-bar">
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-[10px] font-bold uppercase tracking-widest text-fsc-azul flex items-center gap-1"><FileDown size={12}/> Exportar PDFs</span>
+        <select value={tid} onChange={(e) => { setTid(e.target.value); setCat(""); setGrp(""); }} className="px-2 py-1.5 border border-slate-200 rounded text-xs" data-testid="pdf-export-tournament">
+          <option value="">Evento activo...</option>
+          {activeTournaments.map((t) => <option key={t.id} value={t.id}>{t.name} · {t.season}</option>)}
+        </select>
+        <select value={cat} onChange={(e) => setCat(e.target.value)} className="px-2 py-1.5 border border-slate-200 rounded text-xs disabled:bg-slate-50" disabled={!tid} data-testid="pdf-export-category">
+          <option value="">Todas las categorías</option>
+          {cats.map((c) => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <select value={grp} onChange={(e) => setGrp(e.target.value)} className="px-2 py-1.5 border border-slate-200 rounded text-xs disabled:bg-slate-50" disabled={!tid} data-testid="pdf-export-group">
+          <option value="">Todos los grupos</option>
+          {groupsAvail.map((g) => <option key={g} value={g}>{g}</option>)}
+        </select>
+        <button
+          disabled={!tid}
+          onClick={() => downloadPdf(`/tournaments/${tid}/fixture.pdf${params()}`, `fixture_${tid.slice(0,8)}.pdf`)}
+          className="px-3 py-1.5 bg-fsc-azul hover:bg-fsc-azul-oscuro text-white rounded text-xs font-bold uppercase tracking-wide flex items-center gap-1 disabled:opacity-40"
+          data-testid="pdf-fixture-btn"
+        >
+          <CalendarClock size={12}/> Fixture
+        </button>
+        <button
+          disabled={!tid}
+          onClick={() => downloadPdf(`/tournaments/${tid}/standings.pdf${params()}`, `clasificacion_${tid.slice(0,8)}.pdf`)}
+          className="px-3 py-1.5 bg-fsc-azul hover:bg-fsc-azul-oscuro text-white rounded text-xs font-bold uppercase tracking-wide flex items-center gap-1 disabled:opacity-40"
+          data-testid="pdf-standings-btn"
+        >
+          <FileText size={12}/> Clasificación
+        </button>
+        <button
+          disabled={!tid}
+          onClick={() => downloadPdf(`/tournaments/${tid}/fairplay.pdf${params()}`, `juego_limpio_${tid.slice(0,8)}.pdf`)}
+          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-bold uppercase tracking-wide flex items-center gap-1 disabled:opacity-40"
+          data-testid="pdf-fairplay-btn"
+        >
+          <ShieldCheck size={12}/> Juego Limpio
+        </button>
+      </div>
+    </div>
   );
 }

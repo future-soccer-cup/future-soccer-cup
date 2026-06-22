@@ -470,6 +470,17 @@ class UserOut(BaseModel):
     name: str
     role: str
 
+# -------- Venues (canchas / escenarios deportivos) --------
+class VenueIn(BaseModel):
+    name: str = Field(min_length=1)
+    city: Optional[str] = ""
+    address: Optional[str] = ""
+    notes: Optional[str] = ""
+
+class VenueOut(VenueIn):
+    id: str
+    created_at: str
+
 # -------- Clubs --------
 class ClubIn(BaseModel):
     name: str = Field(min_length=1)
@@ -621,7 +632,7 @@ class MatchResultIn(BaseModel):
     winner_team_id: Optional[str] = None  # required for ties in bracket matches
 
 class FixtureGenerateIn(BaseModel):
-    tournament_id: Optional[str] = None
+    tournament_id: str  # Obligatorio: el fixture nace asociado a un Evento.
     category: str
     group_name: str
     team_ids: List[str]
@@ -629,6 +640,7 @@ class FixtureGenerateIn(BaseModel):
     days_between_rounds: int = 7
     venues: List[str] = []
     time_slots: List[str] = []  # ["08:00", "09:30"]
+    rounds: int = 1  # 1 = una vuelta, 2 = ida y vuelta, etc.
     # Doble jornada: dos jornadas el mismo día (mañana + tarde). Cada equipo juega 2 veces/día.
     # Cuando es True: la jornada r usa el slot time_slots[r % len(time_slots)] (alternando),
     # y dos jornadas consecutivas (r y r+1) caen en la misma fecha.
@@ -1452,6 +1464,37 @@ async def delete_tournament(tid: str, _: dict = Depends(require_admin)):
     await db.tournaments.delete_one({"id": tid})
     return {"ok": True}
 
+
+# -------------------- Venues / Canchas --------------------
+@api.get("/venues", response_model=List[VenueOut])
+async def list_venues():
+    items = await db.venues.find({}, {"_id": 0}).sort("name", 1).to_list(500)
+    return items
+
+@api.post("/venues", response_model=VenueOut)
+async def create_venue(payload: VenueIn, _: dict = Depends(require_admin)):
+    doc = payload.dict()
+    doc["id"] = str(uuid.uuid4())
+    doc["created_at"] = datetime.now(timezone.utc).isoformat()
+    await db.venues.insert_one(doc)
+    doc.pop("_id", None)
+    return doc
+
+@api.put("/venues/{vid}", response_model=VenueOut)
+async def update_venue(vid: str, payload: VenueIn, _: dict = Depends(require_admin)):
+    upd = {k: v for k, v in payload.dict().items() if v is not None}
+    res = await db.venues.update_one({"id": vid}, {"$set": upd})
+    if res.matched_count == 0:
+        raise HTTPException(404, "Cancha no encontrada")
+    doc = await db.venues.find_one({"id": vid}, {"_id": 0})
+    return doc
+
+@api.delete("/venues/{vid}")
+async def delete_venue(vid: str, _: dict = Depends(require_admin)):
+    await db.venues.delete_one({"id": vid})
+    return {"ok": True}
+
+
 # -------------------- Matches --------------------
 @api.get("/matches")
 async def list_matches(tournament_id: Optional[str] = None, status: Optional[str] = None):
@@ -1540,16 +1583,17 @@ async def delete_match(mid: str, _: dict = Depends(require_admin)):
     return {"ok": True}
 
 # -------------------- Fixture Generator (Round Robin) --------------------
-def _round_robin_pairs(team_ids: List[str]) -> List[List[tuple]]:
+def _round_robin_pairs(team_ids: List[str], rounds_n: int = 1) -> List[List[tuple]]:
     """Return list of rounds, each round is list of (home, away) pairs.
-    Uses 'circle method'. Adds None for byes if odd count."""
+    Uses 'circle method'. Adds None for byes if odd count.
+    If rounds_n > 1: repeats the schedule rounds_n times, flipping home/away each full pass."""
     teams = list(team_ids)
     if len(teams) < 2:
         return []
     if len(teams) % 2 == 1:
         teams.append(None)  # BYE marker
     n = len(teams)
-    rounds = []
+    base_rounds = []
     arr = teams[:]
     for r in range(n - 1):
         round_matches = []
@@ -1561,10 +1605,20 @@ def _round_robin_pairs(team_ids: List[str]) -> List[List[tuple]]:
                 home, away = away, home
             if home is not None and away is not None:
                 round_matches.append((home, away))
-        rounds.append(round_matches)
+        base_rounds.append(round_matches)
         # rotate keeping arr[0] fixed
         arr = [arr[0]] + [arr[-1]] + arr[1:-1]
-    return rounds
+    if rounds_n <= 1:
+        return base_rounds
+    out = []
+    for pass_idx in range(max(1, int(rounds_n))):
+        for rd in base_rounds:
+            if pass_idx % 2 == 0:
+                out.append(list(rd))
+            else:
+                # vuelta: swap home/away
+                out.append([(a, h) for (h, a) in rd])
+    return out
 
 def _byes_per_round(team_ids: List[str]) -> dict:
     teams = list(team_ids)
@@ -1593,29 +1647,21 @@ async def generate_fixture(payload: FixtureGenerateIn, _: dict = Depends(require
         raise HTTPException(status_code=400, detail="La categoría es obligatoria")
     if len(payload.team_ids) < 2:
         raise HTTPException(status_code=400, detail="Se requieren al menos 2 equipos")
+    if not (payload.tournament_id or '').strip():
+        raise HTTPException(status_code=400, detail="El Evento (torneo) es obligatorio")
+    # El torneo debe existir y estar activo (no archivado)
+    tournament = await db.tournaments.find_one({"id": payload.tournament_id}, {"_id": 0})
+    if not tournament:
+        raise HTTPException(status_code=404, detail="Evento no encontrado")
+    if tournament.get("archived"):
+        raise HTTPException(status_code=400, detail="No se puede generar fixture sobre un evento archivado/histórico")
     teams = await db.teams.find({"id": {"$in": payload.team_ids}}, {"_id": 0}).to_list(500)
     if len(teams) != len(payload.team_ids):
         raise HTTPException(status_code=400, detail="Algunos equipos no existen")
 
-    # Ensure tournament
     tournament_id = payload.tournament_id
-    if not tournament_id:
-        existing = await db.tournaments.find_one({"name": "FSC", "season": str(datetime.now().year)}, {"_id": 0})
-        if existing:
-            tournament_id = existing["id"]
-        else:
-            new_t = {
-                "id": str(uuid.uuid4()),
-                "name": "FSC",
-                "season": str(datetime.now().year),
-                "category": payload.category,
-                "start_date": payload.start_date,
-                "end_date": payload.start_date,
-            }
-            await db.tournaments.insert_one(new_t)
-            tournament_id = new_t["id"]
 
-    rounds = _round_robin_pairs(payload.team_ids)
+    rounds = _round_robin_pairs(payload.team_ids, rounds_n=max(1, int(payload.rounds or 1)))
     byes = _byes_per_round(payload.team_ids)
     tmap = {t["id"]: t for t in teams}
 
@@ -2137,6 +2183,27 @@ async def _advance_bracket_winner(match_doc: dict, home_score: int, away_score: 
 
 
 # -------------------- Stats --------------------
+def _cat_config(tournament: dict, category: str) -> dict:
+    """Devuelve la configuración por categoría dentro de un torneo, con defaults seguros."""
+    defaults = {
+        "points_win": 3, "points_draw": 1, "points_loss": 0,
+        "fairplay_base": 200, "fairplay_yellow": 10, "fairplay_red": 20, "fairplay_other": 5,
+    }
+    if not tournament:
+        return defaults
+    for c in (tournament.get("categories") or []):
+        if (c or {}).get("name") == category:
+            out = dict(defaults)
+            for k in defaults:
+                if c.get(k) is not None:
+                    try:
+                        out[k] = int(c.get(k))
+                    except Exception:
+                        pass
+            return out
+    return defaults
+
+
 @api.get("/stats/standings")
 async def standings(category: Optional[str] = None, group_name: Optional[str] = None, tournament_id: Optional[str] = None):
     q_team = {}
@@ -2152,11 +2219,19 @@ async def standings(category: Optional[str] = None, group_name: Optional[str] = 
         q_match["tournament_id"] = tournament_id
     matches = await db.matches.find(q_match, {"_id": 0}).to_list(2000)
 
+    # Carga configuración J.L / puntos del torneo+categoría (defaults si no hay)
+    tournament = None
+    if tournament_id:
+        tournament = await db.tournaments.find_one({"id": tournament_id}, {"_id": 0})
+    cfg = _cat_config(tournament, category or "")
+
     table = {t["id"]: {
         "team_id": t["id"], "team_name": t["name"], "team_logo": t.get("logo_url", ""),
         "category": t["category"], "group_name": t.get("group_name", ""),
         "played": 0, "won": 0, "drawn": 0, "lost": 0,
-        "gf": 0, "ga": 0, "gd": 0, "points": 0, "fair_play": 0,
+        "gf": 0, "ga": 0, "gd": 0, "points": 0,
+        "yellow_cards": 0, "red_cards": 0, "other_cards": 0,
+        "fair_play": cfg["fairplay_base"],
     } for t in teams}
 
     for m in matches:
@@ -2168,24 +2243,43 @@ async def standings(category: Optional[str] = None, group_name: Optional[str] = 
         table[a]["played"] += 1
         table[h]["gf"] += hs; table[h]["ga"] += as_
         table[a]["gf"] += as_; table[a]["ga"] += hs
-        table[h]["fair_play"] += int(m.get("home_fair_play") or 0)
-        table[a]["fair_play"] += int(m.get("away_fair_play") or 0)
+        # Tarjetas por equipo en este partido → descontar J.L.
+        for c in (m.get("cards") or []):
+            tid = c.get("team_id")
+            if tid not in table:
+                continue
+            ctype = c.get("type")
+            if ctype == "yellow":
+                table[tid]["yellow_cards"] += 1
+                table[tid]["fair_play"] -= cfg["fairplay_yellow"]
+            elif ctype == "red":
+                table[tid]["red_cards"] += 1
+                table[tid]["fair_play"] -= cfg["fairplay_red"]
+            elif ctype == "other":
+                table[tid]["other_cards"] += 1
+                table[tid]["fair_play"] -= cfg["fairplay_other"]
+        # Puntos
         if hs > as_:
-            table[h]["won"] += 1; table[h]["points"] += 3
-            table[a]["lost"] += 1
+            table[h]["won"] += 1; table[h]["points"] += cfg["points_win"]
+            table[a]["lost"] += 1; table[a]["points"] += cfg["points_loss"]
         elif hs < as_:
-            table[a]["won"] += 1; table[a]["points"] += 3
-            table[h]["lost"] += 1
+            table[a]["won"] += 1; table[a]["points"] += cfg["points_win"]
+            table[h]["lost"] += 1; table[h]["points"] += cfg["points_loss"]
         else:
-            table[h]["drawn"] += 1; table[h]["points"] += 1
-            table[a]["drawn"] += 1; table[a]["points"] += 1
+            table[h]["drawn"] += 1; table[h]["points"] += cfg["points_draw"]
+            table[a]["drawn"] += 1; table[a]["points"] += cfg["points_draw"]
 
     rows = list(table.values())
     for r in rows:
         r["gd"] = r["gf"] - r["ga"]
-    # Tiebreakers: points -> fair_play -> gd -> gf
-    # Fair Play es el PRIMER ítem de desempate por reglamento FSC.
-    rows.sort(key=lambda r: (-r["points"], -r["fair_play"], -r["gd"], -r["gf"]))
+    # Orden de desempate FSC (spec final):
+    #   1) PTOS (mayor)
+    #   2) PG (mayor)
+    #   3) GF (mayor)
+    #   4) GC (menor)
+    #   5) DG (mayor)
+    #   6) J.L (mayor)
+    rows.sort(key=lambda r: (-r["points"], -r["won"], -r["gf"], r["ga"], -r["gd"], -r["fair_play"]))
     return rows
 
 @api.get("/stats/top-scorers")
@@ -2255,6 +2349,222 @@ async def discipline(category: Optional[str] = None, limit: int = 50):
         })
     rows.sort(key=lambda r: (-r["red_cards"], -r["yellow_cards"]))
     return rows[:limit]
+
+# -------------------- PDFs de Fixture / Tabla / Juego Limpio (Admin / DT / CT) --------------------
+def _pdf_header_logo(canvas_or_story, logo_bytes):
+    """Genera un encabezado con el logo (si está cacheado) y devuelve el flowable Image (o None)."""
+    if not logo_bytes:
+        return None
+    from reportlab.platypus import Image as RLImage
+    from io import BytesIO as _BIO
+    try:
+        return RLImage(_BIO(logo_bytes), width=70, height=70, kind="bound")
+    except Exception:
+        return None
+
+
+async def _build_fixture_pdf(tournament_id: str, category: Optional[str], group: Optional[str]):
+    """Construye un PDF del fixture / calendario, agrupado por jornada, con resultados ya jugados."""
+    from io import BytesIO
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.enums import TA_LEFT, TA_CENTER
+    from reportlab.lib.units import inch
+    from reportlab.lib import colors
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
+
+    tournament = await db.tournaments.find_one({"id": tournament_id}, {"_id": 0})
+    if not tournament:
+        raise HTTPException(404, "Evento no encontrado")
+    q_team = {}
+    if category: q_team["category"] = category
+    if group: q_team["group_name"] = group
+    teams = await db.teams.find(q_team, {"_id": 0}).to_list(500)
+    tmap = {t["id"]: t for t in teams}
+    q_match = {"tournament_id": tournament_id}
+    if category:
+        q_match["$or"] = [{"home_team_id": {"$in": [t["id"] for t in teams]}}, {"away_team_id": {"$in": [t["id"] for t in teams]}}]
+    if group: q_match["group_name"] = group
+    matches = await db.matches.find(q_match, {"_id": 0}).sort("matchday", 1).to_list(2000)
+
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=letter, leftMargin=0.5 * inch, rightMargin=0.5 * inch, topMargin=0.5 * inch, bottomMargin=0.5 * inch, title="Fixture")
+    styles = getSampleStyleSheet()
+    N = styles["BodyText"]
+    H1 = ParagraphStyle("H1", parent=styles["Heading1"], fontSize=18, leading=22, textColor=colors.HexColor("#0f172a"), spaceAfter=4)
+    H2 = ParagraphStyle("H2", parent=styles["Heading2"], fontSize=11, leading=14, textColor=colors.HexColor("#1d4ed8"), spaceAfter=4)
+    SUB = ParagraphStyle("SUB", parent=N, fontSize=9, textColor=colors.HexColor("#475569"), leading=11)
+
+    story = []
+    logo_img = _pdf_header_logo(None, _get_fsc_logo_bytes())
+    head_cell = [Paragraph(f"<b>FIXTURE</b>", H1),
+                 Paragraph(f"<b>{tournament.get('name','—')}</b> · Temporada {tournament.get('season','—')}", H2),
+                 Paragraph(f"Categoría: {category or 'Todas'} · Grupo: {group or 'Todos'}", SUB)]
+    if logo_img:
+        header = Table([[logo_img, head_cell]], colWidths=[0.85 * inch, None])
+        header.setStyle(TableStyle([("VALIGN", (0,0), (-1,-1), "MIDDLE"), ("LEFTPADDING", (0,0), (-1,-1), 0)]))
+        story.append(header)
+    else:
+        for c in head_cell: story.append(c)
+    story.append(Spacer(1, 8))
+
+    by_md = {}
+    for m in matches:
+        k = m.get("matchday") or 0
+        by_md.setdefault(k, []).append(m)
+
+    if not by_md:
+        story.append(Paragraph("Sin partidos programados para este criterio.", N))
+    for k in sorted(by_md.keys()):
+        story.append(Paragraph(f"JORNADA {k if k else '—'}", H2))
+        data = [["Fecha", "Cancha", "Local", "", "Visitante", "Grupo", "Resultado"]]
+        for m in by_md[k]:
+            ht = tmap.get(m["home_team_id"], {})
+            at = tmap.get(m["away_team_id"], {})
+            fecha = (m.get("match_date") or "")
+            if fecha:
+                try:
+                    fdt = datetime.fromisoformat(fecha.replace("Z", "+00:00")) if "T" in fecha else datetime.strptime(fecha, "%Y-%m-%d")
+                    fecha = fdt.strftime("%d/%m/%Y %H:%M")
+                except Exception:
+                    fecha = fecha[:16]
+            if m.get("status") == "finalizado":
+                score = f"{m.get('home_score', 0)} - {m.get('away_score', 0)}"
+            else:
+                score = "—"
+            data.append([fecha, m.get("venue", "") or "—",
+                         ht.get("name", "—"), "vs", at.get("name", "—"),
+                         m.get("group_name", "") or "—", score])
+        col_widths = [1.05 * inch, 1.1 * inch, 1.6 * inch, 0.25 * inch, 1.6 * inch, 0.7 * inch, 0.7 * inch]
+        t = Table(data, colWidths=col_widths, repeatRows=1)
+        t.setStyle(TableStyle([
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1d4ed8")),
+            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+            ("FONTSIZE", (0, 0), (-1, -1), 8),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("ALIGN", (3, 1), (3, -1), "CENTER"),
+            ("ALIGN", (-1, 1), (-1, -1), "CENTER"),
+            ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f1f5f9")]),
+            ("LEFTPADDING", (0, 0), (-1, -1), 4), ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+            ("TOPPADDING", (0, 0), (-1, -1), 3), ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+            ("BOX", (0, 0), (-1, -1), 0.4, colors.HexColor("#cbd5e1")),
+        ]))
+        story.append(t)
+        story.append(Spacer(1, 8))
+
+    doc.build(story)
+    return buf.getvalue()
+
+
+async def _build_standings_pdf(tournament_id: str, category: Optional[str], group: Optional[str], fairplay_only: bool = False):
+    """PDF de tabla de clasificación O reporte de Juego Limpio."""
+    from io import BytesIO
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.enums import TA_LEFT
+    from reportlab.lib.units import inch
+    from reportlab.lib import colors
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+
+    tournament = await db.tournaments.find_one({"id": tournament_id}, {"_id": 0})
+    if not tournament:
+        raise HTTPException(404, "Evento no encontrado")
+    # Re-usamos el endpoint standings (refactor mínimo)
+    rows = await standings(category=category, group_name=group, tournament_id=tournament_id)
+
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=letter, leftMargin=0.5*inch, rightMargin=0.5*inch, topMargin=0.5*inch, bottomMargin=0.5*inch, title=("Juego Limpio" if fairplay_only else "Clasificación"))
+    styles = getSampleStyleSheet()
+    N = styles["BodyText"]
+    H1 = ParagraphStyle("H1", parent=styles["Heading1"], fontSize=18, leading=22, textColor=colors.HexColor("#0f172a"), spaceAfter=4)
+    H2 = ParagraphStyle("H2", parent=styles["Heading2"], fontSize=11, leading=14, textColor=colors.HexColor("#1d4ed8"), spaceAfter=4)
+    SUB = ParagraphStyle("SUB", parent=N, fontSize=9, textColor=colors.HexColor("#475569"), leading=11)
+
+    story = []
+    logo_img = _pdf_header_logo(None, _get_fsc_logo_bytes())
+    title_text = "REPORTE DE JUEGO LIMPIO" if fairplay_only else "TABLA DE CLASIFICACIÓN"
+    head_cell = [Paragraph(f"<b>{title_text}</b>", H1),
+                 Paragraph(f"<b>{tournament.get('name','—')}</b> · Temporada {tournament.get('season','—')}", H2),
+                 Paragraph(f"Categoría: {category or 'Todas'} · Grupo: {group or 'Todos'}", SUB)]
+    if logo_img:
+        header = Table([[logo_img, head_cell]], colWidths=[0.85 * inch, None])
+        header.setStyle(TableStyle([("VALIGN", (0,0), (-1,-1), "MIDDLE"), ("LEFTPADDING", (0,0), (-1,-1), 0)]))
+        story.append(header)
+    else:
+        for c in head_cell: story.append(c)
+    story.append(Spacer(1, 10))
+
+    if fairplay_only:
+        data = [["#", "Equipo", "Amarillas", "Rojas", "Otras", "J.L"]]
+        for i, r in enumerate(rows, start=1):
+            data.append([str(i), r["team_name"], str(r.get("yellow_cards", 0)), str(r.get("red_cards", 0)), str(r.get("other_cards", 0)), str(r.get("fair_play", 0))])
+        col_widths = [0.4*inch, 3.0*inch, 0.9*inch, 0.9*inch, 0.9*inch, 1.0*inch]
+    else:
+        data = [["#", "Equipo", "PJ", "PG", "PE", "PP", "GF", "GC", "DG", "J.L", "PTOS"]]
+        for i, r in enumerate(rows, start=1):
+            dg = r.get("gd", 0)
+            data.append([str(i), r["team_name"], str(r["played"]), str(r["won"]), str(r["drawn"]), str(r["lost"]),
+                         str(r["gf"]), str(r["ga"]), (f"+{dg}" if dg > 0 else str(dg)), str(r.get("fair_play", 0)), str(r["points"])])
+        col_widths = [0.35*inch, 2.0*inch, 0.45*inch, 0.45*inch, 0.45*inch, 0.45*inch, 0.5*inch, 0.5*inch, 0.55*inch, 0.6*inch, 0.65*inch]
+
+    t = Table(data, colWidths=col_widths, repeatRows=1)
+    t.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1d4ed8")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 9),
+        ("ALIGN", (2, 0), (-1, -1), "CENTER"),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f1f5f9")]),
+        ("LEFTPADDING", (0, 0), (-1, -1), 4), ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+        ("TOPPADDING", (0, 0), (-1, -1), 4), ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ("BOX", (0, 0), (-1, -1), 0.4, colors.HexColor("#cbd5e1")),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+    ]))
+    story.append(t)
+
+    cfg = _cat_config(tournament, category or "")
+    story.append(Spacer(1, 10))
+    story.append(Paragraph(
+        f"<b>Configuración de J.L:</b> Base {cfg['fairplay_base']} pts. Descuentos: "
+        f"Amarilla −{cfg['fairplay_yellow']}, Roja −{cfg['fairplay_red']}, Otras −{cfg['fairplay_other']}.  ·  "
+        f"Puntos: Ganado {cfg['points_win']}, Empate {cfg['points_draw']}, Perdido {cfg['points_loss']}.",
+        SUB))
+    story.append(Paragraph(
+        "<b>Orden de desempate:</b> PTOS → PG → GF → GC (menor) → DG → J.L.", SUB))
+
+    doc.build(story)
+    return buf.getvalue()
+
+
+async def _require_auth_for_pdf(user: dict = Depends(get_current_user)) -> dict:
+    """Las descargas PDF de fixture/clasificación/juego limpio son solo para roles autenticados."""
+    if user.get("role") not in ("admin", "team"):
+        raise HTTPException(status_code=403, detail="Solo Admin, Director o Cuerpo Técnico pueden descargar este PDF")
+    return user
+
+
+@api.get("/tournaments/{tid}/fixture.pdf")
+async def tournament_fixture_pdf(tid: str, category: Optional[str] = None, group: Optional[str] = None, _: dict = Depends(_require_auth_for_pdf)):
+    pdf = await _build_fixture_pdf(tid, category, group)
+    fname = f"fixture_{tid[:8]}.pdf"
+    return Response(content=pdf, media_type="application/pdf", headers={"Content-Disposition": f"attachment; filename={fname}"})
+
+
+@api.get("/tournaments/{tid}/standings.pdf")
+async def tournament_standings_pdf(tid: str, category: Optional[str] = None, group: Optional[str] = None, _: dict = Depends(_require_auth_for_pdf)):
+    pdf = await _build_standings_pdf(tid, category, group, fairplay_only=False)
+    fname = f"clasificacion_{tid[:8]}.pdf"
+    return Response(content=pdf, media_type="application/pdf", headers={"Content-Disposition": f"attachment; filename={fname}"})
+
+
+@api.get("/tournaments/{tid}/fairplay.pdf")
+async def tournament_fairplay_pdf(tid: str, category: Optional[str] = None, group: Optional[str] = None, _: dict = Depends(_require_auth_for_pdf)):
+    pdf = await _build_standings_pdf(tid, category, group, fairplay_only=True)
+    fname = f"juego_limpio_{tid[:8]}.pdf"
+    return Response(content=pdf, media_type="application/pdf", headers={"Content-Disposition": f"attachment; filename={fname}"})
+
+
 
 # -------------------- Inventory: Hotels / Transports / Tours --------------------
 def _crud_endpoints(name: str, ModelIn, ModelOut, collection):

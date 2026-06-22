@@ -1,0 +1,45 @@
+{
+  "summary": "Iter27 Fixture/Partidos/Resultados/Clasificación module - spec final FUTRE SOCCER CUP. Backend 13/13 PASS via /app/backend/tests/test_iter27_fixture_module.py: (a) Venues CRUD - GET público, POST sin admin → 403, POST/PUT/DELETE admin OK con campos id/name/city/address/created_at; (b) POST /api/fixtures/generate sin tournament_id → 400 'El Evento (torneo) es obligatorio'; (c) POST /api/fixtures/generate sobre torneo archivado → 400 'No se puede generar fixture sobre un evento archivado/histórico'; (d) rounds=2 genera exactamente el doble de jornadas+partidos que rounds=1 (verificado con preview); (e) PUT /api/matches/{id}/result acepta cards type='other' y las persiste; (f) GET /api/stats/standings con tournament_id+category devuelve filas con yellow_cards/red_cards/other_cards/fair_play (base 200 default, -5 por tarjeta 'other'); orden de desempate verificado PTOS→PG→GF→GC(menor)→DG→J.L; (g) GET /api/tournaments/{tid}/fixture.pdf, standings.pdf, fairplay.pdf como admin → 200 application/pdf, content>1000 bytes, magic '%PDF'; (h) los mismos endpoints sin cookie → 401/403. Frontend Playwright: 20/21 checks PASS — fg-tournament/fg-category(disabled hasta elegir evento)/fg-rounds presentes; VenuePicker abre modal '+ Crear nueva cancha' (fg-venue-0-modal); /admin/partidos PdfExportBar con pdf-fixture-btn, pdf-standings-btn, pdf-fairplay-btn (disabled hasta seleccionar evento); /admin/torneos modal con los 7 cfg-* inputs (cfg-pts-win-0, cfg-pts-draw-0, cfg-pts-loss-0, cfg-fp-base-0, cfg-fp-yellow-0, cfg-fp-red-0, cfg-fp-other-0); páginas públicas /fixture y /datos-estadisticas SIN botones Descargar PDF ni testids de PDF export. Cards modal (add-yellow/red/other) verificado por código fuente (grep) - no se pudo testear interactivamente porque no hay matches en DB; legacy home-fairplay-input/away-fairplay-input ya NO existen en el código.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "POST /api/teams",
+        "issue": "Function create_team (server.py:1005) está rota: cuerpo termina en línea 1010 ('doc[\"id\"] = str(uuid.uuid4())') sin insert_one ni return; FastAPI valida None contra response_model=TeamOut y devuelve 500 ResponseValidationError. NO bloquea iter27 (tests usan equipos existentes) pero es regresión crítica para crear equipos vía API.",
+        "priority": "CRITICAL"
+      }
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter27_fixture_module.py",
+    "/app/test_reports/pytest/iteration_27.xml"
+  ],
+  "action_items": [
+    "URGENT: Fix POST /api/teams (server.py:1005) - el handler está truncado, falta `await db.teams.insert_one(doc)`, `doc.pop('_id', None)` y `return doc`. Actualmente devuelve None y produce 500. Crear equipos vía API está completamente roto."
+  ],
+  "critical_code_review_comments": [
+    "server.py:1005-1011 - create_team está incompleto (no inserta ni retorna). Bug crítico pre-existente, no introducido por iter27, pero descubierto durante este test.",
+    "_round_robin_pairs(rounds_n) duplica correctamente la cantidad de jornadas (verificado: rounds=1 → N jornadas, rounds=2 → 2N jornadas) y alterna home/away en cada pasada.",
+    "_cat_config aplica defaults seguros (3/1/0 puntos, 200/10/20/5 J.L.) cuando la categoría no tiene config; los valores numéricos se castean con int() con try/except.",
+    "standings sort key (-points, -won, -gf, ga, -gd, -fair_play) implementa el orden de desempate spec FSC exactamente.",
+    "_require_auth_for_pdf restringe a roles 'admin' y 'team', devolviendo 403; getCurrentUser ya devuelve 401 cuando no hay cookie - ambos resultados verificados.",
+    "VenuePicker.jsx maneja correctamente el caso legacy (venue manual no presente en lista) preservándolo como opción adicional.",
+    "AdminMatches.jsx PdfExportBar deshabilita los 3 botones cuando no hay tournament seleccionado (verificado en UI).",
+    "AdminFixtureGenerator.jsx deshabilita fg-category hasta que se elige fg-tournament (verificado en UI)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter27_fixture_module.py"
+  ],
+  "success_rate": {"backend": "100% (13/13)", "frontend": "95% (20/21 - 1 false positive por timing del dropdown)"},
+  "test_credentials": "admin@futuresoccercup.com / FSCAdmin2025!",
+  "seed_data_creation": "Tests crean+borran: 1 torneo activo TEST_iter27_*, 1 torneo archivado TEST_iter27_arch_*, 1 venue TEST_iter27_venue_*, matches generados sobre el torneo TEST_ (limpiados en teardown). Se reutilizan equipos Sub-12 existentes porque POST /api/teams está roto.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend regression iter27: pytest /app/backend/tests/test_iter27_fixture_module.py (13 tests). Export REACT_APP_BACKEND_URL antes de correr. BUG PENDIENTE: POST /api/teams roto (handler truncado en server.py:1005). Si el main agent arregla create_team, el siguiente testing puede revertir el fixture test_teams a creación nativa (líneas 75-92 del test file). UI testids confirmados: fg-tournament/fg-category/fg-rounds en /admin/generador-fixture; fg-venue-{i}-modal en VenuePicker; pdf-export-bar + pdf-fixture-btn/pdf-standings-btn/pdf-fairplay-btn en /admin/partidos; add-yellow-card/add-red-card/add-other-card en result modal (sin testear interactivo - no hay matches; verificado en source); cfg-pts-win/draw/loss-{i} y cfg-fp-base/yellow/red/other-{i} en CategoriesFeesEditor de /admin/torneos. Páginas públicas /fixture y /datos-estadisticas SIN botones PDF (verificado).",
+  "rca of the issue": "POST /api/teams (server.py:1005): el cuerpo de create_team fue truncado en algún commit anterior - sólo quedan las 2 primeras líneas (validación y construcción del dict) y luego empieza inmediatamente el siguiente endpoint @api.get('/teams/{team_id}/roster.pdf'). Falta await db.teams.insert_one(doc); doc.pop('_id', None); return doc. Reproducción: POST /api/teams con admin auth + body válido (name, category) → 500 ResponseValidationError. Mitigación: restaurar las 3 líneas faltantes. No bloquea iter27 porque los tests reutilizan equipos existentes."
+}

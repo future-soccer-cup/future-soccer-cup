@@ -284,7 +284,7 @@ export default function AdminTournaments() {
 }
 
 function CategoriesFeesEditor({ categories, catalog, onChange }) {
-  const add = () => onChange([...categories, { name: "", fee: 0, fee_usd: 0 }]);
+  const add = () => onChange([...categories, { name: "", fee: 0, fee_usd: 0, points_win: 3, points_draw: 1, points_loss: 0, fairplay_base: 200, fairplay_yellow: 10, fairplay_red: 20, fairplay_other: 5 }]);
   const update = (i, k, v) => {
     const next = [...categories];
     next[i] = { ...next[i], [k]: v };
@@ -296,36 +296,66 @@ function CategoriesFeesEditor({ categories, catalog, onChange }) {
       <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
         <div>
           <div className="text-xs font-bold uppercase tracking-wider text-fsc-azul">Categorías inscritas al evento</div>
-          <div className="text-[11px] text-slate-500">El evento se asociará a TODAS las categorías agregadas aquí. Cada una con su costo de inscripción en COP y USD.</div>
+          <div className="text-[11px] text-slate-500">El evento se asociará a TODAS las categorías agregadas aquí. Cada una con su costo de inscripción y reglas de puntos / Juego Limpio independientes.</div>
           <a href="/admin/categorias" className="text-[10px] text-fsc-azul underline">Gestionar catálogo de categorías</a>
         </div>
         <button type="button" onClick={add} className="text-xs font-bold uppercase tracking-wider text-white bg-fsc-azul hover:bg-fsc-azul-oscuro px-3 py-1.5 rounded" data-testid="add-category-fee">+ Agregar categoría</button>
       </div>
       {categories.length === 0 && <p className="text-[11px] italic text-slate-400">Aún no hay categorías. Agrega al menos una.</p>}
-      <div className="space-y-2">
+      <div className="space-y-4">
         {categories.map((c, i) => (
-          <div key={i} className="grid grid-cols-12 gap-2 items-end" data-testid={`category-fee-row-${i}`}>
-            <label className="col-span-12 sm:col-span-4 block">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Categoría</span>
-              <select value={c.name} onChange={(e) => update(i, "name", e.target.value)} className="mt-0.5 w-full px-2 py-1.5 border border-slate-300 rounded text-sm">
-                <option value="">Selecciona...</option>
-                {catalog.map((opt) => <option key={opt.id || opt.name} value={opt.name}>{opt.name}</option>)}
-              </select>
-            </label>
-            <label className="col-span-6 sm:col-span-4 block">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Inscripción (COP)</span>
-              <CurrencyInput value={c.fee} onChange={(v) => update(i, "fee", v)} className="w-full text-sm" data-testid={`category-fee-input-${i}`} />
-            </label>
-            <label className="col-span-5 sm:col-span-3 block">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Inscripción (USD)</span>
-              <CurrencyInput value={c.fee_usd || 0} onChange={(v) => update(i, "fee_usd", v)} className="w-full text-sm" data-testid={`category-fee-usd-input-${i}`} />
-            </label>
-            <button type="button" onClick={() => remove(i)} className="col-span-1 text-fsc-rojo hover:bg-red-50 p-1.5 rounded" data-testid={`remove-category-fee-${i}`}>
-              <Trash2 size={14}/>
-            </button>
+          <div key={i} className="border border-slate-200 rounded-md p-3 bg-slate-50" data-testid={`category-fee-row-${i}`}>
+            <div className="grid grid-cols-12 gap-2 items-end">
+              <label className="col-span-12 sm:col-span-4 block">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Categoría</span>
+                <select value={c.name} onChange={(e) => update(i, "name", e.target.value)} className="mt-0.5 w-full px-2 py-1.5 border border-slate-300 rounded text-sm">
+                  <option value="">Selecciona...</option>
+                  {catalog.map((opt) => <option key={opt.id || opt.name} value={opt.name}>{opt.name}</option>)}
+                </select>
+              </label>
+              <label className="col-span-6 sm:col-span-4 block">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Inscripción (COP)</span>
+                <CurrencyInput value={c.fee} onChange={(v) => update(i, "fee", v)} className="w-full text-sm" data-testid={`category-fee-input-${i}`} />
+              </label>
+              <label className="col-span-5 sm:col-span-3 block">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Inscripción (USD)</span>
+                <CurrencyInput value={c.fee_usd || 0} onChange={(v) => update(i, "fee_usd", v)} className="w-full text-sm" data-testid={`category-fee-usd-input-${i}`} />
+              </label>
+              <button type="button" onClick={() => remove(i)} className="col-span-1 text-fsc-rojo hover:bg-red-50 p-1.5 rounded" data-testid={`remove-category-fee-${i}`}>
+                <Trash2 size={14}/>
+              </button>
+            </div>
+            {/* Reglas deportivas: puntos y Juego Limpio */}
+            <div className="mt-3 pt-3 border-t border-slate-200">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 mb-1">Reglas deportivas (esta categoría)</div>
+              <div className="grid grid-cols-3 sm:grid-cols-7 gap-2">
+                <NumField label="Pts G" value={c.points_win ?? 3} onChange={(v) => update(i, "points_win", v)} testId={`cfg-pts-win-${i}`} />
+                <NumField label="Pts E" value={c.points_draw ?? 1} onChange={(v) => update(i, "points_draw", v)} testId={`cfg-pts-draw-${i}`} />
+                <NumField label="Pts P" value={c.points_loss ?? 0} onChange={(v) => update(i, "points_loss", v)} testId={`cfg-pts-loss-${i}`} />
+                <NumField label="J.L base" value={c.fairplay_base ?? 200} onChange={(v) => update(i, "fairplay_base", v)} testId={`cfg-fp-base-${i}`} />
+                <NumField label="− Amar." value={c.fairplay_yellow ?? 10} onChange={(v) => update(i, "fairplay_yellow", v)} testId={`cfg-fp-yellow-${i}`} />
+                <NumField label="− Roja" value={c.fairplay_red ?? 20} onChange={(v) => update(i, "fairplay_red", v)} testId={`cfg-fp-red-${i}`} />
+                <NumField label="− Otra" value={c.fairplay_other ?? 5} onChange={(v) => update(i, "fairplay_other", v)} testId={`cfg-fp-other-${i}`} />
+              </div>
+            </div>
           </div>
         ))}
       </div>
     </div>
+  );
+}
+
+function NumField({ label, value, onChange, testId }) {
+  return (
+    <label className="block">
+      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{label}</span>
+      <input
+        type="number"
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value || 0))}
+        className="mt-0.5 w-full px-2 py-1.5 border border-slate-300 rounded text-sm tabular-nums"
+        data-testid={testId}
+      />
+    </label>
   );
 }
