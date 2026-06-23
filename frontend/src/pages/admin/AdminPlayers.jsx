@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import api, { formatApiError } from "../../lib/api";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -6,37 +6,69 @@ import { Modal, Field } from "./AdminTeams";
 import ImageUpload from "../../components/ImageUpload";
 import { usePagedSearch, SearchBar, Pagination } from "../../components/PagedTable";
 import ExportCsvButton from "../../components/ExportCsvButton";
+import { validatePlayerBirthVsTeam } from "../../lib/playerValidation";
 
 const EMPTY = { name: "", team_id: "", jersey_number: 1, position: "Portero", birth_date: "", photo_url: "", document_id: "", nickname: "", gender: "", eps: "", comet_number: "", guardian_name: "", guardian_relation: "", guardian_phone: "" };
 
 export default function AdminPlayers() {
   const [players, setPlayers] = useState([]);
   const [teams, setTeams] = useState([]);
+  const [clubs, setClubs] = useState([]);
   const [editing, setEditing] = useState(null);
+  // Filtros adicionales
+  const [filterClub, setFilterClub] = useState("");
+  const [filterTeam, setFilterTeam] = useState("");
+  const [filterCategory, setFilterCategory] = useState("");
 
-  const load = useCallback(() => Promise.all([api.get("/players"), api.get("/teams")]).then(([p, t]) => { setPlayers(p.data); setTeams(t.data); }), []);
+  const load = useCallback(() => Promise.all([
+    api.get("/players"),
+    api.get("/teams"),
+    api.get("/clubs").catch(() => ({ data: [] })),
+  ]).then(([p, t, c]) => { setPlayers(p.data); setTeams(t.data); setClubs(c.data); }), []);
   useEffect(() => { load(); }, [load]);
-  const tmap = Object.fromEntries(teams.map((t) => [t.id, t]));
+  const tmap = useMemo(() => Object.fromEntries(teams.map((t) => [t.id, t])), [teams]);
+  const cmap = useMemo(() => Object.fromEntries(clubs.map((c) => [c.id, c])), [clubs]);
+
+  const categoriesAvail = useMemo(
+    () => Array.from(new Set(teams.map((t) => t.category).filter(Boolean))).sort(),
+    [teams]
+  );
+  const teamsFiltered = useMemo(() => teams.filter((t) =>
+    (!filterClub || t.club_id === filterClub) &&
+    (!filterCategory || t.category === filterCategory)
+  ), [teams, filterClub, filterCategory]);
+
+  // Aplicar filtros previo al searchbar
+  const prefiltered = useMemo(() => players.filter((p) => {
+    const t = tmap[p.team_id];
+    if (filterClub && (!t || t.club_id !== filterClub)) return false;
+    if (filterTeam && p.team_id !== filterTeam) return false;
+    if (filterCategory && (!t || t.category !== filterCategory)) return false;
+    return true;
+  }), [players, tmap, filterClub, filterTeam, filterCategory]);
 
   const matchFn = useCallback((p, q) => {
     const team = tmap[p.team_id];
+    const club = team ? cmap[team.club_id] : null;
     return (
       (p.name || "").toLowerCase().includes(q) ||
       (p.position || "").toLowerCase().includes(q) ||
       (p.document_id || "").toLowerCase().includes(q) ||
       String(p.jersey_number || "").includes(q) ||
       (team?.name || "").toLowerCase().includes(q) ||
-      (team?.category || "").toLowerCase().includes(q)
+      (team?.category || "").toLowerCase().includes(q) ||
+      (club?.name || "").toLowerCase().includes(q)
     );
-  }, [tmap]);
+  }, [tmap, cmap]);
 
   const { query, setQuery, page, setPage, totalPages, pageItems, filtered, filteredCount, totalCount } =
-    usePagedSearch(players, matchFn, 15);
+    usePagedSearch(prefiltered, matchFn, 15);
 
   const exportColumns = [
     { key: "jersey_number", label: "Dorsal" },
     { key: "name", label: "Nombre" },
     { key: "nickname", label: "Alias" },
+    { key: "club_name", label: "Club", accessor: (p) => cmap[tmap[p.team_id]?.club_id]?.name || "" },
     { key: "team_name", label: "Equipo", accessor: (p) => tmap[p.team_id]?.name || "" },
     { key: "team_category", label: "Categoría", accessor: (p) => tmap[p.team_id]?.category || "" },
     { key: "position", label: "Posición" },
@@ -44,8 +76,8 @@ export default function AdminPlayers() {
     { key: "document_id", label: "Documento" },
     { key: "gender", label: "Género" },
     { key: "eps", label: "EPS" },
+    { key: "comet_number", label: "Número COMET" },
     { key: "guardian_name", label: "Acudiente" },
-    { key: "guardian_doc", label: "Doc. acudiente" },
     { key: "guardian_relation", label: "Parentesco" },
     { key: "guardian_phone", label: "Tel. acudiente" },
     { key: "status", label: "Estado" },
@@ -53,6 +85,9 @@ export default function AdminPlayers() {
 
   const save = async (e) => {
     e.preventDefault();
+    const targetTeam = teams.find((t) => t.id === editing.team_id);
+    const ageErr = validatePlayerBirthVsTeam(editing.birth_date, targetTeam);
+    if (ageErr) { toast.error(ageErr); return; }
     try {
       const payload = { ...editing, jersey_number: Number(editing.jersey_number) };
       if (editing.id) {
@@ -82,17 +117,35 @@ export default function AdminPlayers() {
         <button onClick={() => setEditing({ ...EMPTY, team_id: teams[0]?.id || "" })} className="fsc-btn-primary px-4 py-2 rounded-md text-sm flex items-center gap-2 shrink-0" data-testid="add-player-btn"><Plus size={16}/> Nuevo</button>
       </div>
 
+      <div className="mb-3 grid grid-cols-1 md:grid-cols-3 gap-2" data-testid="players-filters-bar">
+        <select value={filterClub} onChange={(e) => { setFilterClub(e.target.value); setFilterTeam(""); }} className="px-3 py-2 border border-slate-200 rounded-md text-sm" data-testid="players-filter-club">
+          <option value="">Todos los clubes</option>
+          {clubs.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+        <select value={filterCategory} onChange={(e) => { setFilterCategory(e.target.value); setFilterTeam(""); }} className="px-3 py-2 border border-slate-200 rounded-md text-sm" data-testid="players-filter-category">
+          <option value="">Todas las categorías</option>
+          {categoriesAvail.map((c) => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <select value={filterTeam} onChange={(e) => setFilterTeam(e.target.value)} className="px-3 py-2 border border-slate-200 rounded-md text-sm" data-testid="players-filter-team">
+          <option value="">Todos los equipos</option>
+          {teamsFiltered.map((t) => <option key={t.id} value={t.id}>{t.name} · {t.category}</option>)}
+        </select>
+      </div>
+
       <div className="mb-3 flex items-center gap-3 flex-wrap">
         <div className="flex-1 min-w-[260px]">
           <SearchBar
             value={query}
             onChange={setQuery}
-            placeholder="Buscar por nombre, dorsal, documento, posición o equipo..."
+            placeholder="Buscar por nombre, dorsal, documento, posición, equipo o club..."
             filteredCount={filteredCount}
             totalCount={totalCount}
             testIdPrefix="players"
           />
         </div>
+        {(filterClub || filterTeam || filterCategory) && (
+          <button onClick={() => { setFilterClub(""); setFilterTeam(""); setFilterCategory(""); }} className="px-3 py-2 border-2 border-slate-200 rounded-md text-xs font-bold uppercase tracking-wide hover:bg-slate-50" data-testid="players-filters-clear">Limpiar filtros</button>
+        )}
         <ExportCsvButton rows={filtered} columns={exportColumns} filename="jugadores" testId="players-export-csv" />
       </div>
 
@@ -102,6 +155,7 @@ export default function AdminPlayers() {
             <tr>
               <th className="text-left px-4 py-2 w-12">#</th>
               <th className="text-left px-4 py-2">Nombre</th>
+              <th className="text-left px-4 py-2">Club</th>
               <th className="text-left px-4 py-2">Equipo</th>
               <th className="text-left px-4 py-2">Posición</th>
               <th className="text-left px-4 py-2">Nacimiento</th>
@@ -113,16 +167,17 @@ export default function AdminPlayers() {
               <tr key={p.id} className="border-t border-slate-100" data-testid={`player-row-${p.id}`}>
                 <td className="px-4 py-2 font-display font-black text-blue-700">#{p.jersey_number}</td>
                 <td className="px-4 py-2 font-semibold">{p.name}</td>
-                <td className="px-4 py-2">{tmap[p.team_id]?.name || "—"}</td>
+                <td className="px-4 py-2">{cmap[tmap[p.team_id]?.club_id]?.name || "—"}</td>
+                <td className="px-4 py-2">{tmap[p.team_id]?.name || "—"} <span className="text-slate-400 text-xs">{tmap[p.team_id]?.category || ""}</span></td>
                 <td className="px-4 py-2">{p.position}</td>
                 <td className="px-4 py-2">{p.birth_date}</td>
                 <td className="px-4 py-2 text-right space-x-2">
-                  <button onClick={() => setEditing({ ...p })} className="text-blue-700"><Pencil size={16}/></button>
-                  <button onClick={() => remove(p.id)} className="text-red-600"><Trash2 size={16}/></button>
+                  <button onClick={() => setEditing({ ...p })} className="text-blue-700" data-testid={`edit-player-${p.id}`}><Pencil size={16}/></button>
+                  <button onClick={() => remove(p.id)} className="text-red-600" data-testid={`delete-player-${p.id}`}><Trash2 size={16}/></button>
                 </td>
               </tr>
             ))}
-            {pageItems.length === 0 && <tr><td colSpan="6" className="text-center py-12 text-slate-400">{players.length === 0 ? "Sin jugadores" : "Sin resultados"}</td></tr>}
+            {pageItems.length === 0 && <tr><td colSpan="7" className="text-center py-12 text-slate-400">{players.length === 0 ? "Sin jugadores" : "Sin resultados"}</td></tr>}
           </tbody>
         </table>
       </div>

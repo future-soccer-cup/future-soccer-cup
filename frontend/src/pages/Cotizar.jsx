@@ -46,7 +46,10 @@ export default function Cotizar() {
   useEffect(() => { api.get("/event-types").then((r) => setConfig(r.data)); }, []);
   useEffect(() => {
     api.get("/tournaments").then((r) => {
-      const list = (r.data || []).filter((t) => !t.archived);
+      const list = (r.data || [])
+        .filter((t) => !t.archived)
+        // Ordenar por fecha de inicio ASC para que el primer evento del calendario aparezca primero
+        .sort((a, b) => String(a.start_date || a.startDate || "9999-12-31").localeCompare(String(b.start_date || b.startDate || "9999-12-31")));
       setTournaments(list);
     }).catch(() => {});
   }, []);

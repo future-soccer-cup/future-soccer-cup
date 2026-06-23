@@ -1172,7 +1172,7 @@ async def team_roster_pdf(team_id: str, user: dict = Depends(get_current_user)):
     if players:
         CELL = ParagraphStyle("CELL", parent=N, fontSize=7.5, leading=9)
         CELL_C = ParagraphStyle("CELL_C", parent=CELL, alignment=TA_LEFT)
-        data = [["#", "Nombre", "Apodo", "Pos.", "Doc.", "N° COMET", "F. nac.", "EPS"]]
+        data = [["Dorsal", "Nombre", "Apodo", "Pos.", "Doc.", "N° COMET", "F. nac.", "EPS"]]
         for p in players:
             data.append([
                 str(p.get("jersey_number") or ""),
@@ -1357,6 +1357,25 @@ async def get_player(player_id: str):
         raise HTTPException(status_code=404, detail="Jugador no encontrado")
     return p
 
+def _validate_player_birth_vs_team(team: dict, birth_date: str):
+    """Bloquea jugadores MAYORES a la categoría del equipo.
+    Regla: birth_year >= team.birth_year. Si el equipo no tiene birth_year, no se valida."""
+    if not birth_date:
+        return
+    team_year = team.get("birth_year")
+    if not team_year:
+        return
+    try:
+        player_year = int(str(birth_date)[:4])
+    except Exception:
+        return
+    if player_year < int(team_year):
+        raise HTTPException(
+            status_code=400,
+            detail=f"El jugador nacido en {player_year} es mayor a la categoría del equipo (año permitido: {team_year} en adelante)."
+        )
+
+
 @api.post("/players", response_model=PlayerOut)
 async def create_player(payload: PlayerIn, user: dict = Depends(require_admin_or_team)):
     team = await db.teams.find_one({"id": payload.team_id})
@@ -1369,6 +1388,7 @@ async def create_player(payload: PlayerIn, user: dict = Depends(require_admin_or
         same_team = user.get("team_id") and user["team_id"] == payload.team_id
         if not (same_club or same_team):
             raise HTTPException(status_code=403, detail="Solo puedes agregar jugadores a equipos de tu club")
+    _validate_player_birth_vs_team(team, payload.birth_date)
     doc = payload.model_dump()
     doc["id"] = str(uuid.uuid4())
     doc["status"] = "aprobado" if user["role"] == "admin" else "pendiente"
@@ -1382,12 +1402,15 @@ async def update_player(player_id: str, payload: PlayerIn, user: dict = Depends(
     existing = await db.players.find_one({"id": player_id}, {"_id": 0})
     if not existing:
         raise HTTPException(status_code=404, detail="Jugador no encontrado")
+    new_team = await db.teams.find_one({"id": payload.team_id}, {"_id": 0})
+    if not new_team:
+        raise HTTPException(status_code=400, detail="Equipo inválido")
     if user["role"] == "team":
         cur_team = await db.teams.find_one({"id": existing["team_id"]}, {"_id": 0, "club_id": 1})
-        new_team = await db.teams.find_one({"id": payload.team_id}, {"_id": 0, "club_id": 1})
         user_club = user.get("club_id")
         if not (user_club and cur_team and new_team and cur_team.get("club_id") == user_club and new_team.get("club_id") == user_club):
             raise HTTPException(status_code=403, detail="Solo puedes editar jugadores de equipos de tu club")
+    _validate_player_birth_vs_team(new_team, payload.birth_date)
     await db.players.update_one({"id": player_id}, {"$set": payload.model_dump()})
     p = await db.players.find_one({"id": player_id}, {"_id": 0})
     return p
@@ -3969,17 +3992,39 @@ async def quote_pdf(qid: str, user: dict = Depends(get_current_user)):
 
     # === INSCRIPCIÓN ===
     reg = float(q.get("registration_fee") or 0)
+    reg_breakdown = q.get("registration_breakdown") or []
     if reg:
         story.append(Paragraph("INSCRIPCIÓN", H2))
-        reg_tbl = Table([["Inscripción total", _fmt_money_pdf(reg, cur)]], colWidths=[5.5 * inch, 2.0 * inch])
-        reg_tbl.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, -1), LIGHT_BG),
-            ("BOX", (0, 0), (-1, -1), 0.5, BORDER),
-            ("ALIGN", (1, 0), (1, -1), "RIGHT"), ("FONTNAME", (1, 0), (1, -1), "Helvetica-Bold"),
-            ("FONTSIZE", (0, 0), (-1, -1), 9.5),
-            ("LEFTPADDING", (0, 0), (-1, -1), 8), ("RIGHTPADDING", (0, 0), (-1, -1), 8),
-            ("TOPPADDING", (0, 0), (-1, -1), 6), ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-        ]))
+        if reg_breakdown:
+            data = [["Evento · Categoría", f"Costo {cur}"]]
+            for r in reg_breakdown:
+                fee_v = float((r or {}).get("fee") or 0)
+                data.append([str((r or {}).get("name", "—")), _fmt_money_pdf(fee_v, cur)])
+            data.append(["Inscripción total", _fmt_money_pdf(reg, cur)])
+            reg_tbl = Table(data, colWidths=[5.5 * inch, 2.0 * inch])
+            reg_tbl.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, 0), BRAND_BLUE),
+                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("BACKGROUND", (0, -1), (-1, -1), LIGHT_BG),
+                ("FONTNAME", (0, -1), (-1, -1), "Helvetica-Bold"),
+                ("BOX", (0, 0), (-1, -1), 0.5, BORDER),
+                ("ALIGN", (1, 0), (1, -1), "RIGHT"),
+                ("FONTSIZE", (0, 0), (-1, -1), 9.5),
+                ("LEFTPADDING", (0, 0), (-1, -1), 8), ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+                ("TOPPADDING", (0, 0), (-1, -1), 6), ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -2), [colors.white, LIGHT_BG]),
+            ]))
+        else:
+            reg_tbl = Table([["Inscripción total", _fmt_money_pdf(reg, cur)]], colWidths=[5.5 * inch, 2.0 * inch])
+            reg_tbl.setStyle(TableStyle([
+                ("BACKGROUND", (0, 0), (-1, -1), LIGHT_BG),
+                ("BOX", (0, 0), (-1, -1), 0.5, BORDER),
+                ("ALIGN", (1, 0), (1, -1), "RIGHT"), ("FONTNAME", (1, 0), (1, -1), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 9.5),
+                ("LEFTPADDING", (0, 0), (-1, -1), 8), ("RIGHTPADDING", (0, 0), (-1, -1), 8),
+                ("TOPPADDING", (0, 0), (-1, -1), 6), ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ]))
         story.append(reg_tbl)
 
     # === OTROS COBROS ===
@@ -4011,6 +4056,29 @@ async def quote_pdf(qid: str, user: dict = Depends(get_current_user)):
         ("TOPPADDING", (0, 0), (-1, -1), 10), ("BOTTOMPADDING", (0, 0), (-1, -1), 12),
     ]))
     story.append(total_tbl)
+
+    # === DATOS BANCARIOS PARA EL ABONO ===
+    story.append(Spacer(1, 10))
+    bank_data = [[
+        Paragraph("<b>REALIZA TU ABONO A:</b>", ParagraphStyle("BANK_H", parent=N, fontSize=11, textColor=colors.white, leading=14, fontName="Helvetica-Bold")),
+        Paragraph(
+            "<b>Transferencia · Cuenta de Ahorros</b><br/>"
+            "<b>Banco:</b> Bancolombia<br/>"
+            "<b>Cuenta de Ahorros N°:</b> 247-000006-97<br/>"
+            "<b>Titular:</b> Grupo Empresarial ANCLA<br/>"
+            "<b>NIT:</b> 901.523.952",
+            ParagraphStyle("BANK_B", parent=N, fontSize=10, textColor=colors.white, leading=14),
+        ),
+    ]]
+    bank_tbl = Table(bank_data, colWidths=[2.5 * inch, 5.0 * inch])
+    bank_tbl.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), BRAND_DARK),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 14), ("RIGHTPADDING", (0, 0), (-1, -1), 14),
+        ("TOPPADDING", (0, 0), (-1, -1), 12), ("BOTTOMPADDING", (0, 0), (-1, -1), 12),
+        ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#1d4ed8")),
+    ]))
+    story.append(bank_tbl)
 
     # === NOTAS ===
     if q.get("notes"):

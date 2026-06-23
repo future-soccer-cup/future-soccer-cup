@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import api, { formatApiError, imgSrc } from "../lib/api";
+import { validatePlayerBirthVsTeam } from "../lib/playerValidation";
 import { useAuth } from "../context/AuthContext";
 import { toast, Toaster } from "sonner";
 import { Plus, Pencil, Trash2, Users2, CreditCard, CheckCircle2, AlertCircle, FileUp, Download, Receipt as ReceiptIcon, ChevronDown, ChevronUp, Edit3 } from "lucide-react";
@@ -61,6 +62,11 @@ export default function MyTeam() {
     try {
       const pickedTeamId = editingPlayer.team_id || teamId;
       if (!pickedTeamId) { toast.error("Selecciona un equipo para el jugador"); return; }
+      // Validar fecha de nacimiento vs categoría/año del equipo
+      const allTeams = [team, ...(clubTeams || [])].filter(Boolean);
+      const targetTeam = allTeams.find((t) => t?.id === pickedTeamId) || team;
+      const ageErr = validatePlayerBirthVsTeam(editingPlayer.birth_date, targetTeam);
+      if (ageErr) { toast.error(ageErr); return; }
       const payload = { ...editingPlayer, team_id: pickedTeamId, jersey_number: Number(editingPlayer.jersey_number) };
       if (editingPlayer.id) await api.put(`/players/${editingPlayer.id}`, payload);
       else await api.post("/players", payload);

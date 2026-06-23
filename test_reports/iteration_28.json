@@ -1,0 +1,35 @@
+{
+  "summary": "Iter28 (5 ajustes FSC) - ALL PASS. Backend 5/5 (test_iter28_player_validation_pdfs.py): (a) POST /api/players con birth_year < team.birth_year → 400 con mensaje 'El jugador nacido en 2013 es mayor a la categoría del equipo (año permitido: 2014 en adelante).'; (b) POST /api/players con birth_year >= team.birth_year → 200 OK + GET verifica persistencia; (c) PUT /api/players/{id} con birth_year inválido → 400; (d) GET /api/quotes/36fb2e35-bcd5-44bd-bee6-5dd3b220073d/pdf devuelve PDF válido (>1KB, magic %PDF, content-type application/pdf) y el texto extraído (pypdf) contiene literalmente 'INSCRIPCIÓN', 'REALIZA TU ABONO A:', 'Bancolombia', '247-000006-97', 'Grupo Empresarial ANCLA' y '901.523.952'; (e) GET /api/teams/{tid}/roster.pdf header tabla jugadores contiene 'Dorsal'. Frontend (Playwright admin@futuresoccercup.com + coach@test.com): (1) /cotizar como Director muestra eventos ordenados ASC por start_date — verificado ['2026-05-29','2026-05-30','2026-06-04']; (2) /admin/jugadores con los 3 selectores (players-filter-club/category/team) visibles, columna 'Club' presente en la tabla; (3) Al elegir un club, las opciones de team-filter se restringen (de 93 clubs disponibles, al seleccionar AMERICA FC solo aparece 'AMERICA FC 2010 Único · Sub-12'); (4) Botón 'Limpiar filtros' (players-filters-clear) NO aparece en DOM inicialmente y aparece al activar un filtro; al clickearlo resetea los 3 a vacío; (5) Validación frontend de birth_year EN /admin/jugadores: usando team 'Club de Prueba 2014 Equipo B' (birth_year=2014) con birth_date=2013-05-01 → toast 'El jugador nacido en 2013 es mayor a la categoría del equipo (año permitido: 2014 en adelante).' y POST /api/players NO ejecutado (count=0); cambiando birth_date a 2014-08-15 el POST se ejecuta correctamente, toast 'Guardado', modal cierra. /admin/cotizaciones lista carga 16 filas, integración con backend OK. NOTA: bug iter27 POST /api/teams (server.py:1014-1024) AHORA está arreglado por main agent — tiene insert_one + return doc.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/admin/jugadores (modal Nuevo Jugador)", "issues": ["Console warning de hidratación: '<span> cannot be a child of <option>' por instrumentación dev (data-ve-dynamic). No bloquea funcionalidad pero genera ruido en consola; debería deshabilitarse en runtime o limpiarse en build de producción."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter28_player_validation_pdfs.py",
+    "/app/test_reports/pytest/iteration_28.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "server.py:1360 _validate_player_birth_vs_team aplica regla correcta (birth_year < team_year → 400) y no valida si team.birth_year es null — comportamiento esperado y documentado. Se aplica en create_player (1391) y update_player (1413).",
+    "Mensaje de error coincide LITERAL entre backend y frontend (lib/playerValidation.js:17 vs server.py:1375), lo que permite tests deterministas.",
+    "Quote PDF (server.py:3993-4080): bloque INSCRIPCIÓN se renderiza solo si registration_fee>0; con registration_breakdown usa tabla detallada por categoría con fila final 'Inscripción total'. Bloque 'REALIZA TU ABONO A:' siempre se incluye al final con Bancolombia + cuenta 247-000006-97 + ANCLA + NIT 901.523.952.",
+    "Roster PDF (server.py:1175) header 'Dorsal' confirmado en lugar de '#'.",
+    "Cotizar.jsx:52 sort por start_date ASC con fallback '9999-12-31' es robusto ante torneos sin fecha.",
+    "AdminPlayers.jsx:121-147: filtros encadenados (al cambiar club o category, filterTeam se resetea automáticamente — UX correcta), botón Limpiar condicional bien implementado.",
+    "POST /api/teams (server.py:1014) FIX confirmado: ahora hace insert_one + doc.pop('_id') + return doc. Bug crítico de iter27 RESUELTO."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter28_player_validation_pdfs.py"
+  ],
+  "success_rate": {"backend": "100% (5/5)", "frontend": "100%"},
+  "test_credentials": "admin@futuresoccercup.com / FSCAdmin2025! ; coach@test.com / Coach2025!",
+  "seed_data_creation": "Tests crean y eliminan: 1 player TEST_OkPlayer (válido), 1 player TEST_UpdPlayer (válido luego intento PUT inválido), todos limpiados en teardown. Smoke UI creó TEST_OkUI Iter28 y se eliminó manualmente post-test. Quote 36fb2e35-bcd5-44bd-bee6-5dd3b220073d preservada.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend regression iter28: pytest /app/backend/tests/test_iter28_player_validation_pdfs.py (5 tests, ~5s). Requiere pypdf instalado (pip install pypdf). Export REACT_APP_BACKEND_URL antes de correr. Test fixture test_team busca cualquier team con birth_year (12 disponibles en DB, ej. 'Club de Prueba 2014 Equipo B' id=3901b94c-51d9-4e45-8e8d-4a221e69db09). Validar player payload requiere campos: team_id, name, first_name, last_name, position, birth_date, document_id, jersey_number. NOTA: ALCONES D (id 9619c962-f9ee-4ebc-a2a7-3fe14d2805e2) tiene category='Sub-12' pero birth_year=None, por eso la validación NO bloquea con ese equipo — usar 'Club de Prueba 2014 Equipo B' para tests UI determinísticos. Bug iter27 POST /api/teams ya está arreglado.",
+  "rca of the issue": "N/A - todos los 5 ajustes funcionan correctamente. Durante el primer intento UI de prueba el equipo seleccionado (ALCONES D) tenía birth_year=null, por lo que la validación correctamente NO bloqueaba (regla: si team.birth_year es null, no se valida). Repetir el test con 'Club de Prueba 2014 Equipo B' (birth_year=2014) confirmó que la validación frontend bloquea ANTES de llegar al backend (POST count=0 en network) y muestra el toast con el mensaje literal esperado."
+}

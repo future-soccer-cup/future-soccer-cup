@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, useMemo } from "react";
 import api, { formatApiError } from "../../lib/api";
+import { validatePlayerBirthVsTeam } from "../../lib/playerValidation";
 import { ChevronDown, ChevronRight, Check, X, Trash2, Plus, Edit3, Users, Mail, Phone, Shield, RefreshCw, Download } from "lucide-react";
 import { toast, Toaster } from "sonner";
 import { Pagination } from "../../components/PagedTable";
@@ -445,6 +446,8 @@ function PlayerEditModal({ team, player, onClose, onSaved }) {
 
   const submit = async (e) => {
     e.preventDefault();
+    const ageErr = validatePlayerBirthVsTeam(form.birth_date, team);
+    if (ageErr) { toast.error(ageErr); return; }
     setSaving(true);
     try {
       const payload = { ...form, jersey_number: Number(form.jersey_number) };
