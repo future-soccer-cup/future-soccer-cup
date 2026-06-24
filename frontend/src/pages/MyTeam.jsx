@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import api, { formatApiError, imgSrc } from "../lib/api";
 import { validatePlayerBirthVsTeam } from "../lib/playerValidation";
+import BirthDateField from "../components/BirthDateField";
 import { useAuth } from "../context/AuthContext";
 import { toast, Toaster } from "sonner";
 import { Plus, Pencil, Trash2, Users2, CreditCard, CheckCircle2, AlertCircle, FileUp, Download, Receipt as ReceiptIcon, ChevronDown, ChevronUp, Edit3 } from "lucide-react";
@@ -424,7 +425,12 @@ export default function MyTeam() {
                 </label>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Fecha nacimiento" type="date" value={editingPlayer.birth_date} onChange={(v) => setEditingPlayer({ ...editingPlayer, birth_date: v })} testId="player-birthdate-input" />
+                <BirthDateField
+                  value={editingPlayer.birth_date}
+                  team={[team, ...(clubTeams || [])].find((t) => t?.id === (editingPlayer.team_id || teamId)) || team}
+                  onChange={(v) => setEditingPlayer({ ...editingPlayer, birth_date: v })}
+                  testId="player-birthdate-input"
+                />
                 <Field label="Documento de identidad" value={editingPlayer.document_id} onChange={(v) => setEditingPlayer({ ...editingPlayer, document_id: v })} testId="player-doc-input" />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -1045,7 +1051,12 @@ export default function MyTeam() {
               </label>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Fecha nacimiento" type="date" value={editingPlayer.birth_date} onChange={(v) => setEditingPlayer({ ...editingPlayer, birth_date: v })} />
+              <BirthDateField
+                value={editingPlayer.birth_date}
+                team={[team, ...(clubTeams || [])].find((t) => t?.id === (editingPlayer.team_id || teamId)) || team}
+                onChange={(v) => setEditingPlayer({ ...editingPlayer, birth_date: v })}
+                testId="player2-birthdate-input"
+              />
               <Field label="Documento" value={editingPlayer.document_id} onChange={(v) => setEditingPlayer({ ...editingPlayer, document_id: v })} />
             </div>
             <div className="grid grid-cols-2 gap-3">

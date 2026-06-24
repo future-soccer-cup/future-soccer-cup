@@ -73,7 +73,7 @@ export default function ImageUpload({ value, onChange, label = "Imagen", testId 
         <input
           ref={inputRef}
           type="file"
-          accept="image/*,.jpg,.jpeg,.png,.gif,.bmp,.tif,.tiff,.webp,.heic,.heif,.raw,.cr2,.cr3,.nef,.arw,.dng,.orf,.rw2,.raf,.pef,.srw"
+          accept="image/*,.jpg,.jpeg,.jfif,.jif,.jpe,.pjpeg,.pjp,.png,.apng,.gif,.bmp,.dib,.tif,.tiff,.webp,.heic,.heif,.avif,.svg,.ico,.raw,.cr2,.cr3,.nef,.arw,.dng,.orf,.rw2,.raf,.pef,.srw"
           hidden
           onChange={handleFile}
           data-testid={`${testId}-input`}

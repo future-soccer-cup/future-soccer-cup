@@ -210,13 +210,15 @@ def get_object(path: str):
 MIME = {
     # Bitmap / common
     "jpg": "image/jpeg", "jpeg": "image/jpeg",
-    "png": "image/png",
+    "jfif": "image/jpeg", "jif": "image/jpeg", "jpe": "image/jpeg", "pjpeg": "image/jpeg", "pjp": "image/jpeg",
+    "png": "image/png", "apng": "image/apng",
     "gif": "image/gif",
     "webp": "image/webp",
-    "bmp": "image/bmp",
+    "bmp": "image/bmp", "dib": "image/bmp",
     "tif": "image/tiff", "tiff": "image/tiff",
-    "heic": "image/heic", "heif": "image/heif",
+    "heic": "image/heic", "heif": "image/heif", "avif": "image/avif",
     "svg": "image/svg+xml",
+    "ico": "image/x-icon",
     # RAW formats (most camera makers)
     "raw": "image/x-panasonic-rw2", "cr2": "image/x-canon-cr2", "cr3": "image/x-canon-cr3",
     "nef": "image/x-nikon-nef", "arw": "image/x-sony-arw", "dng": "image/x-adobe-dng",
@@ -1359,10 +1361,21 @@ async def get_player(player_id: str):
 
 def _validate_player_birth_vs_team(team: dict, birth_date: str):
     """Bloquea jugadores MAYORES a la categoría del equipo.
-    Regla: birth_year >= team.birth_year. Si el equipo no tiene birth_year, no se valida."""
+    Regla: birth_year (del jugador) >= año permitido del equipo.
+    Año permitido: team.birth_year si existe; si no, intenta extraer un año (1900-2099)
+    desde team.category (ej. '2008', 'Sub-12 (2014)'). Si tampoco hay, no se valida."""
     if not birth_date:
         return
     team_year = team.get("birth_year")
+    if not team_year:
+        cat = str(team.get("category") or team.get("designation") or "")
+        import re as _re
+        m = _re.search(r"\b(?:19|20)\d{2}\b", cat)
+        if m:
+            try:
+                team_year = int(m.group(0))
+            except Exception:
+                team_year = None
     if not team_year:
         return
     try:
@@ -4682,7 +4695,7 @@ async def social_instagram():
 async def upload_file(file: UploadFile = File(...), user: dict = Depends(get_current_user)):
     ext = (file.filename.rsplit(".", 1)[-1] if "." in (file.filename or "") else "bin").lower()
     if ext not in MIME:
-        raise HTTPException(status_code=400, detail="Formato no soportado. Acepta: JPG, PNG, GIF, BMP, TIFF, WebP, HEIC, SVG, RAW (CR2/CR3/NEF/ARW/DNG/ORF/RW2/RAF/PEF/SRW) o PDF.")
+        raise HTTPException(status_code=400, detail="Formato no soportado. Acepta: JPG/JPEG/JFIF/JIF/PJPEG, PNG/APNG, GIF, BMP/DIB, TIFF, WebP, HEIC/HEIF/AVIF, SVG, ICO, RAW (CR2/CR3/NEF/ARW/DNG/ORF/RW2/RAF/PEF/SRW) o PDF.")
     data = await file.read()
     if len(data) > 5 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="Archivo mayor a 5MB")

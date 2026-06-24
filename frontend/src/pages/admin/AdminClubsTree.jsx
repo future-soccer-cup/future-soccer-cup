@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, useMemo } from "react";
 import api, { formatApiError } from "../../lib/api";
 import { validatePlayerBirthVsTeam } from "../../lib/playerValidation";
+import BirthDateField from "../../components/BirthDateField";
 import { ChevronDown, ChevronRight, Check, X, Trash2, Plus, Edit3, Users, Mail, Phone, Shield, RefreshCw, Download } from "lucide-react";
 import { toast, Toaster } from "sonner";
 import { Pagination } from "../../components/PagedTable";
@@ -504,10 +505,12 @@ function PlayerEditModal({ team, player, onClose, onSaved }) {
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <label className="block">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Fecha nacimiento *</span>
-            <input required type="date" value={form.birth_date} onChange={(e) => setForm({ ...form, birth_date: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md text-sm" data-testid="player-birth" />
-          </label>
+          <BirthDateField
+            value={form.birth_date}
+            team={team}
+            onChange={(v) => setForm({ ...form, birth_date: v })}
+            testId="player-birth"
+          />
           <label className="block">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Documento</span>
             <input value={form.document_id} onChange={(e) => setForm({ ...form, document_id: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md text-sm" data-testid="player-doc" />

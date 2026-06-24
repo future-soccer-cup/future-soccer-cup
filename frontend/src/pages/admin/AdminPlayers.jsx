@@ -6,6 +6,7 @@ import { Modal, Field } from "./AdminTeams";
 import ImageUpload from "../../components/ImageUpload";
 import { usePagedSearch, SearchBar, Pagination } from "../../components/PagedTable";
 import ExportCsvButton from "../../components/ExportCsvButton";
+import BirthDateField from "../../components/BirthDateField";
 import { validatePlayerBirthVsTeam } from "../../lib/playerValidation";
 
 const EMPTY = { name: "", team_id: "", jersey_number: 1, position: "Portero", birth_date: "", photo_url: "", document_id: "", nickname: "", gender: "", eps: "", comet_number: "", guardian_name: "", guardian_relation: "", guardian_phone: "" };
@@ -231,7 +232,12 @@ export default function AdminPlayers() {
               </label>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Fecha nacimiento" type="date" value={editing.birth_date} onChange={(v) => setEditing({ ...editing, birth_date: v })} testId="admin-player-birthdate-input" />
+              <BirthDateField
+                value={editing.birth_date}
+                team={teams.find((t) => t.id === editing.team_id)}
+                onChange={(v) => setEditing({ ...editing, birth_date: v })}
+                testId="admin-player-birthdate-input"
+              />
               <Field label="Documento de identidad" value={editing.document_id} onChange={(v) => setEditing({ ...editing, document_id: v })} testId="admin-player-doc-input" />
             </div>
             <div className="grid grid-cols-2 gap-3">
