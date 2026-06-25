@@ -12,6 +12,7 @@ const GRAY = "#dedfe0";
 
 const STENCIL = { fontFamily: "'Anton', 'Barlow Condensed', sans-serif", letterSpacing: "0.01em" };
 const PLANE_CRASH = { fontFamily: "'Plane Crash', 'Anton', 'Barlow Condensed', sans-serif", letterSpacing: "0.01em" };
+const NEO_SANS = { fontFamily: "'Neo Sans Std', 'Neo Sans', 'Exo 2', 'Barlow', 'Inter', sans-serif" };
 // Plane Crash es una fuente cuyos glifos de letras están mapeados a las MINÚSCULAS;
 // las MAYÚSCULAS y los acentos caen a pictogramas decorativos. Normalizamos a minúsculas sin diacríticos.
 const planeCrashSafe = (str) => String(str || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -71,8 +72,8 @@ export default function Home() {
                   className="h-16 md:h-20 w-auto drop-shadow-lg"
                   onError={(e) => { e.currentTarget.style.display = "none"; }}
                 />
-                <span className="hidden sm:inline-block font-black uppercase leading-[0.85] text-white drop-shadow-md" style={{ ...STENCIL, fontSize: "clamp(18px, 2vw, 28px)" }}>
-                  FUTUR<br/>SOCCER<br/>CUP
+                <span className="hidden sm:inline-block font-black leading-[0.85] text-white drop-shadow-md" style={{ ...PLANE_CRASH, fontSize: "clamp(18px, 2vw, 28px)" }}>
+                  {planeCrashSafe("FUTUR")}<br/>{planeCrashSafe("SOCCER")}<br/>{planeCrashSafe("CUP")}
                 </span>
               </Link>
               <span className="hidden md:inline-block text-white italic text-3xl lg:text-5xl drop-shadow-md" style={CURSIVE} data-testid="hero-cursive-tagline">
@@ -94,15 +95,15 @@ export default function Home() {
                   to={n.to}
                   end={n.end}
                   className={({ isActive }) => `px-3 md:px-4 py-2 font-black uppercase tracking-wider text-[11px] md:text-sm transition ${isActive ? "text-white rounded" : "hover:opacity-80"}`}
-                  style={({ isActive }) => ({ background: isActive ? BLUE : "transparent", color: isActive ? "#fff" : RED })}
+                  style={({ isActive }) => ({ ...NEO_SANS, background: isActive ? BLUE : "transparent", color: isActive ? "#fff" : RED })}
                   data-testid={`nav-link-${n.label.toLowerCase()}`}
                 >
                   {n.label}
                 </NavLink>
               ))}
               <div className="flex-1" />
-              <NavLink to="/login" className="px-3 md:px-4 py-2 font-black uppercase tracking-wider text-[11px] md:text-sm hover:opacity-80" style={{ color: RED }} data-testid="nav-link-ingreso">INGRESO</NavLink>
-              <NavLink to="/registro-equipo" className="px-3 md:px-4 py-2 font-black uppercase tracking-wider text-[11px] md:text-sm hover:opacity-80" style={{ color: RED }} data-testid="nav-link-registro">REGISTRO</NavLink>
+              <NavLink to="/login" className="px-3 md:px-4 py-2 font-black uppercase tracking-wider text-[11px] md:text-sm hover:opacity-80" style={{ ...NEO_SANS, color: RED }} data-testid="nav-link-ingreso">INGRESO</NavLink>
+              <NavLink to="/registro-equipo" className="px-3 md:px-4 py-2 font-black uppercase tracking-wider text-[11px] md:text-sm hover:opacity-80" style={{ ...NEO_SANS, color: RED }} data-testid="nav-link-registro">REGISTRO</NavLink>
             </div>
           </div>
 
@@ -116,10 +117,10 @@ export default function Home() {
                 {planeCrashSafe(s.hero_edition_year || "2026")}
               </div>
               <div className="mt-6 flex flex-wrap gap-2">
-                <span className="inline-block px-4 py-1 bg-white font-bold uppercase tracking-wider text-xs md:text-sm rounded shadow" style={{ color: BLUE }} data-testid="hero-month-1">
+                <span className="inline-block px-4 py-1 bg-white font-bold uppercase tracking-wider text-xs md:text-sm rounded shadow" style={{ ...NEO_SANS, color: BLUE }} data-testid="hero-month-1">
                   {s.hero_month_1 || "Octubre"}
                 </span>
-                <span className="inline-block px-4 py-1 bg-white font-bold uppercase tracking-wider text-xs md:text-sm rounded shadow" style={{ color: BLUE }} data-testid="hero-month-2">
+                <span className="inline-block px-4 py-1 bg-white font-bold uppercase tracking-wider text-xs md:text-sm rounded shadow" style={{ ...NEO_SANS, color: BLUE }} data-testid="hero-month-2">
                   {s.hero_month_2 || "Diciembre"}
                 </span>
               </div>

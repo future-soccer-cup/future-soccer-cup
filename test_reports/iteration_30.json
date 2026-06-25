@@ -1,0 +1,29 @@
+{
+  "summary": "Frontend-only font regression test for Home page. All 4 new font assignments verified successfully via computed style inspection: (1) FUTUR SOCCER CUP logo uses Plane Crash with planeCrashSafe normalization rendering grunge stencil glyphs; (2) Torneo Internacional uses Natura Script (fallback Allura, italic); (3) All 8 navbar links (INICIO, NOSOTROS, EVENTOS, ESTADÍSTICAS, NOTICIAS, CONTÁCTO, INGRESO, REGISTRO) declare Neo Sans Std font-family; (4) OCTUBRE/DICIEMBRE month pills declare Neo Sans Std with blue text on white. Plane Crash regression elements (hero-edition, hero-year, region-title, footer-heading) still rendering correctly. document.fonts.check('80px Plane Crash') returns true. No font-related JS errors.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Home navbar/hero pills", "issues": ["Neo Sans Std is a commercial font (no TTF uploaded) — expected. However, the secondary fallback 'Exo 2' is also not loaded (document.fonts.check returned false). Browser falls back further down the chain to Barlow/Inter/system sans-serif. Visual rendering remains a clean modern sans-serif, but if 'Exo 2' is meant to be the actual rendered font per request, ensure Exo 2 is imported in /app/frontend/public/index.html via Google Fonts link. Acceptable per agent_to_agent_context_note that fallback is expected."]}
+    ]
+  },
+  "verification_details": {
+    "fonts_loaded": {"Plane Crash": true, "Natura Script": false, "Neo Sans Std": false, "Exo 2": false, "Allura": true},
+    "logo_span": {"fontFamily": "'Plane Crash', Anton, 'Barlow Condensed', sans-serif", "text": "futur\\nsoccer\\ncup"},
+    "cursive_tagline": {"fontFamily": "'Natura Script', Allura, 'Dancing Script', cursive", "fontStyle": "italic"},
+    "nav_links_all_8": "fontFamily = '\"Neo Sans Std\", \"Neo Sans\", \"Exo 2\", Barlow, Inter, sans-serif' — INICIO white-on-blue (active), others red, INGRESO/REGISTRO red",
+    "month_pills": "fontFamily declared correctly, color rgb(6,64,200) on white bg",
+    "regression_plane_crash": "hero-edition (edicion), hero-year (2026), region-title, footer-heading all still use Plane Crash"
+  },
+  "test_report_links": [],
+  "action_items": ["Optional: Import Exo 2 from Google Fonts in /app/frontend/public/index.html if Exo 2 fallback is intended to render; otherwise current sans-serif fallback chain is acceptable."],
+  "critical_code_review_comments": [],
+  "updated_files": [],
+  "success_rate": { "backend": "N/A (skipped)", "frontend": "100%" },
+  "seed_data_creation": "",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iteration 30 verified font assignments on Home.jsx (lines 14-19 declarations, lines 75-76, 79-81, 98, 105-106, 120-124). Plane Crash + Allura load from /fonts/ TTFs (verified via document.fonts.check). Neo Sans Std, Natura Script, Exo 2 not loaded — falling back through chain. Visual rendering verified via screenshot.",
+  "rca of the issue": "N/A - no bug; all font assignments correctly applied per request."
+}
