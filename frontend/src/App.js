@@ -60,7 +60,7 @@ function PublicLayout() {
   const isHome = loc.pathname === "/";
   return (
     <div className="min-h-screen flex flex-col bg-white">
-      <Navbar />
+      {!isHome && <Navbar />}
       <Toaster position="top-right" />
       <main className="flex-1">
         <Outlet />

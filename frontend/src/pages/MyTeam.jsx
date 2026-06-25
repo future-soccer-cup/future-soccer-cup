@@ -130,10 +130,16 @@ export default function MyTeam() {
           try {
             const p = await api.get(`/players?team_id=${t.id}`);
             allPlayers.push(...(p.data || []));
-          } catch { /* silent */ }
+          } catch (err) {
+            // Falla silenciosa al cargar jugadores de un equipo del club: registramos en consola
+            // (en dev) pero no interrumpimos la carga del resto.
+            if (process.env.NODE_ENV === "development") console.warn(`No se pudieron cargar jugadores de team ${t.id}:`, err?.message);
+          }
         }
         setPlayers(allPlayers);
-      } catch { /* silent */ }
+      } catch (err) {
+        if (process.env.NODE_ENV === "development") console.warn("Carga de equipos del club falló:", err?.message);
+      }
       return;
     }
     if (!teamId) return;
@@ -165,7 +171,9 @@ export default function MyTeam() {
       try {
         const p = await api.get(`/players?team_id=${t.id}`);
         allPlayers.push(...(p.data || []));
-      } catch { /* silent */ }
+      } catch (err) {
+        if (process.env.NODE_ENV === "development") console.warn(`Players load failed for ${t.id}:`, err?.message);
+      }
     }
     setPlayers(allPlayers);
   };
@@ -212,7 +220,9 @@ export default function MyTeam() {
             return { ...t, categories: cats };
           });
         setQuoteTournaments(result);
-      } catch { /* silent */ }
+      } catch (err) {
+        if (process.env.NODE_ENV === "development") console.warn("Quote tournaments load failed:", err?.message);
+      }
     })();
     /* eslint-disable-next-line */
   }, [teamId, user?.club_id]);

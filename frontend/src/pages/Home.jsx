@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 import api from "../lib/api";
 import { ChevronLeft, ChevronRight, ChevronUp, Calendar, MessageCircle, Mail, Instagram, Facebook } from "lucide-react";
 
@@ -41,57 +41,87 @@ export default function Home() {
 
   return (
     <div className="min-h-screen" data-testid="home-fsc-v2" style={{ background: "#fff", fontFamily: "'Barlow', 'Inter', sans-serif" }}>
-      {/* ======= HERO — split horizontal azul→rojo, foto a la derecha ======= */}
+      {/* ======= HERO — navbar embebida + foto fondo completo + EDICIÓN 2026 ======= */}
       <section className="relative overflow-hidden" data-testid="home-hero">
-        <div className="relative w-full" style={{ minHeight: "560px" }}>
-          {/* Capas de color: 60% superior azul + 40% inferior rojo */}
-          <div className="absolute inset-x-0 top-0" style={{ height: "60%", background: BLUE }} />
-          <div className="absolute inset-x-0 bottom-0" style={{ height: "40%", background: RED }} />
-          {/* Foto de niños jugando a la DERECHA, ~55% del ancho */}
-          <div className="absolute right-0 top-0 bottom-0 w-full md:w-[55%] lg:w-[58%]">
-            <img
-              src={s.hero_image_url || HERO_IMG_DEFAULT}
-              alt="Niños jugando fútbol"
-              className="w-full h-full object-cover"
-              style={{ objectPosition: "center 30%" }}
-            />
-            {/* Degradado lateral izquierdo de la imagen para fundir con los textos */}
-            <div className="hidden md:block absolute left-0 top-0 bottom-0 w-32 lg:w-48 pointer-events-none"
-                 style={{ background: "linear-gradient(to right, rgba(6,64,200,0.85), transparent)" }} />
-          </div>
+        <div className="relative w-full" style={{ minHeight: "720px" }}>
+          {/* Foto de fondo COMPLETA */}
+          <img
+            src={s.hero_image_url || HERO_IMG_DEFAULT}
+            alt="Future Soccer Cup"
+            className="absolute inset-0 w-full h-full object-cover"
+            style={{ objectPosition: "center 25%" }}
+          />
+          {/* Overlay azul (arriba 55%) + rojo (abajo 45%) en mix-blend para teñir la foto */}
+          <div className="absolute inset-x-0 top-0 mix-blend-multiply" style={{ height: "55%", background: BLUE }} />
+          <div className="absolute inset-x-0 bottom-0 mix-blend-multiply" style={{ height: "45%", background: RED }} />
+          {/* Capa azul más oscura SOLO en la zona del texto (lado izquierdo) para legibilidad */}
+          <div className="hidden md:block absolute left-0 top-0 bottom-0 w-[55%] pointer-events-none" style={{ background: "linear-gradient(to right, rgba(6,64,200,0.55), transparent 80%)" }} />
 
-          {/* Contenido textual — columna izquierda */}
-          <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-10 py-10 lg:py-14" style={{ minHeight: "560px" }}>
-            {/* "Torneo Internacional" arriba a la derecha (dentro del hero) */}
-            <div className="absolute top-6 right-6 md:right-10 z-20">
-              <span className="text-white italic text-2xl md:text-3xl lg:text-4xl drop-shadow-md" style={CURSIVE} data-testid="hero-cursive-tagline">
+          {/* === NAVBAR EMBEBIDA EN EL HERO === */}
+          <div className="relative z-20 max-w-7xl mx-auto px-4 md:px-8 pt-5">
+            <div className="flex items-center justify-between gap-4">
+              <Link to="/" className="flex items-center gap-3" data-testid="nav-logo-link">
+                <img
+                  src="https://customer-assets.emergentagent.com/job_fixture-stats-pro/artifacts/y4ulg6l9_FUTRE%20SOCCER%20CUP%202025_Mesa%20de%20trabajo%201.png"
+                  alt="Future Soccer Cup"
+                  className="h-16 md:h-20 w-auto drop-shadow-lg"
+                  onError={(e) => { e.currentTarget.style.display = "none"; }}
+                />
+                <span className="hidden sm:inline-block font-black uppercase leading-[0.85] text-white drop-shadow-md" style={{ ...STENCIL, fontSize: "clamp(18px, 2vw, 28px)" }}>
+                  FUTUR<br/>SOCCER<br/>CUP
+                </span>
+              </Link>
+              <span className="hidden md:inline-block text-white italic text-3xl lg:text-5xl drop-shadow-md" style={CURSIVE} data-testid="hero-cursive-tagline">
                 Torneo Internacional
               </span>
             </div>
+            {/* Barra blanca con links */}
+            <div className="mt-4 bg-white rounded-md shadow-md px-2 md:px-4 py-1 flex flex-wrap items-center gap-1 md:gap-0" data-testid="hero-nav-bar">
+              {[
+                { to: "/", label: "INICIO", end: true },
+                { to: "/nosotros", label: "NOSOTROS" },
+                { to: "/eventos", label: "EVENTOS" },
+                { to: "/datos-estadisticas", label: "ESTADÍSTICAS" },
+                { to: "/noticias", label: "NOTICIAS" },
+                { to: "/contacto", label: "CONTÁCTO" },
+              ].map((n) => (
+                <NavLink
+                  key={n.to}
+                  to={n.to}
+                  end={n.end}
+                  className={({ isActive }) => `px-3 md:px-4 py-2 font-black uppercase tracking-wider text-[11px] md:text-sm transition ${isActive ? "text-white rounded" : "hover:opacity-80"}`}
+                  style={({ isActive }) => ({ background: isActive ? BLUE : "transparent", color: isActive ? "#fff" : RED })}
+                  data-testid={`nav-link-${n.label.toLowerCase()}`}
+                >
+                  {n.label}
+                </NavLink>
+              ))}
+              <div className="flex-1" />
+              <NavLink to="/login" className="px-3 md:px-4 py-2 font-black uppercase tracking-wider text-[11px] md:text-sm hover:opacity-80" style={{ color: RED }} data-testid="nav-link-ingreso">INGRESO</NavLink>
+              <NavLink to="/registro-equipo" className="px-3 md:px-4 py-2 font-black uppercase tracking-wider text-[11px] md:text-sm hover:opacity-80" style={{ color: RED }} data-testid="nav-link-registro">REGISTRO</NavLink>
+            </div>
+          </div>
 
-            {/* Bloque EDICIÓN 2026 — izquierda */}
-            <div className="md:w-[55%] lg:w-[52%] pt-4">
-              <h1 className="text-white font-black uppercase leading-[0.85]" style={{ ...STENCIL, fontSize: "clamp(64px, 11vw, 180px)", textShadow: "3px 3px 0 rgba(0,0,0,0.18)" }} data-testid="hero-edition">
+          {/* === TEXTOS DEL HERO === */}
+          <div className="relative z-10 max-w-7xl mx-auto px-6 md:px-10 pt-10 md:pt-16 pb-12">
+            <div className="md:w-[55%]">
+              <h1 className="text-white font-black uppercase leading-[0.85]" style={{ ...STENCIL, fontSize: "clamp(64px, 11vw, 180px)", textShadow: "3px 3px 0 rgba(0,0,0,0.25)" }} data-testid="hero-edition">
                 {s.hero_edition_label || "EDICIÓN"}
               </h1>
-              <div className="text-white font-black uppercase leading-[0.85]" style={{ ...STENCIL, fontSize: "clamp(96px, 16vw, 240px)", textShadow: "3px 3px 0 rgba(0,0,0,0.18)" }} data-testid="hero-year">
+              <div className="text-white font-black uppercase leading-[0.85]" style={{ ...STENCIL, fontSize: "clamp(96px, 16vw, 240px)", textShadow: "3px 3px 0 rgba(0,0,0,0.25)" }} data-testid="hero-year">
                 {s.hero_edition_year || "2026"}
               </div>
-
-              {/* Badges Octubre / Diciembre — más pequeños */}
-              <div className="mt-4 flex flex-wrap gap-2">
-                <span className="inline-block px-3 py-1 bg-white font-bold uppercase tracking-wider text-[11px] md:text-xs rounded shadow" style={{ color: BLUE }} data-testid="hero-month-1">
+              <div className="mt-6 flex flex-wrap gap-2">
+                <span className="inline-block px-4 py-1 bg-white font-bold uppercase tracking-wider text-xs md:text-sm rounded shadow" style={{ color: BLUE }} data-testid="hero-month-1">
                   {s.hero_month_1 || "Octubre"}
                 </span>
-                <span className="inline-block px-3 py-1 bg-white font-bold uppercase tracking-wider text-[11px] md:text-xs rounded shadow" style={{ color: BLUE }} data-testid="hero-month-2">
+                <span className="inline-block px-4 py-1 bg-white font-bold uppercase tracking-wider text-xs md:text-sm rounded shadow" style={{ color: BLUE }} data-testid="hero-month-2">
                   {s.hero_month_2 || "Diciembre"}
                 </span>
               </div>
-
-              {/* Chevron doble debajo, centrado bajo los badges */}
-              <div className="mt-4 flex flex-col items-start ml-2" style={{ color: "#fff" }} data-testid="hero-chevron">
-                <ChevronUp size={24} strokeWidth={3} className="rotate-180 opacity-90" />
-                <ChevronUp size={24} strokeWidth={3} className="rotate-180 opacity-90 -mt-3" />
+              <div className="mt-6 flex flex-col items-start ml-3 text-white" data-testid="hero-chevron">
+                <ChevronUp size={28} strokeWidth={3} className="rotate-180 opacity-90" />
+                <ChevronUp size={28} strokeWidth={3} className="rotate-180 opacity-90 -mt-3" />
               </div>
             </div>
           </div>
@@ -110,8 +140,8 @@ export default function Home() {
               { n: s.stat_2_number, l: s.stat_2_label, dn: "+1K", dl: "clubes participantes" },
               { n: s.stat_3_number, l: s.stat_3_label, dn: "+100", dl: "clubes Internacionales" },
               { n: s.stat_4_number, l: s.stat_4_label, dn: "+10K", dl: "Deportistas" },
-            ].map((it, i) => (
-              <div key={i} className="flex flex-col items-center" data-testid={`home-stat-${i + 1}`}>
+            ].map((it, idx) => (
+              <div key={it.dl} className="flex flex-col items-center" data-testid={`home-stat-${idx + 1}`}>
                 <div className="font-black leading-none" style={{ ...STENCIL, color: RED, fontSize: "clamp(64px, 9vw, 128px)" }}>{it.n || it.dn}</div>
                 <div className="mt-2 font-bold text-base lg:text-lg" style={{ color: BLUE }}>{it.l || it.dl}</div>
               </div>
@@ -133,7 +163,7 @@ export default function Home() {
             ><ChevronLeft size={32} strokeWidth={3} /></button>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {visibleGallery.map((img, i) => (
-                <div key={i} className="aspect-[4/3] rounded-lg overflow-hidden" style={{ background: BLUE }} data-testid={`gallery-item-${i}`}>
+                <div key={img?.id || img?.url || `gallery-slot-${i}`} className="aspect-[4/3] rounded-lg overflow-hidden" style={{ background: BLUE }} data-testid={`gallery-item-${i}`}>
                   {img && <img src={img.url || img.image_url || ""} alt={img.title || ""} className="w-full h-full object-cover" />}
                 </div>
               ))}
@@ -303,11 +333,11 @@ function CategoryColumn({ title, dateBadge, logoUrl, ctaUrl, groups, testId }) {
       </div>
       <div className="rounded-2xl p-3 bg-white" style={{ border: `3px solid #e31f27` }}>
         {groups.map((g, gi) => (
-          <div key={gi} className={gi > 0 ? "mt-3" : ""}>
+          <div key={g.label || `group-${gi}`} className={gi > 0 ? "mt-3" : ""}>
             <div className="text-base md:text-lg font-bold mb-2" style={{ color: "#0640c8" }}>{g.label}</div>
             <div className="grid grid-cols-3 gap-1.5">
               {g.items.map((c, i) => (
-                <div key={i} className="h-7 md:h-8 rounded" style={{ background: "#e31f27" }} data-testid={`${testId}-item-${gi}-${i}`} title={c}>
+                <div key={`${g.label}-${c}-${i}`} className="h-7 md:h-8 rounded" style={{ background: "#e31f27" }} data-testid={`${testId}-item-${gi}-${i}`} title={c}>
                   <span className="sr-only">{c}</span>
                 </div>
               ))}

@@ -69,7 +69,9 @@ export default function AdminClubsTree() {
       try {
         const r = await api.get(`/admin/clubs/${cid}/users`);
         setClubUsers((cu) => ({ ...cu, [cid]: r.data || [] }));
-      } catch (err) { /* silent */ }
+      } catch (err) {
+        if (process.env.NODE_ENV === "development") console.warn(`Club users load failed for ${cid}:`, err?.message);
+      }
     }
   };
 
