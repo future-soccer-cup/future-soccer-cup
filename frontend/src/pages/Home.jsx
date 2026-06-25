@@ -2,22 +2,10 @@ import { useEffect, useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import api from "../lib/api";
 import { ChevronLeft, ChevronRight, ChevronUp, Calendar, MessageCircle, Mail, Instagram, Facebook } from "lucide-react";
+import { PLANE_CRASH, AGENCY_FB, NEO_SANS, STENCIL, CURSIVE, planeCrashSafe, RED, BLUE, GRAY } from "../lib/designSystem";
 
 // Mascota — placeholder reemplazable desde CMS (sección "región", no afecta hero/navbar)
 const MASCOT_DEFAULT = "https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=1200&q=80";
-
-const RED = "#e31f27";
-const BLUE = "#0640c8";
-const GRAY = "#dedfe0";
-
-const STENCIL = { fontFamily: "'Anton', 'Barlow Condensed', sans-serif", letterSpacing: "0.01em" };
-const PLANE_CRASH = { fontFamily: "'Plane Crash', 'Anton', 'Barlow Condensed', sans-serif", letterSpacing: "0.01em" };
-const NEO_SANS = { fontFamily: "'Neo Sans Std', 'Neo Sans', 'Exo 2', 'Barlow', 'Inter', sans-serif" };
-const AGENCY_FB = { fontFamily: "'Agency FB', 'AgencyFB', 'Oswald', 'Barlow Condensed', 'Roboto Condensed', 'Arial Narrow', sans-serif" };
-// Plane Crash es una fuente cuyos glifos de letras están mapeados a las MINÚSCULAS;
-// las MAYÚSCULAS y los acentos caen a pictogramas decorativos. Normalizamos a minúsculas sin diacríticos.
-const planeCrashSafe = (str) => String(str || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-const CURSIVE = { fontFamily: "'Natura Script', 'Allura', 'Dancing Script', cursive" };
 
 export default function Home() {
   const [s, setS] = useState({});

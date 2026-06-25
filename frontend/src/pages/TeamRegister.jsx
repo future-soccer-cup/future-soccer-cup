@@ -5,6 +5,7 @@ import api, { formatApiError, FSC_LOGO } from "../lib/api";
 import { toast, Toaster } from "sonner";
 import { Upload, ArrowRight } from "lucide-react";
 import { ConsentBlock } from "./Register";
+import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe } from "../lib/designSystem";
 
 const EMPTY = {
   email: "", password: "", manager_name: "", manager_phone: "", manager_role: "Directivo", manager_document: "",
@@ -87,13 +88,13 @@ export default function TeamRegister() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-white" data-testid="team-register-page">
+    <div className="min-h-[calc(100vh-4rem)] bg-white" data-testid="team-register-page" style={AGENCY_FB}>
       <Toaster position="top-right" />
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <Link to="/login" className="text-xs uppercase tracking-widest font-bold text-fsc-azul-oscuro hover:text-fsc-azul">← Volver</Link>
-        <div className="mt-4 font-cursive text-2xl text-fsc-azul-oscuro">crea tu cuenta</div>
-        <h1 className="mt-1 font-display text-5xl md:text-6xl tracking-wider text-fsc-negro" data-testid="tr-title">
-          {isCuerpoTecnico ? "ÚNETE A UN CLUB" : "REGISTRA TU CLUB"}
+        <div className="mt-4 italic text-2xl" style={{ ...CURSIVE, color: "#04299e" }}>crea tu cuenta</div>
+        <h1 className="mt-1 text-5xl md:text-6xl font-black leading-[0.9]" style={{ ...PLANE_CRASH, color: "#000000" }} data-testid="tr-title">
+          {planeCrashSafe(isCuerpoTecnico ? "UNETE A UN CLUB" : "REGISTRA TU CLUB")}
         </h1>
         <div className="h-1 w-16 bg-fsc-rojo mt-3 mb-4"/>
         <p className="text-sm text-slate-600 mt-2 max-w-xl">

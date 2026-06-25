@@ -57,6 +57,32 @@ const EMPTY = {
   about_title: "Somos más que un torneo",
   about_body: "",
   about_image_url: "",
+  // Páginas secundarias
+  nosotros_hero_kicker: "conócenos",
+  nosotros_hero_title: "NOSOTROS",
+  nosotros_hero_body: "",
+  nosotros_mission_kicker: "misión",
+  nosotros_mission_body: "",
+  nosotros_pill_1_title: "Reglamento claro", nosotros_pill_1_body: "Fair play como primer ítem de desempate.",
+  nosotros_pill_2_title: "4 partidos mínimo", nosotros_pill_2_body: "Cuadrangulares + intergrupos.",
+  nosotros_pill_3_title: "Datos en vivo",    nosotros_pill_3_body: "Posiciones y goleadores actualizados.",
+  nosotros_pill_4_title: "Familia FSC",      nosotros_pill_4_body: "Hospedaje, transporte, tours.",
+  eventos_hero_kicker: "temporada",
+  eventos_hero_title: "EVENTOS",
+  eventos_hero_body: "",
+  contacto_hero_kicker: "estamos aquí",
+  contacto_hero_title: "CONTACTO",
+  contacto_hero_body: "",
+  contacto_form_kicker: "déjanos un mensaje",
+  contacto_form_title: "ENVÍANOS TU CONSULTA",
+  noticias_hero_kicker: "novedades",
+  noticias_hero_title: "NOTICIAS",
+  noticias_hero_body: "",
+  estadisticas_hero_kicker: "torneo en vivo",
+  estadisticas_hero_title: "ESTADÍSTICAS",
+  estadisticas_hero_body: "",
+  hablemos_kicker: "contáctanos",
+  hablemos_title: "HABLEMOS",
 };
 
 // Helpers para convertir entre lista (CSV) y arrays
@@ -196,6 +222,87 @@ export default function AdminHomeSettings() {
           <Field label="Instagram (@usuario o URL)" v={s.instagram} onChange={(v) => upd("instagram", v)} />
           <Field label="Facebook (URL o slug)" v={s.facebook} onChange={(v) => upd("facebook", v)} />
           <Field label="YouTube (URL o slug)" v={s.youtube} onChange={(v) => upd("youtube", v)} />
+        </div>
+      </Section>
+
+      <Section title="Nosotros (página)" icon={<Info size={18}/>}>
+        <div className="grid md:grid-cols-2 gap-4">
+          <Field label="Hero — kicker (cursiva)" v={s.nosotros_hero_kicker} onChange={(v) => upd("nosotros_hero_kicker", v)} placeholder="conócenos" />
+          <Field label="Hero — título grande" v={s.nosotros_hero_title} onChange={(v) => upd("nosotros_hero_title", v)} placeholder="NOSOTROS" />
+          <label className="md:col-span-2 block">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Hero — descripción</span>
+            <textarea rows={3} value={s.nosotros_hero_body || ""} onChange={(e) => upd("nosotros_hero_body", e.target.value)} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" />
+          </label>
+          <Field label="Misión — kicker" v={s.nosotros_mission_kicker} onChange={(v) => upd("nosotros_mission_kicker", v)} placeholder="misión" />
+          <div />
+          <label className="md:col-span-2 block">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Misión — cuerpo</span>
+            <textarea rows={3} value={s.nosotros_mission_body || ""} onChange={(e) => upd("nosotros_mission_body", e.target.value)} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" />
+          </label>
+          <div className="md:col-span-2 border-t border-slate-200 pt-3">
+            <div className="text-[10px] font-bold uppercase tracking-widest text-blue-700 mb-2">Tarjetas / Pills (4)</div>
+            <div className="grid md:grid-cols-2 gap-3">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="border border-slate-200 rounded-md p-3 space-y-2">
+                  <Field label={`Pill ${i} — título`} v={s[`nosotros_pill_${i}_title`]} onChange={(v) => upd(`nosotros_pill_${i}_title`, v)} />
+                  <Field label={`Pill ${i} — descripción`} v={s[`nosotros_pill_${i}_body`]} onChange={(v) => upd(`nosotros_pill_${i}_body`, v)} />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </Section>
+
+      <Section title="Eventos (página)" icon={<Trophy size={18}/>}>
+        <div className="grid md:grid-cols-2 gap-4">
+          <Field label="Hero — kicker" v={s.eventos_hero_kicker} onChange={(v) => upd("eventos_hero_kicker", v)} placeholder="temporada" />
+          <Field label="Hero — título grande" v={s.eventos_hero_title} onChange={(v) => upd("eventos_hero_title", v)} placeholder="EVENTOS" />
+          <label className="md:col-span-2 block">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Hero — descripción</span>
+            <textarea rows={2} value={s.eventos_hero_body || ""} onChange={(e) => upd("eventos_hero_body", e.target.value)} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" />
+          </label>
+        </div>
+      </Section>
+
+      <Section title="Estadísticas (página)" icon={<Hash size={18}/>}>
+        <div className="grid md:grid-cols-2 gap-4">
+          <Field label="Hero — kicker" v={s.estadisticas_hero_kicker} onChange={(v) => upd("estadisticas_hero_kicker", v)} placeholder="torneo en vivo" />
+          <Field label="Hero — título grande" v={s.estadisticas_hero_title} onChange={(v) => upd("estadisticas_hero_title", v)} placeholder="ESTADÍSTICAS" />
+          <label className="md:col-span-2 block">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Hero — descripción</span>
+            <textarea rows={2} value={s.estadisticas_hero_body || ""} onChange={(e) => upd("estadisticas_hero_body", e.target.value)} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" />
+          </label>
+        </div>
+      </Section>
+
+      <Section title="Noticias (página)" icon={<Info size={18}/>}>
+        <div className="grid md:grid-cols-2 gap-4">
+          <Field label="Hero — kicker" v={s.noticias_hero_kicker} onChange={(v) => upd("noticias_hero_kicker", v)} placeholder="novedades" />
+          <Field label="Hero — título grande" v={s.noticias_hero_title} onChange={(v) => upd("noticias_hero_title", v)} placeholder="NOTICIAS" />
+          <label className="md:col-span-2 block">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Hero — descripción</span>
+            <textarea rows={2} value={s.noticias_hero_body || ""} onChange={(e) => upd("noticias_hero_body", e.target.value)} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" />
+          </label>
+        </div>
+      </Section>
+
+      <Section title="Contacto (página)" icon={<Phone size={18}/>}>
+        <div className="grid md:grid-cols-2 gap-4">
+          <Field label="Hero — kicker" v={s.contacto_hero_kicker} onChange={(v) => upd("contacto_hero_kicker", v)} placeholder="estamos aquí" />
+          <Field label="Hero — título grande" v={s.contacto_hero_title} onChange={(v) => upd("contacto_hero_title", v)} placeholder="CONTACTO" />
+          <label className="md:col-span-2 block">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Hero — descripción</span>
+            <textarea rows={2} value={s.contacto_hero_body || ""} onChange={(e) => upd("contacto_hero_body", e.target.value)} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" />
+          </label>
+          <Field label="Formulario — kicker" v={s.contacto_form_kicker} onChange={(v) => upd("contacto_form_kicker", v)} placeholder="déjanos un mensaje" />
+          <Field label="Formulario — título" v={s.contacto_form_title} onChange={(v) => upd("contacto_form_title", v)} placeholder="ENVÍANOS TU CONSULTA" />
+        </div>
+      </Section>
+
+      <Section title='Bloque "Hablemos" (Nosotros + Contacto)' icon={<Phone size={18}/>}>
+        <div className="grid md:grid-cols-2 gap-4">
+          <Field label="Kicker (cursiva)" v={s.hablemos_kicker} onChange={(v) => upd("hablemos_kicker", v)} placeholder="contáctanos" />
+          <Field label="Título grande" v={s.hablemos_title} onChange={(v) => upd("hablemos_title", v)} placeholder="HABLEMOS" />
         </div>
       </Section>
 

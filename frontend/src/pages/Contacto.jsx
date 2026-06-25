@@ -3,6 +3,7 @@ import api, { formatApiError } from "../lib/api";
 import { toast, Toaster } from "sonner";
 import { ContactBlock } from "./Nosotros";
 import { Send, Mail, Phone, User, MessageSquare } from "lucide-react";
+import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe, RED, BLUE } from "../lib/designSystem";
 
 const EMPTY = { name: "", email: "", phone: "", message: "" };
 
@@ -32,29 +33,33 @@ export default function Contacto() {
   };
 
   return (
-    <div data-testid="contacto-page">
+    <div data-testid="contacto-page" style={AGENCY_FB}>
       <Toaster position="top-right" />
 
       {/* Hero */}
-      <section className="bg-fsc-negro text-white relative overflow-hidden">
+      <section className="text-white relative overflow-hidden" style={{ background: "#000000" }}>
         <div className="absolute inset-0 fsc-stripe opacity-30 pointer-events-none"/>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-          <div className="font-cursive text-2xl text-fsc-azul">estamos aquí</div>
-          <h1 className="font-display text-6xl md:text-8xl tracking-wider mt-1">CONTACTO</h1>
-          <div className="h-1 w-24 bg-fsc-azul mt-4"/>
-          <p className="text-fsc-gris mt-6 max-w-2xl text-lg">
-            Escríbenos. Te responderemos en menos de 24 horas hábiles.
+          <div className="italic text-2xl" style={{ ...CURSIVE, color: BLUE }}>{s.contacto_hero_kicker || "estamos aquí"}</div>
+          <h1 className="text-6xl md:text-8xl font-black leading-[0.9] mt-1" style={PLANE_CRASH} data-testid="contacto-hero-title">
+            {planeCrashSafe(s.contacto_hero_title || "CONTACTO")}
+          </h1>
+          <div className="h-1 w-24 mt-4" style={{ background: BLUE }}/>
+          <p className="text-fsc-gris mt-6 max-w-2xl text-lg" style={AGENCY_FB} data-testid="contacto-hero-body">
+            {s.contacto_hero_body || "Escríbenos. Te responderemos en menos de 24 horas hábiles."}
           </p>
         </div>
       </section>
 
       {/* Form */}
       <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20" data-testid="contact-form-section">
-        <form onSubmit={submit} className="bg-white border-2 border-fsc-negro rounded-2xl p-8 lg:p-10 fsc-card-shadow space-y-5" data-testid="contact-form">
+        <form onSubmit={submit} className="bg-white rounded-2xl p-8 lg:p-10 fsc-card-shadow space-y-5" style={{ border: "2px solid #000000" }} data-testid="contact-form">
           <div className="text-center mb-3">
-            <div className="font-cursive text-2xl text-fsc-azul-oscuro">déjanos un mensaje</div>
-            <h2 className="font-display text-3xl tracking-wider text-fsc-negro">ENVÍANOS TU CONSULTA</h2>
-            <div className="h-1 w-16 bg-fsc-rojo mx-auto mt-2"/>
+            <div className="italic text-2xl" style={{ ...CURSIVE, color: "#04299e" }}>{s.contacto_form_kicker || "déjanos un mensaje"}</div>
+            <h2 className="text-3xl font-black tracking-wide" style={{ ...PLANE_CRASH, color: "#000000" }}>
+              {planeCrashSafe(s.contacto_form_title || "ENVIANOS TU CONSULTA")}
+            </h2>
+            <div className="h-1 w-16 mx-auto mt-2" style={{ background: RED }}/>
           </div>
 
           <div className="grid sm:grid-cols-2 gap-5">

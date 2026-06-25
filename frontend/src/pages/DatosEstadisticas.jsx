@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import api from "../lib/api";
 import { Trophy, Archive, Calendar, BarChart3, Goal } from "lucide-react";
 import { formatDateTime } from "../lib/dateFormat";
+import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe, BLUE } from "../lib/designSystem";
 
 /** Pestaña pública con histórico de torneos: fixture, posiciones (live o histórico) y goleadores. */
 export default function DatosEstadisticas() {
@@ -9,6 +10,7 @@ export default function DatosEstadisticas() {
   const [selectedId, setSelectedId] = useState("");
   const [tab, setTab] = useState("posiciones");
   const [loading, setLoading] = useState(true);
+  const [s, setS] = useState({});
   // datos por torneo
   const [liveStandings, setLiveStandings] = useState([]);
   const [historical, setHistorical] = useState([]);
@@ -17,6 +19,7 @@ export default function DatosEstadisticas() {
 
   useEffect(() => {
     let alive = true;
+    api.get("/home-settings").then((r) => alive && setS(r.data || {})).catch(() => {});
     api.get("/tournaments").then((r) => {
       if (!alive) return;
       setTournaments(r.data);
@@ -61,14 +64,16 @@ export default function DatosEstadisticas() {
   const isArchived = !!selected?.archived;
 
   return (
-    <div data-testid="datos-estadisticas-page">
+    <div data-testid="datos-estadisticas-page" style={AGENCY_FB}>
       {/* Header */}
-      <section className="bg-slate-900 text-white">
+      <section className="text-white" style={{ background: "#000000" }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <span className="text-xs tracking-[0.25em] uppercase font-bold text-red-400">Future Soccer Cup</span>
-          <h1 className="font-display text-5xl md:text-6xl font-black uppercase tracking-tighter mt-2">Datos y Estadísticas</h1>
-          <p className="text-slate-300 mt-3 max-w-2xl">
-            Consulta el fixture, posiciones y goleadores de cada torneo. Incluye torneos vigentes y ediciones históricas archivadas.
+          <span className="italic text-2xl" style={{ ...CURSIVE, color: BLUE }}>{s.estadisticas_hero_kicker || "torneo en vivo"}</span>
+          <h1 className="text-5xl md:text-6xl font-black leading-[0.9] mt-1" style={PLANE_CRASH} data-testid="estadisticas-hero-title">
+            {planeCrashSafe(s.estadisticas_hero_title || "ESTADISTICAS")}
+          </h1>
+          <p className="text-slate-300 mt-3 max-w-2xl" style={AGENCY_FB} data-testid="estadisticas-hero-body">
+            {s.estadisticas_hero_body || "Fixture, tabla de posiciones y goleadores actualizados en tiempo real."}
           </p>
         </div>
       </section>

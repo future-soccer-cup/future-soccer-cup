@@ -2,24 +2,31 @@ import { useEffect, useState } from "react";
 import api, { imgSrc } from "../lib/api";
 import { Instagram, ExternalLink } from "lucide-react";
 import { formatDate } from "../lib/dateFormat";
+import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe, BLUE } from "../lib/designSystem";
 
 export default function Noticias() {
   const [posts, setPosts] = useState([]);
   const [ig, setIg] = useState(null);
+  const [s, setS] = useState({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([api.get("/posts"), api.get("/social/instagram")])
-      .then(([p, i]) => { setPosts(p.data); setIg(i.data); })
+    Promise.all([api.get("/posts"), api.get("/social/instagram"), api.get("/home-settings")])
+      .then(([p, i, hs]) => { setPosts(p.data); setIg(i.data); setS(hs.data || {}); })
       .finally(() => setLoading(false));
   }, []);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12" data-testid="noticias-page">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12" data-testid="noticias-page" style={AGENCY_FB}>
       <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-6">
         <div>
-          <span className="text-xs tracking-[0.25em] uppercase font-bold text-blue-700">Lo último</span>
-          <h1 className="font-display text-5xl md:text-6xl font-black uppercase tracking-tighter">Noticias y eventos</h1>
+          <span className="italic text-2xl" style={{ ...CURSIVE, color: BLUE }}>{s.noticias_hero_kicker || "novedades"}</span>
+          <h1 className="text-5xl md:text-6xl font-black leading-[0.9] mt-1" style={{ ...PLANE_CRASH, color: "#000000" }} data-testid="noticias-hero-title">
+            {planeCrashSafe(s.noticias_hero_title || "NOTICIAS")}
+          </h1>
+          {s.noticias_hero_body && (
+            <p className="text-slate-600 mt-3 max-w-2xl" style={AGENCY_FB} data-testid="noticias-hero-body">{s.noticias_hero_body}</p>
+          )}
         </div>
         {ig && (
           <a href={ig.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 fsc-btn-red px-5 py-3 rounded-md text-sm" data-testid="instagram-cta">

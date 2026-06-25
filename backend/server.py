@@ -5418,6 +5418,45 @@ class HomeSettings(BaseModel):
     about_body: Optional[str] = "Future Soccer Cup es una iniciativa del Grupo Empresarial Ancla para impulsar el talento del fútbol infantil y juvenil en Colombia."
     about_image_url: Optional[str] = ""
 
+    # === Páginas secundarias (Nosotros / Eventos / Contacto / Noticias / Estadísticas) ===
+    # Cada página puede editar su hero (cursive + título + descripción) + imagen.
+    nosotros_hero_kicker: Optional[str] = "conócenos"
+    nosotros_hero_title: Optional[str] = "NOSOTROS"
+    nosotros_hero_body: Optional[str] = "Future Soccer Cup es una iniciativa del Grupo Empresarial Ancla que une fútbol formativo, formación humana y turismo deportivo en Colombia."
+    nosotros_mission_kicker: Optional[str] = "misión"
+    nosotros_mission_body: Optional[str] = "Convocamos clubes de toda la región en torneos certificados con experiencia integral: fixture profesional, transmisión de resultados en vivo, hospedaje, transporte y turismo."
+    # 4 tarjetas/pills bajo la misión
+    nosotros_pill_1_title: Optional[str] = "Reglamento claro"
+    nosotros_pill_1_body: Optional[str] = "Fair play como primer ítem de desempate."
+    nosotros_pill_2_title: Optional[str] = "4 partidos mínimo"
+    nosotros_pill_2_body: Optional[str] = "Cuadrangulares + intergrupos."
+    nosotros_pill_3_title: Optional[str] = "Datos en vivo"
+    nosotros_pill_3_body: Optional[str] = "Posiciones y goleadores actualizados."
+    nosotros_pill_4_title: Optional[str] = "Familia FSC"
+    nosotros_pill_4_body: Optional[str] = "Hospedaje, transporte, tours."
+
+    eventos_hero_kicker: Optional[str] = "temporada"
+    eventos_hero_title: Optional[str] = "EVENTOS"
+    eventos_hero_body: Optional[str] = "Conoce todos los torneos del calendario FSC y revive las ediciones pasadas."
+
+    contacto_hero_kicker: Optional[str] = "estamos aquí"
+    contacto_hero_title: Optional[str] = "CONTACTO"
+    contacto_hero_body: Optional[str] = "Escríbenos. Te responderemos en menos de 24 horas hábiles."
+    contacto_form_kicker: Optional[str] = "déjanos un mensaje"
+    contacto_form_title: Optional[str] = "ENVÍANOS TU CONSULTA"
+
+    noticias_hero_kicker: Optional[str] = "novedades"
+    noticias_hero_title: Optional[str] = "NOTICIAS"
+    noticias_hero_body: Optional[str] = "Últimas novedades, anuncios y momentos destacados de la familia FSC."
+
+    estadisticas_hero_kicker: Optional[str] = "torneo en vivo"
+    estadisticas_hero_title: Optional[str] = "ESTADÍSTICAS"
+    estadisticas_hero_body: Optional[str] = "Fixture, tabla de posiciones y goleadores actualizados en tiempo real."
+
+    # Bloque "Hablemos" (compartido por Nosotros, Contacto)
+    hablemos_kicker: Optional[str] = "contáctanos"
+    hablemos_title: Optional[str] = "HABLEMOS"
+
 
 @api.get("/home-settings", response_model=HomeSettings)
 async def get_home_settings():

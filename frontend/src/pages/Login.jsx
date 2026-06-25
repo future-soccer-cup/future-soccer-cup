@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { formatApiError, FSC_LOGO } from "../lib/api";
 import { toast, Toaster } from "sonner";
 import { ArrowLeft, Mail, Lock } from "lucide-react";
+import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe, RED } from "../lib/designSystem";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -29,7 +30,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] flex flex-col lg:flex-row bg-white" data-testid="login-page">
+    <div className="min-h-[calc(100vh-4rem)] flex flex-col lg:flex-row bg-white" data-testid="login-page" style={AGENCY_FB}>
       <Toaster position="top-right" />
       {/* Form (izquierda) */}
       <main className="flex-1 lg:flex-[3] flex items-center justify-center p-6 sm:p-10 lg:p-16 min-w-0">
@@ -38,9 +39,9 @@ export default function Login() {
             <ArrowLeft size={14}/> Volver al inicio
           </Link>
 
-          <div className="font-cursive text-2xl text-fsc-azul-oscuro">bienvenido</div>
-          <h1 className="font-display text-5xl md:text-6xl tracking-wider text-fsc-negro">INGRESAR</h1>
-          <div className="h-1 w-16 bg-fsc-rojo mt-3 mb-7"/>
+          <div className="italic text-2xl" style={{ ...CURSIVE, color: "#04299e" }}>bienvenido</div>
+          <h1 className="text-5xl md:text-6xl font-black leading-[0.9]" style={{ ...PLANE_CRASH, color: "#000000" }} data-testid="login-title">{planeCrashSafe("INGRESAR")}</h1>
+          <div className="h-1 w-16 mt-3 mb-7" style={{ background: RED }}/>
 
           <p className="text-sm text-slate-600 mb-6">
             Accede a tu cuenta para gestionar tu club, inscripciones y cotizaciones.
