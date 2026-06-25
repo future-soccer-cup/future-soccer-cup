@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api, { imgSrc } from "../lib/api";
 import { Instagram, ExternalLink } from "lucide-react";
+import { formatDate } from "../lib/dateFormat";
 
 export default function Noticias() {
   const [posts, setPosts] = useState([]);
@@ -50,7 +51,7 @@ export default function Noticias() {
             <div className="p-5">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[10px] uppercase tracking-[0.25em] font-bold text-red-600">{p.category || "evento"}</span>
-                <span className="text-[10px] text-slate-400">{new Date(p.published_at).toLocaleDateString("es", { dateStyle: "medium" })}</span>
+                <span className="text-[10px] text-slate-400">{formatDate(p.published_at)}</span>
               </div>
               <h3 className="font-display text-xl font-black uppercase tracking-tight">{p.title}</h3>
               <p className="mt-2 text-sm text-slate-600 line-clamp-3">{p.content}</p>

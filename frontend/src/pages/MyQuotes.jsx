@@ -5,6 +5,7 @@ import { toast, Toaster } from "sonner";
 import { CreditCard, ChevronDown, ChevronUp, Receipt as ReceiptIcon, Download } from "lucide-react";
 import PaymentForm from "../components/PaymentForm";
 import PaymentsList from "../components/PaymentsList";
+import { formatDate } from "../lib/dateFormat";
 
 const STATUS = {
   pendiente: { color: "bg-yellow-100 text-yellow-800", label: "Pendiente" },
@@ -120,7 +121,7 @@ export default function MyQuotes() {
                   <div className="text-[10px] text-slate-400">{q.currency || "COP"}</div>
                 </div>
                 <div className="md:col-span-2 text-xs text-slate-500">
-                  {new Date(q.created_at).toLocaleDateString("es", { dateStyle: "medium" })}
+                  {formatDate(q.created_at)}
                 </div>
                 <div className="md:col-span-2 text-right space-y-2">
                   <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${s.color}`}>{s.label}</span>

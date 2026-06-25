@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../lib/api";
 import { Calendar, MapPin } from "lucide-react";
+import { formatDateLong, formatTime } from "../lib/dateFormat";
 
 export default function Fixture() {
   const [matches, setMatches] = useState([]);
@@ -95,7 +96,7 @@ export default function Fixture() {
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-1 h-6 bg-red-600" />
                 <div className="font-display text-2xl font-black uppercase tracking-tight">
-                  {date ? new Date(date).toLocaleDateString("es", { weekday: "long", day: "numeric", month: "long" }) : "Sin fecha"}
+                  {date ? formatDateLong(date) : "Sin fecha"}
                 </div>
               </div>
               <div className="grid gap-3">
@@ -111,7 +112,7 @@ export default function Fixture() {
 }
 
 function MatchRow({ m }) {
-  const time = m.match_date ? new Date(m.match_date).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit" }) : "—";
+  const time = m.match_date ? formatTime(m.match_date) : "—";
   const isFinished = m.status === "finalizado";
   return (
     <div className="bg-white border border-slate-200 rounded-lg p-4 grid grid-cols-12 items-center gap-3 hover:border-blue-700 hover:shadow-md transition-all" data-testid={`match-${m.id}`}>

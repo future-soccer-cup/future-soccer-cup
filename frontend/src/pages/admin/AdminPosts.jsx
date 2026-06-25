@@ -3,6 +3,7 @@ import api, { formatApiError, imgSrc } from "../../lib/api";
 import { toast, Toaster } from "sonner";
 import { Plus, Pencil, Trash2, Instagram } from "lucide-react";
 import ImageUpload from "../../components/ImageUpload";
+import { formatDate } from "../../lib/dateFormat";
 import { Modal, Field } from "./AdminTeams";
 
 const EMPTY = { title: "", content: "", image_url: "", instagram_url: "", category: "evento" };
@@ -94,7 +95,7 @@ export default function AdminPosts() {
                 </td>
                 <td className="px-4 py-2 font-semibold">{p.title}</td>
                 <td className="px-4 py-2 text-xs uppercase tracking-wider">{p.category}</td>
-                <td className="px-4 py-2 text-xs text-slate-500">{new Date(p.published_at).toLocaleDateString("es")}</td>
+                <td className="px-4 py-2 text-xs text-slate-500">{formatDate(p.published_at)}</td>
                 <td className="px-4 py-2 text-right space-x-2">
                   <button onClick={() => setEditing({ ...p })} className="text-blue-700"><Pencil size={16}/></button>
                   <button onClick={() => remove(p.id)} className="text-red-600"><Trash2 size={16}/></button>

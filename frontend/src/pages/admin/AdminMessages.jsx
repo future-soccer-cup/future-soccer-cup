@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import api from "../../lib/api";
 import { toast } from "sonner";
 import { Mail, Phone, User, Trash2, CheckCircle2, Inbox } from "lucide-react";
+import { formatDateTime } from "../../lib/dateFormat";
 
 export default function AdminMessages() {
   const [items, setItems] = useState([]);
@@ -86,7 +87,7 @@ export default function AdminMessages() {
                 </div>
                 <p className="mt-3 text-sm text-slate-800 leading-relaxed whitespace-pre-wrap">{m.message}</p>
                 <div className="mt-2 text-[11px] uppercase tracking-widest text-slate-400">
-                  {new Date(m.created_at).toLocaleString("es-CO", { dateStyle: "medium", timeStyle: "short" })}
+                  {formatDateTime(m.created_at)}
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">

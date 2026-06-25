@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import api, { imgSrc } from "../lib/api";
 import { Trophy, Calendar, MapPin } from "lucide-react";
+import { formatDate } from "../lib/dateFormat";
 
 const STAGE_LABEL = {
   treintaidosavos: "32avos",
@@ -21,7 +22,7 @@ function MatchCard({ m }) {
       <div className="border-t border-slate-100 my-1"></div>
       <Side name={m.away_team_name} logo={m.away_team_logo} color={m.away_team_color} score={m.away_score} winner={awayFinal} pending={!m.away_team_id} />
       <div className="text-[10px] text-slate-400 mt-1 flex items-center gap-1 truncate">
-        <Calendar size={10}/> {new Date(m.match_date).toLocaleDateString("es-CO", { dateStyle: "short" })}
+        <Calendar size={10}/> {formatDate(m.match_date)}
         {m.venue && <><MapPin size={10} className="ml-1"/> {m.venue}</>}
       </div>
     </div>

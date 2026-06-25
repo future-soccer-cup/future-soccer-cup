@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import api, { formatApiError } from "../../lib/api";
 import { toast, Toaster } from "sonner";
 import { Plus, X, Eye, Save, Trophy, Trash2 } from "lucide-react";
+import { formatDateTime } from "../../lib/dateFormat";
 import CategorySelect from "../../components/CategorySelect";
 
 const SIZES = [4, 8, 16, 32];
@@ -229,7 +230,7 @@ export default function AdminBracketGenerator() {
                   <div className="mt-1 font-semibold">{homeT?.name || "Por definir"}</div>
                   <div className="text-slate-400">vs</div>
                   <div className="font-semibold">{awayT?.name || "Por definir"}</div>
-                  <div className="text-[10px] text-slate-400 mt-1">{new Date(m.match_date).toLocaleString("es-CO", { dateStyle: "short", timeStyle: "short" })}</div>
+                  <div className="text-[10px] text-slate-400 mt-1">{formatDateTime(m.match_date)}</div>
                 </div>
               );
             })}

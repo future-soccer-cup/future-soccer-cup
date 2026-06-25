@@ -3,6 +3,7 @@ import api, { formatApiError } from "../../lib/api";
 import { Plus, Trash2, Edit3, CalendarClock, Shuffle, FileDown, FileText, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import CategorySelect from "../../components/CategorySelect";
+import { formatDateTime } from "../../lib/dateFormat";
 import VenuePicker from "../../components/VenuePicker";
 import { Modal, Field } from "./AdminTeams";
 import { usePagedSearch, SearchBar, Pagination } from "../../components/PagedTable";
@@ -571,7 +572,7 @@ function MatchesTable({ matches, onEdit, onScore, onRemove }) {
           <tbody>
             {pageItems.map((m) => (
               <tr key={m.id} className="border-t border-slate-100" data-testid={`match-row-${m.id}`}>
-                <td className="px-4 py-2">{m.match_date ? new Date(m.match_date).toLocaleString("es") : "—"}</td>
+                <td className="px-4 py-2">{m.match_date ? formatDateTime(m.match_date) : "—"}</td>
                 <td className="px-4 py-2 font-semibold">{m.home_team_name}</td>
                 <td className="px-4 py-2 text-center font-display font-black tabular-nums">
                   {m.status === "finalizado" ? `${m.home_score} - ${m.away_score}` : "vs"}

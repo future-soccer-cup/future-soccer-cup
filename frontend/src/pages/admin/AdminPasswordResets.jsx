@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import api, { formatApiError } from "../../lib/api";
 import { toast, Toaster } from "sonner";
 import { Copy, KeyRound, Loader2, X } from "lucide-react";
+import { formatDateTime } from "../../lib/dateFormat";
 
 export default function AdminPasswordResets() {
   const [items, setItems] = useState([]);
@@ -40,7 +41,7 @@ export default function AdminPasswordResets() {
     }
   };
 
-  const fmtDate = (iso) => new Date(iso).toLocaleString("es", { dateStyle: "short", timeStyle: "short" });
+  const fmtDate = (iso) => formatDateTime(iso);
 
   return (
     <div data-testid="admin-password-resets">

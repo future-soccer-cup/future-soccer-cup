@@ -643,6 +643,7 @@ class FixtureGenerateIn(BaseModel):
     venues: List[str] = []
     time_slots: List[str] = []  # ["08:00", "09:30"]
     rounds: int = 1  # 1 = una vuelta, 2 = ida y vuelta, etc.
+    end_date: Optional[str] = None  # YYYY-MM-DD opcional, debe ser >= a la fecha del último partido generado
     # Reglas deportivas (puntos + Juego Limpio) — opcional. Si vienen, sobreescriben
     # la configuración de la categoría dentro del torneo.
     points_win: Optional[int] = None
@@ -652,9 +653,8 @@ class FixtureGenerateIn(BaseModel):
     fairplay_yellow: Optional[int] = None
     fairplay_red: Optional[int] = None
     fairplay_other: Optional[int] = None
-    # Doble jornada: dos jornadas el mismo día (mañana + tarde). Cada equipo juega 2 veces/día.
-    # Cuando es True: la jornada r usa el slot time_slots[r % len(time_slots)] (alternando),
-    # y dos jornadas consecutivas (r y r+1) caen en la misma fecha.
+    # Doble jornada — DEPRECADO. Se mantiene el campo solo por compatibilidad de payloads
+    # antiguos. La nueva UI no lo expone y el backend lo ignora (siempre 1 jornada/día).
     double_matchday: bool = False
     preview: bool = False  # If true, do not save
 
@@ -1755,20 +1755,11 @@ async def generate_fixture(payload: FixtureGenerateIn, _: dict = Depends(require
 
     generated = []
     for r_idx, pairs in enumerate(rounds):
-        # Doble jornada: dos jornadas (r_idx) caen en el mismo día.
-        # day_index = r_idx // 2, y la jornada usa el slot[r_idx % len(slots)].
-        if payload.double_matchday:
-            day_index = r_idx // 2
-            jornada_slot = slots[r_idx % len(slots)] if slots else "10:00"
-        else:
-            day_index = r_idx
-            jornada_slot = None
+        # Doble jornada eliminada: cada jornada usa SU PROPIO día.
+        day_index = r_idx
         round_date = start + timedelta(days=day_index * payload.days_between_rounds)
         for i, (home_id, away_id) in enumerate(pairs):
-            if payload.double_matchday:
-                slot = jornada_slot
-            else:
-                slot = slots[i % len(slots)]
+            slot = slots[i % len(slots)]
             venue = venues[i % len(venues)]
             try:
                 hh, mm = slot.split(":")
@@ -1791,6 +1782,28 @@ async def generate_fixture(payload: FixtureGenerateIn, _: dict = Depends(require
             }
             generated.append(doc)
 
+    # Validación de fecha fin (si viene): debe ser >= fecha del último partido generado.
+    last_match_dt = None
+    for d in generated:
+        try:
+            dt = datetime.fromisoformat(d["match_date"])
+            if not last_match_dt or dt > last_match_dt:
+                last_match_dt = dt
+        except Exception:
+            pass
+    end_date_str = (payload.end_date or "").strip()
+    if end_date_str:
+        try:
+            end_dt = datetime.strptime(end_date_str, "%Y-%m-%d")
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Formato de fecha fin inválido (YYYY-MM-DD)")
+        if last_match_dt and end_dt.date() < last_match_dt.date():
+            raise HTTPException(
+                status_code=400,
+                detail=f"La fecha fin ({end_date_str}) es anterior a la fecha del último partido ({last_match_dt.date().isoformat()})."
+            )
+
+    fixture_id = None
     if not payload.preview:
         if generated:
             await db.matches.insert_many(generated)
@@ -1799,6 +1812,21 @@ async def generate_fixture(payload: FixtureGenerateIn, _: dict = Depends(require
             {"id": {"$in": payload.team_ids}},
             {"$set": {"group_name": payload.group_name, "category": payload.category}}
         )
+        # Persistir metadata del fixture (para listar/editar/borrar luego).
+        fixture_id = str(uuid.uuid4())
+        await db.fixtures.insert_one({
+            "id": fixture_id,
+            "tournament_id": tournament_id,
+            "tournament_name": tournament.get("name", ""),
+            "category": payload.category,
+            "group_name": payload.group_name,
+            "team_ids": payload.team_ids,
+            "start_date": payload.start_date,
+            "end_date": end_date_str or (last_match_dt.date().isoformat() if last_match_dt else payload.start_date),
+            "rounds": int(payload.rounds or 1),
+            "matches_count": len(generated),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        })
 
     # Strip _id and enrich with team names for preview
     enriched = []
@@ -1814,10 +1842,79 @@ async def generate_fixture(payload: FixtureGenerateIn, _: dict = Depends(require
 
     return {
         "tournament_id": tournament_id,
+        "fixture_id": fixture_id,
         "rounds": len(rounds),
         "matches": enriched,
         "byes_per_round": [{"round": k, "team_id": v, "team_name": tmap.get(v, {}).get("name", "")} for k, v in byes.items()],
         "saved": not payload.preview,
+    }
+
+
+# -------------------- Fixtures (listado / borrado / detalle) --------------------
+@api.get("/fixtures")
+async def list_fixtures(_: dict = Depends(require_admin)):
+    """Lista todos los fixtures guardados con su metadata + conteo de partidos vivos."""
+    docs = await db.fixtures.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    # Adjuntar conteo real de partidos asociados (en caso de borrados manuales).
+    out = []
+    for f in docs:
+        cnt = await db.matches.count_documents({
+            "tournament_id": f.get("tournament_id"),
+            "group_name": f.get("group_name"),
+            # category vive en el team, no en el match; usamos team_ids del fixture como fallback.
+            "$or": [
+                {"home_team_id": {"$in": f.get("team_ids") or []}},
+                {"away_team_id": {"$in": f.get("team_ids") or []}},
+            ],
+        })
+        out.append({**f, "active_matches": cnt})
+    return out
+
+
+@api.delete("/fixtures/{fixture_id}")
+async def delete_fixture(fixture_id: str, _: dict = Depends(require_admin)):
+    """Elimina un fixture y todos sus partidos (que sigan en estado 'programado')."""
+    f = await db.fixtures.find_one({"id": fixture_id}, {"_id": 0})
+    if not f:
+        raise HTTPException(status_code=404, detail="Fixture no encontrado")
+    team_ids = f.get("team_ids") or []
+    deleted = await db.matches.delete_many({
+        "tournament_id": f.get("tournament_id"),
+        "group_name": f.get("group_name"),
+        "status": "programado",
+        "$or": [
+            {"home_team_id": {"$in": team_ids}},
+            {"away_team_id": {"$in": team_ids}},
+        ],
+    })
+    await db.fixtures.delete_one({"id": fixture_id})
+    return {"ok": True, "matches_deleted": deleted.deleted_count}
+
+
+@api.get("/fixtures/{fixture_id}/matches")
+async def get_fixture_matches(fixture_id: str, _: dict = Depends(require_admin)):
+    """Lista los partidos asociados a un fixture, enriquecidos con nombres de equipo."""
+    f = await db.fixtures.find_one({"id": fixture_id}, {"_id": 0})
+    if not f:
+        raise HTTPException(status_code=404, detail="Fixture no encontrado")
+    team_ids = f.get("team_ids") or []
+    matches = await db.matches.find({
+        "tournament_id": f.get("tournament_id"),
+        "group_name": f.get("group_name"),
+        "$or": [
+            {"home_team_id": {"$in": team_ids}},
+            {"away_team_id": {"$in": team_ids}},
+        ],
+    }, {"_id": 0}).sort("matchday", 1).to_list(1000)
+    teams = await db.teams.find({"id": {"$in": team_ids}}, {"_id": 0}).to_list(500)
+    tmap = {t["id"]: t for t in teams}
+    return {
+        "fixture": f,
+        "matches": [{
+            **m,
+            "home_team_name": tmap.get(m.get("home_team_id"), {}).get("name", ""),
+            "away_team_name": tmap.get(m.get("away_team_id"), {}).get("name", ""),
+        } for m in matches],
     }
 
 

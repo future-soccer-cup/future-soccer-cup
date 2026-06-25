@@ -3,6 +3,7 @@ import api from "../../lib/api";
 import { toast, Toaster } from "sonner";
 import { usePagedSearch, SearchBar, Pagination } from "../../components/PagedTable";
 import ExportCsvButton from "../../components/ExportCsvButton";
+import { formatDate, formatDateTime } from "../../lib/dateFormat";
 import CurrencyInput from "../../components/CurrencyInput";
 import { Eye, X, Download } from "lucide-react";
 
@@ -118,7 +119,7 @@ export default function AdminQuotes() {
                 <td className="px-4 py-2">{q.lodging_name}</td>
                 <td className="px-4 py-2">{q.pax} × {q.nights}</td>
                 <td className="px-4 py-2 text-right font-display font-black text-blue-700 tabular-nums">{q.currency === "USD" ? `US$${Number(q.total_amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : `$${Number(q.total_amount || 0).toLocaleString("es-CO")}`}<span className="text-[9px] text-slate-400 font-bold ml-1">{q.currency || "COP"}</span></td>
-                <td className="px-4 py-2 text-xs text-slate-500">{new Date(q.created_at).toLocaleDateString("es")}</td>
+                <td className="px-4 py-2 text-xs text-slate-500">{formatDate(q.created_at)}</td>
                 <td className="px-4 py-2">
                   <span className="text-xs font-bold uppercase tracking-wider">{q.status}</span>
                 </td>
@@ -205,7 +206,7 @@ function QuoteDetailModal({ q, onClose, onChanged }) {
           <div className="min-w-0 flex-1">
             <div className="font-cursive text-xl text-fsc-azul">cotización</div>
             <div className="font-display text-2xl tracking-wider truncate">{q.user_name} · {q.lodging_name}</div>
-            <div className="text-xs text-fsc-gris mt-0.5 truncate">{q.user_email} · {new Date(q.created_at).toLocaleString("es-CO")}</div>
+            <div className="text-xs text-fsc-gris mt-0.5 truncate">{q.user_email} · {formatDateTime(q.created_at)}</div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <button onClick={handleDownloadPDF} className="text-xs font-bold uppercase tracking-wider px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 rounded flex items-center gap-1" data-testid="quote-download-pdf"><Download size={14}/> PDF</button>

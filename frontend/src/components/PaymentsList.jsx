@@ -1,5 +1,6 @@
 import { API_BASE } from "../lib/api";
 import { FileText, ImageIcon } from "lucide-react";
+import { formatDate } from "../lib/dateFormat";
 
 const STATUS_META = {
   sin_verificar:    { color: "bg-amber-100 text-amber-800 border-amber-300", label: "Sin verificar" },
@@ -46,7 +47,7 @@ export default function PaymentsList({ items = [], emptyText = "Aún no hay abon
               <div className="text-[10px] text-slate-500 uppercase">{METHOD_LABEL[p.method] || p.method}</div>
             </div>
             <div className="col-span-3 text-slate-600">
-              <div>{new Date(p.payment_date || p.created_at).toLocaleDateString("es-CO")}</div>
+              <div>{formatDate(p.payment_date || p.created_at)}</div>
               {p.reference && <div className="text-[10px] text-slate-400">Ref: {p.reference}</div>}
             </div>
             <div className="col-span-3">

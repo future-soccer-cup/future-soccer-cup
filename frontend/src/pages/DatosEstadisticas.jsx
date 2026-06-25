@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import api from "../lib/api";
 import { Trophy, Archive, Calendar, BarChart3, Goal } from "lucide-react";
+import { formatDateTime } from "../lib/dateFormat";
 
 /** Pestaña pública con histórico de torneos: fixture, posiciones (live o histórico) y goleadores. */
 export default function DatosEstadisticas() {
@@ -263,7 +264,7 @@ function FixtureView({ matches }) {
               {byMd[k].map((m) => (
                 <tr key={m.id} className="border-t border-slate-100">
                   <td className="px-3 py-1.5 text-slate-600 text-xs whitespace-nowrap">
-                    {m.match_date ? new Date(m.match_date).toLocaleString("es-CO", { dateStyle: "short", timeStyle: "short" }) : "—"}
+                    {m.match_date ? formatDateTime(m.match_date) : "—"}
                   </td>
                   <td className="px-3 py-1.5 text-right font-semibold">{m.home_team_name || "—"}</td>
                   <td className="px-2 py-1.5 text-center font-display font-black tabular-nums">
