@@ -13,6 +13,7 @@ const GRAY = "#dedfe0";
 const STENCIL = { fontFamily: "'Anton', 'Barlow Condensed', sans-serif", letterSpacing: "0.01em" };
 const PLANE_CRASH = { fontFamily: "'Plane Crash', 'Anton', 'Barlow Condensed', sans-serif", letterSpacing: "0.01em" };
 const NEO_SANS = { fontFamily: "'Neo Sans Std', 'Neo Sans', 'Exo 2', 'Barlow', 'Inter', sans-serif" };
+const AGENCY_FB = { fontFamily: "'Agency FB', 'AgencyFB', 'Oswald', 'Barlow Condensed', 'Roboto Condensed', 'Arial Narrow', sans-serif" };
 // Plane Crash es una fuente cuyos glifos de letras están mapeados a las MINÚSCULAS;
 // las MAYÚSCULAS y los acentos caen a pictogramas decorativos. Normalizamos a minúsculas sin diacríticos.
 const planeCrashSafe = (str) => String(str || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -128,15 +129,15 @@ export default function Home() {
                   to={n.to}
                   end={n.end}
                   className={({ isActive }) => `px-4 md:px-5 py-2 md:py-3 font-black uppercase tracking-wider text-sm md:text-base transition ${isActive ? "text-white rounded" : "hover:opacity-80"}`}
-                  style={({ isActive }) => ({ ...NEO_SANS, background: isActive ? BLUE : "transparent", color: isActive ? "#fff" : RED })}
+                  style={({ isActive }) => ({ ...AGENCY_FB, background: isActive ? BLUE : "transparent", color: isActive ? "#fff" : RED })}
                   data-testid={`nav-link-${n.label.toLowerCase()}`}
                 >
                   {n.label}
                 </NavLink>
               ))}
               <div className="flex-1" />
-              <NavLink to="/login" className="px-4 md:px-5 py-2 md:py-3 font-black uppercase tracking-wider text-sm md:text-base hover:opacity-80" style={{ ...NEO_SANS, color: RED }} data-testid="nav-link-ingreso">INGRESO</NavLink>
-              <NavLink to="/registro-equipo" className="px-4 md:px-5 py-2 md:py-3 font-black uppercase tracking-wider text-sm md:text-base hover:opacity-80" style={{ ...NEO_SANS, color: RED }} data-testid="nav-link-registro">REGISTRO</NavLink>
+              <NavLink to="/login" className="px-4 md:px-5 py-2 md:py-3 font-black uppercase tracking-wider text-sm md:text-base hover:opacity-80" style={{ ...AGENCY_FB, color: RED }} data-testid="nav-link-ingreso">INGRESO</NavLink>
+              <NavLink to="/registro-equipo" className="px-4 md:px-5 py-2 md:py-3 font-black uppercase tracking-wider text-sm md:text-base hover:opacity-80" style={{ ...AGENCY_FB, color: RED }} data-testid="nav-link-registro">REGISTRO</NavLink>
             </div>
           </div>
 
@@ -150,10 +151,10 @@ export default function Home() {
                 {planeCrashSafe(s.hero_edition_year || "2026")}
               </div>
               <div className="mt-6 flex flex-wrap gap-2">
-                <span className="inline-block px-4 py-1 bg-white font-bold uppercase tracking-wider text-xs md:text-sm rounded shadow" style={{ ...NEO_SANS, color: BLUE }} data-testid="hero-month-1">
+                <span className="inline-block px-5 py-2 bg-white font-bold uppercase tracking-wider text-base md:text-xl rounded shadow" style={{ ...AGENCY_FB, color: BLUE }} data-testid="hero-month-1">
                   {s.hero_month_1 || "Octubre"}
                 </span>
-                <span className="inline-block px-4 py-1 bg-white font-bold uppercase tracking-wider text-xs md:text-sm rounded shadow" style={{ ...NEO_SANS, color: BLUE }} data-testid="hero-month-2">
+                <span className="inline-block px-5 py-2 bg-white font-bold uppercase tracking-wider text-base md:text-xl rounded shadow" style={{ ...AGENCY_FB, color: BLUE }} data-testid="hero-month-2">
                   {s.hero_month_2 || "Diciembre"}
                 </span>
               </div>
@@ -181,7 +182,7 @@ export default function Home() {
             ].map((it, idx) => (
               <div key={it.dl} className="flex flex-col items-center" data-testid={`home-stat-${idx + 1}`}>
                 <div className="font-black leading-none whitespace-nowrap" style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(40px, 5vw, 80px)" }}>{planeCrashSafe(it.n || it.dn)}</div>
-                <div className="mt-2 font-bold text-base lg:text-lg" style={{ color: BLUE }}>{it.l || it.dl}</div>
+                <div className="mt-2 font-bold text-lg lg:text-xl" style={{ ...AGENCY_FB, color: BLUE }}>{it.l || it.dl}</div>
               </div>
             ))}
           </div>
@@ -216,14 +217,14 @@ export default function Home() {
           </div>
           <div className="mt-8 text-center">
             <h2 className="font-black leading-none" style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(56px, 9vw, 128px)" }}>{planeCrashSafe("FINALES")}</h2>
-            <p className="mt-1 text-xl md:text-2xl font-bold" style={{ color: BLUE }} data-testid="finales-subtitle">
+            <p className="mt-1 text-2xl md:text-3xl font-bold" style={{ ...AGENCY_FB, color: BLUE }} data-testid="finales-subtitle">
               {s.finales_subtitle || "Estadio Centenario de Armenia"}
             </p>
             <Link
               to={s.finales_button_url || "/nosotros"}
               data-testid="finales-cta"
-              className="inline-block mt-4 px-6 py-2 text-white font-bold tracking-wide rounded shadow"
-              style={{ background: BLUE }}
+              className="inline-block mt-4 px-8 py-3 text-white font-bold tracking-wide rounded shadow text-lg md:text-xl"
+              style={{ ...AGENCY_FB, background: BLUE }}
             >
               {s.finales_button_label || "Conoce más de FSC"}
             </Link>
@@ -241,7 +242,7 @@ export default function Home() {
           <h2 className="font-black leading-tight" style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(40px, 6vw, 80px)" }} data-testid="region-title">
             {planeCrashSafe(s.region_title || "EL EJE CAFETERO LOS ESPERA")}
           </h2>
-          <p className="text-2xl md:text-3xl font-bold mb-6" style={{ color: BLUE }} data-testid="region-subtitle">
+          <p className="text-3xl md:text-4xl font-bold mb-6" style={{ ...AGENCY_FB, color: BLUE }} data-testid="region-subtitle">
             {s.region_subtitle || "Comfenalco Soleden"}
           </p>
         </div>
@@ -302,8 +303,8 @@ export default function Home() {
               <span className="bg-[#25D366] rounded-full p-3 inline-flex shadow-md">
                 <MessageCircle size={28} className="text-white" strokeWidth={2.4} />
               </span>
-              <span className="font-black tracking-wider text-2xl md:text-3xl lg:text-4xl" style={PLANE_CRASH}>
-                {planeCrashSafe(s.contact_phone || "+57 324 6134658")}
+              <span className="font-black tracking-wider text-2xl md:text-3xl lg:text-4xl" style={AGENCY_FB} data-testid="footer-phone-text">
+                {s.contact_phone || "+57 324 6134658"}
               </span>
             </a>
             <a
@@ -314,29 +315,45 @@ export default function Home() {
               <span className="bg-white rounded-full p-3 inline-flex shadow-md" style={{ color: BLUE }}>
                 <Mail size={28} strokeWidth={2.4} />
               </span>
-              <span className="font-black tracking-wider text-2xl md:text-3xl lg:text-4xl break-all" style={PLANE_CRASH}>
-                {planeCrashSafe(s.contact_email || "info@futuresoccercup.com")}
+              <span className="font-black tracking-wider text-2xl md:text-3xl lg:text-4xl break-all" style={AGENCY_FB} data-testid="footer-email-text">
+                {s.contact_email || "info@futuresoccercup.com"}
               </span>
             </a>
             <div className="flex items-center gap-3 pl-1 pt-2">
-              <a
-                href={s.instagram || "https://instagram.com"}
-                target="_blank" rel="noreferrer"
-                className="bg-white rounded-full p-2 inline-flex shadow-md hover:scale-110 transition"
-                data-testid="footer-instagram"
-                aria-label="Instagram"
-              >
-                <Instagram size={28} style={{ color: "#E4405F" }} strokeWidth={2} />
-              </a>
-              <a
-                href={s.facebook || "https://facebook.com"}
-                target="_blank" rel="noreferrer"
-                className="bg-white rounded-full p-2 inline-flex shadow-md hover:scale-110 transition"
-                data-testid="footer-facebook"
-                aria-label="Facebook"
-              >
-                <Facebook size={28} style={{ color: BLUE }} strokeWidth={2} fill={BLUE} />
-              </a>
+              {s.instagram && (
+                <a
+                  href={s.instagram}
+                  target="_blank" rel="noreferrer"
+                  className="bg-white rounded-full p-2 inline-flex shadow-md hover:scale-110 transition"
+                  data-testid="footer-instagram"
+                  aria-label="Instagram"
+                >
+                  <Instagram size={28} style={{ color: "#E4405F" }} strokeWidth={2} />
+                </a>
+              )}
+              {s.facebook && (
+                <a
+                  href={s.facebook}
+                  target="_blank" rel="noreferrer"
+                  className="bg-white rounded-full p-2 inline-flex shadow-md hover:scale-110 transition"
+                  data-testid="footer-facebook"
+                  aria-label="Facebook"
+                >
+                  <Facebook size={28} style={{ color: BLUE }} strokeWidth={2} fill={BLUE} />
+                </a>
+              )}
+              {s.youtube && (
+                <a
+                  href={s.youtube}
+                  target="_blank" rel="noreferrer"
+                  className="bg-white rounded-full p-2 inline-flex shadow-md hover:scale-110 transition"
+                  data-testid="footer-youtube"
+                  aria-label="YouTube"
+                >
+                  {/* Icono YouTube como SVG simple porque lucide no lo trae con fill */}
+                  <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="#FF0000"><path d="M23.498 6.186a2.997 2.997 0 0 0-2.11-2.122C19.61 3.5 12 3.5 12 3.5s-7.61 0-9.388.564A2.997 2.997 0 0 0 .502 6.186C0 7.97 0 12 0 12s0 4.03.502 5.814a2.997 2.997 0 0 0 2.11 2.122C4.39 20.5 12 20.5 12 20.5s7.61 0 9.388-.564a2.997 2.997 0 0 0 2.11-2.122C24 16.03 24 12 24 12s0-4.03-.502-5.814zM9.75 15.568V8.432L15.818 12 9.75 15.568z"/></svg>
+                </a>
+              )}
             </div>
           </div>
         </div>
@@ -372,7 +389,7 @@ function CategoryColumn({ title, dateBadge, logoUrl, ctaUrl, groups, testId }) {
       <div className="rounded-2xl p-3 bg-white" style={{ border: `3px solid #e31f27` }}>
         {groups.map((g, gi) => (
           <div key={g.label || `group-${gi}`} className={gi > 0 ? "mt-3" : ""}>
-            <div className="text-base md:text-lg font-bold mb-2" style={{ color: "#0640c8" }}>{g.label}</div>
+            <div className="text-xl md:text-2xl font-bold mb-2" style={{ ...AGENCY_FB, color: "#0640c8" }}>{g.label}</div>
             <div className="grid grid-cols-3 gap-1.5">
               {g.items.map((c, i) => (
                 <div key={`${g.label}-${c}-${i}`} className="h-7 md:h-8 rounded" style={{ background: "#e31f27" }} data-testid={`${testId}-item-${gi}-${i}`} title={c}>
@@ -383,7 +400,7 @@ function CategoryColumn({ title, dateBadge, logoUrl, ctaUrl, groups, testId }) {
           </div>
         ))}
       </div>
-      <Link to={ctaUrl} data-testid={`${testId}-cta`} className="inline-block mt-4 px-6 py-2 font-bold text-white rounded shadow text-sm md:text-base" style={{ background: "#0640c8" }}>
+      <Link to={ctaUrl} data-testid={`${testId}-cta`} className="inline-block mt-4 px-7 py-2.5 font-bold text-white rounded shadow text-base md:text-lg" style={{ ...AGENCY_FB, background: "#0640c8" }}>
         Acepta el reto
       </Link>
     </div>
