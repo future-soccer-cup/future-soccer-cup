@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../lib/api";
-import { ChevronLeft, ChevronRight, ChevronUp, Calendar, MessageCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronUp, Calendar, MessageCircle, Mail, Instagram, Facebook } from "lucide-react";
 
 const HERO_IMG_DEFAULT = "https://images.unsplash.com/photo-1551958219-acbc608c6377?auto=format&fit=crop&w=1600&q=80";
 const MASCOT_DEFAULT = "https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=1200&q=80";
@@ -190,6 +190,67 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* ======= FOOTER ROJO (estilo wireframe FSC v2) ======= */}
+      <footer className="py-16 lg:py-24" style={{ background: RED }} data-testid="home-footer">
+        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+          {/* Izquierda: heading en 4 líneas (grunge stencil blanco) */}
+          <h2 className="font-black uppercase text-white leading-[0.95]" style={{ ...STENCIL, fontSize: "clamp(36px, 5vw, 72px)" }} data-testid="footer-heading">
+            <span className="block">Y SI NOS</span>
+            <span className="block">TOMAMOS</span>
+            <span className="block">UN CAFECITO</span>
+            <span className="block">JUNTOS?</span>
+          </h2>
+          {/* Derecha: contactos */}
+          <div className="text-white space-y-6">
+            <a
+              href={s.whatsapp_url || `https://wa.me/${(s.contact_phone || "573246134658").replace(/\D/g, "")}`}
+              target="_blank" rel="noreferrer"
+              className="flex items-center gap-4 hover:opacity-80"
+              data-testid="footer-whatsapp"
+            >
+              <span className="bg-[#25D366] rounded-full p-3 inline-flex shadow-md">
+                <MessageCircle size={28} className="text-white" strokeWidth={2.4} />
+              </span>
+              <span className="font-black uppercase tracking-wider text-2xl md:text-3xl lg:text-4xl" style={STENCIL}>
+                {s.contact_phone || "+57 324 6134658"}
+              </span>
+            </a>
+            <a
+              href={`mailto:${s.contact_email || "info@futuresoccercup.com"}`}
+              className="flex items-center gap-4 hover:opacity-80"
+              data-testid="footer-email"
+            >
+              <span className="bg-white rounded-full p-3 inline-flex shadow-md" style={{ color: BLUE }}>
+                <Mail size={28} strokeWidth={2.4} />
+              </span>
+              <span className="font-black uppercase tracking-wider text-2xl md:text-3xl lg:text-4xl break-all" style={STENCIL}>
+                {s.contact_email || "info@futuresoccercup.com"}
+              </span>
+            </a>
+            <div className="flex items-center gap-3 pl-1 pt-2">
+              <a
+                href={s.instagram || "https://instagram.com"}
+                target="_blank" rel="noreferrer"
+                className="bg-white rounded-full p-2 inline-flex shadow-md hover:scale-110 transition"
+                data-testid="footer-instagram"
+                aria-label="Instagram"
+              >
+                <Instagram size={28} style={{ color: "#E4405F" }} strokeWidth={2} />
+              </a>
+              <a
+                href={s.facebook || "https://facebook.com"}
+                target="_blank" rel="noreferrer"
+                className="bg-white rounded-full p-2 inline-flex shadow-md hover:scale-110 transition"
+                data-testid="footer-facebook"
+                aria-label="Facebook"
+              >
+                <Facebook size={28} style={{ color: BLUE }} strokeWidth={2} fill={BLUE} />
+              </a>
+            </div>
+          </div>
+        </div>
+      </footer>
 
       {/* ======= WHATSAPP FLOTANTE ======= */}
       <a
