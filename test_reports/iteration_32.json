@@ -1,0 +1,23 @@
+{
+  "summary": "Frontend-only regression after iter31 hero/navbar polish. All 6 requested checks PASSED: (1) ShieldPlaceholder SVG visible with FSC+2026 gradient when nav_shield_url is empty, (2) hero-bg-image and hero-foreground-image both load (complete=true, naturalWidth>0), foreground inline style is `width: 38%; z-index: 5;`, (3) no overlap: edition right=1020px, fg left=1190px, gap=170px (>0), (4) cursive 'Torneo Internacional' tagline rendered (display:block, visible, w=327 h=48) above the foreground (z-30 on navbar), (5) /admin/home shows NAVBAR (LOGO + ESCUDO) section with nav-shield-upload + nav-logo-upload, and HERO — IMÁGENES section with hero-bg-upload + hero-fg-upload after admin login, (6) Plane Crash webfont loaded via document.fonts API; Neo Sans is a fallback chain (system fallback to Exo 2/Barlow/Inter — by design, not a bug).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Home.jsx is now ~407 lines including a child CategoryColumn component — still under the 700-line threshold but trending up; if more sections are added consider extracting Hero/Stats/Finales/Region/Footer into separate components.",
+    "ShieldPlaceholder SVG uses textContent 'FSC' / '2026' — looks good as a no-asset default. Consider exposing fill colors via props if the CMS later needs theme overrides."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "skipped", "frontend": "100%"},
+  "test_credentials": "admin@futuresoccercup.com / FSCAdmin2025! (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "none",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iter32 = pure visual regression after iter31 fixes (SVG shield placeholder, fg width 38%, navbar z-30, nav_logo_url default empty). All passed. Note: Neo Sans is intentionally a CSS fallback chain (no webfont @font-face) so document.fonts will NOT list it as 'loaded' — that's expected, the visible text still renders via the fallback. Backend tests for /api/home-settings already covered in iter31 (test_home_settings_iter31.py) and not re-run per request.",
+  "rca of the issue": "n/a — no issues found"
+}

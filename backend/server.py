@@ -5246,7 +5246,7 @@ HOME_SETTINGS_ID = "default"
 
 class HomeSettings(BaseModel):
     # === NAVBAR (logo + escudo) ===
-    nav_logo_url: Optional[str] = "https://customer-assets.emergentagent.com/job_fixture-stats-pro/artifacts/y4ulg6l9_FUTRE%20SOCCER%20CUP%202025_Mesa%20de%20trabajo%201.png"
+    nav_logo_url: Optional[str] = ""    # wordmark / logo en imagen (opcional)
     nav_shield_url: Optional[str] = ""  # escudo/logo circular junto al texto FUTUR SOCCER CUP
     # === HERO (nuevo wireframe FSC v2) ===
     hero_edition_label: Optional[str] = "EDICIÓN"

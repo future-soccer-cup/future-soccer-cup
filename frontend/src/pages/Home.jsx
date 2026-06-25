@@ -7,11 +7,26 @@ import { ChevronLeft, ChevronRight, ChevronUp, Calendar, MessageCircle, Mail, In
 const HERO_BG_DEFAULT = "https://images.unsplash.com/photo-1577223625816-7546f13df25d?auto=format&fit=crop&w=1920&q=80";
 // Imagen superpuesta del hero — niños jugando fútbol (placeholder reemplazable desde CMS)
 const HERO_FG_DEFAULT = "https://images.unsplash.com/photo-1517466787929-bc90951d0974?auto=format&fit=crop&w=1200&q=85";
-// Logo FSC (wordmark) — placeholder reemplazable desde CMS
-const NAV_LOGO_DEFAULT = "https://customer-assets.emergentagent.com/job_fixture-stats-pro/artifacts/y4ulg6l9_FUTRE%20SOCCER%20CUP%202025_Mesa%20de%20trabajo%201.png";
-// Escudo FSC (logo circular con león) — placeholder reemplazable desde CMS
-const NAV_SHIELD_DEFAULT = "https://customer-assets.emergentagent.com/job_fixture-stats-pro/artifacts/y4ulg6l9_FUTRE%20SOCCER%20CUP%202025_Mesa%20de%20trabajo%201.png";
 const MASCOT_DEFAULT = "https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=1200&q=80";
+
+// Placeholder SVG inline para el escudo cuando el admin aún no ha subido uno.
+// Mantiene la marca visible sin depender de un asset externo.
+function ShieldPlaceholder() {
+  return (
+    <svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg" className="h-16 md:h-20 w-auto drop-shadow-lg" data-testid="nav-shield-placeholder" aria-label="Escudo Future Soccer Cup">
+      <defs>
+        <linearGradient id="fscShieldBg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#0640c8" />
+          <stop offset="60%" stopColor="#0a52e6" />
+          <stop offset="100%" stopColor="#e31f27" />
+        </linearGradient>
+      </defs>
+      <path d="M40 4 L72 16 L72 44 C72 60 56 72 40 76 C24 72 8 60 8 44 L8 16 Z" fill="url(#fscShieldBg)" stroke="#fff" strokeWidth="3" />
+      <text x="40" y="38" textAnchor="middle" fill="#fff" fontFamily="'Anton','Barlow Condensed',sans-serif" fontSize="20" fontWeight="900" letterSpacing="2">FSC</text>
+      <text x="40" y="56" textAnchor="middle" fill="#fff" fontFamily="'Anton','Barlow Condensed',sans-serif" fontSize="9" fontWeight="700" letterSpacing="1">2026</text>
+    </svg>
+  );
+}
 
 const RED = "#e31f27";
 const BLUE = "#0640c8";
@@ -75,27 +90,31 @@ export default function Home() {
             src={s.hero_foreground_url || HERO_FG_DEFAULT}
             alt="Future Soccer Cup — niños jugando"
             className="hidden md:block absolute top-0 right-0 h-full object-cover object-bottom pointer-events-none drop-shadow-2xl"
-            style={{ width: "42%", zIndex: 5 }}
+            style={{ width: "38%", zIndex: 5 }}
             data-testid="hero-foreground-image"
             onError={(e) => { e.currentTarget.style.display = "none"; }}
           />
 
           {/* === NAVBAR EMBEBIDA EN EL HERO === */}
-          <div className="relative z-20 max-w-7xl mx-auto px-4 md:px-8 pt-5">
+          <div className="relative z-30 max-w-7xl mx-auto px-4 md:px-8 pt-5">
             <div className="flex items-center justify-between gap-4">
               <Link to="/" className="flex items-center gap-3" data-testid="nav-logo-link">
                 {/* Escudo / logo circular del FSC (a la izquierda del wordmark) */}
-                <img
-                  src={s.nav_shield_url || NAV_SHIELD_DEFAULT}
-                  alt="Escudo Future Soccer Cup"
-                  className="h-16 md:h-20 w-auto drop-shadow-lg"
-                  onError={(e) => { e.currentTarget.style.display = "none"; }}
-                  data-testid="nav-shield"
-                />
-                {/* Wordmark / logo en imagen (oculto si no hay URL) */}
-                {(s.nav_logo_url || NAV_LOGO_DEFAULT) && (
+                {s.nav_shield_url ? (
                   <img
-                    src={s.nav_logo_url || NAV_LOGO_DEFAULT}
+                    src={s.nav_shield_url}
+                    alt="Escudo Future Soccer Cup"
+                    className="h-16 md:h-20 w-auto drop-shadow-lg"
+                    onError={(e) => { e.currentTarget.style.display = "none"; }}
+                    data-testid="nav-shield"
+                  />
+                ) : (
+                  <ShieldPlaceholder />
+                )}
+                {/* Wordmark / logo en imagen (solo si admin sube una imagen explícita) */}
+                {s.nav_logo_url && (
+                  <img
+                    src={s.nav_logo_url}
                     alt="Future Soccer Cup"
                     className="h-12 md:h-16 w-auto drop-shadow-lg hidden lg:block"
                     onError={(e) => { e.currentTarget.style.display = "none"; }}
