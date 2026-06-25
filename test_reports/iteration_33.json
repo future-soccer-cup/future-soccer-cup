@@ -1,0 +1,22 @@
+{
+  "summary": "Frontend-only test of Hero/Navbar empty-image bug fix (iter33). 23/24 assertions PASS. Verified: (a) when hero_image_url/nav_shield_url/nav_logo_url are empty, the corresponding <img> tags are completely absent from the DOM (not just hidden), no broken-image icons or placeholders rendered; (b) nav-shield-placeholder SVG correctly removed; (c) when hero_foreground_url is populated, the image is anchored bottom-right with objectFit=contain, width=38%, height=45% of hero, top edge at ~55% from hero top (407px / 740px = 55.0%), bottom flush with hero bottom, leaving the top blue area fully clean of the kids image; (d) when hero_foreground_url is also empty the hero shows only blue+red multiply overlays + EDICION 2026 text, no img tags exist in the hero; (e) regression OK: 'FUTUR SOCCER CUP' Plane Crash navbar text, 'SOMOS MAS' text, no JS errors. Final state restored: hero_foreground_url=Unsplash kids image; nav_shield_url, nav_logo_url, hero_image_url remain empty.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Inline style objectPosition='bottom right' is auto-normalized by React/Chromium to 'right bottom' on the DOM element. Computed style resolves to '100% 100%' (correct). Not a bug, but if any future test asserts the exact inline string it should accept either order. Functional behavior is correct."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (skipped per request)", "frontend": "23/24 hard assertions PASS (1 cosmetic string-order mismatch, computed value correct)"},
+  "test_credentials": "admin@futuresoccercup.com / FSCAdmin2025! (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "Mutated home_settings via PUT /api/home-settings. Restored at end: hero_foreground_url=https://images.unsplash.com/photo-1517466787929-bc90951d0974?... ; nav_shield_url='', nav_logo_url='', hero_image_url='' (all empty as expected design state).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Home hero now conditionally renders ALL four image layers (hero_image_url, hero_foreground_url, nav_shield_url, nav_logo_url) with {url && <img/>} pattern — when empty, the <img> element does not exist in the DOM. Hero container has background:#0640c8 (BLUE) so multiply overlays still tint correctly without a bg image. Foreground positioned via inline style width:38% height:45% objectFit:contain objectPosition:'bottom right' (Chrome normalizes to 'right bottom') zIndex:5. Measured at 1920x1080 viewport: hero height=740.39px, FG top=407.22px (54.99% from hero top), FG bottom=740.39px, FG height=333.17px. Top 55% confirmed free of foreground image.",
+  "rca of the issue": "n/a — bug fix verified working end-to-end."
+}

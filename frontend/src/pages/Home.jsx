@@ -3,30 +3,8 @@ import { Link, NavLink } from "react-router-dom";
 import api from "../lib/api";
 import { ChevronLeft, ChevronRight, ChevronUp, Calendar, MessageCircle, Mail, Instagram, Facebook } from "lucide-react";
 
-// Imagen de fondo del hero — estadio/gradas con público (placeholder reemplazable desde CMS)
-const HERO_BG_DEFAULT = "https://images.unsplash.com/photo-1577223625816-7546f13df25d?auto=format&fit=crop&w=1920&q=80";
-// Imagen superpuesta del hero — niños jugando fútbol (placeholder reemplazable desde CMS)
-const HERO_FG_DEFAULT = "https://images.unsplash.com/photo-1517466787929-bc90951d0974?auto=format&fit=crop&w=1200&q=85";
+// Mascota — placeholder reemplazable desde CMS (sección "región", no afecta hero/navbar)
 const MASCOT_DEFAULT = "https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=1200&q=80";
-
-// Placeholder SVG inline para el escudo cuando el admin aún no ha subido uno.
-// Mantiene la marca visible sin depender de un asset externo.
-function ShieldPlaceholder() {
-  return (
-    <svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg" className="h-16 md:h-20 w-auto drop-shadow-lg" data-testid="nav-shield-placeholder" aria-label="Escudo Future Soccer Cup">
-      <defs>
-        <linearGradient id="fscShieldBg" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#0640c8" />
-          <stop offset="60%" stopColor="#0a52e6" />
-          <stop offset="100%" stopColor="#e31f27" />
-        </linearGradient>
-      </defs>
-      <path d="M40 4 L72 16 L72 44 C72 60 56 72 40 76 C24 72 8 60 8 44 L8 16 Z" fill="url(#fscShieldBg)" stroke="#fff" strokeWidth="3" />
-      <text x="40" y="38" textAnchor="middle" fill="#fff" fontFamily="'Anton','Barlow Condensed',sans-serif" fontSize="20" fontWeight="900" letterSpacing="2">FSC</text>
-      <text x="40" y="56" textAnchor="middle" fill="#fff" fontFamily="'Anton','Barlow Condensed',sans-serif" fontSize="9" fontWeight="700" letterSpacing="1">2026</text>
-    </svg>
-  );
-}
 
 const RED = "#e31f27";
 const BLUE = "#0640c8";
@@ -70,37 +48,42 @@ export default function Home() {
     <div className="min-h-screen" data-testid="home-fsc-v2" style={{ background: "#fff", fontFamily: "'Barlow', 'Inter', sans-serif" }}>
       {/* ======= HERO — navbar embebida + foto fondo + cutout niños + EDICIÓN 2026 ======= */}
       <section className="relative overflow-hidden" data-testid="home-hero">
-        <div className="relative w-full" style={{ minHeight: "720px" }}>
-          {/* (1) FONDO: estadio/gradas, ocupa todo el hero, recibe el overlay de color */}
-          <img
-            src={s.hero_image_url || HERO_BG_DEFAULT}
-            alt=""
-            className="absolute inset-0 w-full h-full object-cover"
-            style={{ objectPosition: "center 30%" }}
-            data-testid="hero-bg-image"
-          />
+        <div className="relative w-full" style={{ minHeight: "720px", background: BLUE }}>
+          {/* (1) FONDO: estadio/gradas (solo si el admin sube imagen) */}
+          {s.hero_image_url && (
+            <img
+              src={s.hero_image_url}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover"
+              style={{ objectPosition: "center 30%" }}
+              data-testid="hero-bg-image"
+              onError={(e) => { e.currentTarget.style.display = "none"; }}
+            />
+          )}
           {/* Overlay azul (arriba 55%) + rojo (abajo 45%) en mix-blend para teñir SÓLO el fondo */}
           <div className="absolute inset-x-0 top-0 mix-blend-multiply pointer-events-none" style={{ height: "55%", background: BLUE }} />
           <div className="absolute inset-x-0 bottom-0 mix-blend-multiply pointer-events-none" style={{ height: "45%", background: RED }} />
           {/* Capa azul más oscura SOLO en la zona del texto (lado izquierdo) para legibilidad */}
           <div className="hidden md:block absolute left-0 top-0 bottom-0 w-[55%] pointer-events-none" style={{ background: "linear-gradient(to right, rgba(6,64,200,0.55), transparent 80%)" }} />
 
-          {/* (2) IMAGEN SUPERPUESTA: niños jugando — pegada al borde derecho, nítida, sin tinte */}
-          <img
-            src={s.hero_foreground_url || HERO_FG_DEFAULT}
-            alt="Future Soccer Cup — niños jugando"
-            className="hidden md:block absolute top-0 right-0 h-full object-cover object-bottom pointer-events-none drop-shadow-2xl"
-            style={{ width: "38%", zIndex: 5 }}
-            data-testid="hero-foreground-image"
-            onError={(e) => { e.currentTarget.style.display = "none"; }}
-          />
+          {/* (2) IMAGEN SUPERPUESTA: niños jugando — mitad inferior derecha, contain (mantiene proporción) */}
+          {s.hero_foreground_url && (
+            <img
+              src={s.hero_foreground_url}
+              alt="Future Soccer Cup — niños jugando"
+              className="hidden md:block absolute right-0 bottom-0 pointer-events-none drop-shadow-2xl"
+              style={{ width: "38%", height: "45%", objectFit: "contain", objectPosition: "bottom right", zIndex: 5 }}
+              data-testid="hero-foreground-image"
+              onError={(e) => { e.currentTarget.style.display = "none"; }}
+            />
+          )}
 
           {/* === NAVBAR EMBEBIDA EN EL HERO === */}
           <div className="relative z-30 max-w-7xl mx-auto px-4 md:px-8 pt-5">
             <div className="flex items-center justify-between gap-4">
               <Link to="/" className="flex items-center gap-3" data-testid="nav-logo-link">
-                {/* Escudo / logo circular del FSC (a la izquierda del wordmark) */}
-                {s.nav_shield_url ? (
+                {/* Escudo / logo circular del FSC (solo si el admin sube una imagen) */}
+                {s.nav_shield_url && (
                   <img
                     src={s.nav_shield_url}
                     alt="Escudo Future Soccer Cup"
@@ -108,8 +91,6 @@ export default function Home() {
                     onError={(e) => { e.currentTarget.style.display = "none"; }}
                     data-testid="nav-shield"
                   />
-                ) : (
-                  <ShieldPlaceholder />
                 )}
                 {/* Wordmark / logo en imagen (solo si admin sube una imagen explícita) */}
                 {s.nav_logo_url && (
