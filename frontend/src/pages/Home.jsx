@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../lib/api";
-import { ChevronLeft, ChevronRight, ChevronUp, Calendar, MessageCircle, Mail, Instagram, Facebook } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronUp, Calendar, MessageCircle } from "lucide-react";
 
 const HERO_IMG_DEFAULT = "https://images.unsplash.com/photo-1551958219-acbc608c6377?auto=format&fit=crop&w=1600&q=80";
 const MASCOT_DEFAULT = "https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=1200&q=80";
@@ -190,43 +190,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
-      {/* ======= FOOTER ======= */}
-      <footer className="py-16 lg:py-20" style={{ background: RED }} data-testid="home-footer">
-        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
-          <h2 className="font-black uppercase text-white leading-[0.9]" style={{ ...STENCIL, fontSize: "clamp(40px, 6vw, 88px)" }} data-testid="footer-heading">
-            {(s.footer_heading || "¿Y SI NOS TOMAMOS UN CAFECITO JUNTOS?").split(" ").map((w, i) => (
-              <span key={i} className="block">{w}</span>
-            ))}
-          </h2>
-          <div className="text-white space-y-5 lg:text-left">
-            {s.contact_phone && (
-              <a href={s.whatsapp_url || `https://wa.me/${(s.contact_phone || "").replace(/\D/g, "")}`} className="flex items-center gap-4 text-xl md:text-2xl font-bold hover:opacity-80" data-testid="footer-whatsapp">
-                <span className="bg-white rounded-full p-2 inline-flex items-center justify-center"><MessageCircle size={24} style={{ color: "#25D366" }} /></span>
-                {s.contact_phone || "+57 324 6134658"}
-              </a>
-            )}
-            {s.contact_email && (
-              <a href={`mailto:${s.contact_email}`} className="flex items-center gap-4 text-xl md:text-2xl font-bold hover:opacity-80" data-testid="footer-email">
-                <span className="bg-white rounded-full p-2 inline-flex items-center justify-center"><Mail size={24} style={{ color: BLUE }} /></span>
-                {s.contact_email}
-              </a>
-            )}
-            <div className="flex items-center gap-3 pt-2">
-              {s.instagram && (
-                <a href={s.instagram} target="_blank" rel="noreferrer" className="bg-white rounded-full p-2 inline-flex" data-testid="footer-instagram">
-                  <Instagram size={22} style={{ color: "#E4405F" }} />
-                </a>
-              )}
-              {s.facebook && (
-                <a href={s.facebook} target="_blank" rel="noreferrer" className="bg-white rounded-full p-2 inline-flex" data-testid="footer-facebook">
-                  <Facebook size={22} style={{ color: BLUE }} />
-                </a>
-              )}
-            </div>
-          </div>
-        </div>
-      </footer>
 
       {/* ======= WHATSAPP FLOTANTE ======= */}
       <a

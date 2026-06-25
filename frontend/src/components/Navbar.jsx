@@ -1,141 +1,110 @@
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Menu, X, LogOut, UserCircle2, Shield } from "lucide-react";
-import Logo from "./Logo";
 import { useAuth } from "../context/AuthContext";
 
 const NAV = [
-  { to: "/", label: "Inicio", end: true },
-  { to: "/nosotros", label: "Nosotros" },
-  { to: "/eventos", label: "Eventos" },
-  { to: "/datos-estadisticas", label: "Estadísticas" },
-  { to: "/noticias", label: "Noticias" },
-  { to: "/contacto", label: "Contacto" },
+  { to: "/", label: "INICIO", end: true },
+  { to: "/nosotros", label: "NOSOTROS" },
+  { to: "/eventos", label: "EVENTOS" },
+  { to: "/datos-estadisticas", label: "ESTADÍSTICAS" },
+  { to: "/noticias", label: "NOTICIAS" },
+  { to: "/contacto", label: "CONTÁCTO" },
 ];
+
+const RED = "#e31f27";
+const BLUE = "#0640c8";
 
 export default function Navbar() {
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 12);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  const handleLogout = async () => { await logout(); navigate("/"); };
 
-  const handleLogout = async () => {
-    await logout();
-    setOpen(false);
-    navigate("/");
-  };
-
-  const linkClass = ({ isActive }) =>
-    `px-3 py-2 text-[13px] font-bold uppercase tracking-[0.18em] transition-colors ${
-      isActive ? "text-fsc-azul" : "text-white hover:text-fsc-azul"
-    }`;
+  // No mostrar la navbar pública en rutas de admin
+  const isAdmin = typeof window !== "undefined" && window.location.pathname.startsWith("/admin");
+  if (isAdmin) return null;
 
   return (
-    <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled ? "bg-fsc-negro/95 backdrop-blur-md shadow-lg" : "bg-fsc-negro/85 backdrop-blur-sm"
-      }`}
-      data-testid="navbar"
-    >
-      {/* línea dorada inferior */}
-      <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-fsc-azul to-transparent opacity-60" />
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 lg:h-20">
-          <Link to="/" className="flex items-center gap-3 group" data-testid="navbar-logo">
-            <div className="border-2 border-fsc-azul rounded-md p-1 group-hover:border-fsc-azul transition-colors">
-              <Logo className="h-10 w-10" />
-            </div>
-            <div className="hidden sm:block leading-tight">
-              <div className="font-display text-lg tracking-widest text-white">FUTURE SOCCER CUP</div>
-              <div className="font-cursive text-xs text-fsc-azul leading-none -mt-1">Somos más que un torneo</div>
-            </div>
+    <header className="w-full" style={{ fontFamily: "'Barlow', 'Inter', sans-serif" }} data-testid="public-navbar">
+      {/* Fila 1: Logo + tagline cursivo (sobre fondo transparente) */}
+      <div className="bg-white border-b border-slate-100">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-4" data-testid="nav-logo-link">
+            <img
+              src="https://customer-assets.emergentagent.com/job_fixture-stats-pro/artifacts/y4ulg6l9_FUTRE%20SOCCER%20CUP%202025_Mesa%20de%20trabajo%201.png"
+              alt="Future Soccer Cup"
+              className="h-14 md:h-16 w-auto"
+              onError={(e) => { e.currentTarget.style.display = "none"; }}
+            />
+            <span className="hidden sm:inline-block font-black uppercase leading-[0.85]" style={{ fontFamily: "'Anton', sans-serif", color: BLUE, fontSize: "clamp(20px, 2.4vw, 32px)" }}>
+              FUTUR<br/>SOCCER<br/>CUP
+            </span>
           </Link>
-
-          <nav className="hidden lg:flex items-center gap-1">
-            {NAV.map((n) => (
-              <NavLink key={n.to} to={n.to} end={n.end} className={linkClass} data-testid={`nav-${n.label.toLowerCase()}`}>
-                {n.label}
-              </NavLink>
-            ))}
-          </nav>
-
-          <div className="hidden lg:flex items-center gap-2">
-            {!user ? (
-              <>
-                <Link to="/login" className="text-white hover:text-fsc-azul text-[12px] font-bold uppercase tracking-[0.15em] px-4 py-2.5" data-testid="navbar-login">
-                  Ingresar
-                </Link>
-                <Link to="/registro-equipo" className="fsc-btn-primary px-5 py-2.5 rounded-md text-[12px]" data-testid="navbar-register">
-                  Registrarse
-                </Link>
-              </>
-            ) : (
-              <>
-                {user.role === "admin" && (
-                  <Link to="/admin" className="text-fsc-azul hover:text-fsc-azul text-[12px] font-bold uppercase tracking-[0.15em] px-3 py-2 flex items-center gap-1" data-testid="navbar-admin">
-                    <Shield size={14}/> Admin
-                  </Link>
-                )}
-                {user.role === "team" && (
-                  <Link to="/mi-equipo" className="text-fsc-azul hover:text-fsc-azul text-[12px] font-bold uppercase tracking-[0.15em] px-3 py-2 flex items-center gap-1" data-testid="navbar-myteam">
-                    <UserCircle2 size={14}/> Mi Club
-                  </Link>
-                )}
-                <button onClick={handleLogout} className="text-white hover:text-fsc-rojo text-[12px] font-bold uppercase tracking-[0.15em] px-3 py-2 flex items-center gap-1" data-testid="navbar-logout">
-                  <LogOut size={14}/> Salir
-                </button>
-              </>
-            )}
-          </div>
-
-          <button onClick={() => setOpen((v) => !v)} className="lg:hidden text-white p-2" aria-label="Menu" data-testid="navbar-menu-toggle">
-            {open ? <X size={22}/> : <Menu size={22}/>}
+          <span className="hidden md:inline-block italic text-2xl lg:text-4xl" style={{ fontFamily: "'Allura', 'Dancing Script', cursive", color: BLUE }} data-testid="nav-tagline">
+            Torneo Internacional
+          </span>
+          {/* Botón mobile */}
+          <button onClick={() => setOpen(!open)} className="md:hidden text-slate-700" aria-label="Menú" data-testid="nav-mobile-toggle">
+            {open ? <X size={26} /> : <Menu size={26} />}
           </button>
         </div>
       </div>
 
-      {open && (
-        <div className="lg:hidden bg-fsc-negro border-t border-fsc-azul/30 fsc-fade-up">
-          <nav className="max-w-7xl mx-auto px-4 py-4 grid gap-1">
+      {/* Fila 2: Menú estilo wireframe — fondo blanco, links rojos en bold uppercase */}
+      <nav className={`bg-white border-b-2 border-slate-100 ${open ? "block" : "hidden"} md:block`}>
+        <div className="max-w-7xl mx-auto px-6 py-1 md:py-2 flex flex-col md:flex-row md:items-stretch md:justify-between gap-1">
+          <div className="flex flex-col md:flex-row md:items-stretch gap-0">
             {NAV.map((n) => (
               <NavLink
                 key={n.to}
                 to={n.to}
                 end={n.end}
                 onClick={() => setOpen(false)}
-                className={({ isActive }) =>
-                  `px-3 py-2.5 text-sm font-bold uppercase tracking-[0.15em] rounded-md ${
-                    isActive ? "text-fsc-azul bg-fsc-azul/10" : "text-white hover:bg-white/5"
-                  }`
-                }
+                className={({ isActive }) => `px-4 md:px-5 py-3 font-black uppercase tracking-wider text-sm md:text-base transition ${
+                  isActive ? "text-white" : "hover:opacity-80"
+                }`}
+                style={({ isActive }) => ({
+                  background: isActive ? BLUE : "transparent",
+                  color: isActive ? "#fff" : RED,
+                })}
+                data-testid={`nav-link-${n.label.toLowerCase()}`}
               >
                 {n.label}
               </NavLink>
             ))}
-            <div className="h-px bg-fsc-azul/20 my-2" />
-            {!user ? (
+          </div>
+          <div className="flex flex-col md:flex-row md:items-stretch md:gap-1">
+            {user ? (
               <>
-                <Link to="/login" onClick={() => setOpen(false)} className="px-3 py-2.5 text-sm font-bold uppercase tracking-[0.15em] text-white rounded-md hover:bg-white/5">Ingresar</Link>
-                <Link to="/registro-equipo" onClick={() => setOpen(false)} className="fsc-btn-primary py-2.5 rounded-md text-sm text-center">Registrarse</Link>
+                {user.role === "admin" && (
+                  <NavLink to="/admin" onClick={() => setOpen(false)} className="px-4 md:px-5 py-3 font-black uppercase tracking-wider text-sm md:text-base flex items-center gap-1.5 hover:opacity-80" style={{ color: BLUE }} data-testid="nav-link-admin">
+                    <Shield size={16}/> ADMIN
+                  </NavLink>
+                )}
+                {user.role === "team" && (
+                  <NavLink to="/mi-equipo" onClick={() => setOpen(false)} className="px-4 md:px-5 py-3 font-black uppercase tracking-wider text-sm md:text-base flex items-center gap-1.5 hover:opacity-80" style={{ color: RED }} data-testid="nav-link-mi-equipo">
+                    <UserCircle2 size={16}/> MI EQUIPO
+                  </NavLink>
+                )}
+                <button onClick={handleLogout} className="px-4 md:px-5 py-3 font-black uppercase tracking-wider text-sm md:text-base flex items-center gap-1.5 hover:opacity-80" style={{ color: RED }} data-testid="nav-logout">
+                  <LogOut size={16}/> SALIR
+                </button>
               </>
             ) : (
               <>
-                {user.role === "admin" && <Link to="/admin" onClick={() => setOpen(false)} className="px-3 py-2.5 text-sm font-bold uppercase tracking-[0.15em] text-fsc-azul rounded-md hover:bg-fsc-azul/10">Admin</Link>}
-                {user.role === "team" && <Link to="/mi-equipo" onClick={() => setOpen(false)} className="px-3 py-2.5 text-sm font-bold uppercase tracking-[0.15em] text-fsc-azul rounded-md hover:bg-fsc-azul/10">Mi Club</Link>}
-                <button onClick={handleLogout} className="px-3 py-2.5 text-sm font-bold uppercase tracking-[0.15em] text-fsc-rojo rounded-md hover:bg-fsc-rojo/10 text-left">Salir</button>
+                <NavLink to="/login" onClick={() => setOpen(false)} className="px-4 md:px-5 py-3 font-black uppercase tracking-wider text-sm md:text-base hover:opacity-80" style={{ color: RED }} data-testid="nav-link-ingreso">
+                  INGRESO
+                </NavLink>
+                <NavLink to="/registro-equipo" onClick={() => setOpen(false)} className="px-4 md:px-5 py-3 font-black uppercase tracking-wider text-sm md:text-base hover:opacity-80" style={{ color: BLUE }} data-testid="nav-link-registro">
+                  REGISTRO
+                </NavLink>
               </>
             )}
-          </nav>
+          </div>
         </div>
-      )}
+      </nav>
     </header>
   );
 }
