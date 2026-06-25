@@ -16,6 +16,15 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-02-25 — Optimización: conversión automática de imágenes a WebP en upload
+- Endpoint `POST /api/upload` ahora convierte automáticamente todo upload raster (JPG/JPEG/JFIF/PNG/APNG/GIF/BMP/DIB/TIFF/WebP) a formato **WebP** vía Pillow.
+- Se excluyen: SVG (vector), PDF, ICO, formatos RAW y HEIC/HEIF/AVIF (sin librería nativa).
+- Soporte completo de imágenes animadas (GIF/APNG/WebP animado) con preservación de frames y duraciones.
+- Calidad: `quality=82, method=6` (mejor relación calidad/tamaño).
+- Si el WebP resulta ≥ que el original (raro, fotos ya muy comprimidas), conserva el original — excepto para formatos pesados por naturaleza (BMP/TIFF/PNG) donde siempre se fuerza la conversión.
+- Pruebas medidas en pod: PNG simple −68.8%, JPG q95 −88.6%. Content-Type `image/webp` correctamente servido.
+- Archivos existentes NO se migran retroactivamente. Solo los uploads nuevos.
+
 ### 2026-02-25 — Ajustes UI de páginas secundarias (heroes + colores + CMS)
 - **Nosotros**: título `SOMOS MAS QUE UN TORNEO` cambiado a color rojo institucional `#e31f27`. Eliminada sección "HABLEMOS".
 - **Eventos**: hero ya usa `SecondaryHero` con overlay rojo translúcido `rgba(227,31,39,0.7)` sobre imagen de fondo (editable).

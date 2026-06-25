@@ -24,6 +24,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field, EmailStr
 from openpyxl import load_workbook, Workbook
 from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionRequest
+from PIL import Image, ImageSequence
 
 # -------------------- Categories --------------------
 CATEGORIES = ["Sub-8", "Sub-10", "Sub-12", "Sub-14", "Sub-16", "Sub-18"]
@@ -4803,6 +4804,78 @@ async def social_instagram():
     }
 
 # -------------------- Uploads --------------------
+# Extensiones que se benefician de la conversión a WebP (ahorro de tamaño significativo
+# preservando calidad). Se excluyen: SVG (vector), PDF, ICO, RAW, HEIC/HEIF/AVIF (Pillow
+# por defecto no decodifica HEIF; AVIF ya está optimizado y no se gana nada).
+WEBP_CONVERTIBLE_EXTS = {
+    "jpg", "jpeg", "jfif", "jif", "jpe", "pjpeg", "pjp",
+    "png", "apng",
+    "gif",
+    "bmp", "dib",
+    "tif", "tiff",
+    "webp",  # re-encode para asegurar compresión consistente
+}
+
+def _maybe_convert_to_webp(data: bytes, ext: str) -> Optional[bytes]:
+    """Convierte una imagen raster a WebP. Devuelve los bytes WebP o None si falla / no conviene.
+
+    - Estáticas: re-encode con quality=82, method=6 (mejor relación calidad/tamaño).
+    - Animadas (GIF/APNG/WebP): preserva todos los frames y duraciones.
+    - Si el resultado es ≥ al original, devuelve None (no fuerza la conversión).
+    - RGBA se preserva; modos exóticos (P, CMYK, LA) se convierten a RGB/RGBA según corresponda.
+    """
+    try:
+        img = Image.open(io.BytesIO(data))
+        img.load()
+    except Exception as e:
+        logging.info(f"[upload] no se pudo abrir como imagen ({ext}): {e}")
+        return None
+
+    is_animated = getattr(img, "is_animated", False) and getattr(img, "n_frames", 1) > 1
+    out = io.BytesIO()
+
+    try:
+        if is_animated:
+            frames = []
+            durations = []
+            for frame in ImageSequence.Iterator(img):
+                f = frame.convert("RGBA")
+                frames.append(f)
+                durations.append(frame.info.get("duration", 100))
+            if not frames:
+                return None
+            frames[0].save(
+                out,
+                format="WEBP",
+                save_all=True,
+                append_images=frames[1:],
+                duration=durations,
+                loop=img.info.get("loop", 0),
+                quality=82,
+                method=6,
+            )
+        else:
+            # Normaliza modos no estándar
+            if img.mode in ("P", "PA"):
+                img = img.convert("RGBA" if "transparency" in img.info or img.mode == "PA" else "RGB")
+            elif img.mode == "CMYK":
+                img = img.convert("RGB")
+            elif img.mode == "LA":
+                img = img.convert("RGBA")
+            elif img.mode == "L":
+                img = img.convert("RGB")
+            img.save(out, format="WEBP", quality=82, method=6)
+    except Exception as e:
+        logging.warning(f"[upload] fallo conversión a WebP ({ext}): {e}")
+        return None
+
+    webp_bytes = out.getvalue()
+    # Si la conversión no aporta ahorro (puede pasar con imágenes ya muy comprimidas),
+    # mantenemos el original salvo que sea formato pesado por naturaleza.
+    if ext not in {"bmp", "dib", "tif", "tiff", "png", "apng"} and len(webp_bytes) >= len(data):
+        return None
+    return webp_bytes
+
 @api.post("/upload")
 async def upload_file(file: UploadFile = File(...), user: dict = Depends(get_current_user)):
     ext = (file.filename.rsplit(".", 1)[-1] if "." in (file.filename or "") else "bin").lower()
@@ -4811,8 +4884,18 @@ async def upload_file(file: UploadFile = File(...), user: dict = Depends(get_cur
     data = await file.read()
     if len(data) > 5 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="Archivo mayor a 5MB")
+
+    # === Optimización: convertir imágenes raster a WebP ===
+    # Reduce drásticamente el peso (típicamente 25-50% vs JPG, 70%+ vs PNG) manteniendo calidad visual.
+    # Se omiten formatos que no se benefician: SVG (vector), PDF, RAW, ICO, AVIF/HEIC (ya optimizados).
+    if ext in WEBP_CONVERTIBLE_EXTS:
+        converted = _maybe_convert_to_webp(data, ext)
+        if converted is not None:
+            data = converted
+            ext = "webp"
+
     storage_path = f"{APP_NAME}/uploads/{user['id']}/{uuid.uuid4()}.{ext}"
-    content_type = file.content_type or MIME[ext]
+    content_type = MIME[ext] if ext == "webp" else (file.content_type or MIME[ext])
     result = put_object(storage_path, data, content_type)
     file_id = str(uuid.uuid4())
     await db.files.insert_one({
