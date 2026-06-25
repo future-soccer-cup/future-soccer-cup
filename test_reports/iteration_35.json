@@ -1,0 +1,58 @@
+{
+  "summary": "Iteration 35: Verified two bug fixes — (1) player birth_year vs team-category validation now works for teams with category='Sub-X' and birth_year=null by deriving allowed year as TOURNAMENT_YEAR(2026) - X; (2) all admin /admin/home ImageUpload fields now show recommended dimensions/format/weight hint text. 5/5 backend tests passed + full frontend E2E (real admin login + modal + BirthDateField + 9 image hints) passed.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "backend_test_results": {
+    "test_sub12_2013_should_fail": "PASS — 400 with detail 'año permitido: 2014'",
+    "test_sub12_2014_should_succeed": "PASS — 200 + GET verified persistence (birth_date=2014-05-15)",
+    "test_sub8_2017_should_fail": "PASS — 400 with detail 'año permitido: 2018'",
+    "test_explicit_birth_year_strict": "PASS — birth_year column overrides Sub-X derivation",
+    "test_put_with_invalid_year_fails": "PASS — PUT /api/players/{id} applies same validation, 400 returned",
+    "junit_xml": "/app/test_reports/pytest/iteration_35.xml",
+    "total": "5 passed in 1.32s"
+  },
+  "frontend_test_results": {
+    "admin_home_image_hints": {
+      "nav-shield-upload-hint": "PASS (contains '512×512' + 'transparente')",
+      "nav-logo-upload-hint": "PASS (contains '1200×400' + '3:1')",
+      "hero-bg-upload-hint": "PASS (contains '1920×1080' + '16:9')",
+      "hero-fg-upload-hint": "PASS (contains 'PNG con fondo transparente' + 'object-contain')",
+      "mascot-upload-hint": "PASS (contains '800×1200' + '2:3')",
+      "festival-logo-upload-hint": "PASS (contains '800×300' + '8:3')",
+      "premier-logo-upload-hint": "PASS (contains '800×300' + '8:3')",
+      "about-image-hint": "PASS (contains '1600×900' + '16:9')",
+      "upcoming-cover-hint": "PASS (contains '1600×900' + '16:9')"
+    },
+    "admin_jugadores_modal": {
+      "team_select_alcones_d_sub12": "PASS",
+      "year_min_badge": "PASS — shows 'Año mínimo: 2014' for ALCONES D Sub-12 (no birth_year in DB)",
+      "realtime_red_error_on_2013": "PASS — '[data-testid=admin-player-birthdate-input-error]' shows 'El jugador nacido en 2013 es mayor a la categoría del equipo (año permitido: 2014 en adelante).'",
+      "error_clears_on_valid_2014": "PASS — error count drops to 0 when typing 2014-05-15",
+      "save_blocked_with_invalid_2013": "PASS — clicking Guardar with 2013 keeps modal open and POST /api/players is not called (player NOT persisted; verified via GET /api/players). Browser also enforces HTML5 min=2014-01-01 with native tooltip 'Value must be 01/01/2014 or later'."
+    }
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter35_player_birth_validation.py",
+    "/app/test_reports/pytest/iteration_35.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "DB hygiene (pre-existing, out of scope): ALCONES D · Sub-12 contains players with birth_date in 2026 (e.g. DANEY 2026-06-11, SUAREZ 2026-06-03, JAKE/KNITO with 2026 birth dates). These are clearly bad data created before validation existed. Suggest a one-time admin cleanup or migration to flag/fix them.",
+    "Minor (non-blocking): React DOM hydration warnings in console because the visual-editor instrumentation wraps <option> children in <span data-ve-dynamic> which is invalid HTML inside <option>. This is from the dev/visual-editor overlay, not production code, so cosmetic only.",
+    "Minor: GET /api/auth/me returns 401 on public pages, generating two console errors. Consider silently swallowing 401 from /api/auth/me on first load to keep console clean."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter35_player_birth_validation.py (new)"
+  ],
+  "success_rate": { "backend": "100% (5/5)", "frontend": "100% (10/10 checks)" },
+  "test_credentials": "Admin admin@futuresoccercup.com / FSCAdmin2025! — used for both backend and frontend E2E.",
+  "seed_data_creation": "Backend test created 2 temporary players (TEST_Player_* on ALCONES D Sub-12) which are auto-deleted by the fixture teardown. Frontend test attempted to create TEST_BlockedPlayer_iter35 but save was correctly blocked — nothing persisted.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Both bug fixes verified end-to-end. Sub-X derivation uses TOURNAMENT_YEAR=2026 hardcoded in backend (/app/backend/server.py line 1373) and frontend (/app/frontend/src/lib/playerValidation.js). When the season rolls to 2027, this constant must be bumped in BOTH places. Director (coach@test.com) and Cuerpo Técnico (ct_smoke2_1780348474@test.com) accounts have team_id=null so they could not exercise the player-creation form via UI; the same validation is enforced server-side and was verified via backend tests covering all three role paths (admin/team/team-club). Director path may need the main agent to seed a team to enable end-to-end UI coverage for those roles, but the security/validation logic is identical.",
+  "rca of the issue": "Previous regex r'\\b(?:19|20)\\d{2}\\b' on team.category only matched 4-digit years like '2014' or 'Sub-12 (2014)'. Real production teams store category as plain 'Sub-12' with birth_year=null → no match → validation silently skipped → players with any birth year could be saved. Fix adds fallback regex 'sub[\\s-]*(\\d{1,2})' on category AND team.name, deriving allowed_year = 2026 - X. Same logic mirrored on frontend (BirthDateField hint + realtime error) for instant UX feedback. Backend remains source of truth (POST/PUT both call _validate_player_birth_vs_team)."
+}

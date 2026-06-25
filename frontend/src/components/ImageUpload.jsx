@@ -7,7 +7,7 @@ import { toast } from "sonner";
  * Image upload component. Posts to /api/upload, stores returned `url` in the form.
  * Pass the current value (URL string or relative /api/files/... path) and an onChange callback.
  */
-export default function ImageUpload({ value, onChange, label = "Imagen", testId = "image-upload" }) {
+export default function ImageUpload({ value, onChange, label = "Imagen", hint = "", testId = "image-upload" }) {
   const inputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
 
@@ -42,6 +42,11 @@ export default function ImageUpload({ value, onChange, label = "Imagen", testId 
   return (
     <div className="space-y-2" data-testid={testId}>
       <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{label}</span>
+      {hint && (
+        <p className="text-[11px] leading-snug text-slate-500 -mt-1" data-testid={`${testId}-hint`}>
+          {hint}
+        </p>
+      )}
       <div className="flex items-center gap-3">
         {previewSrc ? (
           <div className="relative">

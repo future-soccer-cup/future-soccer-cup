@@ -118,8 +118,8 @@ export default function AdminHomeSettings() {
 
       <Section title="Navbar (logo + escudo)" icon={<ImageIcon size={18}/>}>
         <div className="grid md:grid-cols-2 gap-4">
-          <ImageUpload value={s.nav_shield_url} onChange={(v) => upd("nav_shield_url", v)} label="Escudo / logo circular (a la izquierda del wordmark)" testId="nav-shield-upload" />
-          <ImageUpload value={s.nav_logo_url} onChange={(v) => upd("nav_logo_url", v)} label="Wordmark / logo en imagen (opcional, visible en ≥lg)" testId="nav-logo-upload" />
+          <ImageUpload value={s.nav_shield_url} onChange={(v) => upd("nav_shield_url", v)} label="Escudo / logo circular (a la izquierda del wordmark)" hint="Recomendado: PNG con fondo transparente, cuadrado 512×512 px (o 1:1). Peso ideal < 300 KB. Se renderiza a 64–80 px de alto." testId="nav-shield-upload" />
+          <ImageUpload value={s.nav_logo_url} onChange={(v) => upd("nav_logo_url", v)} label="Wordmark / logo en imagen (opcional, visible en ≥lg)" hint="Recomendado: PNG con fondo transparente, formato horizontal 1200×400 px (3:1). Peso ideal < 500 KB. Se renderiza a 48–64 px de alto." testId="nav-logo-upload" />
         </div>
       </Section>
 
@@ -134,8 +134,8 @@ export default function AdminHomeSettings() {
 
       <Section title="Hero — Imágenes" icon={<ImageIcon size={18}/>}>
         <div className="grid md:grid-cols-2 gap-4">
-          <ImageUpload value={s.hero_image_url} onChange={(v) => upd("hero_image_url", v)} label="Imagen de fondo (estadio/gradas, se tiñe con overlay)" testId="hero-bg-upload" />
-          <ImageUpload value={s.hero_foreground_url} onChange={(v) => upd("hero_foreground_url", v)} label="Imagen superpuesta (niños jugando, va al lado derecho — idealmente PNG con fondo transparente)" testId="hero-fg-upload" />
+          <ImageUpload value={s.hero_image_url} onChange={(v) => upd("hero_image_url", v)} label="Imagen de fondo (estadio/gradas, se tiñe con overlay)" hint="Recomendado: JPG/WEBP horizontal 1920×1080 px (16:9), alta calidad. Peso ideal < 1 MB. Se recorta tipo cover y recibe overlay azul+rojo." testId="hero-bg-upload" />
+          <ImageUpload value={s.hero_foreground_url} onChange={(v) => upd("hero_foreground_url", v)} label="Imagen superpuesta (niños jugando, va al lado derecho — idealmente PNG con fondo transparente)" hint="Recomendado: PNG con fondo transparente (cutout), vertical 1200×1500 px (4:5) o cuadrado 1200×1200 px. Peso ideal < 800 KB. Se renderiza con object-contain (mantiene proporción)." testId="hero-fg-upload" />
         </div>
       </Section>
 
@@ -163,7 +163,7 @@ export default function AdminHomeSettings() {
           <Field label="Título principal" v={s.region_title} onChange={(v) => upd("region_title", v)} />
           <Field label="Subtítulo (patrocinador / sede)" v={s.region_subtitle} onChange={(v) => upd("region_subtitle", v)} />
           <div className="md:col-span-2">
-            <ImageUpload value={s.mascot_image_url} onChange={(v) => upd("mascot_image_url", v)} label="Mascota" testId="mascot-upload" />
+            <ImageUpload value={s.mascot_image_url} onChange={(v) => upd("mascot_image_url", v)} label="Mascota" hint="Recomendado: PNG con fondo transparente, vertical 800×1200 px (2:3) o cuadrado 1000×1000 px. Peso ideal < 500 KB." testId="mascot-upload" />
           </div>
         </div>
       </Section>
@@ -173,7 +173,7 @@ export default function AdminHomeSettings() {
           <Field label="Badge fecha" v={s.festival_date_badge} onChange={(v) => upd("festival_date_badge", v)} />
           <Field label="URL CTA" v={s.festival_cta_url} onChange={(v) => upd("festival_cta_url", v)} />
           <Field label="Categorías (lista separada por coma)" v={s.festival_categories} onChange={(v) => upd("festival_categories", v)} placeholder="Sub-8, Sub-10, Sub-12, ..." />
-          <ImageUpload value={s.festival_logo_url} onChange={(v) => upd("festival_logo_url", v)} label="Logo Festival" testId="festival-logo-upload" />
+          <ImageUpload value={s.festival_logo_url} onChange={(v) => upd("festival_logo_url", v)} label="Logo Festival" hint="Recomendado: PNG transparente, horizontal 800×300 px (8:3) o cuadrado 600×600 px. Peso ideal < 300 KB. Se renderiza a 40 px de alto." testId="festival-logo-upload" />
         </div>
       </Section>
 
@@ -183,7 +183,7 @@ export default function AdminHomeSettings() {
           <Field label="URL CTA" v={s.premier_cta_url} onChange={(v) => upd("premier_cta_url", v)} />
           <Field label="Categorías pares (lista CSV)" v={s.premier_categories_par} onChange={(v) => upd("premier_categories_par", v)} placeholder="Sub-8, Sub-10, Sub-12" />
           <Field label="Categorías impares (lista CSV)" v={s.premier_categories_imp} onChange={(v) => upd("premier_categories_imp", v)} placeholder="Sub-9, Sub-11, Sub-13" />
-          <ImageUpload value={s.premier_logo_url} onChange={(v) => upd("premier_logo_url", v)} label="Logo Premier" testId="premier-logo-upload" />
+          <ImageUpload value={s.premier_logo_url} onChange={(v) => upd("premier_logo_url", v)} label="Logo Premier" hint="Recomendado: PNG transparente, horizontal 800×300 px (8:3) o cuadrado 600×600 px. Peso ideal < 300 KB. Se renderiza a 40 px de alto." testId="premier-logo-upload" />
         </div>
       </Section>
 
@@ -208,7 +208,7 @@ export default function AdminHomeSettings() {
             <textarea rows={5} value={s.about_body || ""} onChange={(e) => upd("about_body", e.target.value)} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" />
           </label>
           <div className="md:col-span-2">
-            <ImageUpload value={s.about_image_url} onChange={(v) => upd("about_image_url", v)} label="Imagen" testId="about-image" />
+            <ImageUpload value={s.about_image_url} onChange={(v) => upd("about_image_url", v)} label="Imagen" hint="Recomendado: JPG/WEBP horizontal 1600×900 px (16:9) o 1200×800 px (3:2). Peso ideal < 800 KB." testId="about-image" />
           </div>
         </div>
       </Section>
@@ -223,7 +223,7 @@ export default function AdminHomeSettings() {
           <Field label="Fecha inicio" type="date" v={s.upcoming_start_date} onChange={(v) => upd("upcoming_start_date", v)} />
           <Field label="Fecha fin" type="date" v={s.upcoming_end_date} onChange={(v) => upd("upcoming_end_date", v)} />
           <div className="md:col-span-2">
-            <ImageUpload value={s.upcoming_cover_url} onChange={(v) => upd("upcoming_cover_url", v)} label="Imagen de portada" testId="upcoming-cover" />
+            <ImageUpload value={s.upcoming_cover_url} onChange={(v) => upd("upcoming_cover_url", v)} label="Imagen de portada" hint="Recomendado: JPG/WEBP horizontal 1600×900 px (16:9). Peso ideal < 800 KB." testId="upcoming-cover" />
           </div>
         </div>
       </Section>

@@ -1362,20 +1362,34 @@ async def get_player(player_id: str):
 def _validate_player_birth_vs_team(team: dict, birth_date: str):
     """Bloquea jugadores MAYORES a la categoría del equipo.
     Regla: birth_year (del jugador) >= año permitido del equipo.
-    Año permitido: team.birth_year si existe; si no, intenta extraer un año (1900-2099)
-    desde team.category (ej. '2008', 'Sub-12 (2014)'). Si tampoco hay, no se valida."""
+    Estrategia para obtener año permitido (en orden):
+      1) team.birth_year (si existe).
+      2) Año (19xx/20xx) en team.category (ej. '2008', 'Sub-12 (2014)').
+      3) Año (19xx/20xx) en team.name (ej. 'AMERICA FC 2010').
+      4) 'Sub-X' en category/name → 2026 - X (año torneo actual)."""
     if not birth_date:
         return
+    import re as _re
+    TOURNAMENT_YEAR = 2026
     team_year = team.get("birth_year")
     if not team_year:
         cat = str(team.get("category") or team.get("designation") or "")
-        import re as _re
-        m = _re.search(r"\b(?:19|20)\d{2}\b", cat)
+        name = str(team.get("name") or "")
+        m = _re.search(r"\b(?:19|20)\d{2}\b", cat) or _re.search(r"\b(?:19|20)\d{2}\b", name)
         if m:
             try:
                 team_year = int(m.group(0))
             except Exception:
                 team_year = None
+        if not team_year:
+            sub_m = _re.search(r"sub[\s-]*(\d{1,2})", cat, _re.IGNORECASE) or _re.search(r"sub[\s-]*(\d{1,2})", name, _re.IGNORECASE)
+            if sub_m:
+                try:
+                    sub = int(sub_m.group(1))
+                    if 0 < sub < 30:
+                        team_year = TOURNAMENT_YEAR - sub
+                except Exception:
+                    team_year = None
     if not team_year:
         return
     try:
