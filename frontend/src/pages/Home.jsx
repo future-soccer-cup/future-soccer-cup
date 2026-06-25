@@ -48,8 +48,8 @@ export default function Home() {
     <div className="min-h-screen" data-testid="home-fsc-v2" style={{ background: "#fff", fontFamily: "'Barlow', 'Inter', sans-serif" }}>
       {/* ======= HERO — navbar embebida + foto fondo + cutout niños + EDICIÓN 2026 ======= */}
       <section className="relative overflow-hidden" data-testid="home-hero">
-        <div className="relative w-full" style={{ minHeight: "720px", background: BLUE }}>
-          {/* (1) FONDO: estadio/gradas (solo si el admin sube imagen) */}
+        {/* (1) STACK FONDO + OVERLAYS — aislado para que el multiply NO afecte la imagen de los niños */}
+        <div className="absolute inset-0 pointer-events-none" style={{ isolation: "isolate", background: BLUE }}>
           {s.hero_image_url && (
             <img
               src={s.hero_image_url}
@@ -60,26 +60,29 @@ export default function Home() {
               onError={(e) => { e.currentTarget.style.display = "none"; }}
             />
           )}
-          {/* Overlay azul (arriba 55%) + rojo (abajo 45%) en mix-blend para teñir SÓLO el fondo */}
-          <div className="absolute inset-x-0 top-0 mix-blend-multiply pointer-events-none" style={{ height: "55%", background: BLUE }} />
-          <div className="absolute inset-x-0 bottom-0 mix-blend-multiply pointer-events-none" style={{ height: "45%", background: RED }} />
+          {/* Overlay azul (arriba 55%) + rojo (abajo 45%) — multiply SOLO sobre el fondo (aislado) */}
+          <div className="absolute inset-x-0 top-0 mix-blend-multiply" style={{ height: "55%", background: BLUE }} />
+          <div className="absolute inset-x-0 bottom-0 mix-blend-multiply" style={{ height: "45%", background: RED }} />
           {/* Capa azul más oscura SOLO en la zona del texto (lado izquierdo) para legibilidad */}
-          <div className="hidden md:block absolute left-0 top-0 bottom-0 w-[55%] pointer-events-none" style={{ background: "linear-gradient(to right, rgba(6,64,200,0.55), transparent 80%)" }} />
+          <div className="hidden md:block absolute left-0 top-0 bottom-0 w-[55%]" style={{ background: "linear-gradient(to right, rgba(6,64,200,0.55), transparent 80%)" }} />
+        </div>
 
-          {/* (2) IMAGEN SUPERPUESTA: niños jugando — mitad inferior derecha, contain (mantiene proporción) */}
+        {/* (2) CONTENIDO CONSTRINGIDO AL ANCHO DEL NAVBAR (max-w-7xl) — incluye texto + imagen niños */}
+        <div className="relative max-w-7xl mx-auto px-4 md:px-8" style={{ minHeight: "780px" }}>
+          {/* IMAGEN SUPERPUESTA: niños jugando — dentro del bloque, alineada al borde derecho del navbar */}
           {s.hero_foreground_url && (
             <img
               src={s.hero_foreground_url}
               alt="Future Soccer Cup — niños jugando"
-              className="hidden md:block absolute right-0 bottom-0 pointer-events-none drop-shadow-2xl"
-              style={{ width: "38%", height: "45%", objectFit: "contain", objectPosition: "bottom right", zIndex: 5 }}
+              className="hidden md:block absolute right-4 md:right-8 bottom-0 pointer-events-none drop-shadow-2xl"
+              style={{ width: "45%", height: "75%", objectFit: "contain", objectPosition: "bottom right", zIndex: 5 }}
               data-testid="hero-foreground-image"
               onError={(e) => { e.currentTarget.style.display = "none"; }}
             />
           )}
 
           {/* === NAVBAR EMBEBIDA EN EL HERO === */}
-          <div className="relative z-30 max-w-7xl mx-auto px-4 md:px-8 pt-5">
+          <div className="relative z-30 pt-5">
             <div className="flex items-center justify-between gap-4">
               <Link to="/" className="flex items-center gap-3" data-testid="nav-logo-link">
                 {/* Escudo / logo circular del FSC (solo si el admin sube una imagen) */}
@@ -102,7 +105,7 @@ export default function Home() {
                     data-testid="nav-logo-img"
                   />
                 )}
-                <span className="hidden sm:inline-block font-black leading-[0.85] text-white drop-shadow-md" style={{ ...PLANE_CRASH, fontSize: "clamp(18px, 2vw, 28px)" }}>
+                <span className="hidden sm:inline-block font-black leading-[0.85] text-white drop-shadow-md" style={{ ...PLANE_CRASH, fontSize: "clamp(20px, 2.2vw, 32px)" }}>
                   {planeCrashSafe("FUTUR")}<br/>{planeCrashSafe("SOCCER")}<br/>{planeCrashSafe("CUP")}
                 </span>
               </Link>
@@ -110,8 +113,8 @@ export default function Home() {
                 Torneo Internacional
               </span>
             </div>
-            {/* Barra blanca con links */}
-            <div className="mt-4 bg-white rounded-md shadow-md px-2 md:px-4 py-1 flex flex-wrap items-center gap-1 md:gap-0" data-testid="hero-nav-bar">
+            {/* Barra blanca con links — más padding y tipografía más grande */}
+            <div className="mt-5 bg-white rounded-md shadow-md px-3 md:px-5 py-2 md:py-3 flex flex-wrap items-center gap-1 md:gap-1" data-testid="hero-nav-bar">
               {[
                 { to: "/", label: "INICIO", end: true },
                 { to: "/nosotros", label: "NOSOTROS" },
@@ -124,7 +127,7 @@ export default function Home() {
                   key={n.to}
                   to={n.to}
                   end={n.end}
-                  className={({ isActive }) => `px-3 md:px-4 py-2 font-black uppercase tracking-wider text-[11px] md:text-sm transition ${isActive ? "text-white rounded" : "hover:opacity-80"}`}
+                  className={({ isActive }) => `px-4 md:px-5 py-2 md:py-3 font-black uppercase tracking-wider text-sm md:text-base transition ${isActive ? "text-white rounded" : "hover:opacity-80"}`}
                   style={({ isActive }) => ({ ...NEO_SANS, background: isActive ? BLUE : "transparent", color: isActive ? "#fff" : RED })}
                   data-testid={`nav-link-${n.label.toLowerCase()}`}
                 >
@@ -132,18 +135,18 @@ export default function Home() {
                 </NavLink>
               ))}
               <div className="flex-1" />
-              <NavLink to="/login" className="px-3 md:px-4 py-2 font-black uppercase tracking-wider text-[11px] md:text-sm hover:opacity-80" style={{ ...NEO_SANS, color: RED }} data-testid="nav-link-ingreso">INGRESO</NavLink>
-              <NavLink to="/registro-equipo" className="px-3 md:px-4 py-2 font-black uppercase tracking-wider text-[11px] md:text-sm hover:opacity-80" style={{ ...NEO_SANS, color: RED }} data-testid="nav-link-registro">REGISTRO</NavLink>
+              <NavLink to="/login" className="px-4 md:px-5 py-2 md:py-3 font-black uppercase tracking-wider text-sm md:text-base hover:opacity-80" style={{ ...NEO_SANS, color: RED }} data-testid="nav-link-ingreso">INGRESO</NavLink>
+              <NavLink to="/registro-equipo" className="px-4 md:px-5 py-2 md:py-3 font-black uppercase tracking-wider text-sm md:text-base hover:opacity-80" style={{ ...NEO_SANS, color: RED }} data-testid="nav-link-registro">REGISTRO</NavLink>
             </div>
           </div>
 
           {/* === TEXTOS DEL HERO === */}
-          <div className="relative z-10 max-w-7xl mx-auto px-6 md:px-10 pt-10 md:pt-16 pb-12">
-            <div className="md:w-[55%]">
-              <h1 className="text-white font-black leading-[0.85]" style={{ ...PLANE_CRASH, fontSize: "clamp(64px, 11vw, 180px)", textShadow: "3px 3px 0 rgba(0,0,0,0.25)" }} data-testid="hero-edition">
+          <div className="relative z-10 pt-10 md:pt-14 pb-12">
+            <div className="md:w-[50%]">
+              <h1 className="text-white font-black leading-[0.85]" style={{ ...PLANE_CRASH, fontSize: "clamp(56px, 8.5vw, 140px)", textShadow: "3px 3px 0 rgba(0,0,0,0.25)" }} data-testid="hero-edition">
                 {planeCrashSafe(s.hero_edition_label || "EDICION")}
               </h1>
-              <div className="text-white font-black leading-[0.85]" style={{ ...PLANE_CRASH, fontSize: "clamp(96px, 16vw, 240px)", textShadow: "3px 3px 0 rgba(0,0,0,0.25)" }} data-testid="hero-year">
+              <div className="text-white font-black leading-[0.85]" style={{ ...PLANE_CRASH, fontSize: "clamp(80px, 12vw, 180px)", textShadow: "3px 3px 0 rgba(0,0,0,0.25)" }} data-testid="hero-year">
                 {planeCrashSafe(s.hero_edition_year || "2026")}
               </div>
               <div className="mt-6 flex flex-wrap gap-2">
