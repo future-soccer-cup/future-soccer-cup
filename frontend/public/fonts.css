@@ -1,0 +1,11 @@
+/* Plane Crash — fuente del manual de marca FSC v2.
+   Archivo servido estáticamente desde /public para evitar que webpack
+   intente resolver el path como módulo. */
+@font-face {
+  font-family: 'Plane Crash';
+  src: local('Plane Crash'), local('PlaneCrash'),
+       url('/fonts/PlaneCrash.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}

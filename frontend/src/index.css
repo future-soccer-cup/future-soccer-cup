@@ -45,7 +45,7 @@
    navegador cae al siguiente fallback (Anton / Allura) automáticamente. */
 @font-face {
     font-family: 'Plane Crash';
-    src: local('Plane Crash'), local('PlaneCrash'), local('Plane Crash Regular');
+    src: local('Plane Crash'), local('PlaneCrash');
     font-weight: 400 900;
     font-style: normal;
     font-display: swap;

@@ -36,7 +36,11 @@ export default function Home() {
   const premierCatsPar = (s.premier_categories_par && s.premier_categories_par.length) ? s.premier_categories_par : ["Sub-8", "Sub-10", "Sub-12"];
   const premierCatsImp = (s.premier_categories_imp && s.premier_categories_imp.length) ? s.premier_categories_imp : ["Sub-9", "Sub-11", "Sub-13"];
 
-  const STENCIL = { fontFamily: "'Plane Crash', 'Anton', 'Barlow Condensed', sans-serif", letterSpacing: "0.01em" };
+  const STENCIL = { fontFamily: "'Anton', 'Barlow Condensed', sans-serif", letterSpacing: "0.01em" };
+  const PLANE_CRASH = { fontFamily: "'Plane Crash', 'Anton', 'Barlow Condensed', sans-serif", letterSpacing: "0.01em" };
+  // Plane Crash es una fuente con glifos de letras en MINÚSCULAS (las MAYÚSCULAS son pictogramas decorativos).
+  // Por eso convertimos a minúsculas y removemos diacríticos antes de renderizar.
+  const planeCrashSafe = (str) => String(str || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   const CURSIVE = { fontFamily: "'Natura Script', 'Allura', 'Dancing Script', cursive" };
 
   return (
@@ -105,11 +109,11 @@ export default function Home() {
           {/* === TEXTOS DEL HERO === */}
           <div className="relative z-10 max-w-7xl mx-auto px-6 md:px-10 pt-10 md:pt-16 pb-12">
             <div className="md:w-[55%]">
-              <h1 className="text-white font-black uppercase leading-[0.85]" style={{ ...STENCIL, fontSize: "clamp(64px, 11vw, 180px)", textShadow: "3px 3px 0 rgba(0,0,0,0.25)" }} data-testid="hero-edition">
-                {s.hero_edition_label || "EDICIÓN"}
+              <h1 className="text-white font-black leading-[0.85]" style={{ ...PLANE_CRASH, fontSize: "clamp(64px, 11vw, 180px)", textShadow: "3px 3px 0 rgba(0,0,0,0.25)" }} data-testid="hero-edition">
+                {planeCrashSafe(s.hero_edition_label || "EDICION")}
               </h1>
-              <div className="text-white font-black uppercase leading-[0.85]" style={{ ...STENCIL, fontSize: "clamp(96px, 16vw, 240px)", textShadow: "3px 3px 0 rgba(0,0,0,0.25)" }} data-testid="hero-year">
-                {s.hero_edition_year || "2026"}
+              <div className="text-white font-black leading-[0.85]" style={{ ...PLANE_CRASH, fontSize: "clamp(96px, 16vw, 240px)", textShadow: "3px 3px 0 rgba(0,0,0,0.25)" }} data-testid="hero-year">
+                {planeCrashSafe(s.hero_edition_year || "2026")}
               </div>
               <div className="mt-6 flex flex-wrap gap-2">
                 <span className="inline-block px-4 py-1 bg-white font-bold uppercase tracking-wider text-xs md:text-sm rounded shadow" style={{ color: BLUE }} data-testid="hero-month-1">
