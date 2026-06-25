@@ -57,6 +57,9 @@ import AdminClubsTree from "./pages/admin/AdminClubsTree";
 function PublicLayout() {
   const loc = useLocation();
   const hideChrome = loc.pathname.startsWith("/login") || loc.pathname.startsWith("/registro");
+  // El Home usa su propio footer rojo "Y SI NOS TOMAMOS UN CAFECITO JUNTOS?" según el wireframe FSC v2.
+  // En el resto de páginas públicas mantenemos el footer global oscuro.
+  const isHome = loc.pathname === "/";
   return (
     <div className="min-h-screen flex flex-col bg-white">
       <Navbar />
@@ -64,7 +67,7 @@ function PublicLayout() {
       <main className="flex-1 pt-16 lg:pt-20">
         <Outlet />
       </main>
-      {!hideChrome && <Footer />}
+      {!hideChrome && !isHome && <Footer />}
     </div>
   );
 }
