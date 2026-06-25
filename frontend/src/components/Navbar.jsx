@@ -29,7 +29,7 @@ export default function Navbar() {
   return (
     <header className="w-full" style={{ fontFamily: "'Barlow', 'Inter', sans-serif" }} data-testid="public-navbar">
       {/* Fila 1: Logo + tagline cursivo (sobre fondo transparente) */}
-      <div className="bg-white border-b border-slate-100">
+      <div className="bg-white">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-4" data-testid="nav-logo-link">
             <img
@@ -53,7 +53,7 @@ export default function Navbar() {
       </div>
 
       {/* Fila 2: Menú estilo wireframe — fondo blanco, links rojos en bold uppercase */}
-      <nav className={`bg-white border-b-2 border-slate-100 ${open ? "block" : "hidden"} md:block`}>
+      <nav className={`bg-white ${open ? "block" : "hidden"} md:block`}>
         <div className="max-w-7xl mx-auto px-6 py-1 md:py-2 flex flex-col md:flex-row md:items-stretch md:justify-between gap-1">
           <div className="flex flex-col md:flex-row md:items-stretch gap-0">
             {NAV.map((n) => (
@@ -97,7 +97,7 @@ export default function Navbar() {
                 <NavLink to="/login" onClick={() => setOpen(false)} className="px-4 md:px-5 py-3 font-black uppercase tracking-wider text-sm md:text-base hover:opacity-80" style={{ color: RED }} data-testid="nav-link-ingreso">
                   INGRESO
                 </NavLink>
-                <NavLink to="/registro-equipo" onClick={() => setOpen(false)} className="px-4 md:px-5 py-3 font-black uppercase tracking-wider text-sm md:text-base hover:opacity-80" style={{ color: BLUE }} data-testid="nav-link-registro">
+                <NavLink to="/registro-equipo" onClick={() => setOpen(false)} className="px-4 md:px-5 py-3 font-black uppercase tracking-wider text-sm md:text-base hover:opacity-80" style={{ color: RED }} data-testid="nav-link-registro">
                   REGISTRO
                 </NavLink>
               </>

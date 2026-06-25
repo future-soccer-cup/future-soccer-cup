@@ -38,6 +38,26 @@
     --fs-h3: clamp(20px, 3vw, 28px);
 }
 
+
+/* ====== FSC fuentes propias del manual de marca v2 ====== */
+/* Plane Crash y Natura Script no están en Google Fonts. Los declaramos como font-face
+   con `local()` para usar el archivo si el cliente lo tiene instalado; si no, el
+   navegador cae al siguiente fallback (Anton / Allura) automáticamente. */
+@font-face {
+    font-family: 'Plane Crash';
+    src: local('Plane Crash'), local('PlaneCrash'), local('Plane Crash Regular');
+    font-weight: 400 900;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Natura Script';
+    src: local('Natura Script'), local('NaturaScript'), local('Natura Script Regular');
+    font-weight: 400 700;
+    font-style: italic;
+    font-display: swap;
+}
+
 html, body {
     margin: 0;
     padding: 0;

@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import api from "../lib/api";
 import { ChevronLeft, ChevronRight, ChevronUp, Calendar, MessageCircle, Mail, Instagram, Facebook } from "lucide-react";
 
-const HERO_IMG_DEFAULT = "https://images.unsplash.com/photo-1551958219-acbc608c6377?auto=format&fit=crop&w=1600&q=80";
+const HERO_IMG_DEFAULT = "https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?auto=format&fit=crop&w=1600&q=80";
 const MASCOT_DEFAULT = "https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=1200&q=80";
 
 const RED = "#e31f27";
@@ -36,41 +36,63 @@ export default function Home() {
   const premierCatsPar = (s.premier_categories_par && s.premier_categories_par.length) ? s.premier_categories_par : ["Sub-8", "Sub-10", "Sub-12"];
   const premierCatsImp = (s.premier_categories_imp && s.premier_categories_imp.length) ? s.premier_categories_imp : ["Sub-9", "Sub-11", "Sub-13"];
 
-  const STENCIL = { fontFamily: "'Anton', 'Barlow Condensed', sans-serif", letterSpacing: "0.02em" };
+  const STENCIL = { fontFamily: "'Plane Crash', 'Anton', 'Barlow Condensed', sans-serif", letterSpacing: "0.01em" };
+  const CURSIVE = { fontFamily: "'Natura Script', 'Allura', 'Dancing Script', cursive" };
 
   return (
     <div className="min-h-screen" data-testid="home-fsc-v2" style={{ background: "#fff", fontFamily: "'Barlow', 'Inter', sans-serif" }}>
-      {/* ======= HERO — split horizontal azul→rojo con niños superpuestos ======= */}
+      {/* ======= HERO — split horizontal azul→rojo, foto a la derecha ======= */}
       <section className="relative overflow-hidden" data-testid="home-hero">
-        <div className="relative w-full" style={{ minHeight: "600px" }}>
-          {/* Mitad superior azul */}
-          <div className="absolute inset-x-0 top-0 h-1/2" style={{ background: BLUE }} />
-          {/* Mitad inferior roja */}
-          <div className="absolute inset-x-0 bottom-0 h-1/2" style={{ background: RED }} />
-          {/* Imagen de fondo (niños) cubriendo todo, opacidad para mezclar con colores */}
-          <img src={s.hero_image_url || HERO_IMG_DEFAULT} alt="Future Soccer Cup" className="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-80" />
-          {/* Contenido superpuesto */}
-          <div className="relative z-10 max-w-7xl mx-auto px-6 py-12 lg:py-16" style={{ minHeight: "600px" }}>
-            <div className="flex items-start justify-end">
-              <span className="text-2xl md:text-4xl text-white italic" style={{ fontFamily: "'Allura', 'Dancing Script', cursive", textShadow: "0 2px 6px rgba(0,0,0,0.4)" }} data-testid="hero-tagline">
+        <div className="relative w-full" style={{ minHeight: "560px" }}>
+          {/* Capas de color: 60% superior azul + 40% inferior rojo */}
+          <div className="absolute inset-x-0 top-0" style={{ height: "60%", background: BLUE }} />
+          <div className="absolute inset-x-0 bottom-0" style={{ height: "40%", background: RED }} />
+          {/* Foto de niños jugando a la DERECHA, ~55% del ancho */}
+          <div className="absolute right-0 top-0 bottom-0 w-full md:w-[55%] lg:w-[58%]">
+            <img
+              src={s.hero_image_url || HERO_IMG_DEFAULT}
+              alt="Niños jugando fútbol"
+              className="w-full h-full object-cover"
+              style={{ objectPosition: "center 30%" }}
+            />
+            {/* Degradado lateral izquierdo de la imagen para fundir con los textos */}
+            <div className="hidden md:block absolute left-0 top-0 bottom-0 w-32 lg:w-48 pointer-events-none"
+                 style={{ background: "linear-gradient(to right, rgba(6,64,200,0.85), transparent)" }} />
+          </div>
+
+          {/* Contenido textual — columna izquierda */}
+          <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-10 py-10 lg:py-14" style={{ minHeight: "560px" }}>
+            {/* "Torneo Internacional" arriba a la derecha (dentro del hero) */}
+            <div className="absolute top-6 right-6 md:right-10 z-20">
+              <span className="text-white italic text-2xl md:text-3xl lg:text-4xl drop-shadow-md" style={CURSIVE} data-testid="hero-cursive-tagline">
                 Torneo Internacional
               </span>
             </div>
-            <div className="mt-12 lg:mt-16">
-              <h1 className="text-white font-black uppercase leading-[0.85]" style={{ ...STENCIL, fontSize: "clamp(72px, 12vw, 200px)", textShadow: "4px 4px 0 rgba(0,0,0,0.25)" }} data-testid="hero-edition">
+
+            {/* Bloque EDICIÓN 2026 — izquierda */}
+            <div className="md:w-[55%] lg:w-[52%] pt-4">
+              <h1 className="text-white font-black uppercase leading-[0.85]" style={{ ...STENCIL, fontSize: "clamp(64px, 11vw, 180px)", textShadow: "3px 3px 0 rgba(0,0,0,0.18)" }} data-testid="hero-edition">
                 {s.hero_edition_label || "EDICIÓN"}
               </h1>
-              <div className="text-white font-black uppercase leading-[0.85]" style={{ ...STENCIL, fontSize: "clamp(96px, 16vw, 260px)", textShadow: "4px 4px 0 rgba(0,0,0,0.25)" }} data-testid="hero-year">
+              <div className="text-white font-black uppercase leading-[0.85]" style={{ ...STENCIL, fontSize: "clamp(96px, 16vw, 240px)", textShadow: "3px 3px 0 rgba(0,0,0,0.18)" }} data-testid="hero-year">
                 {s.hero_edition_year || "2026"}
               </div>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <span className="inline-block px-6 py-3 bg-white font-bold uppercase tracking-[0.15em] text-sm md:text-base rounded shadow-lg" style={{ color: BLUE }} data-testid="hero-month-1">{s.hero_month_1 || "Octubre"}</span>
-                <span className="inline-block px-6 py-3 bg-white font-bold uppercase tracking-[0.15em] text-sm md:text-base rounded shadow-lg" style={{ color: BLUE }} data-testid="hero-month-2">{s.hero_month_2 || "Diciembre"}</span>
+
+              {/* Badges Octubre / Diciembre — más pequeños */}
+              <div className="mt-4 flex flex-wrap gap-2">
+                <span className="inline-block px-3 py-1 bg-white font-bold uppercase tracking-wider text-[11px] md:text-xs rounded shadow" style={{ color: BLUE }} data-testid="hero-month-1">
+                  {s.hero_month_1 || "Octubre"}
+                </span>
+                <span className="inline-block px-3 py-1 bg-white font-bold uppercase tracking-wider text-[11px] md:text-xs rounded shadow" style={{ color: BLUE }} data-testid="hero-month-2">
+                  {s.hero_month_2 || "Diciembre"}
+                </span>
               </div>
-            </div>
-            <div className="mt-10 flex flex-col items-start" style={{ color: BLUE }}>
-              <ChevronUp size={28} strokeWidth={3} className="rotate-180" />
-              <ChevronUp size={28} strokeWidth={3} className="rotate-180 -mt-3" />
+
+              {/* Chevron doble debajo, centrado bajo los badges */}
+              <div className="mt-4 flex flex-col items-start ml-2" style={{ color: "#fff" }} data-testid="hero-chevron">
+                <ChevronUp size={24} strokeWidth={3} className="rotate-180 opacity-90" />
+                <ChevronUp size={24} strokeWidth={3} className="rotate-180 opacity-90 -mt-3" />
+              </div>
             </div>
           </div>
         </div>
