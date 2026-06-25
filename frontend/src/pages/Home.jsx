@@ -1,341 +1,279 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import api, { FSC_LOGO, imgSrc } from "../lib/api";
-import { ArrowRight, MapPin, Calendar, Trophy, Users, ChevronLeft, ChevronRight } from "lucide-react";
+import api from "../lib/api";
+import { ChevronLeft, ChevronRight, ChevronDown, Calendar, MessageCircle, Mail, Instagram, Facebook } from "lucide-react";
 
-const HERO_DEFAULT =
-  "https://images.pexels.com/photos/32694240/pexels-photo-32694240.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=1100&w=1800";
-const ABOUT_DEFAULT =
-  "https://images.pexels.com/photos/10475538/pexels-photo-10475538.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=900&w=1200";
+const HERO_IMG_DEFAULT = "https://images.unsplash.com/photo-1551958219-acbc608c6377?auto=format&fit=crop&w=1600&q=80";
+const MASCOT_DEFAULT = "https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=1200&q=80";
+
+// Paleta FSC (manual de marca v2)
+const RED = "#e31f27";
+const BLUE = "#0640c8";
+const GRAY = "#dedfe0";
 
 export default function Home() {
-  const [settings, setSettings] = useState({});
-  const [featured, setFeatured] = useState(null);
-  const [events, setEvents] = useState([]);
+  const [s, setS] = useState({});
   const [gallery, setGallery] = useState([]);
-  const [galleryIdx, setGalleryIdx] = useState(0);
+  const [gIdx, setGIdx] = useState(0);
 
   useEffect(() => {
-    let alive = true;
     Promise.all([
-      api.get("/home-settings"),
-      api.get("/tournaments"),
-      api.get("/gallery"),
-    ]).then(([s, t, g]) => {
-      if (!alive) return;
-      setSettings(s.data || {});
-      const ts = (t.data || []).filter((x) => !x.archived);
-      setFeatured(ts.find((x) => x.featured) || ts[0] || null);
-      setEvents(ts);
-      // Galería en orden aleatorio en cada carga
-      const gImgs = [...(g.data || [])];
-      for (let i = gImgs.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [gImgs[i], gImgs[j]] = [gImgs[j], gImgs[i]];
-      }
-      setGallery(gImgs);
-    }).catch(() => {});
-    return () => { alive = false; };
+      api.get("/home-settings").catch(() => ({ data: {} })),
+      api.get("/gallery").catch(() => ({ data: [] })),
+    ]).then(([sr, gr]) => {
+      setS(sr.data || {});
+      setGallery((gr.data || []).slice(0, 15));
+    });
   }, []);
 
-  // Auto-rotación aleatoria de la galería cada 5 segundos.
-  useEffect(() => {
-    if (gallery.length < 2) return;
-    const t = setInterval(() => {
-      setGalleryIdx((prev) => {
-        if (gallery.length <= 1) return 0;
-        let next = Math.floor(Math.random() * gallery.length);
-        // Evitar repetir el mismo índice 2 veces consecutivas.
-        if (next === prev) next = (prev + 1) % gallery.length;
-        return next;
-      });
-    }, 5000);
-    return () => clearInterval(t);
-  }, [gallery.length]);
+  // Carrusel: 3 visibles, navegación con flechas (sin auto-scroll)
+  const visibleGallery = (() => {
+    if (gallery.length === 0) return [null, null, null];
+    const arr = [];
+    for (let i = 0; i < 3; i++) arr.push(gallery[(gIdx + i) % gallery.length] || null);
+    return arr;
+  })();
 
-  const heroImg = settings.hero_image_url ? imgSrc(settings.hero_image_url) : HERO_DEFAULT;
-  const aboutImg = settings.about_image_url ? imgSrc(settings.about_image_url) : ABOUT_DEFAULT;
-  // Próximo evento: estático en settings (si tiene nombre) o torneo destacado/primero
-  const showUpcomingStatic = !!settings.upcoming_name;
-  const upcoming = showUpcomingStatic ? {
-    name: settings.upcoming_name,
-    city: settings.upcoming_city,
-    venue: settings.upcoming_venue,
-    start_date: settings.upcoming_start_date,
-    end_date: settings.upcoming_end_date,
-    categories: settings.upcoming_categories,
-    cover_url: settings.upcoming_cover_url ? imgSrc(settings.upcoming_cover_url) : null,
-  } : featured ? {
-    name: featured.name,
-    city: featured.city || "",
-    venue: featured.venue || "",
-    start_date: featured.start_date,
-    end_date: featured.end_date,
-    categories: featured.category || "",
-    cover_url: featured.cover_url ? imgSrc(featured.cover_url) : null,
-  } : null;
+  const festivalCats = (s.festival_categories && s.festival_categories.length) ? s.festival_categories : ["Sub-8", "Sub-10", "Sub-12"];
+  const premierCatsPar = (s.premier_categories_par && s.premier_categories_par.length) ? s.premier_categories_par : ["Sub-10", "Sub-12", "Sub-14"];
+  const premierCatsImp = (s.premier_categories_imp && s.premier_categories_imp.length) ? s.premier_categories_imp : ["Sub-11", "Sub-13", "Sub-15"];
 
   return (
-    <div data-testid="home-page" className="bg-fsc-gris/20">
-      {/* ============= HERO ============= */}
-      <section className="relative overflow-hidden min-h-[88vh] flex items-center bg-gradient-to-br from-white via-fsc-gris/40 to-white">
-        {/* Marca de agua: escudo FSC suave */}
-        <div className="absolute inset-0 flex items-center justify-end pr-[-10%] pointer-events-none" aria-hidden="true">
-          <img src={FSC_LOGO} alt="" className="h-[120%] w-auto opacity-[0.06] select-none" />
-        </div>
-        {/* Imagen de fondo opcional, muy sutil */}
-        {settings.hero_image_url && (
-          <div className="absolute inset-0 bg-cover bg-center opacity-15" style={{ backgroundImage: `url(${heroImg})` }} />
-        )}
-        <div className="absolute inset-0 fsc-grain pointer-events-none opacity-30" />
-
-        <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 grid lg:grid-cols-12 gap-10 items-center">
-          <div className="lg:col-span-7 fsc-fade-up">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded border-2 border-fsc-azul text-fsc-azul text-[10px] font-bold uppercase tracking-[0.3em]" data-testid="hero-edition">
-              <Trophy size={11}/> {settings.hero_edition || `Edición ${new Date().getFullYear()}`}
-            </div>
-
-            <h1 className="mt-6 font-display text-6xl sm:text-7xl md:text-8xl lg:text-[110px] leading-[0.85] text-fsc-negro tracking-wider">
-              {settings.hero_title || "FUTURE\nSOCCER CUP"}
+    <div className="min-h-screen" data-testid="home-fsc-v2" style={{ background: GRAY, fontFamily: "'Barlow', 'Inter', sans-serif" }}>
+      {/* ======= SECCIÓN 2: HERO ======= */}
+      <section className="relative" data-testid="home-hero">
+        <div className="grid grid-cols-1 lg:grid-cols-2 min-h-[480px] lg:min-h-[560px]" style={{ background: BLUE }}>
+          {/* Izquierda: textos */}
+          <div className="flex flex-col justify-center px-8 lg:px-16 py-12 text-white">
+            <span className="text-sm md:text-base font-bold uppercase tracking-[0.3em] opacity-80 italic" style={{ fontFamily: "'Dancing Script', cursive" }}>Torneo Internacional</span>
+            <h1 className="mt-4 font-black uppercase leading-none" style={{ fontFamily: "'Anton', 'Barlow Condensed', sans-serif", fontSize: "clamp(56px, 9vw, 160px)" }} data-testid="hero-edition">
+              {s.hero_edition_label || "EDICIÓN"}
             </h1>
-            <p className="font-cursive text-3xl sm:text-4xl text-fsc-rojo mt-3">
-              {settings.hero_subtitle || "Somos más que un torneo"}
-            </p>
-
-            <p className="mt-8 text-lg text-slate-700 max-w-2xl leading-relaxed">
-              La copa oficial del fútbol formativo infantil y juvenil de Colombia.
-              Una iniciativa del Grupo Empresarial Ancla.
-            </p>
-
-            <div className="mt-10 flex flex-wrap items-center gap-3">
-              <Link to={settings.hero_cta_url || "/registro-equipo"} className="fsc-btn-primary px-7 py-3.5 rounded-md text-sm flex items-center gap-2 group" data-testid="hero-cta-btn">
-                {settings.hero_cta_label || "Inscribe tu equipo"}
-                <ArrowRight className="group-hover:translate-x-1 transition-transform" size={16}/>
-              </Link>
-              <Link to="/eventos" className="fsc-btn-dark px-7 py-3.5 rounded-md text-sm" data-testid="hero-events-btn">
-                Ver eventos
-              </Link>
+            <div className="font-black leading-none mt-2" style={{ fontFamily: "'Anton', sans-serif", fontSize: "clamp(96px, 14vw, 220px)", color: "#fff", WebkitTextStroke: `2px ${RED}` }} data-testid="hero-year">
+              {s.hero_edition_year || "2026"}
+            </div>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <span className="inline-block px-5 py-2 bg-white text-[#0640c8] font-bold uppercase tracking-widest text-xs md:text-sm rounded-md shadow" data-testid="hero-month-1">{s.hero_month_1 || "Octubre"}</span>
+              <span className="inline-block px-5 py-2 bg-white text-[#0640c8] font-bold uppercase tracking-widest text-xs md:text-sm rounded-md shadow" data-testid="hero-month-2">{s.hero_month_2 || "Diciembre"}</span>
             </div>
           </div>
-
-          <div className="lg:col-span-5 hidden lg:block fsc-slide-in">
-            <div className="relative">
-              <div className="absolute -inset-6 bg-gradient-to-br from-fsc-azul/40 via-fsc-rojo/20 to-fsc-azul/40 rounded-3xl blur-2xl" />
-              <div className="relative bg-fsc-negro border-2 border-fsc-azul p-12 rounded-2xl">
-                <img src={FSC_LOGO} alt="Future Soccer Cup" className="w-full max-w-sm mx-auto" />
-              </div>
-            </div>
+          {/* Derecha: imagen */}
+          <div className="relative overflow-hidden">
+            <img src={s.hero_image_url || HERO_IMG_DEFAULT} alt="Future Soccer Cup" className="absolute inset-0 w-full h-full object-cover" />
           </div>
         </div>
+        {/* Banda roja inferior */}
+        <div className="h-6 lg:h-8" style={{ background: RED }} />
+        {/* Doble chevron centrado */}
+        <div className="absolute left-1/2 -translate-x-1/2 -bottom-5 z-10">
+          <div className="bg-white rounded-full shadow-lg p-2 flex flex-col -gap-1" style={{ color: BLUE }}>
+            <ChevronDown size={20} strokeWidth={3} />
+            <ChevronDown size={20} strokeWidth={3} className="-mt-3" />
+          </div>
+        </div>
+      </section>
 
-        {/* Tira inferior dorada con texto */}
-        <div className="absolute bottom-0 left-0 right-0 bg-fsc-azul text-fsc-negro py-2 overflow-hidden">
-          <div className="flex gap-12 whitespace-nowrap font-display text-sm tracking-[0.3em] animate-[scroll_30s_linear_infinite]">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <span key={i}>FUTURE SOCCER CUP · SOMOS MÁS QUE UN TORNEO · COLOMBIA ·</span>
+      {/* ======= SECCIÓN 3: ESTADÍSTICAS ======= */}
+      <section className="py-16 lg:py-20 bg-white" data-testid="home-stats">
+        <div className="max-w-7xl mx-auto px-6 text-center">
+          <h2 className="font-black uppercase tracking-tight leading-tight" style={{ color: RED, fontFamily: "'Anton', sans-serif", fontSize: "clamp(32px, 5vw, 64px)" }}>
+            SOMOS MÁS QUE UN TORNEO
+          </h2>
+          <div className="mt-10 lg:mt-14 grid grid-cols-2 md:grid-cols-4 gap-8 lg:gap-4">
+            {[
+              { n: s.stat_1_number, l: s.stat_1_label, def_n: "11", def_l: "Ediciones" },
+              { n: s.stat_2_number, l: s.stat_2_label, def_n: "+1K", def_l: "Clubes participantes" },
+              { n: s.stat_3_number, l: s.stat_3_label, def_n: "+100", def_l: "Clubes internacionales" },
+              { n: s.stat_4_number, l: s.stat_4_label, def_n: "+10K", def_l: "Deportistas" },
+            ].map((it, i) => (
+              <div key={i} className="flex flex-col items-center" data-testid={`home-stat-${i + 1}`}>
+                <div className="font-black leading-none" style={{ color: RED, fontFamily: "'Anton', sans-serif", fontSize: "clamp(48px, 7vw, 96px)" }}>
+                  {it.n || it.def_n}
+                </div>
+                <div className="mt-3 font-bold uppercase tracking-wider text-sm md:text-base" style={{ color: BLUE }}>
+                  {it.l || it.def_l}
+                </div>
+              </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ============= PRÓXIMO EVENTO ============= */}
-      {upcoming && (
-        <section className="bg-white py-20 border-t-4 border-fsc-azul" data-testid="upcoming-section">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-12">
-              <div className="inline-block">
-                <div className="font-cursive text-3xl text-fsc-azul">próximo evento</div>
-                <h2 className="font-display text-5xl md:text-6xl tracking-wider text-fsc-negro">PREMIER FSC</h2>
-                <div className="h-1 w-24 bg-fsc-rojo mx-auto mt-3" />
-              </div>
-            </div>
-
-            <div className="grid lg:grid-cols-12 gap-8 items-center bg-fsc-negro rounded-2xl overflow-hidden border-2 border-fsc-azul fsc-card-shadow">
-              <div className="lg:col-span-5 relative aspect-square lg:aspect-auto lg:h-full min-h-[400px]">
-                <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${upcoming.cover_url || heroImg})` }} />
-                <div className="absolute inset-0 bg-gradient-to-tr from-fsc-negro via-fsc-negro/50 to-transparent" />
-                <div className="absolute top-4 left-4 right-4 flex items-center justify-between">
-                  <img src={FSC_LOGO} alt="" className="h-16 w-16" />
-                  <span className="font-display text-fsc-azul text-2xl tracking-wider">FSC {new Date().getFullYear()}</span>
-                </div>
-              </div>
-
-              <div className="lg:col-span-7 p-8 lg:p-12 text-white">
-                <h3 className="font-display text-4xl md:text-5xl tracking-wider text-fsc-azul leading-tight">
-                  {upcoming.name}
-                </h3>
-                <div className="mt-6 grid sm:grid-cols-2 gap-4">
-                  {upcoming.start_date && (
-                    <InfoChip
-                      icon={<Calendar size={18}/>}
-                      label="Fechas"
-                      value={`${upcoming.start_date} → ${upcoming.end_date || ""}`}
-                    />
-                  )}
-                  {upcoming.city && <InfoChip icon={<MapPin size={18}/>} label="Ciudad" value={upcoming.city} />}
-                  {upcoming.venue && <InfoChip icon={<Trophy size={18}/>} label="Sede" value={upcoming.venue} />}
-                  {upcoming.categories && <InfoChip icon={<Users size={18}/>} label="Categorías" value={upcoming.categories} />}
-                </div>
-                <Link to="/registro-equipo" className="mt-8 fsc-btn-primary px-7 py-3.5 rounded-md text-sm inline-flex items-center gap-2 group" data-testid="upcoming-register-btn">
-                  Inscribe tu equipo AQUÍ
-                  <ArrowRight className="group-hover:translate-x-1 transition-transform" size={16}/>
-                </Link>
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ============= NOSOTROS ============= */}
-      <section className="bg-fsc-negro text-white py-20 relative overflow-hidden" data-testid="about-section">
-        <div className="absolute inset-0 fsc-stripe opacity-30 pointer-events-none" />
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid lg:grid-cols-2 gap-12 items-center">
-          <div className="fsc-fade-up">
-            <div className="font-cursive text-2xl text-fsc-azul">conócenos</div>
-            <h2 className="font-display text-5xl md:text-6xl tracking-wider mt-1">NOSOTROS</h2>
-            <div className="h-1 w-20 bg-fsc-azul mt-3 mb-7" />
-            <h3 className="font-display text-2xl md:text-3xl text-fsc-azul tracking-wider mb-4">
-              {settings.about_title || "Somos más que un torneo"}
-            </h3>
-            <p className="text-fsc-gris/90 leading-relaxed whitespace-pre-line">
-              {settings.about_body || "Future Soccer Cup es una iniciativa del Grupo Empresarial Ancla para impulsar el talento del fútbol infantil y juvenil en Colombia. Reunimos clubes, familias y formadores en una experiencia integral con calidad deportiva, hospedaje y turismo."}
-            </p>
-            <Link to="/nosotros" className="mt-8 fsc-btn-dark inline-flex items-center gap-2 px-6 py-3 rounded-md text-sm" data-testid="about-more-btn">
-              Saber más <ArrowRight size={16}/>
-            </Link>
-          </div>
+      {/* ======= SECCIÓN 4: GALERÍA / FINALES ======= */}
+      <section className="py-16 lg:py-20" style={{ background: GRAY }} data-testid="home-finales">
+        <div className="max-w-7xl mx-auto px-6">
+          {/* Carrusel 3 visibles */}
           <div className="relative">
-            <div className="absolute -inset-2 bg-fsc-azul rounded-2xl rotate-2" />
-            <img src={aboutImg} alt="" className="relative rounded-2xl w-full h-[460px] object-cover border-2 border-fsc-azul" />
-          </div>
-        </div>
-      </section>
-
-      {/* ============= EVENTOS ACTIVOS ============= */}
-      {events.length > 0 && (
-        <section className="py-20 bg-white" data-testid="events-section">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-end justify-between mb-10 flex-wrap gap-4">
-              <div>
-                <div className="font-cursive text-2xl text-fsc-azul">nuestros</div>
-                <h2 className="font-display text-5xl md:text-6xl tracking-wider text-fsc-negro">EVENTOS</h2>
-                <div className="h-1 w-20 bg-fsc-rojo mt-3" />
-              </div>
-              <Link to="/eventos" className="text-fsc-negro hover:text-fsc-azul font-bold uppercase text-sm tracking-widest flex items-center gap-2">
-                Ver todos <ArrowRight size={14}/>
-              </Link>
-            </div>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {events.slice(0, 6).map((e) => (
-                <EventCard key={e.id} ev={e} />
+            <button
+              onClick={() => setGIdx((i) => (i - 1 + Math.max(gallery.length, 1)) % Math.max(gallery.length, 1))}
+              className="absolute -left-2 lg:-left-12 top-1/2 -translate-y-1/2 bg-white rounded-full shadow-lg p-3 hover:scale-110 transition disabled:opacity-30 z-10"
+              disabled={gallery.length === 0}
+              data-testid="gallery-prev"
+              aria-label="Anterior"
+              style={{ color: BLUE }}
+            >
+              <ChevronLeft size={24} strokeWidth={3} />
+            </button>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+              {visibleGallery.map((img, i) => (
+                <div key={i} className="aspect-[4/3] rounded-lg overflow-hidden shadow-md" style={{ background: BLUE }} data-testid={`gallery-item-${i}`}>
+                  {img && (
+                    <img src={img.url || img.image_url || img.image || ""} alt={img.title || ""} className="w-full h-full object-cover" />
+                  )}
+                </div>
               ))}
             </div>
+            <button
+              onClick={() => setGIdx((i) => (i + 1) % Math.max(gallery.length, 1))}
+              className="absolute -right-2 lg:-right-12 top-1/2 -translate-y-1/2 bg-white rounded-full shadow-lg p-3 hover:scale-110 transition disabled:opacity-30 z-10"
+              disabled={gallery.length === 0}
+              data-testid="gallery-next"
+              aria-label="Siguiente"
+              style={{ color: BLUE }}
+            >
+              <ChevronRight size={24} strokeWidth={3} />
+            </button>
           </div>
-        </section>
-      )}
-
-      {/* ============= GALERÍA ============= */}
-      {gallery.length > 0 && (
-        <section className="py-20 bg-fsc-gris/30 text-fsc-negro relative" data-testid="gallery-section">
-          <div className="absolute inset-0 fsc-stripe opacity-30 pointer-events-none" />
-          {/* Marca de agua del escudo */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none" aria-hidden="true">
-            <img src={FSC_LOGO} alt="" className="h-[80%] w-auto opacity-[0.04] select-none" />
+          {/* Título + subtítulo + botón */}
+          <div className="mt-10 text-center">
+            <h2 className="font-black uppercase tracking-tight leading-none" style={{ color: RED, fontFamily: "'Anton', sans-serif", fontSize: "clamp(40px, 6vw, 88px)" }}>
+              FINALES
+            </h2>
+            <p className="mt-2 italic text-lg md:text-xl" style={{ color: BLUE, fontFamily: "'Dancing Script', cursive" }} data-testid="finales-subtitle">
+              {s.finales_subtitle || "Estadio Centenario de Armenia"}
+            </p>
+            <Link
+              to={s.finales_button_url || "/nosotros"}
+              data-testid="finales-cta"
+              className="inline-block mt-6 px-8 py-3 text-white font-bold uppercase tracking-widest rounded-md shadow hover:opacity-90 transition"
+              style={{ background: BLUE }}
+            >
+              {s.finales_button_label || "Conoce más de FSC"}
+            </Link>
           </div>
-          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-10">
-              <div className="font-cursive text-2xl text-fsc-rojo">recuerdos</div>
-              <h2 className="font-display text-5xl md:text-6xl tracking-wider text-fsc-negro">GALERÍA</h2>
-              <div className="h-1 w-20 bg-fsc-azul mx-auto mt-3" />
-            </div>
-            <GalleryCarousel images={gallery} idx={galleryIdx} setIdx={setGalleryIdx} />
-          </div>
-        </section>
-      )}
-    </div>
-  );
-}
-
-function InfoChip({ icon, label, value }) {
-  return (
-    <div className="border border-fsc-azul/40 rounded-md p-3 bg-white/5">
-      <div className="flex items-center gap-2 text-fsc-azul text-[10px] font-bold uppercase tracking-widest">
-        {icon} {label}
-      </div>
-      <div className="mt-1 text-base font-semibold text-white">{value}</div>
-    </div>
-  );
-}
-
-function EventCard({ ev }) {
-  return (
-    <Link to="/datos-estadisticas" className="group block bg-white border-2 border-fsc-negro rounded-xl overflow-hidden fsc-card-shadow" data-testid={`event-card-${ev.id}`}>
-      <div className="aspect-[16/9] bg-fsc-negro relative overflow-hidden">
-        {ev.cover_url ? (
-          <img src={imgSrc(ev.cover_url)} alt="" className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-        ) : (
-          <div className="absolute inset-0 fsc-stripe opacity-40 bg-fsc-azul-noche flex items-center justify-center">
-            <img src={FSC_LOGO} alt="" className="h-24 w-24 opacity-80" />
-          </div>
-        )}
-        {ev.featured && (
-          <span className="absolute top-3 right-3 bg-fsc-azul text-fsc-negro text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded">Destacado</span>
-        )}
-      </div>
-      <div className="p-5">
-        <div className="font-cursive text-xl text-fsc-azul-oscuro">edición {ev.season || ""}</div>
-        <h3 className="font-display text-2xl tracking-wider text-fsc-negro mt-1">{ev.name}</h3>
-        <div className="mt-3 flex flex-wrap gap-1.5 text-xs text-slate-600">
-          {ev.start_date && <span className="flex items-center gap-1"><Calendar size={12}/> {ev.start_date}</span>}
-          {ev.city && <span className="flex items-center gap-1"><MapPin size={12}/> {ev.city}</span>}
         </div>
-        {/* Todas las categorías inscritas — chips */}
-        {((ev.categories && ev.categories.length > 0) || ev.category) && (
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {(ev.categories && ev.categories.length > 0
-              ? ev.categories.map((c) => c.name).filter(Boolean)
-              : [ev.category]
-            ).map((cat) => (
-              <span key={cat} className="text-[10px] font-bold uppercase tracking-widest bg-fsc-azul/10 text-fsc-azul-oscuro border border-fsc-azul/30 px-2 py-0.5 rounded">
-                {cat}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-    </Link>
-  );
-}
+      </section>
 
-function GalleryCarousel({ images, idx, setIdx }) {
-  const visible = 3;
-  const max = Math.max(0, images.length - visible);
-  return (
-    <div className="relative" data-testid="gallery-carousel" data-active-idx={idx}>
-      <div className="overflow-hidden">
-        <div className="flex gap-4 transition-transform duration-500" style={{ transform: `translateX(-${idx * (100 / visible)}%)` }}>
-          {images.map((g, i) => (
-            <div key={g.id} className="flex-none w-full sm:w-1/2 lg:w-1/3 group" data-testid={`gallery-slide-${i}`} data-active={i === idx ? "1" : "0"}>
-              <div className="aspect-[4/3] rounded-lg overflow-hidden border-2 border-fsc-azul/30 group-hover:border-fsc-azul transition-colors">
-                <img src={imgSrc(g.image_url)} alt={g.title || ""} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+      {/* ======= SECCIÓN 5: EJE CAFETERO + MASCOTA ======= */}
+      <section className="py-16 lg:py-20 bg-white" data-testid="home-region">
+        <div className="max-w-7xl mx-auto px-6 text-center">
+          <h2 className="font-black uppercase tracking-tight leading-tight" style={{ color: RED, fontFamily: "'Anton', sans-serif", fontSize: "clamp(32px, 5vw, 64px)" }} data-testid="region-title">
+            {s.region_title || "EL EJE CAFETERO LOS ESPERA"}
+          </h2>
+          <p className="mt-2 italic text-xl md:text-2xl" style={{ color: BLUE, fontFamily: "'Dancing Script', cursive" }} data-testid="region-subtitle">
+            {s.region_subtitle || "Comfenalco Soleden"}
+          </p>
+          <div className="mt-8 rounded-2xl mx-auto max-w-3xl aspect-[16/10] overflow-hidden flex items-center justify-center" style={{ background: BLUE }} data-testid="mascot-box">
+            <img src={s.mascot_image_url || MASCOT_DEFAULT} alt="Mascota Future Soccer Cup" className="max-h-full max-w-full object-contain" />
+          </div>
+        </div>
+      </section>
+
+      {/* ======= SECCIÓN 6: FESTIVAL & PREMIER (2 columnas) ======= */}
+      <section className="py-16 lg:py-20" style={{ background: GRAY }} data-testid="home-categories">
+        <div className="max-w-6xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16">
+          {/* FESTIVAL */}
+          <div className="text-center" data-testid="cat-festival">
+            <div className="flex items-center justify-center gap-3 mb-3">
+              {s.festival_logo_url
+                ? <img src={s.festival_logo_url} alt="Festival" className="h-12" />
+                : <h3 className="font-black uppercase tracking-tighter" style={{ color: BLUE, fontFamily: "'Anton', sans-serif", fontSize: "clamp(32px, 4vw, 56px)" }}>FESTIVAL</h3>}
+              <Calendar size={32} style={{ color: BLUE }} />
+            </div>
+            <div className="inline-block px-6 py-2 mb-4 font-bold uppercase tracking-widest text-sm rounded-md shadow" style={{ background: BLUE, color: "#fff" }} data-testid="festival-date-badge">
+              {s.festival_date_badge || "2 OCT"}
+            </div>
+            <div className="rounded-lg p-3 space-y-2" style={{ border: `4px solid ${RED}`, background: "#fff" }}>
+              {festivalCats.length === 0 ? (
+                <p className="text-slate-400 italic text-sm py-4">Sin categorías aún</p>
+              ) : festivalCats.map((c, i) => (
+                <div key={i} className="px-4 py-3 font-bold uppercase tracking-wider text-sm text-white rounded" style={{ background: RED }} data-testid={`festival-cat-${i}`}>
+                  {c}
+                </div>
+              ))}
+            </div>
+            <Link to={s.festival_cta_url || "/registro-equipo"} data-testid="festival-cta" className="inline-block mt-6 px-8 py-3 font-bold uppercase tracking-widest rounded-md text-white shadow hover:opacity-90" style={{ background: BLUE }}>
+              Acepta el reto
+            </Link>
+          </div>
+          {/* PREMIER */}
+          <div className="text-center" data-testid="cat-premier">
+            <div className="flex items-center justify-center gap-3 mb-3">
+              {s.premier_logo_url
+                ? <img src={s.premier_logo_url} alt="Premier" className="h-12" />
+                : <h3 className="font-black uppercase tracking-tighter" style={{ color: BLUE, fontFamily: "'Anton', sans-serif", fontSize: "clamp(32px, 4vw, 56px)" }}>PREMIER</h3>}
+              <Calendar size={32} style={{ color: BLUE }} />
+            </div>
+            <div className="inline-block px-6 py-2 mb-4 font-bold uppercase tracking-widest text-sm rounded-md shadow" style={{ background: BLUE, color: "#fff" }} data-testid="premier-date-badge">
+              {s.premier_date_badge || "2 OCT"}
+            </div>
+            <div className="rounded-lg p-3 space-y-3" style={{ border: `4px solid ${RED}`, background: "#fff" }}>
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-widest mb-1 text-left pl-2" style={{ color: BLUE }}>Categorías par</div>
+                <div className="space-y-2">
+                  {premierCatsPar.map((c, i) => (
+                    <div key={i} className="px-4 py-3 font-bold uppercase tracking-wider text-sm text-white rounded" style={{ background: RED }} data-testid={`premier-par-${i}`}>{c}</div>
+                  ))}
+                </div>
               </div>
-              {g.title && <div className="mt-3 font-display text-lg tracking-wider text-fsc-azul">{g.title}</div>}
-              {g.caption && <div className="text-xs text-slate-600">{g.caption}</div>}
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-widest mb-1 text-left pl-2" style={{ color: BLUE }}>Categorías impar</div>
+                <div className="space-y-2">
+                  {premierCatsImp.map((c, i) => (
+                    <div key={i} className="px-4 py-3 font-bold uppercase tracking-wider text-sm text-white rounded" style={{ background: RED }} data-testid={`premier-imp-${i}`}>{c}</div>
+                  ))}
+                </div>
+              </div>
             </div>
-          ))}
+            <Link to={s.premier_cta_url || "/registro-equipo"} data-testid="premier-cta" className="inline-block mt-6 px-8 py-3 font-bold uppercase tracking-widest rounded-md text-white shadow hover:opacity-90" style={{ background: BLUE }}>
+              Acepta el reto
+            </Link>
+          </div>
         </div>
-      </div>
-      {images.length > visible && (
-        <div className="mt-6 flex items-center justify-center gap-3">
-          <button onClick={() => setIdx(Math.max(0, idx - 1))} className="h-10 w-10 rounded-full border-2 border-fsc-azul text-fsc-azul hover:bg-fsc-azul hover:text-fsc-negro transition-colors flex items-center justify-center disabled:opacity-30" disabled={idx === 0} data-testid="gallery-prev">
-            <ChevronLeft size={18}/>
-          </button>
-          <span className="text-xs font-bold uppercase tracking-widest text-fsc-gris">{idx + 1} / {max + 1}</span>
-          <button onClick={() => setIdx(Math.min(max, idx + 1))} className="h-10 w-10 rounded-full border-2 border-fsc-azul text-fsc-azul hover:bg-fsc-azul hover:text-fsc-negro transition-colors flex items-center justify-center disabled:opacity-30" disabled={idx === max} data-testid="gallery-next">
-            <ChevronRight size={18}/>
-          </button>
+      </section>
+
+      {/* ======= SECCIÓN 7: FOOTER ======= */}
+      <footer className="py-12 lg:py-16" style={{ background: RED }} data-testid="home-footer">
+        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+          <h2 className="font-black uppercase text-white leading-tight" style={{ fontFamily: "'Anton', sans-serif", fontSize: "clamp(28px, 4vw, 56px)" }} data-testid="footer-heading">
+            {s.footer_heading || "¿Y SI NOS TOMAMOS UN CAFECITO JUNTOS?"}
+          </h2>
+          <div className="text-white space-y-4 lg:text-right">
+            {s.contact_phone && (
+              <a href={s.whatsapp_url || `https://wa.me/${(s.contact_phone || "").replace(/\D/g, "")}`} className="inline-flex items-center gap-3 text-lg md:text-xl font-bold hover:opacity-80 transition lg:justify-end w-full" data-testid="footer-whatsapp">
+                <MessageCircle size={24} className="shrink-0" />
+                {s.contact_phone}
+              </a>
+            )}
+            {s.contact_email && (
+              <a href={`mailto:${s.contact_email}`} className="flex items-center gap-3 text-lg md:text-xl font-bold hover:opacity-80 transition lg:justify-end" data-testid="footer-email">
+                <Mail size={24} className="shrink-0" />
+                {s.contact_email}
+              </a>
+            )}
+            <div className="flex items-center gap-4 lg:justify-end pt-2">
+              {s.instagram && (
+                <a href={s.instagram} target="_blank" rel="noreferrer" className="bg-white/20 hover:bg-white/30 rounded-full p-3 transition" data-testid="footer-instagram"><Instagram size={20} className="text-white" /></a>
+              )}
+              {s.facebook && (
+                <a href={s.facebook} target="_blank" rel="noreferrer" className="bg-white/20 hover:bg-white/30 rounded-full p-3 transition" data-testid="footer-facebook"><Facebook size={20} className="text-white" /></a>
+              )}
+            </div>
+          </div>
         </div>
-      )}
+      </footer>
+
+      {/* ======= BOTÓN FLOTANTE WHATSAPP ======= */}
+      <a
+        href={s.whatsapp_url || `https://wa.me/${(s.contact_phone || "573246134658").replace(/\D/g, "")}`}
+        target="_blank"
+        rel="noreferrer"
+        className="fixed bottom-6 right-6 z-40 bg-[#25D366] hover:bg-[#1ebd5b] text-white rounded-full p-4 shadow-2xl transition"
+        data-testid="floating-whatsapp"
+        aria-label="Contáctanos por WhatsApp"
+      >
+        <MessageCircle size={28} strokeWidth={2.5} />
+      </a>
     </div>
   );
 }

@@ -5245,31 +5245,62 @@ HOME_SETTINGS_ID = "default"
 
 
 class HomeSettings(BaseModel):
-    # Hero
-    hero_edition: Optional[str] = ""  # Ej. "Edición 2026" / "Premier Diciembre 2025"
+    # === HERO (nuevo wireframe FSC v2) ===
+    hero_edition_label: Optional[str] = "EDICIÓN"
+    hero_edition_year: Optional[str] = "2026"
+    hero_month_1: Optional[str] = "Octubre"
+    hero_month_2: Optional[str] = "Diciembre"
+    hero_image_url: Optional[str] = ""
+    # === Estadísticas (4 columnas) ===
+    stat_1_number: Optional[str] = "11"
+    stat_1_label: Optional[str] = "Ediciones"
+    stat_2_number: Optional[str] = "+1K"
+    stat_2_label: Optional[str] = "Clubes participantes"
+    stat_3_number: Optional[str] = "+100"
+    stat_3_label: Optional[str] = "Clubes internacionales"
+    stat_4_number: Optional[str] = "+10K"
+    stat_4_label: Optional[str] = "Deportistas"
+    # === Finales ===
+    finales_subtitle: Optional[str] = "Estadio Centenario de Armenia"
+    finales_button_label: Optional[str] = "Conoce más de FSC"
+    finales_button_url: Optional[str] = "/nosotros"
+    # === Eje cafetero / mascota ===
+    region_title: Optional[str] = "EL EJE CAFETERO LOS ESPERA"
+    region_subtitle: Optional[str] = "Comfenalco Soleden"
+    mascot_image_url: Optional[str] = ""
+    # === Festival / Premier (categorías editables del home) ===
+    festival_logo_url: Optional[str] = ""
+    festival_date_badge: Optional[str] = "2 OCT"
+    festival_categories: Optional[List[str]] = []  # ["Sub-8", "Sub-10", ...]
+    festival_cta_url: Optional[str] = "/registro-equipo"
+    premier_logo_url: Optional[str] = ""
+    premier_date_badge: Optional[str] = "2 OCT"
+    premier_categories_par: Optional[List[str]] = []
+    premier_categories_imp: Optional[List[str]] = []
+    premier_cta_url: Optional[str] = "/registro-equipo"
+    # === Footer / contacto ===
+    contact_email: Optional[str] = "info@futuresoccercup.com"
+    contact_phone: Optional[str] = "+57 324 6134658"
+    instagram: Optional[str] = ""
+    facebook: Optional[str] = ""
+    youtube: Optional[str] = ""
+    whatsapp_url: Optional[str] = "https://wa.me/573246134658"
+    footer_heading: Optional[str] = "¿Y SI NOS TOMAMOS UN CAFECITO JUNTOS?"
+    # === Legacy (mantener compat con admin existente) ===
     hero_title: Optional[str] = "Future Soccer Cup"
     hero_subtitle: Optional[str] = "La cumbre del fútbol formativo infantil & juvenil."
     hero_cta_label: Optional[str] = "Inscribe tu equipo"
     hero_cta_url: Optional[str] = "/registro-equipo"
-    hero_image_url: Optional[str] = ""
-    # Próximo Evento (estático opcional, complementa el torneo featured)
     upcoming_name: Optional[str] = ""
     upcoming_city: Optional[str] = ""
     upcoming_venue: Optional[str] = ""
     upcoming_start_date: Optional[str] = ""
     upcoming_end_date: Optional[str] = ""
-    upcoming_categories: Optional[str] = ""  # "Sub-8, Sub-10, ..."
+    upcoming_categories: Optional[str] = ""
     upcoming_cover_url: Optional[str] = ""
-    # Nosotros
     about_title: Optional[str] = "Somos más que un torneo"
     about_body: Optional[str] = "Future Soccer Cup es una iniciativa del Grupo Empresarial Ancla para impulsar el talento del fútbol infantil y juvenil en Colombia."
     about_image_url: Optional[str] = ""
-    # Contacto / Redes
-    contact_email: Optional[str] = "info@futuresoccercup.com"
-    contact_phone: Optional[str] = "+57 (000) 000-0000"
-    instagram: Optional[str] = "@FutureSoccerCup"
-    facebook: Optional[str] = ""
-    youtube: Optional[str] = ""
 
 
 @api.get("/home-settings", response_model=HomeSettings)
