@@ -16,6 +16,14 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-06-25 — Iter29 — Fuente "Plane Crash" en Home v3 (corrección)
+- Diagnóstico: el preview de Emergent strippea `<style>` y `<link>` custom de `index.html`. El `@font-face` se inyecta en runtime desde `src/index.js` (idempotente, `font-display: swap`).
+- La fuente Plane Crash tiene los glifos de letras mapeados a las **minúsculas** (a-z) y los dígitos; mayúsculas y acentos caen a pictogramas decorativos.
+- Helper `planeCrashSafe()` en `Home.jsx` normaliza (lowercase + strip diacríticos) antes de renderizar.
+- Plane Crash aplicada únicamente a: hero `EDICION 2026`, `SOMOS MAS QUE UN TORNEO`, números de stats (`11 / +1k / +100 / +10k`), `FINALES`, `EL EJE CAFETERO LOS ESPERA`, `FESTIVAL`, `PREMIER`, footer heading `Y SI NOS / TOMAMOS / UN CAFECITO / JUNTOS?`, teléfono y email del footer.
+- El logo "FUTUR SOCCER CUP", tagline cursivo "Torneo Internacional", navbar y subtítulos siguen con Anton/Allura/Barlow.
+- Verificado con testing_agent_v3_fork (iter29.json) — 100% pass frontend, sin regresión en /login, /admin, /cotizar.
+
 ### 2026-06-22 — Iter27 — Módulo Fixture/Partidos/Resultados/Clasificación (Spec Final)
 - Modelo `Venue` (canchas) + CRUD `/api/venues` (GET público, POST/PUT/DELETE solo admin).
 - Componente `VenuePicker.jsx` con dropdown + modal inline "+ Crear nueva cancha", integrado en FixtureGenerator y AdminMatches.
