@@ -1861,6 +1861,7 @@ async def list_fixtures(_: dict = Depends(require_admin)):
         cnt = await db.matches.count_documents({
             "tournament_id": f.get("tournament_id"),
             "group_name": f.get("group_name"),
+            "status": "programado",
             # category vive en el team, no en el match; usamos team_ids del fixture como fallback.
             "$or": [
                 {"home_team_id": {"$in": f.get("team_ids") or []}},
