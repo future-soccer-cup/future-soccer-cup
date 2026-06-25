@@ -3,7 +3,14 @@ import { Link, NavLink } from "react-router-dom";
 import api from "../lib/api";
 import { ChevronLeft, ChevronRight, ChevronUp, Calendar, MessageCircle, Mail, Instagram, Facebook } from "lucide-react";
 
-const HERO_IMG_DEFAULT = "https://images.unsplash.com/photo-1431324155629-1a6deb1dec8d?auto=format&fit=crop&w=1600&q=80";
+// Imagen de fondo del hero — estadio/gradas con público (placeholder reemplazable desde CMS)
+const HERO_BG_DEFAULT = "https://images.unsplash.com/photo-1577223625816-7546f13df25d?auto=format&fit=crop&w=1920&q=80";
+// Imagen superpuesta del hero — niños jugando fútbol (placeholder reemplazable desde CMS)
+const HERO_FG_DEFAULT = "https://images.unsplash.com/photo-1517466787929-bc90951d0974?auto=format&fit=crop&w=1200&q=85";
+// Logo FSC (wordmark) — placeholder reemplazable desde CMS
+const NAV_LOGO_DEFAULT = "https://customer-assets.emergentagent.com/job_fixture-stats-pro/artifacts/y4ulg6l9_FUTRE%20SOCCER%20CUP%202025_Mesa%20de%20trabajo%201.png";
+// Escudo FSC (logo circular con león) — placeholder reemplazable desde CMS
+const NAV_SHIELD_DEFAULT = "https://customer-assets.emergentagent.com/job_fixture-stats-pro/artifacts/y4ulg6l9_FUTRE%20SOCCER%20CUP%202025_Mesa%20de%20trabajo%201.png";
 const MASCOT_DEFAULT = "https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=1200&q=80";
 
 const RED = "#e31f27";
@@ -46,32 +53,55 @@ export default function Home() {
 
   return (
     <div className="min-h-screen" data-testid="home-fsc-v2" style={{ background: "#fff", fontFamily: "'Barlow', 'Inter', sans-serif" }}>
-      {/* ======= HERO — navbar embebida + foto fondo completo + EDICIÓN 2026 ======= */}
+      {/* ======= HERO — navbar embebida + foto fondo + cutout niños + EDICIÓN 2026 ======= */}
       <section className="relative overflow-hidden" data-testid="home-hero">
         <div className="relative w-full" style={{ minHeight: "720px" }}>
-          {/* Foto de fondo COMPLETA */}
+          {/* (1) FONDO: estadio/gradas, ocupa todo el hero, recibe el overlay de color */}
           <img
-            src={s.hero_image_url || HERO_IMG_DEFAULT}
-            alt="Future Soccer Cup"
+            src={s.hero_image_url || HERO_BG_DEFAULT}
+            alt=""
             className="absolute inset-0 w-full h-full object-cover"
-            style={{ objectPosition: "center 25%" }}
+            style={{ objectPosition: "center 30%" }}
+            data-testid="hero-bg-image"
           />
-          {/* Overlay azul (arriba 55%) + rojo (abajo 45%) en mix-blend para teñir la foto */}
-          <div className="absolute inset-x-0 top-0 mix-blend-multiply" style={{ height: "55%", background: BLUE }} />
-          <div className="absolute inset-x-0 bottom-0 mix-blend-multiply" style={{ height: "45%", background: RED }} />
+          {/* Overlay azul (arriba 55%) + rojo (abajo 45%) en mix-blend para teñir SÓLO el fondo */}
+          <div className="absolute inset-x-0 top-0 mix-blend-multiply pointer-events-none" style={{ height: "55%", background: BLUE }} />
+          <div className="absolute inset-x-0 bottom-0 mix-blend-multiply pointer-events-none" style={{ height: "45%", background: RED }} />
           {/* Capa azul más oscura SOLO en la zona del texto (lado izquierdo) para legibilidad */}
           <div className="hidden md:block absolute left-0 top-0 bottom-0 w-[55%] pointer-events-none" style={{ background: "linear-gradient(to right, rgba(6,64,200,0.55), transparent 80%)" }} />
+
+          {/* (2) IMAGEN SUPERPUESTA: niños jugando — pegada al borde derecho, nítida, sin tinte */}
+          <img
+            src={s.hero_foreground_url || HERO_FG_DEFAULT}
+            alt="Future Soccer Cup — niños jugando"
+            className="hidden md:block absolute top-0 right-0 h-full object-cover object-bottom pointer-events-none drop-shadow-2xl"
+            style={{ width: "42%", zIndex: 5 }}
+            data-testid="hero-foreground-image"
+            onError={(e) => { e.currentTarget.style.display = "none"; }}
+          />
 
           {/* === NAVBAR EMBEBIDA EN EL HERO === */}
           <div className="relative z-20 max-w-7xl mx-auto px-4 md:px-8 pt-5">
             <div className="flex items-center justify-between gap-4">
               <Link to="/" className="flex items-center gap-3" data-testid="nav-logo-link">
+                {/* Escudo / logo circular del FSC (a la izquierda del wordmark) */}
                 <img
-                  src="https://customer-assets.emergentagent.com/job_fixture-stats-pro/artifacts/y4ulg6l9_FUTRE%20SOCCER%20CUP%202025_Mesa%20de%20trabajo%201.png"
-                  alt="Future Soccer Cup"
+                  src={s.nav_shield_url || NAV_SHIELD_DEFAULT}
+                  alt="Escudo Future Soccer Cup"
                   className="h-16 md:h-20 w-auto drop-shadow-lg"
                   onError={(e) => { e.currentTarget.style.display = "none"; }}
+                  data-testid="nav-shield"
                 />
+                {/* Wordmark / logo en imagen (oculto si no hay URL) */}
+                {(s.nav_logo_url || NAV_LOGO_DEFAULT) && (
+                  <img
+                    src={s.nav_logo_url || NAV_LOGO_DEFAULT}
+                    alt="Future Soccer Cup"
+                    className="h-12 md:h-16 w-auto drop-shadow-lg hidden lg:block"
+                    onError={(e) => { e.currentTarget.style.display = "none"; }}
+                    data-testid="nav-logo-img"
+                  />
+                )}
                 <span className="hidden sm:inline-block font-black leading-[0.85] text-white drop-shadow-md" style={{ ...PLANE_CRASH, fontSize: "clamp(18px, 2vw, 28px)" }}>
                   {planeCrashSafe("FUTUR")}<br/>{planeCrashSafe("SOCCER")}<br/>{planeCrashSafe("CUP")}
                 </span>

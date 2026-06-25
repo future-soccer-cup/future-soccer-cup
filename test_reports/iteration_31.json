@@ -1,0 +1,38 @@
+{
+  "summary": "Tested iter31 changes (hero bg+fg images, navbar shield, CMS for new fields). Backend GET/PUT /api/home-settings exposes & persists all new fields (nav_logo_url, nav_shield_url, hero_image_url, hero_foreground_url, hero_edition_label/year/month_1/month_2). Frontend Home renders hero-bg-image + hero-foreground-image correctly (FG at right ~42% width, z-index 5, no color tint, no overlap with edition text — measured 93px gap). Admin /admin/home (NOT /admin/configuracion-home) renders all 11 sections with required testids and full save→reload persistence flow works.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Navbar nav-shield", "issue": "Default placeholder URL (NAV_SHIELD_DEFAULT in Home.jsx, customer-assets...y4ulg6l9_FUTRE_SOCCER_CUP_2025.png) returns HTTP 403. The image fails to load and is hidden via onError handler. The wordmark text span is still shown via Plane Crash font, so navbar isn't visually empty, but the shield image itself is not visible until admin uploads one through CMS.", "selector": "[data-testid=nav-shield]", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [
+      {"flow": "Home page reflects updated hero_edition_label after CMS save", "issue": "After PUT /home-settings with hero_edition_label='EDICION TEST', admin reload confirms persistence, but visiting Home (/) immediately reads hero-edition text content as 'edicion' (missing the ' test' suffix). DB+admin form persisted correctly; could be a transient render/timing issue or text_content trimming artifact. Worth a manual verification by main agent.", "affected_selectors": ["[data-testid=hero-edition]"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_home_settings_iter31.py",
+    "/app/test_reports/pytest/iteration_31.xml"
+  ],
+  "action_items": [
+    "Review request stated route is /admin/configuracion-home but App.js actually defines it at /admin/home (line 123). Either fix the docs in PRD/handoff notes or rename the route — recommend keeping current /admin/home for backward compat unless user specifically wants the Spanish slug.",
+    "Default NAV_SHIELD_DEFAULT URL returns 403 — pick a real working placeholder (or default to empty string and let CMS upload populate). Same URL is used for NAV_LOGO_DEFAULT, which also fails but is hidden via onError.",
+    "Manually verify hero-edition text on Home (/) updates immediately after CMS save — admin persistence works, but quick navigation showed truncated text. Likely OK on real user reload, but confirm."
+  ],
+  "critical_code_review_comments": [
+    "Home.jsx: NAV_LOGO_DEFAULT and NAV_SHIELD_DEFAULT are identical broken URLs (returns 403). Should be distinct images or default to empty.",
+    "HomeSettings model defaults nav_shield_url and hero_foreground_url to empty strings while nav_logo_url has a hardcoded URL — inconsistent default strategy; consider all-empty defaults and rely on frontend fallbacks (already implemented in Home.jsx via `|| DEFAULT`).",
+    "AdminHomeSettings.jsx (260 lines) is OK in size; uses good ImageUpload component and structured Sections. No redundancy or missing async issues."
+  ],
+  "updated_files": ["/app/backend/tests/test_home_settings_iter31.py"],
+  "success_rate": {"backend": "100%", "frontend": "95%"},
+  "test_credentials": "admin@futuresoccercup.com / FSCAdmin2025! (works)",
+  "seed_data_creation": "None — all test mutations (EDICION TEST / shield+fg URLs) were reverted to original values.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Admin route for home settings CMS is /admin/home (not /admin/configuracion-home as listed in some requests). 3/3 pytest backend tests pass: test_home_settings_iter31.py covers GET-public, PUT-with-new-fields persistence (with restore), and PUT-requires-auth. Frontend Home hero correctly renders 2 images: BG (tinted by red+blue mix-blend overlays) and FG (right side ~42% width, z-index 5, NO tint), with edition text on left side (md:w-[55%]) — no overlap measured. Default placeholder for nav-shield (customer-assets emergentagent URL) returns 403 and is hidden via onError.",
+  "rca of the issue": "(1) Wrong admin route in request: handoff note from main agent said /admin/configuracion-home but actual App.js (line 123) registers it under /admin/home. (2) Placeholder shield/logo URL was set during a previous iteration and the S3 asset is no longer available."
+}

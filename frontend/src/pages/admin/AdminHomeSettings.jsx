@@ -1,32 +1,67 @@
 import { useCallback, useEffect, useState } from "react";
 import api from "../../lib/api";
-import { Save, Home as HomeIcon, Trophy, Info, Phone } from "lucide-react";
+import { Save, Home as HomeIcon, Trophy, Info, Phone, Image as ImageIcon, Hash, MapPin, Flag } from "lucide-react";
 import { toast } from "sonner";
 import ImageUpload from "../../components/ImageUpload";
 
 const EMPTY = {
-  hero_edition: "",
-  hero_title: "Future Soccer Cup",
-  hero_subtitle: "Somos más que un torneo",
-  hero_cta_label: "Inscribe tu equipo",
-  hero_cta_url: "/registro-equipo",
+  // Navbar
+  nav_logo_url: "",
+  nav_shield_url: "",
+  // Hero (wireframe FSC v2)
+  hero_edition_label: "EDICIÓN",
+  hero_edition_year: "2026",
+  hero_month_1: "Octubre",
+  hero_month_2: "Diciembre",
   hero_image_url: "",
-  upcoming_name: "",
-  upcoming_city: "",
-  upcoming_venue: "",
-  upcoming_start_date: "",
-  upcoming_end_date: "",
-  upcoming_categories: "",
-  upcoming_cover_url: "",
-  about_title: "Somos más que un torneo",
-  about_body: "",
-  about_image_url: "",
+  hero_foreground_url: "",
+  // Stats (4 columnas)
+  stat_1_number: "11",   stat_1_label: "Ediciones",
+  stat_2_number: "+1K",  stat_2_label: "Clubes participantes",
+  stat_3_number: "+100", stat_3_label: "Clubes internacionales",
+  stat_4_number: "+10K", stat_4_label: "Deportistas",
+  // Finales
+  finales_subtitle: "Estadio Centenario de Armenia",
+  finales_button_label: "Conoce más de FSC",
+  finales_button_url: "/nosotros",
+  // Región / mascota
+  region_title: "EL EJE CAFETERO LOS ESPERA",
+  region_subtitle: "Comfenalco Soleden",
+  mascot_image_url: "",
+  // Festival / Premier
+  festival_logo_url: "",
+  festival_date_badge: "2 OCT",
+  festival_categories: "",
+  festival_cta_url: "/registro-equipo",
+  premier_logo_url: "",
+  premier_date_badge: "2 OCT",
+  premier_categories_par: "",
+  premier_categories_imp: "",
+  premier_cta_url: "/registro-equipo",
+  // Footer / contacto
   contact_email: "",
   contact_phone: "",
   instagram: "",
   facebook: "",
   youtube: "",
+  whatsapp_url: "",
+  footer_heading: "¿Y SI NOS TOMAMOS UN CAFECITO JUNTOS?",
+  // Legacy / Nosotros (mantener compat)
+  hero_title: "Future Soccer Cup",
+  hero_subtitle: "La cumbre del fútbol formativo infantil & juvenil.",
+  hero_cta_label: "Inscribe tu equipo",
+  hero_cta_url: "/registro-equipo",
+  upcoming_name: "", upcoming_city: "", upcoming_venue: "",
+  upcoming_start_date: "", upcoming_end_date: "",
+  upcoming_categories: "", upcoming_cover_url: "",
+  about_title: "Somos más que un torneo",
+  about_body: "",
+  about_image_url: "",
 };
+
+// Helpers para convertir entre lista (CSV) y arrays
+const arrToCsv = (v) => Array.isArray(v) ? v.join(", ") : (v || "");
+const csvToArr = (v) => String(v || "").split(",").map(x => x.trim()).filter(Boolean);
 
 export default function AdminHomeSettings() {
   const [s, setS] = useState(EMPTY);
@@ -35,7 +70,14 @@ export default function AdminHomeSettings() {
   const load = useCallback(async () => {
     try {
       const r = await api.get("/home-settings");
-      setS({ ...EMPTY, ...(r.data || {}) });
+      const d = r.data || {};
+      setS({
+        ...EMPTY,
+        ...d,
+        festival_categories: arrToCsv(d.festival_categories),
+        premier_categories_par: arrToCsv(d.premier_categories_par),
+        premier_categories_imp: arrToCsv(d.premier_categories_imp),
+      });
     } catch {
       toast.error("Error al cargar configuración");
     }
@@ -45,7 +87,13 @@ export default function AdminHomeSettings() {
   const save = async () => {
     setSaving(true);
     try {
-      await api.put("/home-settings", s);
+      const payload = {
+        ...s,
+        festival_categories: csvToArr(s.festival_categories),
+        premier_categories_par: csvToArr(s.premier_categories_par),
+        premier_categories_imp: csvToArr(s.premier_categories_imp),
+      };
+      await api.put("/home-settings", payload);
       toast.success("Configuración guardada");
     } catch {
       toast.error("Error al guardar");
@@ -61,48 +109,103 @@ export default function AdminHomeSettings() {
       <div className="mb-6 flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="font-display text-4xl tracking-wider text-fsc-negro">CONFIGURACIÓN DEL HOME</h1>
-          <p className="text-sm text-slate-500 mt-1">Edita los textos e imágenes que aparecen en la página principal pública.</p>
+          <p className="text-sm text-slate-500 mt-1">Edita todos los textos e imágenes que aparecen en la página principal pública.</p>
         </div>
         <button onClick={save} disabled={saving} className="fsc-btn-primary px-6 py-3 rounded-md text-sm flex items-center gap-2 disabled:opacity-50" data-testid="home-settings-save">
           <Save size={16}/> {saving ? "Guardando..." : "Guardar cambios"}
         </button>
       </div>
 
-      <Section title="Hero" icon={<HomeIcon size={18}/>}>
+      <Section title="Navbar (logo + escudo)" icon={<ImageIcon size={18}/>}>
         <div className="grid md:grid-cols-2 gap-4">
-          <Field label="Edición (badge superior)" v={s.hero_edition} onChange={(v) => upd("hero_edition", v)} placeholder="Edición Diciembre 2026" />
-          <Field label="Título del Hero" v={s.hero_title} onChange={(v) => upd("hero_title", v)} />
-          <Field label="Subtítulo (cursive dorado)" v={s.hero_subtitle} onChange={(v) => upd("hero_subtitle", v)} />
-          <Field label="CTA — texto del botón" v={s.hero_cta_label} onChange={(v) => upd("hero_cta_label", v)} />
-          <Field label="CTA — URL destino" v={s.hero_cta_url} onChange={(v) => upd("hero_cta_url", v)} />
+          <ImageUpload value={s.nav_shield_url} onChange={(v) => upd("nav_shield_url", v)} label="Escudo / logo circular (a la izquierda del wordmark)" testId="nav-shield-upload" />
+          <ImageUpload value={s.nav_logo_url} onChange={(v) => upd("nav_logo_url", v)} label="Wordmark / logo en imagen (opcional, visible en ≥lg)" testId="nav-logo-upload" />
+        </div>
+      </Section>
+
+      <Section title="Hero — Edición & fechas" icon={<HomeIcon size={18}/>}>
+        <div className="grid md:grid-cols-2 gap-4">
+          <Field label="Etiqueta de edición (ej: EDICIÓN)" v={s.hero_edition_label} onChange={(v) => upd("hero_edition_label", v)} />
+          <Field label="Año (ej: 2026)" v={s.hero_edition_year} onChange={(v) => upd("hero_edition_year", v)} />
+          <Field label="Badge fecha 1 (ej: Octubre)" v={s.hero_month_1} onChange={(v) => upd("hero_month_1", v)} />
+          <Field label="Badge fecha 2 (ej: Diciembre)" v={s.hero_month_2} onChange={(v) => upd("hero_month_2", v)} />
+        </div>
+      </Section>
+
+      <Section title="Hero — Imágenes" icon={<ImageIcon size={18}/>}>
+        <div className="grid md:grid-cols-2 gap-4">
+          <ImageUpload value={s.hero_image_url} onChange={(v) => upd("hero_image_url", v)} label="Imagen de fondo (estadio/gradas, se tiñe con overlay)" testId="hero-bg-upload" />
+          <ImageUpload value={s.hero_foreground_url} onChange={(v) => upd("hero_foreground_url", v)} label="Imagen superpuesta (niños jugando, va al lado derecho — idealmente PNG con fondo transparente)" testId="hero-fg-upload" />
+        </div>
+      </Section>
+
+      <Section title="Estadísticas (4 columnas)" icon={<Hash size={18}/>}>
+        <div className="grid md:grid-cols-4 gap-4">
+          {[1,2,3,4].map(i => (
+            <div key={i} className="space-y-2">
+              <Field label={`Número #${i}`} v={s[`stat_${i}_number`]} onChange={(v) => upd(`stat_${i}_number`, v)} />
+              <Field label={`Etiqueta #${i}`} v={s[`stat_${i}_label`]} onChange={(v) => upd(`stat_${i}_label`, v)} />
+            </div>
+          ))}
+        </div>
+      </Section>
+
+      <Section title="Finales" icon={<Trophy size={18}/>}>
+        <div className="grid md:grid-cols-2 gap-4">
+          <Field label="Subtítulo (sede)" v={s.finales_subtitle} onChange={(v) => upd("finales_subtitle", v)} />
+          <Field label="Texto del botón" v={s.finales_button_label} onChange={(v) => upd("finales_button_label", v)} />
+          <Field label="URL del botón" v={s.finales_button_url} onChange={(v) => upd("finales_button_url", v)} />
+        </div>
+      </Section>
+
+      <Section title="Región / mascota" icon={<MapPin size={18}/>}>
+        <div className="grid md:grid-cols-2 gap-4">
+          <Field label="Título principal" v={s.region_title} onChange={(v) => upd("region_title", v)} />
+          <Field label="Subtítulo (patrocinador / sede)" v={s.region_subtitle} onChange={(v) => upd("region_subtitle", v)} />
           <div className="md:col-span-2">
-            <ImageUpload value={s.hero_image_url} onChange={(v) => upd("hero_image_url", v)} label="Imagen de fondo (Hero)" testId="hero-image" />
+            <ImageUpload value={s.mascot_image_url} onChange={(v) => upd("mascot_image_url", v)} label="Mascota" testId="mascot-upload" />
           </div>
         </div>
       </Section>
 
-      <Section title="Próximo evento (Premier)" icon={<Trophy size={18}/>}>
-        <p className="text-xs text-slate-500 mb-3">Si dejas estos campos vacíos, el Home mostrará automáticamente el torneo marcado como "destacado" en <a href="/admin/torneos" className="underline text-fsc-azul-oscuro">Torneos</a>.</p>
+      <Section title="Festival" icon={<Flag size={18}/>}>
         <div className="grid md:grid-cols-2 gap-4">
-          <Field label="Nombre" v={s.upcoming_name} onChange={(v) => upd("upcoming_name", v)} />
-          <Field label="Categorías (lista)" v={s.upcoming_categories} onChange={(v) => upd("upcoming_categories", v)} placeholder="Sub-8, Sub-10, Sub-12" />
-          <Field label="Ciudad" v={s.upcoming_city} onChange={(v) => upd("upcoming_city", v)} />
-          <Field label="Sede" v={s.upcoming_venue} onChange={(v) => upd("upcoming_venue", v)} />
-          <Field label="Fecha inicio" type="date" v={s.upcoming_start_date} onChange={(v) => upd("upcoming_start_date", v)} />
-          <Field label="Fecha fin" type="date" v={s.upcoming_end_date} onChange={(v) => upd("upcoming_end_date", v)} />
-          <div className="md:col-span-2">
-            <ImageUpload value={s.upcoming_cover_url} onChange={(v) => upd("upcoming_cover_url", v)} label="Imagen de portada" testId="upcoming-cover" />
-          </div>
+          <Field label="Badge fecha" v={s.festival_date_badge} onChange={(v) => upd("festival_date_badge", v)} />
+          <Field label="URL CTA" v={s.festival_cta_url} onChange={(v) => upd("festival_cta_url", v)} />
+          <Field label="Categorías (lista separada por coma)" v={s.festival_categories} onChange={(v) => upd("festival_categories", v)} placeholder="Sub-8, Sub-10, Sub-12, ..." />
+          <ImageUpload value={s.festival_logo_url} onChange={(v) => upd("festival_logo_url", v)} label="Logo Festival" testId="festival-logo-upload" />
         </div>
       </Section>
 
-      <Section title="Nosotros" icon={<Info size={18}/>}>
+      <Section title="Premier" icon={<Flag size={18}/>}>
+        <div className="grid md:grid-cols-2 gap-4">
+          <Field label="Badge fecha" v={s.premier_date_badge} onChange={(v) => upd("premier_date_badge", v)} />
+          <Field label="URL CTA" v={s.premier_cta_url} onChange={(v) => upd("premier_cta_url", v)} />
+          <Field label="Categorías pares (lista CSV)" v={s.premier_categories_par} onChange={(v) => upd("premier_categories_par", v)} placeholder="Sub-8, Sub-10, Sub-12" />
+          <Field label="Categorías impares (lista CSV)" v={s.premier_categories_imp} onChange={(v) => upd("premier_categories_imp", v)} placeholder="Sub-9, Sub-11, Sub-13" />
+          <ImageUpload value={s.premier_logo_url} onChange={(v) => upd("premier_logo_url", v)} label="Logo Premier" testId="premier-logo-upload" />
+        </div>
+      </Section>
+
+      <Section title="Footer / Contacto" icon={<Phone size={18}/>}>
+        <div className="grid md:grid-cols-2 gap-4">
+          <Field label="Titular footer (¿Y SI NOS TOMAMOS UN CAFECITO JUNTOS?)" v={s.footer_heading} onChange={(v) => upd("footer_heading", v)} />
+          <Field label="Email de contacto" v={s.contact_email} onChange={(v) => upd("contact_email", v)} />
+          <Field label="Teléfono / WhatsApp (texto)" v={s.contact_phone} onChange={(v) => upd("contact_phone", v)} />
+          <Field label="WhatsApp URL (https://wa.me/...)" v={s.whatsapp_url} onChange={(v) => upd("whatsapp_url", v)} />
+          <Field label="Instagram (@usuario o URL)" v={s.instagram} onChange={(v) => upd("instagram", v)} />
+          <Field label="Facebook (URL o slug)" v={s.facebook} onChange={(v) => upd("facebook", v)} />
+          <Field label="YouTube (URL o slug)" v={s.youtube} onChange={(v) => upd("youtube", v)} />
+        </div>
+      </Section>
+
+      <Section title="Nosotros (sección legacy / página Nosotros)" icon={<Info size={18}/>}>
         <div className="grid md:grid-cols-2 gap-4">
           <Field label="Título" v={s.about_title} onChange={(v) => upd("about_title", v)} />
           <div />
           <label className="md:col-span-2 block">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Cuerpo (texto)</span>
-            <textarea rows={5} value={s.about_body} onChange={(e) => upd("about_body", e.target.value)} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" />
+            <textarea rows={5} value={s.about_body || ""} onChange={(e) => upd("about_body", e.target.value)} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" />
           </label>
           <div className="md:col-span-2">
             <ImageUpload value={s.about_image_url} onChange={(v) => upd("about_image_url", v)} label="Imagen" testId="about-image" />
@@ -110,13 +213,18 @@ export default function AdminHomeSettings() {
         </div>
       </Section>
 
-      <Section title="Contacto y redes" icon={<Phone size={18}/>}>
+      <Section title="Próximo evento (legacy)" icon={<Trophy size={18}/>}>
+        <p className="text-xs text-slate-500 mb-3">Campos legacy. El home actual usa los campos del Hero arriba.</p>
         <div className="grid md:grid-cols-2 gap-4">
-          <Field label="Email" v={s.contact_email} onChange={(v) => upd("contact_email", v)} />
-          <Field label="Teléfono" v={s.contact_phone} onChange={(v) => upd("contact_phone", v)} />
-          <Field label="Instagram (@usuario)" v={s.instagram} onChange={(v) => upd("instagram", v)} />
-          <Field label="Facebook (URL o slug)" v={s.facebook} onChange={(v) => upd("facebook", v)} />
-          <Field label="YouTube (URL o slug)" v={s.youtube} onChange={(v) => upd("youtube", v)} />
+          <Field label="Nombre" v={s.upcoming_name} onChange={(v) => upd("upcoming_name", v)} />
+          <Field label="Categorías (lista)" v={s.upcoming_categories} onChange={(v) => upd("upcoming_categories", v)} />
+          <Field label="Ciudad" v={s.upcoming_city} onChange={(v) => upd("upcoming_city", v)} />
+          <Field label="Sede" v={s.upcoming_venue} onChange={(v) => upd("upcoming_venue", v)} />
+          <Field label="Fecha inicio" type="date" v={s.upcoming_start_date} onChange={(v) => upd("upcoming_start_date", v)} />
+          <Field label="Fecha fin" type="date" v={s.upcoming_end_date} onChange={(v) => upd("upcoming_end_date", v)} />
+          <div className="md:col-span-2">
+            <ImageUpload value={s.upcoming_cover_url} onChange={(v) => upd("upcoming_cover_url", v)} label="Imagen de portada" testId="upcoming-cover" />
+          </div>
         </div>
       </Section>
     </div>

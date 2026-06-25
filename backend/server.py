@@ -5245,12 +5245,16 @@ HOME_SETTINGS_ID = "default"
 
 
 class HomeSettings(BaseModel):
+    # === NAVBAR (logo + escudo) ===
+    nav_logo_url: Optional[str] = "https://customer-assets.emergentagent.com/job_fixture-stats-pro/artifacts/y4ulg6l9_FUTRE%20SOCCER%20CUP%202025_Mesa%20de%20trabajo%201.png"
+    nav_shield_url: Optional[str] = ""  # escudo/logo circular junto al texto FUTUR SOCCER CUP
     # === HERO (nuevo wireframe FSC v2) ===
     hero_edition_label: Optional[str] = "EDICIÓN"
     hero_edition_year: Optional[str] = "2026"
     hero_month_1: Optional[str] = "Octubre"
     hero_month_2: Optional[str] = "Diciembre"
-    hero_image_url: Optional[str] = ""
+    hero_image_url: Optional[str] = ""           # imagen de fondo (estadio/gradas)
+    hero_foreground_url: Optional[str] = ""      # imagen superpuesta (niños jugando, cutout)
     # === Estadísticas (4 columnas) ===
     stat_1_number: Optional[str] = "11"
     stat_1_label: Optional[str] = "Ediciones"
