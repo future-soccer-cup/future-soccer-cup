@@ -1,0 +1,42 @@
+{
+  "summary": "Frontend-only verification of Plane Crash font fix on Home page. All target elements (hero EDICION/2026, 'SOMOS MAS QUE UN TORNEO', stat numbers 11/+1k/+100/+10k, FINALES, region title, FESTIVAL/PREMIER, footer heading, footer phone+email) correctly render with the Plane Crash grunge stencil font using the planeCrashSafe() normalizer (lowercase + accent strip). Non-target elements (logo, cursive tagline, nav links, subtitles, stat labels) still use Anton/Allura/Barlow. Other routes (/login, /admin, /cotizar) still load 200 — no regression from runtime font injection in index.js.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Home hero (desktop 1920w)", "issues": ["[data-testid=hero-edition] has scrollWidth (882px) > offsetWidth (660px) at 1920px viewport — the EDICION glyphs extend slightly past their grid column, but the parent hero section has overflow-hidden so visually the text is not cropped. Pre-existing layout characteristic, not introduced by font fix; flagged for awareness only."]}
+    ]
+  },
+  "test_results_detail": {
+    "font_loaded": "document.fonts.check(\"80px 'Plane Crash'\") = true; /fonts/PlaneCrash.ttf returns 200, content-type=font/ttf, size=286512 bytes; document.fonts entry status=loaded",
+    "hero_edition": "text='edicion' (lowercase, accent stripped), font='Plane Crash', color=white, visible — grunge stencil rendered (NOT pictograms), confirmed via screenshot",
+    "hero_year": "text='2026', font='Plane Crash', grunge stencil OK",
+    "home_stats_heading": "'somos mas / que un torneo' — Plane Crash applied, red #e31f27, NO square where MAS accent used to be (confirmed visually)",
+    "stat_numbers": "All 4 numbers (11, +1k, +100, +10k) use Plane Crash, no overflow: stat-1 w=78 sw=78, stat-2 w=187 sw=187, stat-3 w=229 sw=229, stat-4 w=243 sw=243 (inside 290px columns)",
+    "finales_heading": "Plane Crash grunge stencil OK, red color",
+    "region_title": "'el eje cafetero los espera' — Plane Crash, color rgb(227,31,39) (#e31f27), no pictograms",
+    "cat_festival_premier": "FESTIVAL & PREMIER headings render with Plane Crash grunge stencil (h3 inside cat container)",
+    "footer_heading": "4 lines 'y si nos / tomamos / un cafecito / juntos?' — Plane Crash, white over red background",
+    "footer_whatsapp": "'+57 312 360 5948' — span uses Plane Crash, white, fully legible (numbers, + render correctly)",
+    "footer_email": "'direccion@futuresoccercup.org' — span uses Plane Crash, white, fully legible (@, ., letters render)",
+    "non_plane_crash_preserved": "cursive tagline = 'Natura Script, Allura' (correct), nav INICIO = Barlow (correct), finales-subtitle = Barlow (correct), region-subtitle = Barlow (correct), nav-logo-link = Barlow (logo text spans use Anton via STENCIL style)",
+    "regression": "/login (200), /admin (200), /cotizar (200) all load; /login screenshot confirms Anton/Allura still used there — index.js font injection does not break other pages",
+    "console_errors": "2 pre-existing 401 errors on Home page from unauthenticated admin API calls — NOT introduced by font change; same pattern on /admin and /cotizar"
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "index.js font injection is correctly idempotent (early-return on duplicate id 'fsc-plane-crash-font') and uses font-display: swap — safe.",
+    "planeCrashSafe() is a pure helper applied only at render time; the Spanish-readable uppercase output is preserved visually because Plane Crash stencil glyphs at lowercase look uppercase by design.",
+    "Minor: hero-edition can scroll-overflow its grid column at 1920px; consider clamp upper bound 160px instead of 180px, or apply overflow-hidden on the column directly. Cosmetic only.",
+    "Pre-existing 401 console errors on public routes suggest the frontend triggers admin API calls without auth — should be gated to authenticated routes (not related to this change)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped per request)", "frontend": "100%"},
+  "test_credentials": "N/A — no login required for Home page font test",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Plane Crash font fix verified working in iteration 29. The font is injected at runtime via /app/frontend/src/index.js because Emergent preview strips <style>/<link> from index.html. document.fonts.check confirms the font is loaded; all data-testid'd elements that should use Plane Crash do so, and all others retain Anton/Allura/Barlow. No code changes were needed during testing."
+}

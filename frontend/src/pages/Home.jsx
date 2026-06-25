@@ -10,6 +10,13 @@ const RED = "#e31f27";
 const BLUE = "#0640c8";
 const GRAY = "#dedfe0";
 
+const STENCIL = { fontFamily: "'Anton', 'Barlow Condensed', sans-serif", letterSpacing: "0.01em" };
+const PLANE_CRASH = { fontFamily: "'Plane Crash', 'Anton', 'Barlow Condensed', sans-serif", letterSpacing: "0.01em" };
+// Plane Crash es una fuente cuyos glifos de letras están mapeados a las MINÚSCULAS;
+// las MAYÚSCULAS y los acentos caen a pictogramas decorativos. Normalizamos a minúsculas sin diacríticos.
+const planeCrashSafe = (str) => String(str || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+const CURSIVE = { fontFamily: "'Natura Script', 'Allura', 'Dancing Script', cursive" };
+
 export default function Home() {
   const [s, setS] = useState({});
   const [gallery, setGallery] = useState([]);
@@ -35,13 +42,6 @@ export default function Home() {
   const festivalCats = (s.festival_categories && s.festival_categories.length) ? s.festival_categories : ["Sub-8", "Sub-10", "Sub-12", "Sub-14", "Sub-16", "Sub-18"];
   const premierCatsPar = (s.premier_categories_par && s.premier_categories_par.length) ? s.premier_categories_par : ["Sub-8", "Sub-10", "Sub-12"];
   const premierCatsImp = (s.premier_categories_imp && s.premier_categories_imp.length) ? s.premier_categories_imp : ["Sub-9", "Sub-11", "Sub-13"];
-
-  const STENCIL = { fontFamily: "'Anton', 'Barlow Condensed', sans-serif", letterSpacing: "0.01em" };
-  const PLANE_CRASH = { fontFamily: "'Plane Crash', 'Anton', 'Barlow Condensed', sans-serif", letterSpacing: "0.01em" };
-  // Plane Crash es una fuente con glifos de letras en MINÚSCULAS (las MAYÚSCULAS son pictogramas decorativos).
-  // Por eso convertimos a minúsculas y removemos diacríticos antes de renderizar.
-  const planeCrashSafe = (str) => String(str || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-  const CURSIVE = { fontFamily: "'Natura Script', 'Allura', 'Dancing Script', cursive" };
 
   return (
     <div className="min-h-screen" data-testid="home-fsc-v2" style={{ background: "#fff", fontFamily: "'Barlow', 'Inter', sans-serif" }}>
@@ -135,8 +135,8 @@ export default function Home() {
       {/* ======= STATS ======= */}
       <section className="py-16 lg:py-24 bg-white" data-testid="home-stats">
         <div className="max-w-7xl mx-auto px-6 text-center">
-          <h2 className="font-black uppercase leading-[0.95]" style={{ ...STENCIL, color: RED, fontSize: "clamp(48px, 7vw, 96px)" }}>
-            SOMOS MÁS<br/>QUE UN TORNEO
+          <h2 className="font-black leading-[0.95]" style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(48px, 7vw, 96px)" }}>
+            {planeCrashSafe("SOMOS MAS")}<br/>{planeCrashSafe("QUE UN TORNEO")}
           </h2>
           <div className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-10 lg:gap-6">
             {[
@@ -146,7 +146,7 @@ export default function Home() {
               { n: s.stat_4_number, l: s.stat_4_label, dn: "+10K", dl: "Deportistas" },
             ].map((it, idx) => (
               <div key={it.dl} className="flex flex-col items-center" data-testid={`home-stat-${idx + 1}`}>
-                <div className="font-black leading-none" style={{ ...STENCIL, color: RED, fontSize: "clamp(64px, 9vw, 128px)" }}>{it.n || it.dn}</div>
+                <div className="font-black leading-none whitespace-nowrap" style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(40px, 5vw, 80px)" }}>{planeCrashSafe(it.n || it.dn)}</div>
                 <div className="mt-2 font-bold text-base lg:text-lg" style={{ color: BLUE }}>{it.l || it.dl}</div>
               </div>
             ))}
@@ -181,7 +181,7 @@ export default function Home() {
             ><ChevronRight size={32} strokeWidth={3} /></button>
           </div>
           <div className="mt-8 text-center">
-            <h2 className="font-black uppercase leading-none" style={{ ...STENCIL, color: RED, fontSize: "clamp(56px, 9vw, 128px)" }}>FINALES</h2>
+            <h2 className="font-black leading-none" style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(56px, 9vw, 128px)" }}>{planeCrashSafe("FINALES")}</h2>
             <p className="mt-1 text-xl md:text-2xl font-bold" style={{ color: BLUE }} data-testid="finales-subtitle">
               {s.finales_subtitle || "Estadio Centenario de Armenia"}
             </p>
@@ -204,8 +204,8 @@ export default function Home() {
       {/* ======= EJE CAFETERO + MASCOTA + 2 COLUMNAS DE CATEGORÍAS ======= */}
       <section className="pt-12 pb-20 bg-white" data-testid="home-region">
         <div className="max-w-7xl mx-auto px-6 text-center">
-          <h2 className="font-black uppercase leading-tight" style={{ ...STENCIL, color: RED, fontSize: "clamp(40px, 6vw, 80px)" }} data-testid="region-title">
-            {s.region_title || "EL EJE CAFETERO LOS ESPERA"}
+          <h2 className="font-black leading-tight" style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(40px, 6vw, 80px)" }} data-testid="region-title">
+            {planeCrashSafe(s.region_title || "EL EJE CAFETERO LOS ESPERA")}
           </h2>
           <p className="text-2xl md:text-3xl font-bold mb-6" style={{ color: BLUE }} data-testid="region-subtitle">
             {s.region_subtitle || "Comfenalco Soleden"}
@@ -251,11 +251,11 @@ export default function Home() {
       <footer className="py-16 lg:py-24" style={{ background: RED }} data-testid="home-footer">
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
           {/* Izquierda: heading en 4 líneas (grunge stencil blanco) */}
-          <h2 className="font-black uppercase text-white leading-[0.95]" style={{ ...STENCIL, fontSize: "clamp(36px, 5vw, 72px)" }} data-testid="footer-heading">
-            <span className="block">Y SI NOS</span>
-            <span className="block">TOMAMOS</span>
-            <span className="block">UN CAFECITO</span>
-            <span className="block">JUNTOS?</span>
+          <h2 className="font-black text-white leading-[0.95]" style={{ ...PLANE_CRASH, fontSize: "clamp(36px, 5vw, 72px)" }} data-testid="footer-heading">
+            <span className="block">{planeCrashSafe("Y SI NOS")}</span>
+            <span className="block">{planeCrashSafe("TOMAMOS")}</span>
+            <span className="block">{planeCrashSafe("UN CAFECITO")}</span>
+            <span className="block">{planeCrashSafe("JUNTOS?")}</span>
           </h2>
           {/* Derecha: contactos */}
           <div className="text-white space-y-6">
@@ -268,8 +268,8 @@ export default function Home() {
               <span className="bg-[#25D366] rounded-full p-3 inline-flex shadow-md">
                 <MessageCircle size={28} className="text-white" strokeWidth={2.4} />
               </span>
-              <span className="font-black uppercase tracking-wider text-2xl md:text-3xl lg:text-4xl" style={STENCIL}>
-                {s.contact_phone || "+57 324 6134658"}
+              <span className="font-black tracking-wider text-2xl md:text-3xl lg:text-4xl" style={PLANE_CRASH}>
+                {planeCrashSafe(s.contact_phone || "+57 324 6134658")}
               </span>
             </a>
             <a
@@ -280,8 +280,8 @@ export default function Home() {
               <span className="bg-white rounded-full p-3 inline-flex shadow-md" style={{ color: BLUE }}>
                 <Mail size={28} strokeWidth={2.4} />
               </span>
-              <span className="font-black uppercase tracking-wider text-2xl md:text-3xl lg:text-4xl break-all" style={STENCIL}>
-                {s.contact_email || "info@futuresoccercup.com"}
+              <span className="font-black tracking-wider text-2xl md:text-3xl lg:text-4xl break-all" style={PLANE_CRASH}>
+                {planeCrashSafe(s.contact_email || "info@futuresoccercup.com")}
               </span>
             </a>
             <div className="flex items-center gap-3 pl-1 pt-2">
@@ -333,7 +333,7 @@ function CategoryColumn({ title, dateBadge, logoUrl, ctaUrl, groups, testId }) {
         </div>
         {logoUrl
           ? <img src={logoUrl} alt={title} className="h-10" />
-          : <h3 className="font-black uppercase tracking-tight" style={{ fontFamily: "'Anton', sans-serif", color: "#e31f27", fontSize: "clamp(28px, 4vw, 48px)" }}>{title}</h3>}
+          : <h3 className="font-black tracking-tight" style={{ ...PLANE_CRASH, color: "#e31f27", fontSize: "clamp(28px, 4vw, 48px)" }}>{planeCrashSafe(title)}</h3>}
       </div>
       <div className="rounded-2xl p-3 bg-white" style={{ border: `3px solid #e31f27` }}>
         {groups.map((g, gi) => (
