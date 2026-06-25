@@ -1,11 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink } from "react-router-dom";
 import api from "../lib/api";
-import { ChevronLeft, ChevronRight, ChevronUp, Calendar, MessageCircle, Mail, Instagram, Facebook } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, MessageCircle, Mail, Instagram, Facebook } from "lucide-react";
 import { PLANE_CRASH, AGENCY_FB, NEO_SANS, STENCIL, CURSIVE, planeCrashSafe, RED, BLUE, GRAY } from "../lib/designSystem";
-
-// Mascota — placeholder reemplazable desde CMS (sección "región", no afecta hero/navbar)
-const MASCOT_DEFAULT = "https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=1200&q=80";
+import ChevronStack from "../components/ChevronStack";
 
 export default function Home() {
   const [s, setS] = useState({});
@@ -146,9 +144,8 @@ export default function Home() {
                   {s.hero_month_2 || "Diciembre"}
                 </span>
               </div>
-              <div className="mt-6 flex flex-col items-start ml-3 text-white" data-testid="hero-chevron">
-                <ChevronUp size={28} strokeWidth={3} className="rotate-180 opacity-90" />
-                <ChevronUp size={28} strokeWidth={3} className="rotate-180 opacity-90 -mt-3" />
+              <div className="mt-6 flex flex-col items-start ml-3" data-testid="hero-chevron">
+                <ChevronStack color="#ffffff" size={48} direction="down" count={5} testId="hero-chevron-stack" />
               </div>
             </div>
           </div>
@@ -216,9 +213,8 @@ export default function Home() {
             >
               {s.finales_button_label || "Conoce más de FSC"}
             </Link>
-            <div className="mt-6 flex justify-center flex-col items-center" style={{ color: BLUE }}>
-              <ChevronUp size={28} strokeWidth={3} />
-              <ChevronUp size={28} strokeWidth={3} className="-mt-3" />
+            <div className="mt-6 flex justify-center">
+              <ChevronStack color={BLUE} size={56} direction="up" count={5} testId="finales-chevron-stack" />
             </div>
           </div>
         </div>
@@ -239,7 +235,7 @@ export default function Home() {
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-6 items-start" data-testid="home-categories">
             {/* FESTIVAL */}
             <CategoryColumn
-              title="FESTIVAL"
+              title={s.festival_title || "FESTIVAL"}
               dateBadge={s.festival_date_badge || "2 oct"}
               logoUrl={s.festival_logo_url}
               ctaUrl={s.festival_cta_url || "/registro-equipo"}
@@ -248,11 +244,13 @@ export default function Home() {
             />
             {/* Mascota centrada (oculta en mobile, visible en lg) */}
             <div className="hidden lg:flex justify-center items-end" data-testid="mascot-box">
-              <img src={s.mascot_image_url || MASCOT_DEFAULT} alt="Mascota Future Soccer Cup" className="max-h-[520px] w-auto object-contain" />
+              {s.mascot_image_url && (
+                <img src={s.mascot_image_url} alt="Mascota Future Soccer Cup" className="max-h-[680px] w-auto object-contain" />
+              )}
             </div>
             {/* PREMIER */}
             <CategoryColumn
-              title="PREMIER"
+              title={s.premier_title || "PREMIER"}
               dateBadge={s.premier_date_badge || "2 oct"}
               logoUrl={s.premier_logo_url}
               ctaUrl={s.premier_cta_url || "/registro-equipo"}
@@ -264,9 +262,11 @@ export default function Home() {
             />
           </div>
           {/* Mascota mobile: debajo */}
-          <div className="lg:hidden flex justify-center mt-8">
-            <img src={s.mascot_image_url || MASCOT_DEFAULT} alt="Mascota Future Soccer Cup" className="max-h-[400px] w-auto object-contain" />
-          </div>
+          {s.mascot_image_url && (
+            <div className="lg:hidden flex justify-center mt-8">
+              <img src={s.mascot_image_url} alt="Mascota Future Soccer Cup" className="max-h-[500px] w-auto object-contain" />
+            </div>
+          )}
         </div>
       </section>
 
@@ -365,14 +365,19 @@ export default function Home() {
 function CategoryColumn({ title, dateBadge, logoUrl, ctaUrl, groups, testId }) {
   return (
     <div className="text-center" data-testid={testId}>
-      <div className="flex items-center justify-center gap-2 mb-2">
+      <div className="flex items-center justify-center gap-3 mb-2 flex-wrap">
         <div className="relative" style={{ color: "#0640c8" }}>
           <Calendar size={36} strokeWidth={2} />
           <span className="absolute inset-0 flex items-center justify-center text-[8px] font-black uppercase pt-1.5" style={{ color: "#0640c8" }}>{dateBadge}</span>
         </div>
-        {logoUrl
-          ? <img src={logoUrl} alt={title} className="h-10" />
-          : <h3 className="font-black tracking-tight" style={{ ...PLANE_CRASH, color: "#e31f27", fontSize: "clamp(28px, 4vw, 48px)" }}>{planeCrashSafe(title)}</h3>}
+        {logoUrl && (
+          <img src={logoUrl} alt={title} className="h-10 w-auto" data-testid={`${testId}-logo`} />
+        )}
+        {title && (
+          <h3 className="font-black tracking-tight" style={{ ...PLANE_CRASH, color: "#e31f27", fontSize: "clamp(28px, 4vw, 48px)" }} data-testid={`${testId}-title`}>
+            {planeCrashSafe(title)}
+          </h3>
+        )}
       </div>
       <div className="rounded-2xl p-3 bg-white" style={{ border: `3px solid #e31f27` }}>
         {groups.map((g, gi) => (
@@ -380,8 +385,14 @@ function CategoryColumn({ title, dateBadge, logoUrl, ctaUrl, groups, testId }) {
             <div className="text-2xl md:text-3xl font-bold mb-2" style={{ ...AGENCY_FB, color: "#0640c8" }}>{g.label}</div>
             <div className="grid grid-cols-3 gap-1.5">
               {g.items.map((c, i) => (
-                <div key={`${g.label}-${c}-${i}`} className="h-7 md:h-8 rounded" style={{ background: "#e31f27" }} data-testid={`${testId}-item-${gi}-${i}`} title={c}>
-                  <span className="sr-only">{c}</span>
+                <div
+                  key={`${g.label}-${c}-${i}`}
+                  className="h-8 md:h-9 rounded flex items-center justify-center px-1"
+                  style={{ background: "#e31f27" }}
+                  data-testid={`${testId}-item-${gi}-${i}`}
+                  title={c}
+                >
+                  <span className="text-white font-bold text-sm md:text-base leading-none tracking-wide" style={AGENCY_FB}>{c}</span>
                 </div>
               ))}
             </div>

@@ -16,6 +16,13 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-02-25 — Ajustes sección Comfenalco Soleden + nueva flecha ChevronStack
+- **FESTIVAL / PREMIER títulos editables**: agregados campos `festival_title` y `premier_title` al modelo `HomeSettings` (defaults: "FESTIVAL", "PREMIER") y al admin CMS `/admin/home`.
+- **Logo + título coexisten**: en `CategoryColumn`, si subes un logo ya NO reemplaza al texto. Ambos se renderizan lado a lado (logo a 40 px de alto + título en Plane Crash rojo).
+- **Mascota (león)**: eliminada la imagen fallback de Unsplash. Si `mascot_image_url` está vacío, no se renderiza nada (sin placeholder). Tamaño aumentado: desktop `max-h-[680px]` (antes 520), mobile `max-h-[500px]` (antes 400).
+- **Categorías visibles**: dentro de los cajones rojos (Festival/Premier), el nombre de cada categoría ahora aparece en texto blanco bold (`AGENCY_FB`, centrado, height `h-8 md:h-9`). Antes solo era accesible para screen readers.
+- **Flecha decorativa nueva — `ChevronStack`**: componente reutilizable en `/components/ChevronStack.jsx` que renderiza 5 chevrones apilados con opacidad decreciente (1 → 0.4) y stroke decreciente, imitando exactamente la referencia visual del usuario. Props: `color`, `size`, `direction` (up/down), `count`. Reemplaza los 2 ChevronUp anteriores tanto en el hero (blanco, hacia abajo) como en la sección Finales (azul, hacia arriba).
+
 ### 2026-02-25 — Optimización: conversión automática de imágenes a WebP en upload
 - Endpoint `POST /api/upload` ahora convierte automáticamente todo upload raster (JPG/JPEG/JFIF/PNG/APNG/GIF/BMP/DIB/TIFF/WebP) a formato **WebP** vía Pillow.
 - Se excluyen: SVG (vector), PDF, ICO, formatos RAW y HEIC/HEIF/AVIF (sin librería nativa).

@@ -5468,10 +5468,12 @@ class HomeSettings(BaseModel):
     region_subtitle: Optional[str] = "Comfenalco Soleden"
     mascot_image_url: Optional[str] = ""
     # === Festival / Premier (categorías editables del home) ===
+    festival_title: Optional[str] = "FESTIVAL"
     festival_logo_url: Optional[str] = ""
     festival_date_badge: Optional[str] = "2 OCT"
     festival_categories: Optional[List[str]] = []  # ["Sub-8", "Sub-10", ...]
     festival_cta_url: Optional[str] = "/registro-equipo"
+    premier_title: Optional[str] = "PREMIER"
     premier_logo_url: Optional[str] = ""
     premier_date_badge: Optional[str] = "2 OCT"
     premier_categories_par: Optional[List[str]] = []
