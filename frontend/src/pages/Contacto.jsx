@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import api, { formatApiError } from "../lib/api";
 import { toast, Toaster } from "sonner";
-import { ContactBlock } from "./Nosotros";
 import { Send, Mail, Phone, User, MessageSquare } from "lucide-react";
-import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe, RED, BLUE } from "../lib/designSystem";
+import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe, RED } from "../lib/designSystem";
+import SecondaryHero from "../components/SecondaryHero";
 
 const EMPTY = { name: "", email: "", phone: "", message: "" };
 
@@ -36,20 +36,14 @@ export default function Contacto() {
     <div data-testid="contacto-page" style={AGENCY_FB}>
       <Toaster position="top-right" />
 
-      {/* Hero */}
-      <section className="text-white relative overflow-hidden" style={{ background: "#000000" }}>
-        <div className="absolute inset-0 fsc-stripe opacity-30 pointer-events-none"/>
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-          <div className="italic text-2xl" style={{ ...CURSIVE, color: BLUE }}>{s.contacto_hero_kicker || "estamos aquí"}</div>
-          <h1 className="text-6xl md:text-8xl font-black leading-[0.9] mt-1" style={PLANE_CRASH} data-testid="contacto-hero-title">
-            {planeCrashSafe(s.contacto_hero_title || "CONTACTO")}
-          </h1>
-          <div className="h-1 w-24 mt-4" style={{ background: BLUE }}/>
-          <p className="text-fsc-gris mt-6 max-w-2xl text-lg" style={AGENCY_FB} data-testid="contacto-hero-body">
-            {s.contacto_hero_body || "Escríbenos. Te responderemos en menos de 24 horas hábiles."}
-          </p>
-        </div>
-      </section>
+      <SecondaryHero
+        kicker={s.contacto_hero_kicker || "estamos aquí"}
+        title={s.contacto_hero_title || "CONTACTO"}
+        body={s.contacto_hero_body || "Escríbenos. Te responderemos en menos de 24 horas hábiles."}
+        bgUrl={s.contacto_hero_bg_url}
+        overlay={s.contacto_hero_overlay || "blue"}
+        testIdPrefix="contacto-hero"
+      />
 
       {/* Form */}
       <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20" data-testid="contact-form-section">
@@ -117,8 +111,6 @@ export default function Contacto() {
           </button>
         </form>
       </section>
-
-      <ContactBlock s={s} />
     </div>
   );
 }

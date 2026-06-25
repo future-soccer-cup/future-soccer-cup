@@ -1,92 +1,73 @@
 import { useEffect, useState } from "react";
-import Logo from "./Logo";
 import api from "../lib/api";
-import { Mail, Phone, Instagram, Facebook, Youtube } from "lucide-react";
+import { MessageCircle, Mail, Instagram, Facebook } from "lucide-react";
+import { PLANE_CRASH, AGENCY_FB, planeCrashSafe, RED, BLUE } from "../lib/designSystem";
 
+/**
+ * Footer global del sitio (no se aplica en /admin).
+ * Replica el bloque rojo "Y SI NOS TOMAMOS UN CAFECITO JUNTOS?" del Home,
+ * para que todas las páginas terminen con la misma identidad visual.
+ * Editable 100% desde /admin/home (footer_heading, contact_phone, contact_email,
+ * instagram, facebook, youtube, whatsapp_url).
+ */
 export default function Footer() {
-  const [s, setS] = useState({
-    contact_email: "info@futuresoccercup.com",
-    contact_phone: "+57 (000) 000-0000",
-    instagram: "@FutureSoccerCup",
-    facebook: "",
-    youtube: "",
-  });
+  const [s, setS] = useState({});
+  useEffect(() => { api.get("/home-settings").then((r) => setS(r.data || {})).catch(() => {}); }, []);
 
-  useEffect(() => {
-    api.get("/home-settings").then((r) => setS({ ...s, ...r.data })).catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const heading = s.footer_heading || "¿Y SI NOS TOMAMOS UN CAFECITO JUNTOS?";
+  const phone = s.contact_phone || "+57 324 6134658";
+  const email = s.contact_email || "info@futuresoccercup.com";
+  const headingLines = heading.split(/\n|\s{2,}/).filter(Boolean);
 
   return (
-    <footer className="bg-fsc-negro text-fsc-gris mt-16 relative overflow-hidden">
-      <div className="absolute inset-0 fsc-stripe pointer-events-none" />
-      {/* Línea dorada superior */}
-      <div className="h-1 bg-fsc-azul" />
+    <footer className="relative overflow-hidden" data-testid="public-footer" style={{ background: RED }}>
+      <div className="max-w-7xl mx-auto px-6 lg:px-10 py-16 grid lg:grid-cols-2 gap-10 items-center">
+        {/* Izquierda: heading grunge en 4 líneas */}
+        <h2 className="font-black text-white leading-[0.95]" style={{ ...PLANE_CRASH, fontSize: "clamp(36px, 5vw, 72px)" }} data-testid="footer-heading">
+          {headingLines.length ? headingLines.map((l, i) => (
+            <span key={i} className="block">{planeCrashSafe(l)}</span>
+          )) : <span className="block">{planeCrashSafe(heading)}</span>}
+        </h2>
 
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 grid grid-cols-1 md:grid-cols-4 gap-10">
-        <div className="md:col-span-2">
-          <div className="flex items-center gap-3">
-            <div className="bg-fsc-negro border-2 border-fsc-azul rounded-md p-2.5 inline-block">
-              <Logo className="h-14 w-14" />
-            </div>
-            <div>
-              <div className="font-display text-3xl tracking-wider text-white">FUTURE SOCCER CUP</div>
-              <div className="font-cursive text-2xl text-fsc-azul leading-none mt-0.5">Somos más que un torneo</div>
-            </div>
-          </div>
-          <p className="text-sm leading-relaxed text-fsc-gris/80 max-w-md mt-5">
-            La copa oficial del fútbol infantil y juvenil de Colombia. Donde nace el futuro del deporte.
-            Una iniciativa del Grupo Empresarial Ancla.
-          </p>
-        </div>
-
-        <div>
-          <h4 className="font-display tracking-widest text-white mb-4 text-base">Navegación</h4>
-          <ul className="space-y-2.5 text-sm">
-            <li><a href="/" className="hover:text-fsc-azul transition-colors">Inicio</a></li>
-            <li><a href="/nosotros" className="hover:text-fsc-azul transition-colors">Nosotros</a></li>
-            <li><a href="/eventos" className="hover:text-fsc-azul transition-colors">Eventos</a></li>
-            <li><a href="/datos-estadisticas" className="hover:text-fsc-azul transition-colors">Estadísticas</a></li>
-            <li><a href="/noticias" className="hover:text-fsc-azul transition-colors">Noticias</a></li>
-            <li><a href="/contacto" className="hover:text-fsc-azul transition-colors">Contacto</a></li>
-          </ul>
-        </div>
-
-        <div>
-          <h4 className="font-display tracking-widest text-white mb-4 text-base">Contacto</h4>
-          <ul className="space-y-2.5 text-sm">
-            {s.contact_email && (
-              <li className="flex items-center gap-2"><Mail size={15} className="text-fsc-azul shrink-0"/> {s.contact_email}</li>
-            )}
-            {s.contact_phone && (
-              <li className="flex items-center gap-2"><Phone size={15} className="text-fsc-azul shrink-0"/> {s.contact_phone}</li>
-            )}
-          </ul>
-          <div className="mt-5 flex items-center gap-3">
+        {/* Derecha: contacto + redes */}
+        <div className="space-y-5">
+          <a href={s.whatsapp_url || `https://wa.me/${phone.replace(/\D/g, "")}`} target="_blank" rel="noreferrer" className="flex items-center gap-4 hover:opacity-80" data-testid="footer-whatsapp">
+            <span className="bg-white rounded-full p-3 inline-flex shadow-md" style={{ color: BLUE }}>
+              <MessageCircle size={28} strokeWidth={2.4} />
+            </span>
+            <span className="font-black tracking-wider text-3xl md:text-4xl lg:text-5xl text-white" style={AGENCY_FB} data-testid="footer-phone-text">
+              {phone}
+            </span>
+          </a>
+          <a href={`mailto:${email}`} className="flex items-center gap-4 hover:opacity-80" data-testid="footer-email">
+            <span className="bg-white rounded-full p-3 inline-flex shadow-md" style={{ color: BLUE }}>
+              <Mail size={28} strokeWidth={2.4} />
+            </span>
+            <span className="font-black tracking-wider text-3xl md:text-4xl lg:text-5xl text-white break-all" style={AGENCY_FB} data-testid="footer-email-text">
+              {email}
+            </span>
+          </a>
+          <div className="flex items-center gap-3 pl-1 pt-2">
             {s.instagram && (
-              <a href={`https://instagram.com/${s.instagram.replace(/^@/, "")}`} target="_blank" rel="noreferrer" className="h-9 w-9 rounded-md bg-fsc-negro border border-fsc-azul text-fsc-azul hover:bg-fsc-azul hover:text-fsc-negro transition-colors flex items-center justify-center" data-testid="footer-ig">
-                <Instagram size={16}/>
+              <a href={s.instagram.startsWith("http") ? s.instagram : `https://instagram.com/${s.instagram.replace(/^@/, "")}`} target="_blank" rel="noreferrer" className="bg-white rounded-full p-2 inline-flex shadow-md hover:scale-110 transition" data-testid="footer-instagram" aria-label="Instagram">
+                <Instagram size={28} style={{ color: "#E4405F" }} strokeWidth={2} />
               </a>
             )}
             {s.facebook && (
-              <a href={s.facebook.startsWith("http") ? s.facebook : `https://facebook.com/${s.facebook}`} target="_blank" rel="noreferrer" className="h-9 w-9 rounded-md bg-fsc-negro border border-fsc-azul text-fsc-azul hover:bg-fsc-azul hover:text-fsc-negro transition-colors flex items-center justify-center" data-testid="footer-fb">
-                <Facebook size={16}/>
+              <a href={s.facebook.startsWith("http") ? s.facebook : `https://facebook.com/${s.facebook}`} target="_blank" rel="noreferrer" className="bg-white rounded-full p-2 inline-flex shadow-md hover:scale-110 transition" data-testid="footer-facebook" aria-label="Facebook">
+                <Facebook size={28} style={{ color: BLUE }} strokeWidth={2} fill={BLUE} />
               </a>
             )}
             {s.youtube && (
-              <a href={s.youtube.startsWith("http") ? s.youtube : `https://youtube.com/${s.youtube}`} target="_blank" rel="noreferrer" className="h-9 w-9 rounded-md bg-fsc-negro border border-fsc-azul text-fsc-azul hover:bg-fsc-azul hover:text-fsc-negro transition-colors flex items-center justify-center" data-testid="footer-yt">
-                <Youtube size={16}/>
+              <a href={s.youtube.startsWith("http") ? s.youtube : `https://youtube.com/${s.youtube}`} target="_blank" rel="noreferrer" className="bg-white rounded-full p-2 inline-flex shadow-md hover:scale-110 transition" data-testid="footer-youtube" aria-label="YouTube">
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="#FF0000"><path d="M23.498 6.186a2.997 2.997 0 0 0-2.11-2.122C19.61 3.5 12 3.5 12 3.5s-7.61 0-9.388.564A2.997 2.997 0 0 0 .502 6.186C0 7.97 0 12 0 12s0 4.03.502 5.814a2.997 2.997 0 0 0 2.11 2.122C4.39 20.5 12 20.5 12 20.5s7.61 0 9.388-.564a2.997 2.997 0 0 0 2.11-2.122C24 16.03 24 12 24 12s0-4.03-.502-5.814zM9.75 15.568V8.432L15.818 12 9.75 15.568z"/></svg>
               </a>
             )}
           </div>
         </div>
       </div>
-
-      <div className="relative border-t border-fsc-azul/30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 text-xs text-fsc-gris/70 flex flex-col md:flex-row justify-between items-center gap-2">
-          <span>© {new Date().getFullYear()} Future Soccer Cup · Grupo Empresarial Ancla. Todos los derechos reservados.</span>
-          <span className="font-display tracking-[0.3em] text-fsc-azul">FSC · {new Date().getFullYear()}</span>
-        </div>
+      <div className="bg-black/30 text-white/80 text-xs text-center py-3" style={AGENCY_FB}>
+        © {new Date().getFullYear()} Future Soccer Cup · Grupo Empresarial Ancla. Todos los derechos reservados.
       </div>
     </footer>
   );

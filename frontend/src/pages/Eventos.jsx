@@ -4,6 +4,7 @@ import api, { imgSrc, FSC_LOGO } from "../lib/api";
 import { Calendar, MapPin, ArrowRight, Trophy } from "lucide-react";
 import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe, RED, BLUE } from "../lib/designSystem";
 import { formatDate } from "../lib/dateFormat";
+import SecondaryHero from "../components/SecondaryHero";
 
 export default function Eventos() {
   const [s, setS] = useState({});
@@ -17,19 +18,14 @@ export default function Eventos() {
   const archived = tournaments.filter((t) => t.archived);
   return (
     <div data-testid="eventos-page" style={AGENCY_FB}>
-      <section className="text-white relative overflow-hidden" style={{ background: "#000000" }}>
-        <div className="absolute inset-0 fsc-stripe opacity-30 pointer-events-none"/>
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
-          <div className="italic text-2xl" style={{ ...CURSIVE, color: BLUE }}>{s.eventos_hero_kicker || "temporada"} {new Date().getFullYear()}</div>
-          <h1 className="text-6xl md:text-8xl font-black leading-[0.9] mt-1" style={PLANE_CRASH} data-testid="eventos-hero-title">
-            {planeCrashSafe(s.eventos_hero_title || "EVENTOS")}
-          </h1>
-          <div className="h-1 w-24 mt-4" style={{ background: BLUE }}/>
-          <p className="text-fsc-gris mt-6 max-w-2xl text-lg" style={AGENCY_FB} data-testid="eventos-hero-body">
-            {s.eventos_hero_body || "Conoce todos los torneos del calendario FSC y revive las ediciones pasadas."}
-          </p>
-        </div>
-      </section>
+      <SecondaryHero
+        kicker={`${s.eventos_hero_kicker || "temporada"} ${new Date().getFullYear()}`}
+        title={s.eventos_hero_title || "EVENTOS"}
+        body={s.eventos_hero_body}
+        bgUrl={s.eventos_hero_bg_url}
+        overlay={s.eventos_hero_overlay || "red"}
+        testIdPrefix="eventos-hero"
+      />
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         {loading && <div className="text-center py-20 text-slate-400">Cargando...</div>}
         {!loading && active.length === 0 && archived.length === 0 && (

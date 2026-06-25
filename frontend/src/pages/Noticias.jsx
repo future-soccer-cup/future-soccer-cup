@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import api, { imgSrc } from "../lib/api";
 import { Instagram, ExternalLink } from "lucide-react";
 import { formatDate } from "../lib/dateFormat";
-import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe, BLUE } from "../lib/designSystem";
+import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe, BLUE, RED } from "../lib/designSystem";
 
 export default function Noticias() {
   const [posts, setPosts] = useState([]);
@@ -21,7 +21,7 @@ export default function Noticias() {
       <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-6">
         <div>
           <span className="italic text-2xl" style={{ ...CURSIVE, color: BLUE }}>{s.noticias_hero_kicker || "novedades"}</span>
-          <h1 className="text-5xl md:text-6xl font-black leading-[0.9] mt-1" style={{ ...PLANE_CRASH, color: "#000000" }} data-testid="noticias-hero-title">
+          <h1 className="text-5xl md:text-6xl font-black leading-[0.9] mt-1" style={{ ...PLANE_CRASH, color: RED }} data-testid="noticias-hero-title">
             {planeCrashSafe(s.noticias_hero_title || "NOTICIAS")}
           </h1>
           {s.noticias_hero_body && (

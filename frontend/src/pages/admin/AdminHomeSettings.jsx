@@ -61,6 +61,8 @@ const EMPTY = {
   nosotros_hero_kicker: "conócenos",
   nosotros_hero_title: "NOSOTROS",
   nosotros_hero_body: "",
+  nosotros_hero_bg_url: "",
+  nosotros_hero_overlay: "blue",
   nosotros_mission_kicker: "misión",
   nosotros_mission_body: "",
   nosotros_pill_1_title: "Reglamento claro", nosotros_pill_1_body: "Fair play como primer ítem de desempate.",
@@ -70,9 +72,13 @@ const EMPTY = {
   eventos_hero_kicker: "temporada",
   eventos_hero_title: "EVENTOS",
   eventos_hero_body: "",
+  eventos_hero_bg_url: "",
+  eventos_hero_overlay: "red",
   contacto_hero_kicker: "estamos aquí",
   contacto_hero_title: "CONTACTO",
   contacto_hero_body: "",
+  contacto_hero_bg_url: "",
+  contacto_hero_overlay: "blue",
   contacto_form_kicker: "déjanos un mensaje",
   contacto_form_title: "ENVÍANOS TU CONSULTA",
   noticias_hero_kicker: "novedades",
@@ -81,6 +87,8 @@ const EMPTY = {
   estadisticas_hero_kicker: "torneo en vivo",
   estadisticas_hero_title: "ESTADÍSTICAS",
   estadisticas_hero_body: "",
+  estadisticas_hero_bg_url: "",
+  estadisticas_hero_overlay: "blue",
   hablemos_kicker: "contáctanos",
   hablemos_title: "HABLEMOS",
 };
@@ -233,6 +241,11 @@ export default function AdminHomeSettings() {
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Hero — descripción</span>
             <textarea rows={3} value={s.nosotros_hero_body || ""} onChange={(e) => upd("nosotros_hero_body", e.target.value)} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" />
           </label>
+          <div className="md:col-span-2">
+            <ImageUpload value={s.nosotros_hero_bg_url} onChange={(v) => upd("nosotros_hero_bg_url", v)} label="Hero — imagen de fondo (ancho completo)" hint="Recomendado: JPG/WEBP horizontal 1920×800 px (12:5), alta calidad. Peso ideal < 1 MB. Se recorta tipo cover y recibe el overlay translúcido." testId="nosotros-hero-bg-upload" />
+          </div>
+          <OverlaySelect v={s.nosotros_hero_overlay} onChange={(v) => upd("nosotros_hero_overlay", v)} testId="nosotros-hero-overlay" />
+          <div />
           <Field label="Misión — kicker" v={s.nosotros_mission_kicker} onChange={(v) => upd("nosotros_mission_kicker", v)} placeholder="misión" />
           <div />
           <label className="md:col-span-2 block">
@@ -261,6 +274,10 @@ export default function AdminHomeSettings() {
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Hero — descripción</span>
             <textarea rows={2} value={s.eventos_hero_body || ""} onChange={(e) => upd("eventos_hero_body", e.target.value)} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" />
           </label>
+          <div className="md:col-span-2">
+            <ImageUpload value={s.eventos_hero_bg_url} onChange={(v) => upd("eventos_hero_bg_url", v)} label="Hero — imagen de fondo (ancho completo)" hint="Recomendado: JPG/WEBP horizontal 1920×800 px (12:5), alta calidad. Peso ideal < 1 MB. Se recorta tipo cover y recibe el overlay translúcido." testId="eventos-hero-bg-upload" />
+          </div>
+          <OverlaySelect v={s.eventos_hero_overlay} onChange={(v) => upd("eventos_hero_overlay", v)} testId="eventos-hero-overlay" />
         </div>
       </Section>
 
@@ -272,6 +289,10 @@ export default function AdminHomeSettings() {
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Hero — descripción</span>
             <textarea rows={2} value={s.estadisticas_hero_body || ""} onChange={(e) => upd("estadisticas_hero_body", e.target.value)} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" />
           </label>
+          <div className="md:col-span-2">
+            <ImageUpload value={s.estadisticas_hero_bg_url} onChange={(v) => upd("estadisticas_hero_bg_url", v)} label="Hero — imagen de fondo (ancho completo)" hint="Recomendado: JPG/WEBP horizontal 1920×800 px (12:5), alta calidad. Peso ideal < 1 MB. Se recorta tipo cover y recibe el overlay translúcido." testId="estadisticas-hero-bg-upload" />
+          </div>
+          <OverlaySelect v={s.estadisticas_hero_overlay} onChange={(v) => upd("estadisticas_hero_overlay", v)} testId="estadisticas-hero-overlay" />
         </div>
       </Section>
 
@@ -294,19 +315,16 @@ export default function AdminHomeSettings() {
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Hero — descripción</span>
             <textarea rows={2} value={s.contacto_hero_body || ""} onChange={(e) => upd("contacto_hero_body", e.target.value)} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" />
           </label>
+          <div className="md:col-span-2">
+            <ImageUpload value={s.contacto_hero_bg_url} onChange={(v) => upd("contacto_hero_bg_url", v)} label="Hero — imagen de fondo (ancho completo)" hint="Recomendado: JPG/WEBP horizontal 1920×800 px (12:5), alta calidad. Peso ideal < 1 MB. Se recorta tipo cover y recibe el overlay translúcido." testId="contacto-hero-bg-upload" />
+          </div>
+          <OverlaySelect v={s.contacto_hero_overlay} onChange={(v) => upd("contacto_hero_overlay", v)} testId="contacto-hero-overlay" />
           <Field label="Formulario — kicker" v={s.contacto_form_kicker} onChange={(v) => upd("contacto_form_kicker", v)} placeholder="déjanos un mensaje" />
           <Field label="Formulario — título" v={s.contacto_form_title} onChange={(v) => upd("contacto_form_title", v)} placeholder="ENVÍANOS TU CONSULTA" />
         </div>
       </Section>
 
-      <Section title='Bloque "Hablemos" (Nosotros + Contacto)' icon={<Phone size={18}/>}>
-        <div className="grid md:grid-cols-2 gap-4">
-          <Field label="Kicker (cursiva)" v={s.hablemos_kicker} onChange={(v) => upd("hablemos_kicker", v)} placeholder="contáctanos" />
-          <Field label="Título grande" v={s.hablemos_title} onChange={(v) => upd("hablemos_title", v)} placeholder="HABLEMOS" />
-        </div>
-      </Section>
-
-      <Section title="Nosotros (sección legacy / página Nosotros)" icon={<Info size={18}/>}>
+      <Section title="Nosotros — sección con imagen (misión)" icon={<Info size={18}/>}>
         <div className="grid md:grid-cols-2 gap-4">
           <Field label="Título" v={s.about_title} onChange={(v) => upd("about_title", v)} />
           <div />
@@ -361,6 +379,24 @@ function Field({ label, v, onChange, type = "text", placeholder }) {
         placeholder={placeholder}
         className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md"
       />
+    </label>
+  );
+}
+
+function OverlaySelect({ v, onChange, testId }) {
+  return (
+    <label className="block">
+      <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Hero — color de overlay translúcido</span>
+      <select
+        value={v || "blue"}
+        onChange={(e) => onChange(e.target.value)}
+        className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md bg-white"
+        data-testid={testId}
+      >
+        <option value="blue">Azul institucional (#0640c8)</option>
+        <option value="red">Rojo institucional (#e31f27)</option>
+      </select>
+      <span className="text-[10px] text-slate-400 mt-1 block">Se aplica sobre la imagen de fondo. 70% de opacidad.</span>
     </label>
   );
 }

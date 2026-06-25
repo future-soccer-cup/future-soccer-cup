@@ -5419,10 +5419,13 @@ class HomeSettings(BaseModel):
     about_image_url: Optional[str] = ""
 
     # === Páginas secundarias (Nosotros / Eventos / Contacto / Noticias / Estadísticas) ===
-    # Cada página puede editar su hero (cursive + título + descripción) + imagen.
+    # Cada página puede editar su hero (cursive + título + descripción) + imagen + overlay.
+    # secondary_hero_overlay: "blue" | "red" (translúcido sobre la imagen).
     nosotros_hero_kicker: Optional[str] = "conócenos"
     nosotros_hero_title: Optional[str] = "NOSOTROS"
     nosotros_hero_body: Optional[str] = "Future Soccer Cup es una iniciativa del Grupo Empresarial Ancla que une fútbol formativo, formación humana y turismo deportivo en Colombia."
+    nosotros_hero_bg_url: Optional[str] = ""
+    nosotros_hero_overlay: Optional[str] = "blue"
     nosotros_mission_kicker: Optional[str] = "misión"
     nosotros_mission_body: Optional[str] = "Convocamos clubes de toda la región en torneos certificados con experiencia integral: fixture profesional, transmisión de resultados en vivo, hospedaje, transporte y turismo."
     # 4 tarjetas/pills bajo la misión
@@ -5438,20 +5441,28 @@ class HomeSettings(BaseModel):
     eventos_hero_kicker: Optional[str] = "temporada"
     eventos_hero_title: Optional[str] = "EVENTOS"
     eventos_hero_body: Optional[str] = "Conoce todos los torneos del calendario FSC y revive las ediciones pasadas."
+    eventos_hero_bg_url: Optional[str] = ""
+    eventos_hero_overlay: Optional[str] = "red"
 
     contacto_hero_kicker: Optional[str] = "estamos aquí"
     contacto_hero_title: Optional[str] = "CONTACTO"
     contacto_hero_body: Optional[str] = "Escríbenos. Te responderemos en menos de 24 horas hábiles."
+    contacto_hero_bg_url: Optional[str] = ""
+    contacto_hero_overlay: Optional[str] = "blue"
     contacto_form_kicker: Optional[str] = "déjanos un mensaje"
     contacto_form_title: Optional[str] = "ENVÍANOS TU CONSULTA"
 
     noticias_hero_kicker: Optional[str] = "novedades"
     noticias_hero_title: Optional[str] = "NOTICIAS"
     noticias_hero_body: Optional[str] = "Últimas novedades, anuncios y momentos destacados de la familia FSC."
+    noticias_hero_bg_url: Optional[str] = ""
+    noticias_hero_overlay: Optional[str] = "red"
 
     estadisticas_hero_kicker: Optional[str] = "torneo en vivo"
     estadisticas_hero_title: Optional[str] = "ESTADÍSTICAS"
     estadisticas_hero_body: Optional[str] = "Fixture, tabla de posiciones y goleadores actualizados en tiempo real."
+    estadisticas_hero_bg_url: Optional[str] = ""
+    estadisticas_hero_overlay: Optional[str] = "blue"
 
     # Bloque "Hablemos" (compartido por Nosotros, Contacto)
     hablemos_kicker: Optional[str] = "contáctanos"

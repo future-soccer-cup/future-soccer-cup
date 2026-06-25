@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import api from "../lib/api";
 import { Trophy, Archive, Calendar, BarChart3, Goal } from "lucide-react";
 import { formatDateTime } from "../lib/dateFormat";
-import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe, BLUE } from "../lib/designSystem";
+import { AGENCY_FB } from "../lib/designSystem";
+import SecondaryHero from "../components/SecondaryHero";
 
 /** Pestaña pública con histórico de torneos: fixture, posiciones (live o histórico) y goleadores. */
 export default function DatosEstadisticas() {
@@ -65,18 +66,14 @@ export default function DatosEstadisticas() {
 
   return (
     <div data-testid="datos-estadisticas-page" style={AGENCY_FB}>
-      {/* Header */}
-      <section className="text-white" style={{ background: "#000000" }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <span className="italic text-2xl" style={{ ...CURSIVE, color: BLUE }}>{s.estadisticas_hero_kicker || "torneo en vivo"}</span>
-          <h1 className="text-5xl md:text-6xl font-black leading-[0.9] mt-1" style={PLANE_CRASH} data-testid="estadisticas-hero-title">
-            {planeCrashSafe(s.estadisticas_hero_title || "ESTADISTICAS")}
-          </h1>
-          <p className="text-slate-300 mt-3 max-w-2xl" style={AGENCY_FB} data-testid="estadisticas-hero-body">
-            {s.estadisticas_hero_body || "Fixture, tabla de posiciones y goleadores actualizados en tiempo real."}
-          </p>
-        </div>
-      </section>
+      <SecondaryHero
+        kicker={s.estadisticas_hero_kicker || "torneo en vivo"}
+        title={s.estadisticas_hero_title || "ESTADÍSTICAS"}
+        body={s.estadisticas_hero_body || "Fixture, tabla de posiciones y goleadores actualizados en tiempo real."}
+        bgUrl={s.estadisticas_hero_bg_url}
+        overlay={s.estadisticas_hero_overlay || "blue"}
+        testIdPrefix="estadisticas-hero"
+      />
 
       {/* Selector + tabs */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

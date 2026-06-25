@@ -16,6 +16,15 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-02-25 — Ajustes UI de páginas secundarias (heroes + colores + CMS)
+- **Nosotros**: título `SOMOS MAS QUE UN TORNEO` cambiado a color rojo institucional `#e31f27`. Eliminada sección "HABLEMOS".
+- **Eventos**: hero ya usa `SecondaryHero` con overlay rojo translúcido `rgba(227,31,39,0.7)` sobre imagen de fondo (editable).
+- **Estadísticas**: hero monocromo negro reemplazado por `SecondaryHero` con overlay azul `rgba(6,64,200,0.7)` sobre imagen de fondo (editable).
+- **Noticias**: título `NOTICIAS` cambiado a rojo institucional `#e31f27`.
+- **Contacto**: hero personalizado reemplazado por `SecondaryHero` con overlay azul (editable). Eliminada sección "HABLEMOS".
+- **Admin CMS**: añadidos campos `*_hero_bg_url` (ImageUpload) y selector `*_hero_overlay` (azul/rojo) en cada sección de Nosotros/Eventos/Estadísticas/Contacto en `/admin/home`. Eliminada la sección "Hablemos" del admin (ya no se renderiza en ninguna página).
+- Lint OK en 5 archivos. Verificado con screenshots en `/nosotros`, `/eventos`, `/datos-estadisticas`, `/noticias`, `/contacto`.
+
 ### 2026-06-25 — Iter29 — Fuente "Plane Crash" en Home v3 (corrección)
 - Diagnóstico: el preview de Emergent strippea `<style>` y `<link>` custom de `index.html`. El `@font-face` se inyecta en runtime desde `src/index.js` (idempotente, `font-display: swap`).
 - La fuente Plane Crash tiene los glifos de letras mapeados a las **minúsculas** (a-z) y los dígitos; mayúsculas y acentos caen a pictogramas decorativos.
