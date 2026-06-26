@@ -72,16 +72,26 @@ export default function Home() {
               ? s.hero_foreground_urls
               : (s.hero_foreground_url ? [s.hero_foreground_url] : []);
             if (list.length === 0) return null;
+            // Caso 1 imagen: ImageCarousel renderiza un <img> plano con className+style merged.
+            // Caso 2+ imágenes: ImageCarousel envuelve en un <div> con position:relative;
+            //   en ese caso necesitamos darle un height fijo (top+bottom no funciona con
+            //   parent min-height en todos los browsers). 585px = 75% de 780px (parent minHeight).
+            const isMulti = list.length > 1;
             return (
               <ImageCarousel
                 images={list}
                 intervalMs={4500}
                 fadeMs={1000}
                 alt="Future Soccer Cup — niños jugando"
-                className="hidden md:block absolute right-4 md:right-8 bottom-0 pointer-events-none drop-shadow-2xl"
-                style={{ width: "45%", height: "75%", zIndex: 5 }}
-                imgClassName=""
-                imgStyle={{ width: "100%", height: "100%", objectFit: "contain", objectPosition: "bottom right" }}
+                className={isMulti
+                  ? "hidden md:block absolute right-4 md:right-8 bottom-0 pointer-events-none drop-shadow-2xl"
+                  : "hidden md:block absolute right-4 md:right-8 bottom-0 pointer-events-none drop-shadow-2xl"}
+                style={isMulti
+                  ? { width: "45%", height: "585px", zIndex: 5 }
+                  : { width: "45%", height: "75%", objectFit: "contain", objectPosition: "bottom right", zIndex: 5 }}
+                imgStyle={isMulti
+                  ? { width: "100%", height: "100%", objectFit: "contain", objectPosition: "bottom right" }
+                  : null}
                 testId="hero-foreground-carousel"
               />
             );

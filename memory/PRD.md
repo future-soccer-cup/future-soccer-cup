@@ -16,6 +16,12 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-02-25 — Bug fix carrusel hero foreground (no se mostraba con 2+ imágenes)
+- **Causa raíz**: en `ImageCarousel`, el wrapper para el caso multi-imagen aplicaba `style={{ position: "relative", ...style }}`. El `position: relative` inline ganaba sobre el `absolute` del Tailwind (`className="hidden md:block absolute right-4 ..."`) porque inline styles tienen mayor especificidad que las clases. Resultado: el wrapper quedaba en el flujo normal (no posicionado en la esquina derecha del hero), oculto detrás de los textos.
+- **Fix**: el wrapper del caso multi-imagen ahora preserva el `className`/`style` del usuario sin modificarlos. Se añadió un **inner div** con `position: relative` (`width: 100%; height: 100%`) que sirve como contexto de posicionamiento para las `<img>` superpuestas. Esto permite que el outer wrapper conserve su `position: absolute` (de Tailwind) y posiciones de offset.
+- **Mejora adicional**: el caso 1-imagen ahora renderiza un `<img>` plano sin wrapper (compat 100% con el markup original `<img src=...>`). El caso multi-imagen usa `height: 585px` fijo (en lugar de `height: 75%` percentage que no resolvía con parent `min-height`).
+- Verificado vía API: backend persiste 5 URLs correctamente. Lint ✅ en los 2 archivos.
+
 ### 2026-02-25 — Bug fix carrusel multi-imagen + galería con imagen central destacada
 - **Bug fix carrusel hero foreground**: el admin podía subir múltiples imágenes pero solo guardaba la primera. La causa era un doble `upd("hero_foreground_urls", arr); upd("hero_foreground_url", arr[0])` consecutivo: el segundo `setS` usaba el `s` obsoleto del closure y pisaba el array recién agregado. Fix: un solo `setS(prev => ({...}))` con functional updater, además de cambiar el helper `upd` a `setS(prev => ({...prev, [k]: v}))` para blindar el resto de las casillas contra el mismo patrón. Verificado vía PUT/GET con 3 URLs: el backend persiste el array correctamente.
 - **Galería Finales — imagen central destacada**: cambio de `grid-cols-3` (3 columnas iguales) a `grid-cols-12` con `col-span-3` para las laterales y `col-span-6` para la central. La imagen del medio aparece al doble de ancho con `aspect-[16/11]` (más alta), `ring-4 ring-white` y `shadow-2xl` para destacarla visualmente.

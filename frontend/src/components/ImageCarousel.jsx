@@ -2,16 +2,20 @@ import { useEffect, useState } from "react";
 
 /**
  * Carrusel de imágenes con crossfade automático.
- * - Si `images` tiene 0 elementos: no renderiza nada.
- * - Si tiene 1 elemento: muestra esa imagen fija, sin rotación.
- * - Si tiene 2+ elementos: rota cada `intervalMs` (default 4500ms) con un crossfade de `fadeMs` (default 1000ms).
+ * - 0 imágenes → no renderiza nada.
+ * - 1 imagen → renderiza un `<img>` "transparente" sin wrapper (mismas props que un img normal).
+ * - 2+ imágenes → wrapper absoluto con todos los frames superpuestos, crossfade automático.
+ *
+ * Cuando hay 2+ imágenes, el wrapper hereda `className`/`style` del prop. Cada `<img>`
+ * recibe `imgClassName`/`imgStyle`. Cuando hay 1 sola, la `<img>` directamente recibe
+ * el `className` y un `style` que combina `style` + `imgStyle` (para mantener compat
+ * con la API anterior basada en un solo `<img>`).
  *
  * Props:
- *  - images: string[] — URLs (puede ser raw o procesadas con imgSrc por el padre)
+ *  - images: string[] (URLs)
  *  - intervalMs: tiempo entre cambios (default 4500)
  *  - fadeMs: duración del crossfade (default 1000)
- *  - alt, className, style, testId
- *  - imgClassName, imgStyle: aplicados a cada <img>
+ *  - alt, className, style, imgClassName, imgStyle, testId
  */
 export default function ImageCarousel({
   images = [],
@@ -37,35 +41,46 @@ export default function ImageCarousel({
 
   if (list.length === 0) return null;
 
-  // Caso 1 imagen: render simple (sin overlap ni transición), siempre visible.
+  // Caso 1 imagen: render directamente un `<img>` con las clases y estilos combinados,
+  // sin wrapper. Mismo comportamiento exacto que un `<img>` plano (compat 100% con el
+  // markup anterior basado en `<img src={s.hero_foreground_url} ...>`).
   if (list.length === 1) {
     return (
-      <div className={className} style={style} data-testid={testId}>
-        <img src={list[0]} alt={alt} loading="eager" className={imgClassName} style={imgStyle} />
-      </div>
+      <img
+        src={list[0]}
+        alt={alt}
+        loading="eager"
+        className={[className, imgClassName].filter(Boolean).join(" ")}
+        style={{ ...style, ...imgStyle }}
+        data-testid={testId}
+      />
     );
   }
 
-  // Caso 2+ imágenes: overlap absoluto + crossfade vía opacity.
+  // Caso 2+ imágenes: wrapper con className/style del usuario intactos
+  // (incluyendo `absolute` de Tailwind si aplica). Inner div con position:relative
+  // sirve como contexto de posicionamiento para las imágenes superpuestas.
   return (
-    <div className={className} style={{ position: "relative", ...style }} data-testid={testId}>
-      {list.map((src, i) => (
-        <img
-          key={`${src}-${i}`}
-          src={src}
-          alt={alt}
-          loading={i === 0 ? "eager" : "lazy"}
-          className={imgClassName}
-          style={{
-            ...imgStyle,
-            position: "absolute",
-            inset: 0,
-            opacity: i === active ? 1 : 0,
-            transition: `opacity ${fadeMs}ms ease-in-out`,
-            willChange: "opacity",
-          }}
-        />
-      ))}
+    <div className={className} style={style} data-testid={testId}>
+      <div style={{ position: "relative", width: "100%", height: "100%" }}>
+        {list.map((src, i) => (
+          <img
+            key={`${src}-${i}`}
+            src={src}
+            alt={alt}
+            loading={i === 0 ? "eager" : "lazy"}
+            className={imgClassName}
+            style={{
+              ...imgStyle,
+              position: "absolute",
+              inset: 0,
+              opacity: i === active ? 1 : 0,
+              transition: `opacity ${fadeMs}ms ease-in-out`,
+              willChange: "opacity",
+            }}
+          />
+        ))}
+      </div>
     </div>
   );
 }
