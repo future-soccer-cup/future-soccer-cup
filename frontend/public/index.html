@@ -6,9 +6,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#1A1A1A" />
     <meta name="description" content="Future Soccer Cup - Plataforma oficial del torneo de fútbol infantil y juvenil." />
+    <!-- Precarga de la fuente personalizada para evitar FOUC (Flash of Unstyled Content) -->
+    <link rel="preload" href="/fonts/PlaneCrash.ttf" as="font" type="font/ttf" crossorigin="anonymous" />
+    <link rel="stylesheet" href="/fonts.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Anton&family=Barlow+Condensed:wght@400;700;800;900&family=Barlow:wght@300;400;500;600;700;800;900&family=Exo+2:wght@300;400;500;600;700;800;900&family=Allura&family=Dancing+Script:wght@400;700&family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script>
+      // Anti-FOUC: aplicamos clase `fsc-fonts-ready` al <html> en cuanto la fuente
+      // 'Plane Crash' esté cargada. CSS oculta los títulos del hero hasta entonces.
+      // Fallback de seguridad: máximo 800ms — si la fuente tarda más, mostramos
+      // igual para no bloquear el render.
+      (function () {
+        var done = false;
+        function ready() {
+          if (done) return;
+          done = true;
+          document.documentElement.classList.add('fsc-fonts-ready');
+        }
+        if (document.fonts && document.fonts.load) {
+          // 1em '1em "Plane Crash"' fuerza la carga.
+          document.fonts.load("1em 'Plane Crash'").then(ready).catch(ready);
+        } else {
+          ready();
+        }
+        setTimeout(ready, 800);
+      })();
+    </script>
     <title>Future Soccer Cup | FSC</title>
   </head>
   <body>

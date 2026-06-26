@@ -3,6 +3,7 @@ import api from "../../lib/api";
 import { Save, Home as HomeIcon, Trophy, Info, Phone, Image as ImageIcon, Hash, MapPin, Flag } from "lucide-react";
 import { toast } from "sonner";
 import ImageUpload from "../../components/ImageUpload";
+import ImageListUpload from "../../components/ImageListUpload";
 
 const EMPTY = {
   // Navbar
@@ -15,6 +16,7 @@ const EMPTY = {
   hero_month_2: "Diciembre",
   hero_image_url: "",
   hero_foreground_url: "",
+  hero_foreground_urls: [],
   // Stats (4 columnas)
   stat_1_number: "11",   stat_1_label: "Ediciones",
   stat_2_number: "+1K",  stat_2_label: "Clubes participantes",
@@ -171,7 +173,15 @@ export default function AdminHomeSettings() {
       <Section title="Hero — Imágenes" icon={<ImageIcon size={18}/>}>
         <div className="grid md:grid-cols-2 gap-4">
           <ImageUpload value={s.hero_image_url} onChange={(v) => upd("hero_image_url", v)} label="Imagen de fondo (estadio/gradas, se tiñe con overlay)" hint="Recomendado: JPG/WEBP horizontal 1920×1080 px (16:9), alta calidad. Peso ideal < 1 MB. Se recorta tipo cover y recibe overlay azul+rojo." testId="hero-bg-upload" />
-          <ImageUpload value={s.hero_foreground_url} onChange={(v) => upd("hero_foreground_url", v)} label="Imagen superpuesta (niños jugando, va al lado derecho — idealmente PNG con fondo transparente)" hint="Recomendado: PNG con fondo transparente (cutout), vertical 1200×1500 px (4:5) o cuadrado 1200×1200 px. Peso ideal < 800 KB. Se renderiza con object-contain (mantiene proporción)." testId="hero-fg-upload" />
+          <div>
+            <ImageListUpload
+              values={(s.hero_foreground_urls && s.hero_foreground_urls.length > 0) ? s.hero_foreground_urls : (s.hero_foreground_url ? [s.hero_foreground_url] : [])}
+              onChange={(arr) => { upd("hero_foreground_urls", arr); upd("hero_foreground_url", arr[0] || ""); }}
+              label="Imágenes superpuestas (carrusel niños jugando)"
+              hint="Sube 1 o más PNG con fondo transparente (cutout), vertical 1200×1500 px (4:5) o cuadrado 1200×1200 px. Peso ideal < 800 KB c/u. Si hay 2+, rotan automáticamente con crossfade cada 4.5s."
+              testId="hero-fg-list-upload"
+            />
+          </div>
         </div>
       </Section>
 

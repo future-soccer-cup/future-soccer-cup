@@ -6,6 +6,7 @@ import { PLANE_CRASH, AGENCY_FB, NEO_SANS, STENCIL, CURSIVE, planeCrashSafe, RED
 import ChevronStack from "../components/ChevronStack";
 import AnimateIn from "../components/AnimateIn";
 import Counter from "../components/Counter";
+import ImageCarousel from "../components/ImageCarousel";
 
 const scrollToStats = (e) => {
   if (e) e.preventDefault();
@@ -64,17 +65,27 @@ export default function Home() {
 
         {/* (2) CONTENIDO CONSTRINGIDO AL ANCHO DEL NAVBAR (max-w-7xl) — incluye texto + imagen niños */}
         <div className="relative max-w-7xl mx-auto px-4 md:px-8" style={{ minHeight: "780px" }}>
-          {/* IMAGEN SUPERPUESTA: niños jugando — dentro del bloque, alineada al borde derecho del navbar */}
-          {s.hero_foreground_url && (
-            <img
-              src={s.hero_foreground_url}
-              alt="Future Soccer Cup — niños jugando"
-              className="hidden md:block absolute right-4 md:right-8 bottom-0 pointer-events-none drop-shadow-2xl"
-              style={{ width: "45%", height: "75%", objectFit: "contain", objectPosition: "bottom right", zIndex: 5 }}
-              data-testid="hero-foreground-image"
-              onError={(e) => { e.currentTarget.style.display = "none"; }}
-            />
-          )}
+          {/* IMAGEN SUPERPUESTA: carrusel de imágenes (niños jugando) — dentro del bloque,
+              alineado al borde derecho del navbar. Crossfade automático cada 4.5s. */}
+          {(() => {
+            const list = (s.hero_foreground_urls && s.hero_foreground_urls.length > 0)
+              ? s.hero_foreground_urls
+              : (s.hero_foreground_url ? [s.hero_foreground_url] : []);
+            if (list.length === 0) return null;
+            return (
+              <ImageCarousel
+                images={list}
+                intervalMs={4500}
+                fadeMs={1000}
+                alt="Future Soccer Cup — niños jugando"
+                className="hidden md:block absolute right-4 md:right-8 bottom-0 pointer-events-none drop-shadow-2xl"
+                style={{ width: "45%", height: "75%", zIndex: 5 }}
+                imgClassName=""
+                imgStyle={{ width: "100%", height: "100%", objectFit: "contain", objectPosition: "bottom right" }}
+                testId="hero-foreground-carousel"
+              />
+            );
+          })()}
 
           {/* === NAVBAR EMBEBIDA EN EL HERO === */}
           <div className="relative z-30 pt-5">
@@ -139,14 +150,14 @@ export default function Home() {
           <div className="relative z-10 pt-10 md:pt-14 pb-12">
             <div className="md:w-[50%]">
               <h1
-                className="fsc-anim-hero-edition text-white font-black leading-[0.85]"
+                className="fsc-needs-plane-crash fsc-anim-hero-edition text-white font-black leading-[0.85]"
                 style={{ ...PLANE_CRASH, fontSize: "clamp(56px, 8.5vw, 140px)", textShadow: "3px 3px 0 rgba(0,0,0,0.25)" }}
                 data-testid="hero-edition"
               >
                 {planeCrashSafe(s.hero_edition_label || "EDICION")}
               </h1>
               <div
-                className="fsc-anim-hero-year text-white font-black leading-[0.85]"
+                className="fsc-needs-plane-crash fsc-anim-hero-year text-white font-black leading-[0.85]"
                 style={{ ...PLANE_CRASH, fontSize: "clamp(80px, 12vw, 180px)", textShadow: "3px 3px 0 rgba(0,0,0,0.25)" }}
                 data-testid="hero-year"
               >
@@ -207,6 +218,7 @@ export default function Home() {
                 <Counter
                   value={it.n || it.dn}
                   duration={1800}
+                  transform={planeCrashSafe}
                   className="font-black leading-none whitespace-nowrap"
                   style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(40px, 5vw, 80px)" }}
                 />

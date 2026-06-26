@@ -5449,7 +5449,8 @@ class HomeSettings(BaseModel):
     hero_month_1: Optional[str] = "Octubre"
     hero_month_2: Optional[str] = "Diciembre"
     hero_image_url: Optional[str] = ""           # imagen de fondo (estadio/gradas)
-    hero_foreground_url: Optional[str] = ""      # imagen superpuesta (niños jugando, cutout)
+    hero_foreground_url: Optional[str] = ""      # imagen superpuesta (niños jugando, cutout) — DEPRECATED, usar hero_foreground_urls
+    hero_foreground_urls: Optional[List[str]] = []  # carrusel de imágenes superpuestas (crossfade automático)
     # === Estadísticas (4 columnas) ===
     stat_1_number: Optional[str] = "11"
     stat_1_label: Optional[str] = "Ediciones"

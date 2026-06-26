@@ -7,5 +7,15 @@
        url('/fonts/PlaneCrash.ttf') format('truetype');
   font-weight: 100 900;
   font-style: normal;
-  font-display: swap;
+  /* `optional` evita el FOUC: si la fuente no carga en ~100ms, el bloque permanece
+     invisible hasta que document.fonts.ready resuelve. Combinado con la clase
+     .fsc-fonts-loading aplicada al body, ocultamos los títulos del hero hasta
+     que la fuente esté disponible. */
+  font-display: block;
+}
+
+/* Oculta los elementos con fuente custom hasta que document.fonts.ready haya resuelto.
+   Esto previene el "flash" en minúsculas con fuente sans-serif fallback. */
+html:not(.fsc-fonts-ready) .fsc-needs-plane-crash {
+  visibility: hidden;
 }

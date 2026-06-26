@@ -16,6 +16,12 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-02-25 — 4 fixes post-animaciones (FOUC, timings, Counter bug, carrusel hero)
+- **FOUC fix**: precarga de la fuente `PlaneCrash.ttf` vía `<link rel="preload" as="font">` en `index.html`. `fonts.css` cambia `font-display: swap` → `block`. Script inline aplica clase `fsc-fonts-ready` al `<html>` cuando `document.fonts.load("1em 'Plane Crash'")` resuelve (fallback 800ms). CSS regla: `html:not(.fsc-fonts-ready) .fsc-needs-plane-crash { visibility: hidden }`. Los títulos del hero (`EDICION`, `2026`) llevan la clase `fsc-needs-plane-crash` y permanecen invisibles hasta que la fuente cargue → cero parpadeo.
+- **Animaciones más perceptibles**: durations actualizadas — `fsc-anim-hero-edition` 0.9s @ 0.1s delay; `fsc-anim-hero-year` 0.9s @ 0.4s delay (0.3s después de EDICIÓN); `fsc-anim-hero-badges` 0.7s @ 1.0s delay. Easing cambiado de `cubic-bezier(0.22, 1, 0.36, 1)` (snap final) → `cubic-bezier(0.4, 0, 0.2, 1)` (Material standard, movimiento más visible).
+- **Counter bug fix**: `<Counter>` ahora acepta prop `transform` (función aplicada al string final). Home.jsx pasa `transform={planeCrashSafe}` para que el output "+10K" se renderice como "+10k" (la fuente Plane Crash sólo tiene glifos lowercase). Adicionalmente: al terminar la animación se renderiza el string ORIGINAL exacto (no formato de `toLocaleString`) para evitar discrepancias en separadores/decimales.
+- **Carrusel hero foreground**: backend `HomeSettings` añadió campo `hero_foreground_urls: List[str]`. Nuevo componente `ImageCarousel.jsx` (crossfade automático cada 4.5s, fade 1s; si solo 1 imagen → estática, si 0 → null). Nuevo componente `ImageListUpload.jsx` en admin para subir/ordenar/eliminar múltiples imágenes con miniaturas + flechas izq/der. Backward compat: si `hero_foreground_urls` está vacío, usa `hero_foreground_url` único como fallback.
+
 ### 2026-02-25 — Animaciones FSC (framer-motion + CSS keyframes)
 - **Dependencia añadida**: `framer-motion@12.42.0`.
 - **Helpers reutilizables creados**:
