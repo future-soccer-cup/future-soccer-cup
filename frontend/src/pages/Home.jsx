@@ -136,16 +136,18 @@ export default function Home() {
               <div className="text-white font-black leading-[0.85]" style={{ ...PLANE_CRASH, fontSize: "clamp(80px, 12vw, 180px)", textShadow: "3px 3px 0 rgba(0,0,0,0.25)" }} data-testid="hero-year">
                 {planeCrashSafe(s.hero_edition_year || "2026")}
               </div>
-              <div className="mt-6 flex flex-wrap gap-2">
-                <span className="inline-block px-6 py-2.5 bg-white font-bold uppercase tracking-wider text-xl md:text-2xl rounded shadow" style={{ ...AGENCY_FB, color: BLUE }} data-testid="hero-month-1">
-                  {s.hero_month_1 || "Octubre"}
-                </span>
-                <span className="inline-block px-6 py-2.5 bg-white font-bold uppercase tracking-wider text-xl md:text-2xl rounded shadow" style={{ ...AGENCY_FB, color: BLUE }} data-testid="hero-month-2">
-                  {s.hero_month_2 || "Diciembre"}
-                </span>
-              </div>
-              <div className="mt-6 flex flex-col items-start ml-3" data-testid="hero-chevron">
-                <ChevronStack color="#ffffff" size={48} direction="down" count={5} testId="hero-chevron-stack" />
+              <div className="mt-6 inline-flex flex-col items-center gap-5">
+                <div className="flex flex-wrap gap-2 justify-center">
+                  <span className="inline-block px-6 py-2.5 bg-white font-bold uppercase tracking-wider text-xl md:text-2xl rounded shadow" style={{ ...AGENCY_FB, color: BLUE }} data-testid="hero-month-1">
+                    {s.hero_month_1 || "Octubre"}
+                  </span>
+                  <span className="inline-block px-6 py-2.5 bg-white font-bold uppercase tracking-wider text-xl md:text-2xl rounded shadow" style={{ ...AGENCY_FB, color: BLUE }} data-testid="hero-month-2">
+                    {s.hero_month_2 || "Diciembre"}
+                  </span>
+                </div>
+                <div data-testid="hero-chevron">
+                  <ChevronStack color="#ffffff" size={48} direction="up" count={5} testId="hero-chevron-stack" />
+                </div>
               </div>
             </div>
           </div>
