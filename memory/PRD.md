@@ -16,6 +16,14 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-02-25 — Galería Finales: transición slide horizontal
+- Reemplazado el cambio brusco (fade simple) por **slide horizontal animado** con `framer-motion` (`AnimatePresence` + `motion.img`, `mode="popLayout"`).
+- Nuevo estado `gDirection` (+1/-1) pasado como `custom` a AnimatePresence para que el slide entre/salga por el lado correcto: avance → nueva imagen entra desde la derecha, anterior sale hacia la izquierda. Retroceso (prev) invierte la dirección.
+- Handler unificado `advanceGallery(dir)` reemplaza los dos onClicks previos y deja gIdx + gDirection en sincronía. Auto-rotate cada 5s también setea `gDirection=1`.
+- Transición: `duration: 0.7s, ease: cubic-bezier(0.4, 0, 0.2, 1)`.
+- Cada slot mantiene su ratio aspecto y `overflow-hidden` para recortar la imagen que sale.
+- Flechas prev/next preservadas y funcionan con el mismo slide (sin saltos).
+
 ### 2026-02-25 — Galería de Finales con auto-rotación
 - `Home.jsx`: nuevo `useEffect` que avanza `gIdx` cada **5 segundos** vía `setInterval`. Solo activo si `gallery.length > 3` (con ≤3 no aporta porque ya se ven todas). Cleanup al desmontar.
 - `index.css`: keyframe `fsc-gallery-fade-in` (0.7s ease-out). Aplicado a cada `<img>` de la galería con `className="fsc-gallery-img"` + `key={img.id}` para que cada cambio de imagen tenga fade-in suave.

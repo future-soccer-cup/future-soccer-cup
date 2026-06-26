@@ -7,6 +7,7 @@ import ChevronStack from "../components/ChevronStack";
 import AnimateIn from "../components/AnimateIn";
 import Counter from "../components/Counter";
 import ImageCarousel from "../components/ImageCarousel";
+import { motion, AnimatePresence } from "framer-motion";
 
 const scrollToStats = (e) => {
   if (e) e.preventDefault();
@@ -18,6 +19,16 @@ export default function Home() {
   const [s, setS] = useState({});
   const [gallery, setGallery] = useState([]);
   const [gIdx, setGIdx] = useState(0);
+  // Dirección del último cambio (+1 = avance / next, -1 = retroceso / prev).
+  // Se usa para que el slide horizontal entre/salga por el lado correcto.
+  const [gDirection, setGDirection] = useState(1);
+  const advanceGallery = (dir) => {
+    setGDirection(dir);
+    setGIdx((i) => {
+      const len = Math.max(gallery.length, 1);
+      return ((i + dir) % len + len) % len;
+    });
+  };
 
   useEffect(() => {
     Promise.all([
@@ -34,6 +45,7 @@ export default function Home() {
   useEffect(() => {
     if (gallery.length <= 3) return;
     const t = setInterval(() => {
+      setGDirection(1);
       setGIdx((i) => (i + 1) % gallery.length);
     }, 5000);
     return () => clearInterval(t);
@@ -254,7 +266,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-6">
           <div className="relative">
             <button
-              onClick={() => setGIdx((i) => (i - 1 + Math.max(gallery.length, 1)) % Math.max(gallery.length, 1))}
+              onClick={() => advanceGallery(-1)}
               className="absolute -left-2 lg:-left-10 top-1/2 -translate-y-1/2 rounded-full p-2 hover:scale-110 transition disabled:opacity-30 z-10"
               disabled={gallery.length === 0}
               data-testid="gallery-prev"
@@ -263,25 +275,42 @@ export default function Home() {
             <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
               {visibleGallery.map((img, i) => {
                 // En desktop: imagen del medio (i===1) toma 6 columnas; las laterales 3 cada una.
-                // Esto la hace 2x más ancha. Aspect ratio ajustado para mantener altura visual similar.
                 const isMiddle = i === 1;
                 const colSpan = isMiddle ? "md:col-span-6" : "md:col-span-3";
                 const aspect = isMiddle ? "aspect-[16/11]" : "aspect-[4/3]";
                 const ringExtra = isMiddle ? "shadow-2xl ring-4 ring-white" : "shadow-md";
+                const slotKey = img?.id || img?.url || `__empty_${i}`;
                 return (
                   <div
-                    key={img?.id || img?.url || `gallery-slot-${i}`}
-                    className={`${colSpan} ${aspect} ${ringExtra} rounded-lg overflow-hidden transition-transform`}
+                    key={`slot-${i}`}
+                    className={`${colSpan} ${aspect} ${ringExtra} rounded-lg overflow-hidden relative`}
                     style={{ background: BLUE }}
                     data-testid={`gallery-item-${i}`}
                   >
-                    {img && <img src={img.url || img.image_url || ""} alt={img.title || ""} loading="lazy" className="fsc-gallery-img w-full h-full object-cover" key={img.id || img.url} />}
+                    <AnimatePresence initial={false} custom={gDirection} mode="popLayout">
+                      {img && (
+                        <motion.img
+                          key={slotKey}
+                          src={img.url || img.image_url || ""}
+                          alt={img.title || ""}
+                          loading="lazy"
+                          custom={gDirection}
+                          initial={(d) => ({ x: d > 0 ? "100%" : "-100%", opacity: 0.6 })}
+                          animate={{ x: 0, opacity: 1 }}
+                          exit={(d) => ({ x: d > 0 ? "-100%" : "100%", opacity: 0.6 })}
+                          transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }}
+                          className="absolute inset-0 w-full h-full object-cover"
+                          style={{ willChange: "transform, opacity" }}
+                          draggable={false}
+                        />
+                      )}
+                    </AnimatePresence>
                   </div>
                 );
               })}
             </div>
             <button
-              onClick={() => setGIdx((i) => (i + 1) % Math.max(gallery.length, 1))}
+              onClick={() => advanceGallery(1)}
               className="absolute -right-2 lg:-right-10 top-1/2 -translate-y-1/2 rounded-full p-2 hover:scale-110 transition disabled:opacity-30 z-10"
               disabled={gallery.length === 0}
               data-testid="gallery-next"
