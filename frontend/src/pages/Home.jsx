@@ -245,7 +245,7 @@ export default function Home() {
             {/* Mascota centrada (oculta en mobile, visible en lg) */}
             <div className="hidden lg:flex justify-center items-end" data-testid="mascot-box">
               {s.mascot_image_url && (
-                <img src={s.mascot_image_url} alt="Mascota Future Soccer Cup" className="max-h-[680px] w-auto object-contain" />
+                <img src={s.mascot_image_url} alt="Mascota Future Soccer Cup" className="max-h-[780px] w-auto object-contain" />
               )}
             </div>
             {/* PREMIER */}
@@ -264,7 +264,7 @@ export default function Home() {
           {/* Mascota mobile: debajo */}
           {s.mascot_image_url && (
             <div className="lg:hidden flex justify-center mt-8">
-              <img src={s.mascot_image_url} alt="Mascota Future Soccer Cup" className="max-h-[500px] w-auto object-contain" />
+              <img src={s.mascot_image_url} alt="Mascota Future Soccer Cup" className="max-h-[600px] w-auto object-contain" />
             </div>
           )}
         </div>
@@ -303,7 +303,7 @@ export default function Home() {
               <span className="bg-white rounded-full p-3 inline-flex shadow-md" style={{ color: BLUE }}>
                 <Mail size={28} strokeWidth={2.4} />
               </span>
-              <span className="font-black tracking-wider text-3xl md:text-4xl lg:text-5xl break-all" style={AGENCY_FB} data-testid="footer-email-text">
+              <span className="font-black tracking-wider text-lg md:text-xl lg:text-2xl whitespace-nowrap" style={AGENCY_FB} data-testid="footer-email-text">
                 {s.contact_email || "info@futuresoccercup.com"}
               </span>
             </a>
@@ -387,12 +387,12 @@ function CategoryColumn({ title, dateBadge, logoUrl, ctaUrl, groups, testId }) {
               {g.items.map((c, i) => (
                 <div
                   key={`${g.label}-${c}-${i}`}
-                  className="h-8 md:h-9 rounded flex items-center justify-center px-1"
+                  className="h-10 md:h-12 rounded flex items-center justify-center px-1"
                   style={{ background: "#e31f27" }}
                   data-testid={`${testId}-item-${gi}-${i}`}
                   title={c}
                 >
-                  <span className="text-white font-bold text-sm md:text-base leading-none tracking-wide" style={AGENCY_FB}>{c}</span>
+                  <span className="text-white font-bold text-lg md:text-xl leading-none tracking-wide" style={AGENCY_FB}>{c}</span>
                 </div>
               ))}
             </div>

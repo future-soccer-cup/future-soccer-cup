@@ -43,7 +43,7 @@ export default function Footer() {
             <span className="bg-white rounded-full p-3 inline-flex shadow-md" style={{ color: BLUE }}>
               <Mail size={28} strokeWidth={2.4} />
             </span>
-            <span className="font-black tracking-wider text-3xl md:text-4xl lg:text-5xl text-white break-all" style={AGENCY_FB} data-testid="footer-email-text">
+            <span className="font-black tracking-wider text-lg md:text-xl lg:text-2xl text-white whitespace-nowrap" style={AGENCY_FB} data-testid="footer-email-text">
               {email}
             </span>
           </a>

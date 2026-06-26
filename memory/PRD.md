@@ -16,6 +16,12 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-02-25 — Footer email compacto + categorías más grandes + león agrandado + carnets con logo del club
+- **Footer email** (en `Footer.jsx` y el footer rojo de `Home.jsx`): tamaño reducido de `text-3xl md:text-4xl lg:text-5xl break-all` → `text-lg md:text-xl lg:text-2xl whitespace-nowrap` para que entre en una sola línea sin quebrar.
+- **Categorías dentro del recuadro rojo** (Festival/Premier): cajas `h-8 md:h-9` → `h-10 md:h-12`, texto `text-sm md:text-base` → `text-lg md:text-xl` para mejor legibilidad.
+- **Mascota / León** (sección Comfenalco Soleden): tamaño aumentado de `max-h-680/500` → `max-h-780/600` (desktop/mobile).
+- **Carnets — logo del club**: el carnet ahora muestra el logo del CLUB del jugador en la cabecera izquierda (antes era el logo corporativo FSC). Lookup vía `clubs catalog` por `team.club_id` con fallback a `team.club_name`. En `/jugadores/{id}` se hace fetch directo a `/api/clubs/{cid}` para obtener el `logo_url`. Si el club no tiene logo, se mantiene el FSC_LOGO como fallback. Tamaño del logo del club aumentado a `h-14 w-14` (antes 12×12) con fondo blanco para mejor visibilidad sobre el gradiente del carnet.
+
 ### 2026-02-25 — Ajustes sección Comfenalco Soleden + nueva flecha ChevronStack
 - **FESTIVAL / PREMIER títulos editables**: agregados campos `festival_title` y `premier_title` al modelo `HomeSettings` (defaults: "FESTIVAL", "PREMIER") y al admin CMS `/admin/home`.
 - **Logo + título coexisten**: en `CategoryColumn`, si subes un logo ya NO reemplaza al texto. Ambos se renderizan lado a lado (logo a 40 px de alto + título en Plane Crash rojo).

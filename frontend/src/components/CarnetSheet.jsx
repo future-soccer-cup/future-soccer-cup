@@ -41,6 +41,9 @@ export default function CarnetSheet({ players, teams, clubs: clubsProp = null, t
   }, [clubsProp, teams]);
   const clubs = useMemo(() => clubsCatalog.map((c) => c.name).filter(Boolean).sort(), [clubsCatalog]);
   const clubIdByName = useMemo(() => Object.fromEntries(clubsCatalog.map((c) => [c.name, c.id])), [clubsCatalog]);
+  // Mapa club_id -> logo_url y club_name -> logo_url para resolver el logo del carnet desde el team.club_id o team.club_name.
+  const clubLogoById = useMemo(() => Object.fromEntries(clubsCatalog.map((c) => [c.id, c.logo_url || ""])), [clubsCatalog]);
+  const clubLogoByName = useMemo(() => Object.fromEntries(clubsCatalog.map((c) => [c.name, c.logo_url || ""])), [clubsCatalog]);
 
   // Filtros encadenados: Club -> Evento -> Categoría -> Equipo
   // Si hay catálogo inyectado de tournaments, mostramos TODOS los eventos (no solo los que tengan equipos).
@@ -358,11 +361,14 @@ export default function CarnetSheet({ players, teams, clubs: clubsProp = null, t
       <div ref={sheetRef} className="grid md:grid-cols-2 xl:grid-cols-3 gap-6 carnet-print">
         {tab === "players" && filteredPlayers.map((p) => {
           const uid = p.id;
+          const t = tmap[p.team_id];
+          const clubLogoUrl = (t && (clubLogoById[t.club_id] || clubLogoByName[t.club_name])) || "";
           return (
             <div key={uid} data-carnet-uid={uid} className="relative">
               <CarnetItem
                 player={p}
-                team={tmap[p.team_id]}
+                team={t}
+                clubLogoUrl={clubLogoUrl}
                 selected={selected.has(uid)}
                 onToggle={() => toggleOne(uid)}
                 busy={individualBusy === uid}
@@ -375,11 +381,14 @@ export default function CarnetSheet({ players, teams, clubs: clubsProp = null, t
         })}
         {tab === "staff" && staffList.map((s) => {
           const uid = s._staff_uid;
+          const t = tmap[s.team_id];
+          const clubLogoUrl = (t && (clubLogoById[t.club_id] || clubLogoByName[t.club_name])) || "";
           return (
             <div key={uid} data-carnet-uid={uid} className="relative">
               <CarnetItem
                 player={s}
-                team={tmap[s.team_id]}
+                team={t}
+                clubLogoUrl={clubLogoUrl}
                 staffRole={s.role}
                 selected={selected.has(uid)}
                 onToggle={() => toggleOne(uid)}
@@ -396,12 +405,13 @@ export default function CarnetSheet({ players, teams, clubs: clubsProp = null, t
   );
 }
 
-function CarnetItem({ player, team, staffRole, selected, onToggle, busy, onDownload, testIdPrefix, readonly = false }) {
+function CarnetItem({ player, team, staffRole, selected, onToggle, busy, onDownload, testIdPrefix, readonly = false, clubLogoUrl = "" }) {
   const qrValue = staffRole
     ? `${window.location.origin}/staff/${team?.id}/${player.document || player.name}`
     : `${window.location.origin}/jugadores/${player.id}`;
   const playerImg = player.photo_url ? imgSrc(player.photo_url) : null;
   const teamLogo = team?.logo_url ? imgSrc(team.logo_url) : null;
+  const resolvedClubLogo = clubLogoUrl ? imgSrc(clubLogoUrl) : "";
   const merged = { ...player, photo_url: playerImg };
   const tmerged = team ? { ...team, logo_url: teamLogo } : team;
   const uid = player._staff_uid || player.id;
@@ -420,7 +430,7 @@ function CarnetItem({ player, team, staffRole, selected, onToggle, busy, onDownl
         </button>
       )}
       <div data-carnet-card>
-        <Carnet player={merged} team={tmerged} qrValue={qrValue} staffRole={staffRole} />
+        <Carnet player={merged} team={tmerged} qrValue={qrValue} staffRole={staffRole} clubLogoUrl={resolvedClubLogo} />
       </div>
       {!readonly && onDownload && (
         <button

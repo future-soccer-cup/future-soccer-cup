@@ -8,12 +8,19 @@ export default function PlayerDetail() {
   const { id } = useParams();
   const [player, setPlayer] = useState(null);
   const [team, setTeam] = useState(null);
+  const [clubLogoUrl, setClubLogoUrl] = useState("");
   const carnetRef = useRef(null);
 
   useEffect(() => {
     api.get(`/players/${id}`).then((r) => {
       setPlayer(r.data);
-      api.get(`/teams/${r.data.team_id}`).then((tr) => setTeam(tr.data));
+      api.get(`/teams/${r.data.team_id}`).then((tr) => {
+        setTeam(tr.data);
+        const clubId = tr.data?.club_id;
+        if (clubId) {
+          api.get(`/clubs/${clubId}`).then((cr) => setClubLogoUrl(cr.data?.logo_url || "")).catch(() => {});
+        }
+      });
     });
   }, [id]);
 
@@ -67,7 +74,7 @@ export default function PlayerDetail() {
             </button>
           </div>
 
-          <Carnet ref={carnetRef} player={player} team={team} qrValue={carnetUrl} />
+          <Carnet ref={carnetRef} player={player} team={team} qrValue={carnetUrl} clubLogoUrl={clubLogoUrl} />
         </div>
       </div>
     </div>
@@ -98,9 +105,10 @@ function paletteFor(category) {
  * Generic carnet (player OR staff). When `staffRole` is provided, the layout swaps
  * "Dorsal" → "Rol" and "Jugador" → "Cuerpo técnico".
  */
-export function Carnet({ player, team, qrValue, staffRole }) {
+export function Carnet({ player, team, qrValue, staffRole, clubLogoUrl }) {
   const isStaff = !!staffRole;
   const p = paletteFor(team?.category);
+  const headerLogo = clubLogoUrl || FSC_LOGO;
   return (
     <div className="carnet-print rounded-2xl border border-white/10 shadow-2xl overflow-hidden relative text-white"
          style={{ width: 380, maxWidth: "100%", background: `linear-gradient(135deg, ${p.from} 0%, ${p.to} 100%)` }}
@@ -110,7 +118,7 @@ export function Carnet({ player, team, qrValue, staffRole }) {
         backgroundImage: `repeating-linear-gradient(45deg, rgba(255,255,255,0.18) 0 2px, transparent 2px 14px), repeating-linear-gradient(-45deg, rgba(0,0,0,0.18) 0 2px, transparent 2px 16px)`
       }} />
       <div className="relative px-5 pt-5 pb-4 flex items-center justify-between border-b border-white/15">
-        <img src={FSC_LOGO} alt="FSC" className="h-12 w-12 bg-white/15 rounded p-0.5" />
+        <img src={headerLogo} alt={clubLogoUrl ? "Club" : "FSC"} crossOrigin="anonymous" className="h-14 w-14 bg-white rounded object-contain p-0.5" data-testid="carnet-club-logo" />
         <div className="text-right flex items-center gap-3">
           <div>
             <div className="font-display text-xs tracking-[0.25em] font-bold" style={{ color: p.accent }}>FUTURE SOCCER CUP</div>
