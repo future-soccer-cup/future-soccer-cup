@@ -331,7 +331,15 @@ export default function Home() {
               {s.finales_button_label || "Conoce más de FSC"}
             </Link>
             <div className="mt-6 flex justify-center">
-              <ChevronStack color={BLUE} size={56} direction="up" count={5} testId="finales-chevron-stack" />
+              <button
+                type="button"
+                onClick={() => document.querySelector("[data-testid='home-region']")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                aria-label="Bajar a la siguiente sección"
+                className="cursor-pointer bg-transparent border-0"
+                data-testid="finales-chevron"
+              >
+                <ChevronStack color={BLUE} size={56} direction="up" count={5} testId="finales-chevron-stack" />
+              </button>
             </div>
           </div>
         </div>

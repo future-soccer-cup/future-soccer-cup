@@ -3145,10 +3145,33 @@ async def update_club(cid: str, payload: ClubIn, user: dict = Depends(get_curren
 
 @api.delete("/clubs/{cid}")
 async def delete_club(cid: str, _: dict = Depends(require_admin)):
-    res = await db.clubs.delete_one({"id": cid})
-    if res.deleted_count == 0:
+    """Elimina un club junto con todos sus equipos, jugadores, cotizaciones y pagos asociados (cascade)."""
+    club = await db.clubs.find_one({"id": cid}, {"_id": 0, "id": 1, "name": 1})
+    if not club:
         raise HTTPException(status_code=404, detail="Club no encontrado")
-    return {"ok": True}
+    # 1) Obtener todos los team_ids del club
+    teams_cursor = db.teams.find({"club_id": cid}, {"_id": 0, "id": 1})
+    team_ids = [t["id"] async for t in teams_cursor]
+    # 2) Eliminar jugadores de esos equipos
+    players_deleted = 0
+    if team_ids:
+        pres = await db.players.delete_many({"team_id": {"$in": team_ids}})
+        players_deleted = pres.deleted_count
+    # 3) Eliminar equipos
+    teams_deleted = await db.teams.delete_many({"club_id": cid}) if team_ids else None
+    # 4) Eliminar cotizaciones y pagos asociados al club
+    quotes_deleted = await db.quotes.delete_many({"club_id": cid})
+    payments_deleted = await db.payments.delete_many({"club_id": cid})
+    # 5) Finalmente el club
+    await db.clubs.delete_one({"id": cid})
+    return {
+        "ok": True,
+        "club_name": club.get("name"),
+        "teams_deleted": teams_deleted.deleted_count if teams_deleted else 0,
+        "players_deleted": players_deleted,
+        "quotes_deleted": quotes_deleted.deleted_count,
+        "payments_deleted": payments_deleted.deleted_count,
+    }
 
 @api.patch("/clubs/{cid}/logo")
 async def update_club_logo(cid: str, payload: dict, user: dict = Depends(get_current_user)):
@@ -4280,6 +4303,24 @@ async def update_quote_status(qid: str, status: str, user: dict = Depends(requir
         raise HTTPException(status_code=404, detail="Cotización no encontrada")
     actor = await _record_audit("quote", qid, "status_change", prev.get("status"), status, user)
     await db.quotes.update_one({"id": qid}, {"$set": {"status": status, **actor}})
+    return {"ok": True}
+
+@api.delete("/quotes/{qid}")
+async def delete_quote(qid: str, _: dict = Depends(require_admin)):
+    """Admin: elimina una cotización y todos los pagos asociados a ella (cascade)."""
+    q = await db.quotes.find_one({"id": qid}, {"_id": 0})
+    if not q:
+        raise HTTPException(status_code=404, detail="Cotización no encontrada")
+    payments_deleted = await db.payments.delete_many({"quote_id": qid})
+    await db.quotes.delete_one({"id": qid})
+    return {"ok": True, "payments_deleted": payments_deleted.deleted_count}
+
+@api.delete("/admin/payments/{pid}")
+async def admin_delete_payment(pid: str, _: dict = Depends(require_admin)):
+    """Admin: elimina un pago individual sin afectar la cotización asociada."""
+    res = await db.payments.delete_one({"id": pid})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Pago no encontrado")
     return {"ok": True}
 
 @api.put("/quotes/{qid}/payment-proof")
