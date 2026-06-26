@@ -16,6 +16,10 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-02-25 — Bug fix carrusel multi-imagen + galería con imagen central destacada
+- **Bug fix carrusel hero foreground**: el admin podía subir múltiples imágenes pero solo guardaba la primera. La causa era un doble `upd("hero_foreground_urls", arr); upd("hero_foreground_url", arr[0])` consecutivo: el segundo `setS` usaba el `s` obsoleto del closure y pisaba el array recién agregado. Fix: un solo `setS(prev => ({...}))` con functional updater, además de cambiar el helper `upd` a `setS(prev => ({...prev, [k]: v}))` para blindar el resto de las casillas contra el mismo patrón. Verificado vía PUT/GET con 3 URLs: el backend persiste el array correctamente.
+- **Galería Finales — imagen central destacada**: cambio de `grid-cols-3` (3 columnas iguales) a `grid-cols-12` con `col-span-3` para las laterales y `col-span-6` para la central. La imagen del medio aparece al doble de ancho con `aspect-[16/11]` (más alta), `ring-4 ring-white` y `shadow-2xl` para destacarla visualmente.
+
 ### 2026-02-25 — 4 fixes post-animaciones (FOUC, timings, Counter bug, carrusel hero)
 - **FOUC fix**: precarga de la fuente `PlaneCrash.ttf` vía `<link rel="preload" as="font">` en `index.html`. `fonts.css` cambia `font-display: swap` → `block`. Script inline aplica clase `fsc-fonts-ready` al `<html>` cuando `document.fonts.load("1em 'Plane Crash'")` resuelve (fallback 800ms). CSS regla: `html:not(.fsc-fonts-ready) .fsc-needs-plane-crash { visibility: hidden }`. Los títulos del hero (`EDICION`, `2026`) llevan la clase `fsc-needs-plane-crash` y permanecen invisibles hasta que la fuente cargue → cero parpadeo.
 - **Animaciones más perceptibles**: durations actualizadas — `fsc-anim-hero-edition` 0.9s @ 0.1s delay; `fsc-anim-hero-year` 0.9s @ 0.4s delay (0.3s después de EDICIÓN); `fsc-anim-hero-badges` 0.7s @ 1.0s delay. Easing cambiado de `cubic-bezier(0.22, 1, 0.36, 1)` (snap final) → `cubic-bezier(0.4, 0, 0.2, 1)` (Material standard, movimiento más visible).

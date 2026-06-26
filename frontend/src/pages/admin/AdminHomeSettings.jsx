@@ -140,7 +140,7 @@ export default function AdminHomeSettings() {
     }
   };
 
-  const upd = (k, v) => setS({ ...s, [k]: v });
+  const upd = (k, v) => setS(prev => ({ ...prev, [k]: v }));
 
   return (
     <div data-testid="admin-home-settings">
@@ -176,7 +176,7 @@ export default function AdminHomeSettings() {
           <div>
             <ImageListUpload
               values={(s.hero_foreground_urls && s.hero_foreground_urls.length > 0) ? s.hero_foreground_urls : (s.hero_foreground_url ? [s.hero_foreground_url] : [])}
-              onChange={(arr) => { upd("hero_foreground_urls", arr); upd("hero_foreground_url", arr[0] || ""); }}
+              onChange={(arr) => setS(prev => ({ ...prev, hero_foreground_urls: arr, hero_foreground_url: arr[0] || "" }))}
               label="Imágenes superpuestas (carrusel niños jugando)"
               hint="Sube 1 o más PNG con fondo transparente (cutout), vertical 1200×1500 px (4:5) o cuadrado 1200×1200 px. Peso ideal < 800 KB c/u. Si hay 2+, rotan automáticamente con crossfade cada 4.5s."
               testId="hero-fg-list-upload"

@@ -240,12 +240,25 @@ export default function Home() {
               data-testid="gallery-prev"
               style={{ color: BLUE }}
             ><ChevronLeft size={32} strokeWidth={3} /></button>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {visibleGallery.map((img, i) => (
-                <div key={img?.id || img?.url || `gallery-slot-${i}`} className="aspect-[4/3] rounded-lg overflow-hidden" style={{ background: BLUE }} data-testid={`gallery-item-${i}`}>
-                  {img && <img src={img.url || img.image_url || ""} alt={img.title || ""} className="w-full h-full object-cover" />}
-                </div>
-              ))}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+              {visibleGallery.map((img, i) => {
+                // En desktop: imagen del medio (i===1) toma 6 columnas; las laterales 3 cada una.
+                // Esto la hace 2x más ancha. Aspect ratio ajustado para mantener altura visual similar.
+                const isMiddle = i === 1;
+                const colSpan = isMiddle ? "md:col-span-6" : "md:col-span-3";
+                const aspect = isMiddle ? "aspect-[16/11]" : "aspect-[4/3]";
+                const ringExtra = isMiddle ? "shadow-2xl ring-4 ring-white" : "shadow-md";
+                return (
+                  <div
+                    key={img?.id || img?.url || `gallery-slot-${i}`}
+                    className={`${colSpan} ${aspect} ${ringExtra} rounded-lg overflow-hidden transition-transform`}
+                    style={{ background: BLUE }}
+                    data-testid={`gallery-item-${i}`}
+                  >
+                    {img && <img src={img.url || img.image_url || ""} alt={img.title || ""} loading="lazy" className="w-full h-full object-cover" />}
+                  </div>
+                );
+              })}
             </div>
             <button
               onClick={() => setGIdx((i) => (i + 1) % Math.max(gallery.length, 1))}
