@@ -80,9 +80,12 @@ def other_team_session():
 # -------------------- Categories --------------------
 class TestCategories:
     def test_list_categories(self):
+        """Iter41: endpoint público devuelve objetos {name, color?, sort_order?} en vez de strings."""
         r = requests.get(f"{API}/categories")
         assert r.status_code == 200
-        assert r.json() == EXPECTED_CATEGORIES
+        data = r.json()
+        names = [c["name"] if isinstance(c, dict) else c for c in data]
+        assert names == EXPECTED_CATEGORIES
 
 
 # -------------------- Register team --------------------

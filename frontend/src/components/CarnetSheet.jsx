@@ -16,7 +16,7 @@ import { toast } from "sonner";
  *   - title: título mostrado arriba (default "Carnets")
  *   - testIdPrefix: prefijo para los data-testid (default "carnet")
  */
-export default function CarnetSheet({ players, teams, clubs: clubsProp = null, tournaments: tournamentsProp = null, lockedTeamId = null, title = "Carnets", testIdPrefix = "carnet", readonly = false, showClubFilter = false, onRefresh = null }) {
+export default function CarnetSheet({ players, teams, clubs: clubsProp = null, tournaments: tournamentsProp = null, categories: categoriesProp = [], lockedTeamId = null, title = "Carnets", testIdPrefix = "carnet", readonly = false, showClubFilter = false, onRefresh = null }) {
   const [q, setQ] = useState("");
   const [team, setTeam] = useState(lockedTeamId || "");
   const [club, setClub] = useState("");
@@ -369,6 +369,7 @@ export default function CarnetSheet({ players, teams, clubs: clubsProp = null, t
                 player={p}
                 team={t}
                 clubLogoUrl={clubLogoUrl}
+                categories={categoriesProp}
                 selected={selected.has(uid)}
                 onToggle={() => toggleOne(uid)}
                 busy={individualBusy === uid}
@@ -389,6 +390,7 @@ export default function CarnetSheet({ players, teams, clubs: clubsProp = null, t
                 player={s}
                 team={t}
                 clubLogoUrl={clubLogoUrl}
+                categories={categoriesProp}
                 staffRole={s.role}
                 selected={selected.has(uid)}
                 onToggle={() => toggleOne(uid)}
@@ -405,7 +407,7 @@ export default function CarnetSheet({ players, teams, clubs: clubsProp = null, t
   );
 }
 
-function CarnetItem({ player, team, staffRole, selected, onToggle, busy, onDownload, testIdPrefix, readonly = false, clubLogoUrl = "" }) {
+function CarnetItem({ player, team, staffRole, selected, onToggle, busy, onDownload, testIdPrefix, readonly = false, clubLogoUrl = "", categories = [] }) {
   const qrValue = staffRole
     ? `${window.location.origin}/staff/${team?.id}/${player.document || player.name}`
     : `${window.location.origin}/jugadores/${player.id}`;
@@ -430,7 +432,7 @@ function CarnetItem({ player, team, staffRole, selected, onToggle, busy, onDownl
         </button>
       )}
       <div data-carnet-card>
-        <Carnet player={merged} team={tmerged} qrValue={qrValue} staffRole={staffRole} clubLogoUrl={resolvedClubLogo} />
+        <Carnet player={merged} team={tmerged} qrValue={qrValue} staffRole={staffRole} clubLogoUrl={resolvedClubLogo} categories={categories} />
       </div>
       {!readonly && onDownload && (
         <button

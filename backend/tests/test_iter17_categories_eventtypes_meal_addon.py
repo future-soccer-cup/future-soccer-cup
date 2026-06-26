@@ -30,15 +30,17 @@ def admin_session():
 
 # ---------- /api/categories public ----------
 class TestPublicCategories:
-    def test_public_returns_string_list(self):
+    def test_public_returns_objects_with_name(self):
+        """Iter41: el endpoint público devuelve objetos con `name` (+ opcional `color`, `sort_order`)
+        en vez de strings. Los consumidores (CategorySelect) extraen `.name` para compatibilidad."""
         r = requests.get(f"{BASE_URL}/api/categories", timeout=15)
         assert r.status_code == 200
         data = r.json()
         assert isinstance(data, list)
         assert len(data) >= 1
-        # Every item must be a plain string (not a dict)
         for item in data:
-            assert isinstance(item, str), f"Expected string but got {type(item)}: {item}"
+            assert isinstance(item, dict), f"Expected dict but got {type(item)}: {item}"
+            assert "name" in item and isinstance(item["name"], str) and item["name"]
 
 
 # ---------- Categories admin CRUD ----------

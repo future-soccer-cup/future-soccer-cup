@@ -16,6 +16,18 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-02-26 — Iter41: Footer global, mascota XL, colores por categoría en carnet + logo FSC junto al QR
+- **Footer global (`Footer.jsx`)**: teléfono unificado al mismo tamaño del email (`text-lg md:text-xl lg:text-2xl whitespace-nowrap`). Aplica a Nosotros, Eventos, Estadísticas, Noticias, Contacto, Registro y todas las páginas no-Home. Las redes (IG, FB, YouTube) ya estaban renderizadas condicionalmente desde `home_settings`.
+- **Home — Mascota XL**: la mascota entre Festival y Premier crece de `max-h-[780px]` a `max-h-[1000px] + scale-110 origin-bottom` (desktop) y de `max-h-[600px]` a `max-h-[780px]` (mobile).
+- **Categorías con color (admin → carnet)**:
+  - Backend: `db.categories` ahora persiste campo `color` (hex). Endpoint público `GET /api/categories` cambia de `List[str]` a `List[{id, name, color?, sort_order}]`. `POST` y `PUT /admin/categories` aceptan `color`. Seed automático añade `color: ""`.
+  - Admin (`AdminCategories.jsx`): nueva columna "Color carnet" con `<input type="color">` + input text hex sincronizado. Modal de creación también incluye picker.
+  - Carnet (`PlayerDetail.jsx`): nuevo helper `darkenHex` + `paletteFor(category, categories)` — si el catálogo tiene `color` para la categoría del equipo, se usa como `from` y se oscurece 55% para generar el `to` del gradiente. Si no hay color asignado, mantiene el fallback hardcoded por categoría (Sub-8…Sub-18). Backward compatible.
+  - `CarnetSheet.jsx` y `AdminCarnets.jsx` pasan `categories` como prop por toda la cadena de carnets (lista admin + individuales). `CategorySelect.jsx` ahora extrae `.name` para mantener compat con el nuevo schema.
+- **Carnet — Logo FSC sin fondo junto al QR**: añadido `<img src={FSC_LOGO}>` (h-16 w-16, `drop-shadow-md`, sin `bg-white`) a la izquierda del QR en la sección inferior del carnet. `data-testid=carnet-fsc-logo`.
+- **Tests actualizados**: `test_iter17_categories_eventtypes_meal_addon.py::TestPublicCategories` ahora valida objetos `{name, ...}` en vez de strings. `test_new_features.py::TestCategories` extrae `.name` antes de comparar con `EXPECTED_CATEGORIES`. Ambos PASS verificados manualmente.
+
+
 ### 2026-02-26 — Iter40: Eliminaciones admin con modales + retoques visuales Home
 - **Admin DELETE UX (4 paneles)**: Botones papelera añadidos en `AdminClubsTree.jsx` (cascada club → equipos → jugadores → cotizaciones → pagos), `AdminQuotes.jsx`, `AdminPayments.jsx` y `AdminFixtureGenerator.jsx` (sustituyendo `window.confirm`). Todos usan el componente reutilizable `ConfirmDeleteDialog.jsx` (AlertDialog de shadcn con estado loading + data-testids `{prefix}-content/-cancel/-confirm`).
 - **Backend cascada**: `DELETE /api/clubs/{cid}` borra en orden players → teams → quotes → payments → club, devolviendo métricas por cada colección. Mostradas en el toast de éxito.

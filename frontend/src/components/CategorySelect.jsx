@@ -2,13 +2,20 @@ import { useEffect, useState } from "react";
 import api from "../lib/api";
 
 let cached = null;
+/**
+ * Devuelve siempre un array de strings (nombres de categoría) para compatibilidad
+ * con consumidores antiguos. Si el backend devuelve objetos `{name, color, ...}`
+ * se extrae el campo `name`; si devuelve strings, se pasa tal cual.
+ */
 export function useCategories() {
   const [cats, setCats] = useState(cached || []);
   useEffect(() => {
     if (cached) return;
     api.get("/categories").then((r) => {
-      cached = r.data;
-      setCats(r.data);
+      const arr = Array.isArray(r.data) ? r.data : [];
+      const names = arr.map((c) => (typeof c === "string" ? c : c?.name)).filter(Boolean);
+      cached = names;
+      setCats(names);
     });
   }, []);
   return cats;

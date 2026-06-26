@@ -325,7 +325,7 @@ export default function Home() {
             <Link
               to={s.finales_button_url || "/nosotros"}
               data-testid="finales-cta"
-              className="inline-block mt-4 px-10 py-4 text-white font-bold tracking-wide rounded shadow text-xl md:text-2xl"
+              className="inline-block mt-4 px-10 py-4 text-white font-bold tracking-wide rounded shadow text-xl md:text-2xl transition-transform duration-200 ease-out hover:scale-110 hover:shadow-xl"
               style={{ ...AGENCY_FB, background: BLUE }}
             >
               {s.finales_button_label || "Conoce más de FSC"}
@@ -370,7 +370,7 @@ export default function Home() {
             {/* Mascota centrada (oculta en mobile, visible en lg) */}
             <AnimateIn variant="slide-up" distance={64} duration={0.8} className="hidden lg:flex justify-center items-end" data-testid="mascot-box">
               {s.mascot_image_url && (
-                <img src={s.mascot_image_url} alt="Mascota Future Soccer Cup" loading="lazy" className="max-h-[780px] w-auto object-contain" />
+                <img src={s.mascot_image_url} alt="Mascota Future Soccer Cup" loading="lazy" className="max-h-[1000px] w-auto object-contain scale-110 origin-bottom" />
               )}
             </AnimateIn>
             {/* PREMIER */}
@@ -389,7 +389,7 @@ export default function Home() {
           {/* Mascota mobile: debajo */}
           {s.mascot_image_url && (
             <AnimateIn variant="slide-up" distance={64} className="lg:hidden flex justify-center mt-8">
-              <img src={s.mascot_image_url} alt="Mascota Future Soccer Cup" loading="lazy" className="max-h-[600px] w-auto object-contain" />
+              <img src={s.mascot_image_url} alt="Mascota Future Soccer Cup" loading="lazy" className="max-h-[780px] w-auto object-contain" />
             </AnimateIn>
           )}
         </div>
@@ -512,7 +512,7 @@ function CategoryColumn({ title, dateBadge, logoUrl, ctaUrl, groups, testId }) {
               {g.items.map((c, i) => (
                 <div
                   key={`${g.label}-${c}-${i}`}
-                  className="h-10 md:h-12 rounded flex items-center justify-center px-1"
+                  className="h-10 md:h-12 rounded flex items-center justify-center px-1 cursor-pointer transition-transform duration-200 ease-out hover:scale-110 hover:shadow-lg"
                   style={{ background: "#e31f27" }}
                   data-testid={`${testId}-item-${gi}-${i}`}
                   title={c}
@@ -524,7 +524,7 @@ function CategoryColumn({ title, dateBadge, logoUrl, ctaUrl, groups, testId }) {
           </div>
         ))}
       </div>
-      <Link to={ctaUrl} data-testid={`${testId}-cta`} className="inline-block mt-4 px-8 py-3 font-bold text-white rounded shadow text-lg md:text-xl" style={{ ...AGENCY_FB, background: "#0640c8" }}>
+      <Link to={ctaUrl} data-testid={`${testId}-cta`} className="inline-block mt-4 px-8 py-3 font-bold text-white rounded shadow text-lg md:text-xl transition-transform duration-200 ease-out hover:scale-110 hover:shadow-xl" style={{ ...AGENCY_FB, background: "#0640c8" }}>
         Acepta el reto
       </Link>
     </div>

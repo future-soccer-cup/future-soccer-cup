@@ -8,6 +8,7 @@ export default function AdminCarnets() {
   const [teams, setTeams] = useState([]);
   const [clubs, setClubs] = useState([]);
   const [tournaments, setTournaments] = useState([]);
+  const [categories, setCategories] = useState([]);
 
   const load = () => {
     Promise.all([
@@ -15,11 +16,13 @@ export default function AdminCarnets() {
       api.get("/teams"),
       api.get("/clubs").catch(() => ({ data: [] })),
       api.get("/tournaments").catch(() => ({ data: [] })),
-    ]).then(([p, t, c, tn]) => {
+      api.get("/categories").catch(() => ({ data: [] })),
+    ]).then(([p, t, c, tn, ct]) => {
       setPlayers(p.data || []);
       setTeams(t.data || []);
       setClubs(c.data || []);
       setTournaments((tn.data || []).filter((x) => !x.archived));
+      setCategories(ct.data || []);
     });
   };
 
@@ -35,6 +38,7 @@ export default function AdminCarnets() {
         teams={teams}
         clubs={clubs}
         tournaments={tournaments}
+        categories={categories}
         title="Carnets"
         testIdPrefix="carnet"
         showClubFilter={true}

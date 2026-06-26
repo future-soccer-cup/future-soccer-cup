@@ -9,6 +9,7 @@ export default function PlayerDetail() {
   const [player, setPlayer] = useState(null);
   const [team, setTeam] = useState(null);
   const [clubLogoUrl, setClubLogoUrl] = useState("");
+  const [categories, setCategories] = useState([]);
   const carnetRef = useRef(null);
 
   useEffect(() => {
@@ -22,6 +23,7 @@ export default function PlayerDetail() {
         }
       });
     });
+    api.get(`/categories`).then((r) => setCategories(r.data || [])).catch(() => {});
   }, [id]);
 
   if (!player) return <div className="p-12 text-center text-slate-500">Cargando...</div>;
@@ -74,15 +76,16 @@ export default function PlayerDetail() {
             </button>
           </div>
 
-          <Carnet ref={carnetRef} player={player} team={team} qrValue={carnetUrl} clubLogoUrl={clubLogoUrl} />
+          <Carnet ref={carnetRef} player={player} team={team} qrValue={carnetUrl} clubLogoUrl={clubLogoUrl} categories={categories} />
         </div>
       </div>
     </div>
   );
 }
 
-// Category-based background palette for printed carnets.
+// Category-based background palette for printed carnets (FALLBACK).
 // Defaults to "blue/red" branding when category doesn't match a known one.
+// Si el admin asigna `color` en /admin/categorias, ese color SOBREESCRIBE este fallback.
 const CATEGORY_PALETTE = {
   "Sub-9":  { from: "#0ea5e9", to: "#0369a1", accent: "#fde047" },   // sky → blue
   "Sub-10": { from: "#10b981", to: "#065f46", accent: "#fde047" },   // emerald
@@ -97,7 +100,24 @@ const CATEGORY_PALETTE = {
 };
 const DEFAULT_PALETTE = { from: "#1d4ed8", to: "#0c1b54", accent: "#dc2626" };
 
-function paletteFor(category) {
+/** Oscurece un hex en `pct` porcentaje (0..1). Útil para generar el gradiente desde el color base. */
+function darkenHex(hex, pct = 0.55) {
+  const clean = (hex || "").replace("#", "");
+  if (clean.length !== 6) return hex || "#0c1b54";
+  const r = parseInt(clean.slice(0, 2), 16);
+  const g = parseInt(clean.slice(2, 4), 16);
+  const b = parseInt(clean.slice(4, 6), 16);
+  const f = Math.max(0, Math.min(1, 1 - pct));
+  const to2 = (n) => Math.round(n * f).toString(16).padStart(2, "0");
+  return `#${to2(r)}${to2(g)}${to2(b)}`;
+}
+
+/** Devuelve la paleta del carnet: el color del catálogo prevalece sobre el fallback fijo. */
+function paletteFor(category, categories = []) {
+  const cat = (categories || []).find((c) => (c?.name || "").trim().toLowerCase() === (category || "").trim().toLowerCase());
+  if (cat && cat.color) {
+    return { from: cat.color, to: darkenHex(cat.color, 0.55), accent: "#fde047" };
+  }
   return CATEGORY_PALETTE[category] || DEFAULT_PALETTE;
 }
 
@@ -105,9 +125,9 @@ function paletteFor(category) {
  * Generic carnet (player OR staff). When `staffRole` is provided, the layout swaps
  * "Dorsal" → "Rol" and "Jugador" → "Cuerpo técnico".
  */
-export function Carnet({ player, team, qrValue, staffRole, clubLogoUrl }) {
+export function Carnet({ player, team, qrValue, staffRole, clubLogoUrl, categories = [] }) {
   const isStaff = !!staffRole;
-  const p = paletteFor(team?.category);
+  const p = paletteFor(team?.category, categories);
   const headerLogo = clubLogoUrl || FSC_LOGO;
   return (
     <div className="carnet-print rounded-2xl border border-white/10 shadow-2xl overflow-hidden relative text-white"
@@ -167,8 +187,17 @@ export function Carnet({ player, team, qrValue, staffRole, clubLogoUrl }) {
           <div className="text-[10px] text-white/70" data-testid="carnet-comet">COMET: <span className="font-mono">{player.comet_number || "—"}</span></div>
           {!isStaff && <div className="text-[10px] text-white/70">NAC: {player.birth_date || "—"}</div>}
         </div>
-        <div className="bg-white p-1.5 rounded">
-          <QRCodeSVG value={qrValue || player.id || player.document || player.name} size={64} />
+        <div className="flex items-center gap-2">
+          <img
+            src={FSC_LOGO}
+            alt="Future Soccer Cup"
+            crossOrigin="anonymous"
+            className="h-16 w-16 object-contain drop-shadow-md"
+            data-testid="carnet-fsc-logo"
+          />
+          <div className="bg-white p-1.5 rounded">
+            <QRCodeSVG value={qrValue || player.id || player.document || player.name} size={64} />
+          </div>
         </div>
       </div>
     </div>

@@ -23,7 +23,7 @@ export default function AdminCategories() {
 
   const save = async (c) => {
     try {
-      await api.put(`/admin/categories/${c.id}`, { name: c.name, sort_order: c.sort_order });
+      await api.put(`/admin/categories/${c.id}`, { name: c.name, sort_order: c.sort_order, color: c.color || "" });
       toast.success("Guardado");
       load();
     } catch (err) {
@@ -62,7 +62,7 @@ export default function AdminCategories() {
           <h1 className="font-display text-4xl font-black uppercase tracking-tighter flex items-center gap-2"><Tag/> Categorías</h1>
           <p className="text-sm text-slate-500 mt-1">Catálogo de categorías que el admin puede usar al crear eventos, equipos y jugadores.</p>
         </div>
-        <button onClick={() => setCreating({ name: "", sort_order: items.length })} className="fsc-btn-red px-4 py-2 rounded-md text-sm flex items-center gap-2" data-testid="add-category-btn">
+        <button onClick={() => setCreating({ name: "", sort_order: items.length, color: "#1d4ed8" })} className="fsc-btn-red px-4 py-2 rounded-md text-sm flex items-center gap-2" data-testid="add-category-btn">
           <Plus size={16}/> Nueva categoría
         </button>
       </div>
@@ -73,12 +73,13 @@ export default function AdminCategories() {
             <tr>
               <th className="text-left px-4 py-2">Nombre</th>
               <th className="text-left px-4 py-2 w-32">Orden</th>
+              <th className="text-left px-4 py-2 w-40">Color carnet</th>
               <th className="text-right px-4 py-2 w-32">Acciones</th>
             </tr>
           </thead>
           <tbody>
-            {loading && <tr><td colSpan="3" className="text-center py-10 text-slate-400">Cargando...</td></tr>}
-            {!loading && items.length === 0 && <tr><td colSpan="3" className="text-center py-10 text-slate-400">Sin categorías. Agrega la primera.</td></tr>}
+            {loading && <tr><td colSpan="4" className="text-center py-10 text-slate-400">Cargando...</td></tr>}
+            {!loading && items.length === 0 && <tr><td colSpan="4" className="text-center py-10 text-slate-400">Sin categorías. Agrega la primera.</td></tr>}
             {items.map((c) => (
               <tr key={c.id} className="border-t border-slate-100" data-testid={`category-row-${c.id}`}>
                 <td className="px-4 py-2">
@@ -86,6 +87,26 @@ export default function AdminCategories() {
                 </td>
                 <td className="px-4 py-2">
                   <input type="number" value={c.sort_order || 0} onChange={(e) => patchLocal(c.id, { sort_order: Number(e.target.value) })} className="w-20 px-2 py-1 border border-slate-200 rounded text-sm tabular-nums" />
+                </td>
+                <td className="px-4 py-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={c.color || "#1d4ed8"}
+                      onChange={(e) => patchLocal(c.id, { color: e.target.value })}
+                      className="h-8 w-12 border border-slate-200 rounded cursor-pointer"
+                      title="Color del carnet para esta categoría"
+                      data-testid={`cat-color-${c.id}`}
+                    />
+                    <input
+                      type="text"
+                      value={c.color || ""}
+                      onChange={(e) => patchLocal(c.id, { color: e.target.value })}
+                      placeholder="#1d4ed8"
+                      className="w-24 px-2 py-1 border border-slate-200 rounded text-xs font-mono"
+                      data-testid={`cat-color-text-${c.id}`}
+                    />
+                  </div>
                 </td>
                 <td className="px-4 py-2 text-right space-x-2">
                   <button onClick={() => save(c)} className="text-fsc-azul" data-testid={`cat-save-${c.id}`}><Save size={16}/></button>
@@ -108,6 +129,27 @@ export default function AdminCategories() {
             <label className="block">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Orden (opcional)</span>
               <input type="number" value={creating.sort_order} onChange={(e) => setCreating({ ...creating, sort_order: Number(e.target.value) })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md tabular-nums" />
+            </label>
+            <label className="block">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Color del carnet</span>
+              <div className="mt-1 flex items-center gap-2">
+                <input
+                  type="color"
+                  value={creating.color || "#1d4ed8"}
+                  onChange={(e) => setCreating({ ...creating, color: e.target.value })}
+                  className="h-9 w-14 border border-slate-200 rounded cursor-pointer"
+                  data-testid="cat-new-color"
+                />
+                <input
+                  type="text"
+                  value={creating.color || ""}
+                  onChange={(e) => setCreating({ ...creating, color: e.target.value })}
+                  placeholder="#1d4ed8"
+                  className="flex-1 px-3 py-2 border border-slate-200 rounded-md text-sm font-mono"
+                  data-testid="cat-new-color-text"
+                />
+              </div>
+              <p className="text-[10px] text-slate-400 mt-1">Se usará como fondo en el carnet de jugadores y cuerpo técnico de esta categoría.</p>
             </label>
             <div className="flex justify-end gap-2 pt-2">
               <button type="button" onClick={() => setCreating(null)} className="px-4 py-2 text-xs font-bold uppercase tracking-wide text-slate-600">Cancelar</button>

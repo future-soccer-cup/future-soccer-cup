@@ -2789,11 +2789,12 @@ async def root():
 
 @api.get("/categories")
 async def list_categories():
-    """Return categories from DB (admin-editable). Falls back to seed constants if empty."""
-    rows = await db.categories.find({}, {"_id": 0}).sort([("sort_order", 1), ("name", 1)]).to_list(200)
+    """Return categories catalog (name + color + sort_order) from DB.
+    Falls back to seed constants if empty. Consumed by carnets (color) and CategorySelect (name)."""
+    rows = await db.categories.find({}, {"_id": 0, "id": 1, "name": 1, "color": 1, "sort_order": 1}).sort([("sort_order", 1), ("name", 1)]).to_list(200)
     if not rows:
-        return CATEGORIES
-    return [r["name"] for r in rows]
+        return [{"name": n, "color": "", "sort_order": i} for i, n in enumerate(CATEGORIES)]
+    return rows
 
 
 @api.get("/admin/categories")
@@ -2802,7 +2803,7 @@ async def admin_list_categories(_: dict = Depends(require_admin)):
     # Seed defaults on first call so admin sees the existing list immediately.
     if not rows:
         for i, n in enumerate(CATEGORIES):
-            await db.categories.insert_one({"id": str(uuid.uuid4()), "name": n, "sort_order": i, "created_at": datetime.now(timezone.utc).isoformat()})
+            await db.categories.insert_one({"id": str(uuid.uuid4()), "name": n, "sort_order": i, "color": "", "created_at": datetime.now(timezone.utc).isoformat()})
         rows = await db.categories.find({}, {"_id": 0}).sort([("sort_order", 1), ("name", 1)]).to_list(200)
     return rows
 
@@ -2815,7 +2816,8 @@ async def admin_create_category(body: dict, user: dict = Depends(require_admin))
     if await db.categories.find_one({"name": name}):
         raise HTTPException(status_code=400, detail="Ya existe una categoría con ese nombre")
     last = await db.categories.find({}, {"_id": 0, "sort_order": 1}).sort("sort_order", -1).limit(1).to_list(1)
-    doc = {"id": str(uuid.uuid4()), "name": name, "sort_order": int(body.get("sort_order", (last[0]["sort_order"] + 1) if last else 0)), "created_at": datetime.now(timezone.utc).isoformat()}
+    color = (body.get("color") or "").strip()
+    doc = {"id": str(uuid.uuid4()), "name": name, "sort_order": int(body.get("sort_order", (last[0]["sort_order"] + 1) if last else 0)), "color": color, "created_at": datetime.now(timezone.utc).isoformat()}
     await db.categories.insert_one(doc)
     doc.pop("_id", None)
     return doc
@@ -2832,6 +2834,8 @@ async def admin_update_category(cid: str, body: dict, _: dict = Depends(require_
     if "sort_order" in body:
         try: update["sort_order"] = int(body["sort_order"])
         except Exception: pass
+    if "color" in body:
+        update["color"] = (body.get("color") or "").strip()
     if not update:
         raise HTTPException(status_code=400, detail="Nada para actualizar")
     res = await db.categories.update_one({"id": cid}, {"$set": update})
