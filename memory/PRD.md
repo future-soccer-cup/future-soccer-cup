@@ -16,6 +16,11 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-02-25 — Galería de Finales con auto-rotación
+- `Home.jsx`: nuevo `useEffect` que avanza `gIdx` cada **5 segundos** vía `setInterval`. Solo activo si `gallery.length > 3` (con ≤3 no aporta porque ya se ven todas). Cleanup al desmontar.
+- `index.css`: keyframe `fsc-gallery-fade-in` (0.7s ease-out). Aplicado a cada `<img>` de la galería con `className="fsc-gallery-img"` + `key={img.id}` para que cada cambio de imagen tenga fade-in suave.
+- Los botones manuales de prev/next se mantienen funcionales (siguen siendo CTAs explícitos del usuario).
+
 ### 2026-02-25 — Bug fix carrusel hero foreground (no se mostraba con 2+ imágenes)
 - **Causa raíz**: en `ImageCarousel`, el wrapper para el caso multi-imagen aplicaba `style={{ position: "relative", ...style }}`. El `position: relative` inline ganaba sobre el `absolute` del Tailwind (`className="hidden md:block absolute right-4 ..."`) porque inline styles tienen mayor especificidad que las clases. Resultado: el wrapper quedaba en el flujo normal (no posicionado en la esquina derecha del hero), oculto detrás de los textos.
 - **Fix**: el wrapper del caso multi-imagen ahora preserva el `className`/`style` del usuario sin modificarlos. Se añadió un **inner div** con `position: relative` (`width: 100%; height: 100%`) que sirve como contexto de posicionamiento para las `<img>` superpuestas. Esto permite que el outer wrapper conserve su `position: absolute` (de Tailwind) y posiciones de offset.

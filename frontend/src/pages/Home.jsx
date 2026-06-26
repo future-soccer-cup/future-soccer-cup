@@ -29,6 +29,16 @@ export default function Home() {
     });
   }, []);
 
+  // Auto-rotate de la galería de Finales: cada 5s avanza 1 posición (loop infinito).
+  // Solo si hay más de 3 imágenes (con ≤3 no aporta nada porque ya se ven todas).
+  useEffect(() => {
+    if (gallery.length <= 3) return;
+    const t = setInterval(() => {
+      setGIdx((i) => (i + 1) % gallery.length);
+    }, 5000);
+    return () => clearInterval(t);
+  }, [gallery.length]);
+
   const visibleGallery = (() => {
     if (gallery.length === 0) return [null, null, null];
     const arr = [];
@@ -265,7 +275,7 @@ export default function Home() {
                     style={{ background: BLUE }}
                     data-testid={`gallery-item-${i}`}
                   >
-                    {img && <img src={img.url || img.image_url || ""} alt={img.title || ""} loading="lazy" className="w-full h-full object-cover" />}
+                    {img && <img src={img.url || img.image_url || ""} alt={img.title || ""} loading="lazy" className="fsc-gallery-img w-full h-full object-cover" key={img.id || img.url} />}
                   </div>
                 );
               })}
