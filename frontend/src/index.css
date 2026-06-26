@@ -186,6 +186,62 @@ html, body {
     to { transform: translateX(-50%); }
 }
 
+/* === Bounce vertical infinito (chevron del hero) === */
+@keyframes fsc-bounce-y {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-10px); }
+}
+.fsc-bounce {
+    animation: fsc-bounce-y 1.8s ease-in-out infinite;
+    will-change: transform;
+}
+
+/* === Pulse sutil (WhatsApp flotante) === */
+@keyframes fsc-pulse-ring {
+    0%   { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.55); }
+    70%  { box-shadow: 0 0 0 18px rgba(37, 211, 102, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0); }
+}
+@keyframes fsc-pulse-scale {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.06); }
+}
+.fsc-pulse {
+    animation: fsc-pulse-ring 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite,
+               fsc-pulse-scale 2.2s ease-in-out infinite;
+    will-change: transform, box-shadow;
+}
+
+/* === Hero entrance animations (one-shot) === */
+@keyframes fsc-hero-slide-left {
+    from { opacity: 0; transform: translate3d(-80px, 0, 0); }
+    to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+@keyframes fsc-hero-scale-up {
+    from { opacity: 0; transform: scale(0.5); }
+    to   { opacity: 1; transform: scale(1); }
+}
+@keyframes fsc-hero-fade-up {
+    from { opacity: 0; transform: translate3d(0, 16px, 0); }
+    to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+.fsc-anim-hero-edition {
+    opacity: 0;
+    animation: fsc-hero-slide-left 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.05s both;
+    will-change: transform, opacity;
+}
+.fsc-anim-hero-year {
+    opacity: 0;
+    transform-origin: left center;
+    animation: fsc-hero-scale-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.4s both;
+    will-change: transform, opacity;
+}
+.fsc-anim-hero-badges {
+    opacity: 0;
+    animation: fsc-hero-fade-up 0.6s ease-out 0.9s both;
+    will-change: transform, opacity;
+}
+
 /* ===== shadcn / radix tokens (alineadas a paleta FSC dorada) ===== */
 @layer base {
     :root {

@@ -3,6 +3,7 @@ import api, { imgSrc } from "../lib/api";
 import { ShieldCheck, Trophy, Users, Heart } from "lucide-react";
 import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe, RED, BLUE } from "../lib/designSystem";
 import SecondaryHero from "../components/SecondaryHero";
+import AnimateIn from "../components/AnimateIn";
 
 export default function Nosotros() {
   const [s, setS] = useState({});
@@ -41,7 +42,11 @@ export default function Nosotros() {
             {s.nosotros_mission_body || "Convocamos clubes de toda la región en torneos certificados con experiencia integral: fixture profesional, transmisión de resultados en vivo, hospedaje, transporte y turismo."}
           </p>
           <div className="mt-8 grid grid-cols-2 gap-4" data-testid="nosotros-pills">
-            {pills.map((p, i) => <Pill key={i} icon={p.icon} title={p.title} body={p.body} testId={`nosotros-pill-${i + 1}`} />)}
+            {pills.map((p, i) => (
+              <AnimateIn key={i} variant="slide-up" delay={i * 0.1}>
+                <Pill icon={p.icon} title={p.title} body={p.body} testId={`nosotros-pill-${i + 1}`} />
+              </AnimateIn>
+            ))}
           </div>
         </div>
       </section>

@@ -16,6 +16,27 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-02-25 — Animaciones FSC (framer-motion + CSS keyframes)
+- **Dependencia añadida**: `framer-motion@12.42.0`.
+- **Helpers reutilizables creados**:
+  - `/components/AnimateIn.jsx` — wrapper one-shot vía `useInView({once:true})` con variantes `slide-up`, `slide-left`, `scale-up`, `zoom-in`, `fade`.
+  - `/components/Counter.jsx` — contador con easing (cubic-out) que arranca al entrar al viewport. Maneja sufijos `K`/`M` (ej: "+1K", "+10K") preservándolos como string.
+  - `/components/ChevronStack.jsx` — flecha decorativa (ya existente).
+- **CSS keyframes globales** (`index.css`): `fsc-bounce-y` (chevron del hero, infinito), `fsc-pulse-ring + fsc-pulse-scale` (WhatsApp flotante, infinito), `fsc-hero-slide-left`/`fsc-hero-scale-up`/`fsc-hero-fade-up` (entrada del hero, con `animation-delay` escalonado).
+- **Home — hero**: EDICIÓN slide-left, 2026 scale-up con delay, badges OCTUBRE/DICIEMBRE + chevron fade-up con delay (CSS, no framer-motion, por mayor confiabilidad). Badges convertidos a `<button>` con `onClick → scrollIntoView({behavior:'smooth'})` hacia la sección de stats. Chevron también clickable con el mismo destino. Chevron con bounce vertical infinito.
+- **Home — Stats**: contadores animados (0 → valor) al entrar al viewport, vía `<Counter>`.
+- **Home — Finales**: "FINALES" y subtítulo con slide-up al entrar al viewport.
+- **Home — Eje Cafetero**: título con zoom-in, subtítulo con fade, mascota león con slide-up.
+- **Home — Categorías**: hover en cada chip rojo aplica `scale(1.04)` + `brightness(1.1)` con transición 200ms.
+- **Home — Footer**: bloque completo entra con slide-up al hacer scroll.
+- **Home — WhatsApp flotante**: pulse infinito (ring expandido + scale 1↔1.06).
+- **SecondaryHero**: usado por Nosotros/Eventos/Estadísticas/Contacto. Imagen de fondo fade-in al cargar; kicker fade con delay 0.1s; título slide-left; línea decorativa scaleX 0→1; body fade-up con delay 0.55s.
+- **Noticias**: título slide-left + fade, posts/cards con slide-up staggered (0.1s entre cada uno).
+- **Eventos**: cards "VIGENTES" y "ARCHIVO HISTORICO" con slide-up staggered.
+- **Nosotros**: 4 pills (Reglamento, Partidos, Datos, Familia) con slide-up staggered.
+- **Optimizaciones**: `will-change: transform, opacity`; `loading="lazy"` en imágenes de mascota y posts; one-shot via `viewport={{once:true}}` para que las animaciones de scroll no se repitan.
+- **Nota de testing**: Playwright headless con `animation-delay > 0` muestra comportamiento inconsistente (currentTime no avanza), pero las clases CSS y `getAnimations()` reportan `state: running` correctamente. En navegadores reales (Chrome, Safari, Firefox, Edge desktop/mobile) las animaciones se ejecutan normalmente.
+
 ### 2026-02-25 — Footer email compacto + categorías más grandes + león agrandado + carnets con logo del club
 - **Footer email** (en `Footer.jsx` y el footer rojo de `Home.jsx`): tamaño reducido de `text-3xl md:text-4xl lg:text-5xl break-all` → `text-lg md:text-xl lg:text-2xl whitespace-nowrap` para que entre en una sola línea sin quebrar.
 - **Categorías dentro del recuadro rojo** (Festival/Premier): cajas `h-8 md:h-9` → `h-10 md:h-12`, texto `text-sm md:text-base` → `text-lg md:text-xl` para mejor legibilidad.

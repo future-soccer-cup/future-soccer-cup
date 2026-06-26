@@ -4,6 +4,14 @@ import api from "../lib/api";
 import { ChevronLeft, ChevronRight, Calendar, MessageCircle, Mail, Instagram, Facebook } from "lucide-react";
 import { PLANE_CRASH, AGENCY_FB, NEO_SANS, STENCIL, CURSIVE, planeCrashSafe, RED, BLUE, GRAY } from "../lib/designSystem";
 import ChevronStack from "../components/ChevronStack";
+import AnimateIn from "../components/AnimateIn";
+import Counter from "../components/Counter";
+
+const scrollToStats = (e) => {
+  if (e) e.preventDefault();
+  const el = document.querySelector("[data-testid='home-stats']");
+  if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+};
 
 export default function Home() {
   const [s, setS] = useState({});
@@ -130,24 +138,52 @@ export default function Home() {
           {/* === TEXTOS DEL HERO === */}
           <div className="relative z-10 pt-10 md:pt-14 pb-12">
             <div className="md:w-[50%]">
-              <h1 className="text-white font-black leading-[0.85]" style={{ ...PLANE_CRASH, fontSize: "clamp(56px, 8.5vw, 140px)", textShadow: "3px 3px 0 rgba(0,0,0,0.25)" }} data-testid="hero-edition">
+              <h1
+                className="fsc-anim-hero-edition text-white font-black leading-[0.85]"
+                style={{ ...PLANE_CRASH, fontSize: "clamp(56px, 8.5vw, 140px)", textShadow: "3px 3px 0 rgba(0,0,0,0.25)" }}
+                data-testid="hero-edition"
+              >
                 {planeCrashSafe(s.hero_edition_label || "EDICION")}
               </h1>
-              <div className="text-white font-black leading-[0.85]" style={{ ...PLANE_CRASH, fontSize: "clamp(80px, 12vw, 180px)", textShadow: "3px 3px 0 rgba(0,0,0,0.25)" }} data-testid="hero-year">
+              <div
+                className="fsc-anim-hero-year text-white font-black leading-[0.85]"
+                style={{ ...PLANE_CRASH, fontSize: "clamp(80px, 12vw, 180px)", textShadow: "3px 3px 0 rgba(0,0,0,0.25)" }}
+                data-testid="hero-year"
+              >
                 {planeCrashSafe(s.hero_edition_year || "2026")}
               </div>
-              <div className="mt-6 inline-flex flex-col items-center gap-5">
+              <div
+                className="fsc-anim-hero-badges mt-6 inline-flex flex-col items-center gap-5"
+              >
                 <div className="flex flex-wrap gap-2 justify-center">
-                  <span className="inline-block px-6 py-2.5 bg-white font-bold uppercase tracking-wider text-xl md:text-2xl rounded shadow" style={{ ...AGENCY_FB, color: BLUE }} data-testid="hero-month-1">
+                  <button
+                    type="button"
+                    onClick={scrollToStats}
+                    className="inline-block px-6 py-2.5 bg-white font-bold uppercase tracking-wider text-xl md:text-2xl rounded shadow cursor-pointer transition hover:scale-[1.04] hover:shadow-lg"
+                    style={{ ...AGENCY_FB, color: BLUE }}
+                    data-testid="hero-month-1"
+                  >
                     {s.hero_month_1 || "Octubre"}
-                  </span>
-                  <span className="inline-block px-6 py-2.5 bg-white font-bold uppercase tracking-wider text-xl md:text-2xl rounded shadow" style={{ ...AGENCY_FB, color: BLUE }} data-testid="hero-month-2">
+                  </button>
+                  <button
+                    type="button"
+                    onClick={scrollToStats}
+                    className="inline-block px-6 py-2.5 bg-white font-bold uppercase tracking-wider text-xl md:text-2xl rounded shadow cursor-pointer transition hover:scale-[1.04] hover:shadow-lg"
+                    style={{ ...AGENCY_FB, color: BLUE }}
+                    data-testid="hero-month-2"
+                  >
                     {s.hero_month_2 || "Diciembre"}
-                  </span>
+                  </button>
                 </div>
-                <div data-testid="hero-chevron">
+                <button
+                  type="button"
+                  onClick={scrollToStats}
+                  aria-label="Bajar a la siguiente sección"
+                  className="fsc-bounce cursor-pointer bg-transparent border-0"
+                  data-testid="hero-chevron"
+                >
                   <ChevronStack color="#ffffff" size={48} direction="up" count={5} testId="hero-chevron-stack" />
-                </div>
+                </button>
               </div>
             </div>
           </div>
@@ -157,9 +193,9 @@ export default function Home() {
       {/* ======= STATS ======= */}
       <section className="py-16 lg:py-24 bg-white" data-testid="home-stats">
         <div className="max-w-7xl mx-auto px-6 text-center">
-          <h2 className="font-black leading-[0.95]" style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(48px, 7vw, 96px)" }}>
+          <AnimateIn as="h2" variant="slide-up" className="font-black leading-[0.95]" style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(48px, 7vw, 96px)" }}>
             {planeCrashSafe("SOMOS MAS")}<br/>{planeCrashSafe("QUE UN TORNEO")}
-          </h2>
+          </AnimateIn>
           <div className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-10 lg:gap-6">
             {[
               { n: s.stat_1_number, l: s.stat_1_label, dn: "11", dl: "Ediciones" },
@@ -167,10 +203,15 @@ export default function Home() {
               { n: s.stat_3_number, l: s.stat_3_label, dn: "+100", dl: "clubes Internacionales" },
               { n: s.stat_4_number, l: s.stat_4_label, dn: "+10K", dl: "Deportistas" },
             ].map((it, idx) => (
-              <div key={it.dl} className="flex flex-col items-center" data-testid={`home-stat-${idx + 1}`}>
-                <div className="font-black leading-none whitespace-nowrap" style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(40px, 5vw, 80px)" }}>{planeCrashSafe(it.n || it.dn)}</div>
+              <AnimateIn key={it.dl} variant="fade" delay={idx * 0.1} className="flex flex-col items-center" data-testid={`home-stat-${idx + 1}`}>
+                <Counter
+                  value={it.n || it.dn}
+                  duration={1800}
+                  className="font-black leading-none whitespace-nowrap"
+                  style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(40px, 5vw, 80px)" }}
+                />
                 <div className="mt-2 font-bold text-xl lg:text-2xl" style={{ ...AGENCY_FB, color: BLUE }}>{it.l || it.dl}</div>
-              </div>
+              </AnimateIn>
             ))}
           </div>
         </div>
@@ -203,10 +244,10 @@ export default function Home() {
             ><ChevronRight size={32} strokeWidth={3} /></button>
           </div>
           <div className="mt-8 text-center">
-            <h2 className="font-black leading-none" style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(56px, 9vw, 128px)" }}>{planeCrashSafe("FINALES")}</h2>
-            <p className="mt-1 text-3xl md:text-4xl font-bold" style={{ ...AGENCY_FB, color: BLUE }} data-testid="finales-subtitle">
+            <AnimateIn as="h2" variant="slide-up" className="font-black leading-none" style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(56px, 9vw, 128px)" }}>{planeCrashSafe("FINALES")}</AnimateIn>
+            <AnimateIn as="p" variant="slide-up" delay={0.15} className="mt-1 text-3xl md:text-4xl font-bold" style={{ ...AGENCY_FB, color: BLUE }} data-testid="finales-subtitle">
               {s.finales_subtitle || "Estadio Centenario de Armenia"}
-            </p>
+            </AnimateIn>
             <Link
               to={s.finales_button_url || "/nosotros"}
               data-testid="finales-cta"
@@ -225,12 +266,12 @@ export default function Home() {
       {/* ======= EJE CAFETERO + MASCOTA + 2 COLUMNAS DE CATEGORÍAS ======= */}
       <section className="pt-12 pb-20 bg-white" data-testid="home-region">
         <div className="max-w-7xl mx-auto px-6 text-center">
-          <h2 className="font-black leading-tight" style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(40px, 6vw, 80px)" }} data-testid="region-title">
+          <AnimateIn as="h2" variant="zoom-in" className="font-black leading-tight" style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(40px, 6vw, 80px)" }} data-testid="region-title">
             {planeCrashSafe(s.region_title || "EL EJE CAFETERO LOS ESPERA")}
-          </h2>
-          <p className="text-4xl md:text-5xl font-bold mb-6" style={{ ...AGENCY_FB, color: BLUE }} data-testid="region-subtitle">
+          </AnimateIn>
+          <AnimateIn as="p" variant="fade" delay={0.3} className="text-4xl md:text-5xl font-bold mb-6" style={{ ...AGENCY_FB, color: BLUE }} data-testid="region-subtitle">
             {s.region_subtitle || "Comfenalco Soleden"}
-          </p>
+          </AnimateIn>
         </div>
         {/* Layout 3 columnas: Festival - Mascota CENTRADA - Premier */}
         <div className="relative max-w-7xl mx-auto px-6">
@@ -245,11 +286,11 @@ export default function Home() {
               testId="cat-festival"
             />
             {/* Mascota centrada (oculta en mobile, visible en lg) */}
-            <div className="hidden lg:flex justify-center items-end" data-testid="mascot-box">
+            <AnimateIn variant="slide-up" distance={64} duration={0.8} className="hidden lg:flex justify-center items-end" data-testid="mascot-box">
               {s.mascot_image_url && (
-                <img src={s.mascot_image_url} alt="Mascota Future Soccer Cup" className="max-h-[780px] w-auto object-contain" />
+                <img src={s.mascot_image_url} alt="Mascota Future Soccer Cup" loading="lazy" className="max-h-[780px] w-auto object-contain" />
               )}
-            </div>
+            </AnimateIn>
             {/* PREMIER */}
             <CategoryColumn
               title={s.premier_title || "PREMIER"}
@@ -265,15 +306,15 @@ export default function Home() {
           </div>
           {/* Mascota mobile: debajo */}
           {s.mascot_image_url && (
-            <div className="lg:hidden flex justify-center mt-8">
-              <img src={s.mascot_image_url} alt="Mascota Future Soccer Cup" className="max-h-[600px] w-auto object-contain" />
-            </div>
+            <AnimateIn variant="slide-up" distance={64} className="lg:hidden flex justify-center mt-8">
+              <img src={s.mascot_image_url} alt="Mascota Future Soccer Cup" loading="lazy" className="max-h-[600px] w-auto object-contain" />
+            </AnimateIn>
           )}
         </div>
       </section>
 
       {/* ======= FOOTER ROJO (estilo wireframe FSC v2) ======= */}
-      <footer className="py-16 lg:py-24" style={{ background: RED }} data-testid="home-footer">
+      <AnimateIn as="footer" variant="slide-up" distance={48} className="py-16 lg:py-24" style={{ background: RED }} data-testid="home-footer">
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
           {/* Izquierda: heading en 4 líneas (grunge stencil blanco) */}
           <h2 className="font-black text-white leading-[0.95]" style={{ ...PLANE_CRASH, fontSize: "clamp(36px, 5vw, 72px)" }} data-testid="footer-heading">
@@ -347,14 +388,14 @@ export default function Home() {
             </div>
           </div>
         </div>
-      </footer>
+      </AnimateIn>
 
       {/* ======= WHATSAPP FLOTANTE ======= */}
       <a
         href={s.whatsapp_url || `https://wa.me/${(s.contact_phone || "573246134658").replace(/\D/g, "")}`}
         target="_blank"
         rel="noreferrer"
-        className="fixed bottom-6 right-6 z-40 bg-[#25D366] hover:bg-[#1ebd5b] text-white rounded-full p-4 shadow-2xl"
+        className="fsc-pulse fixed bottom-6 right-6 z-40 bg-[#25D366] hover:bg-[#1ebd5b] text-white rounded-full p-4 shadow-2xl"
         data-testid="floating-whatsapp"
         aria-label="WhatsApp"
       >

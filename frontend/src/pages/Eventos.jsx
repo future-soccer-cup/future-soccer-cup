@@ -5,6 +5,7 @@ import { Calendar, MapPin, ArrowRight, Trophy } from "lucide-react";
 import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe, RED, BLUE } from "../lib/designSystem";
 import { formatDate } from "../lib/dateFormat";
 import SecondaryHero from "../components/SecondaryHero";
+import AnimateIn from "../components/AnimateIn";
 
 export default function Eventos() {
   const [s, setS] = useState({});
@@ -35,7 +36,11 @@ export default function Eventos() {
           <>
             <h2 className="text-3xl font-black tracking-wide mb-6" style={{ ...PLANE_CRASH, color: "#000000" }}>{planeCrashSafe("VIGENTES")}</h2>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
-              {active.map((t) => <EventCard key={t.id} ev={t} />)}
+              {active.map((t, i) => (
+                <AnimateIn key={t.id} variant="slide-up" delay={i * 0.1}>
+                  <EventCard ev={t} />
+                </AnimateIn>
+              ))}
             </div>
           </>
         )}
@@ -43,7 +48,11 @@ export default function Eventos() {
           <>
             <h2 className="text-3xl font-black tracking-wide mb-6" style={{ ...PLANE_CRASH, color: "#000000" }}>{planeCrashSafe("ARCHIVO HISTORICO")}</h2>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {archived.map((t) => <EventCard key={t.id} ev={t} historical />)}
+              {archived.map((t, i) => (
+                <AnimateIn key={t.id} variant="slide-up" delay={i * 0.1}>
+                  <EventCard ev={t} historical />
+                </AnimateIn>
+              ))}
             </div>
           </>
         )}
