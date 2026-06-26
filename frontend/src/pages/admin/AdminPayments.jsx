@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import api, { API_BASE, formatApiError } from "../../lib/api";
 import { toast, Toaster } from "sonner";
-import { CheckCircle2, XCircle, FileText, ImageIcon, ExternalLink } from "lucide-react";
+import { CheckCircle2, XCircle, FileText, ImageIcon, ExternalLink, Trash2 } from "lucide-react";
 import { PaymentStatusBadge } from "../../components/PaymentsList";
 import { formatDate, formatDateTime } from "../../lib/dateFormat";
 import { usePagedSearch, SearchBar, Pagination } from "../../components/PagedTable";
 import ExportCsvButton from "../../components/ExportCsvButton";
+import ConfirmDeleteDialog from "../../components/ConfirmDeleteDialog";
 
 const STATUSES = ["sin_verificar", "aprobado", "saldo_pendiente", "rechazado"];
 const TARGETS = [
@@ -97,6 +98,17 @@ export default function AdminPayments() {
       toast.error(formatApiError(err.response?.data?.detail) || "Error al actualizar");
     } finally {
       setSavingStatus(null);
+    }
+  };
+
+  const deletePayment = async (pid) => {
+    try {
+      await api.delete(`/admin/payments/${pid}`);
+      toast.success("Abono eliminado");
+      await load();
+    } catch (err) {
+      toast.error(formatApiError(err.response?.data?.detail) || "No se pudo eliminar el abono");
+      throw err;
     }
   };
 
@@ -196,6 +208,28 @@ export default function AdminPayments() {
                       className="fsc-btn-primary px-3 py-1.5 rounded-md text-xs"
                       data-testid={`admin-pay-review-${p.id}`}
                     >Revisar</button>
+                    <ConfirmDeleteDialog
+                      trigger={
+                        <button
+                          className="ml-1 text-fsc-rojo hover:bg-red-50 p-1.5 rounded inline-flex align-middle"
+                          title="Eliminar abono"
+                          data-testid={`admin-pay-delete-${p.id}`}
+                        >
+                          <Trash2 size={14}/>
+                        </button>
+                      }
+                      title="Eliminar abono"
+                      description={
+                        <span>
+                          Se eliminará el abono de <strong>{fmtCOP(p.amount)}</strong> de{" "}
+                          <strong>{p.user_name || p.user_email}</strong>
+                          {p.target_label ? <> ({p.target_label})</> : null}.
+                          La cotización <em>no</em> se modifica. Esta acción no se puede deshacer.
+                        </span>
+                      }
+                      onConfirm={() => deletePayment(p.id)}
+                      testIdPrefix={`pay-delete-modal-${p.id}`}
+                    />
                   </td>
                 </tr>
               );

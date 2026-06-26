@@ -335,7 +335,7 @@ export default function Home() {
                 type="button"
                 onClick={() => document.querySelector("[data-testid='home-region']")?.scrollIntoView({ behavior: "smooth", block: "start" })}
                 aria-label="Bajar a la siguiente sección"
-                className="cursor-pointer bg-transparent border-0"
+                className="fsc-bounce cursor-pointer bg-transparent border-0"
                 data-testid="finales-chevron"
               >
                 <ChevronStack color={BLUE} size={56} direction="up" count={5} testId="finales-chevron-stack" />
@@ -416,7 +416,7 @@ export default function Home() {
               <span className="bg-[#25D366] rounded-full p-3 inline-flex shadow-md">
                 <MessageCircle size={28} className="text-white" strokeWidth={2.4} />
               </span>
-              <span className="font-black tracking-wider text-3xl md:text-4xl lg:text-5xl" style={AGENCY_FB} data-testid="footer-phone-text">
+              <span className="font-black tracking-wider text-lg md:text-xl lg:text-2xl whitespace-nowrap" style={AGENCY_FB} data-testid="footer-phone-text">
                 {s.contact_phone || "+57 324 6134658"}
               </span>
             </a>

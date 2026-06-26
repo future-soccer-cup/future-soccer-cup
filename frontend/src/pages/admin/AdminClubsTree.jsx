@@ -6,6 +6,7 @@ import { ChevronDown, ChevronRight, Check, X, Trash2, Plus, Edit3, Users, Mail, 
 import { toast, Toaster } from "sonner";
 import { Pagination } from "../../components/PagedTable";
 import ImageUpload from "../../components/ImageUpload";
+import ConfirmDeleteDialog from "../../components/ConfirmDeleteDialog";
 
 const POSITIONS = [
   "Portero",
@@ -82,6 +83,18 @@ export default function AdminClubsTree() {
       load();
     } catch (err) {
       toast.error(formatApiError(err.response?.data?.detail) || "Error actualizando estado");
+    }
+  };
+
+  const deleteClub = async (cid) => {
+    try {
+      const r = await api.delete(`/clubs/${cid}`);
+      const d = r.data || {};
+      toast.success(`Club eliminado · ${d.teams_deleted || 0} equipo(s), ${d.players_deleted || 0} jugador(es), ${d.quotes_deleted || 0} cotización(es) y ${d.payments_deleted || 0} pago(s) borrados`);
+      load();
+    } catch (err) {
+      toast.error(formatApiError(err.response?.data?.detail) || "Error eliminando club");
+      throw err;
     }
   };
 
@@ -186,6 +199,7 @@ export default function AdminClubsTree() {
             onApprove={() => setClubStatus(c.id, "aprobado")}
             onReject={() => setClubStatus(c.id, "rechazado")}
             onPending={() => setClubStatus(c.id, "pendiente")}
+            onDelete={() => deleteClub(c.id)}
             onTeamStatus={setTeamStatus}
             onDeletePlayer={deletePlayer}
             onEditPlayer={(team, player) => setEditingPlayer({ team, player })}
@@ -228,7 +242,7 @@ export default function AdminClubsTree() {
   );
 }
 
-function ClubNode({ club, users, expanded, onToggle, onApprove, onReject, onPending, onTeamStatus, onDeletePlayer, onEditPlayer, onEditTeamName, onEditStaff, onDeleteStaff }) {
+function ClubNode({ club, users, expanded, onToggle, onApprove, onReject, onPending, onDelete, onTeamStatus, onDeletePlayer, onEditPlayer, onEditTeamName, onEditStaff, onDeleteStaff }) {
   const teams = club.teams || [];
   // Group teams by (event_type, category)
   const byEvent = useMemo(() => {
@@ -276,6 +290,30 @@ function ClubNode({ club, users, expanded, onToggle, onApprove, onReject, onPend
           {status !== "pendiente" && (
             <button onClick={onPending} className="text-amber-600 hover:bg-amber-50 p-1.5 rounded text-xs font-bold" title="Marcar como pendiente">⏳</button>
           )}
+          <ConfirmDeleteDialog
+            trigger={
+              <button
+                className="text-fsc-rojo hover:bg-red-50 p-1.5 rounded"
+                title="Eliminar club (cascada)"
+                data-testid={`club-delete-${club.id}`}
+              >
+                <Trash2 size={16}/>
+              </button>
+            }
+            title={`Eliminar club "${club.name}"`}
+            description={
+              <span>
+                Se eliminarán <strong>permanentemente</strong>: el club, sus{" "}
+                <strong>{teams.length} equipo(s)</strong>, todos sus{" "}
+                <strong>{teams.reduce((sum, t) => sum + ((t.players || []).length), 0)} jugador(es)</strong>,
+                el cuerpo técnico, y <strong>todas las cotizaciones y pagos</strong> asociados al club.
+                <br/><br/>Esta acción no se puede deshacer.
+              </span>
+            }
+            confirmLabel="Sí, eliminar todo"
+            onConfirm={onDelete}
+            testIdPrefix={`club-delete-modal-${club.id}`}
+          />
         </div>
       </div>
 

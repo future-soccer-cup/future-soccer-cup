@@ -5,7 +5,8 @@ import { usePagedSearch, SearchBar, Pagination } from "../../components/PagedTab
 import ExportCsvButton from "../../components/ExportCsvButton";
 import { formatDate, formatDateTime } from "../../lib/dateFormat";
 import CurrencyInput from "../../components/CurrencyInput";
-import { Eye, X, Download } from "lucide-react";
+import ConfirmDeleteDialog from "../../components/ConfirmDeleteDialog";
+import { Eye, X, Download, Trash2 } from "lucide-react";
 
 const STATUSES = ["pendiente", "aprobada", "rechazada", "pagada"];
 const fmtMoney = (n, cur) => cur === "USD"
@@ -28,6 +29,17 @@ export default function AdminQuotes() {
       load();
     } catch (err) {
       toast.error("Error");
+    }
+  };
+
+  const deleteQuote = async (id) => {
+    try {
+      await api.delete(`/quotes/${id}`);
+      toast.success("Cotización eliminada");
+      load();
+    } catch (err) {
+      toast.error("No se pudo eliminar la cotización");
+      throw err;
     }
   };
 
@@ -142,6 +154,30 @@ export default function AdminQuotes() {
                   <select value={q.status} onChange={(e) => setStatus(q.id, e.target.value)} className="text-xs px-2 py-1 border border-slate-200 rounded" data-testid={`quote-status-${q.id}`}>
                     {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
                   </select>
+                  <ConfirmDeleteDialog
+                    trigger={
+                      <button
+                        className="text-fsc-rojo hover:bg-red-50 p-1 rounded inline-flex align-middle"
+                        title="Eliminar cotización"
+                        data-testid={`delete-quote-${q.id}`}
+                      >
+                        <Trash2 size={16}/>
+                      </button>
+                    }
+                    title="Eliminar cotización"
+                    description={
+                      <span>
+                        Se eliminará la cotización de <strong>{q.user_name}</strong>
+                        {q.club_name ? <> ({q.club_name})</> : null} por{" "}
+                        <strong>{q.currency === "USD"
+                          ? `US$${Number(q.total_amount || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                          : `$${Number(q.total_amount || 0).toLocaleString("es-CO")} COP`}</strong>.
+                        Esta acción no se puede deshacer.
+                      </span>
+                    }
+                    onConfirm={() => deleteQuote(q.id)}
+                    testIdPrefix={`quote-delete-modal-${q.id}`}
+                  />
                 </td>
               </tr>
             ))}

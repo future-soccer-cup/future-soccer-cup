@@ -3,6 +3,7 @@ import api, { formatApiError } from "../../lib/api";
 import { toast, Toaster } from "sonner";
 import { Wand2, Save, Plus, X, Trophy, MapPin, Edit2, Trash2, ListChecks, RefreshCw } from "lucide-react";
 import VenuePicker from "../../components/VenuePicker";
+import ConfirmDeleteDialog from "../../components/ConfirmDeleteDialog";
 import { formatDate, formatDateTime } from "../../lib/dateFormat";
 
 export default function AdminFixtureGenerator() {
@@ -151,7 +152,6 @@ export default function AdminFixtureGenerator() {
   };
 
   const deleteFixture = async (fix) => {
-    if (!window.confirm(`¿Eliminar el fixture "${fix.tournament_name} · ${fix.category} · ${fix.group_name}"?\nSe borrarán sus partidos programados (los finalizados se conservan).`)) return;
     try {
       const r = await api.delete(`/fixtures/${fix.id}`);
       toast.success(`Fixture eliminado (${r.data.matches_deleted} partidos)`);
@@ -162,6 +162,7 @@ export default function AdminFixtureGenerator() {
       reloadFixtures();
     } catch (err) {
       toast.error(formatApiError(err.response?.data?.detail));
+      throw err;
     }
   };
 
@@ -390,7 +391,27 @@ export default function AdminFixtureGenerator() {
                     <td className="px-3 py-2 text-center">{f.active_matches ?? f.matches_count ?? "—"}</td>
                     <td className="px-3 py-2 text-right">
                       <button onClick={() => openFixtureEditor(f)} className="px-2 py-1 text-xs font-bold rounded bg-blue-50 text-blue-700 hover:bg-blue-100 mr-1" data-testid={`saved-fixture-edit-${f.id}`}><Edit2 size={12} className="inline -mt-0.5 mr-1"/>Editar</button>
-                      <button onClick={() => deleteFixture(f)} className="px-2 py-1 text-xs font-bold rounded bg-red-50 text-red-700 hover:bg-red-100" data-testid={`saved-fixture-delete-${f.id}`}><Trash2 size={12} className="inline -mt-0.5"/></button>
+                      <ConfirmDeleteDialog
+                        trigger={
+                          <button
+                            className="px-2 py-1 text-xs font-bold rounded bg-red-50 text-red-700 hover:bg-red-100"
+                            data-testid={`saved-fixture-delete-${f.id}`}
+                          >
+                            <Trash2 size={12} className="inline -mt-0.5"/>
+                          </button>
+                        }
+                        title={`Eliminar fixture · ${f.category} ${f.group_name}`}
+                        description={
+                          <span>
+                            Se eliminará el fixture <strong>"{f.tournament_name} · {f.category} · {f.group_name}"</strong>{" "}
+                            y sus partidos programados ({f.active_matches ?? f.matches_count ?? 0}).
+                            Los partidos ya <em>finalizados</em> se conservan en el historial.
+                            <br/><br/>Esta acción no se puede deshacer.
+                          </span>
+                        }
+                        onConfirm={() => deleteFixture(f)}
+                        testIdPrefix={`fixture-delete-modal-${f.id}`}
+                      />
                     </td>
                   </tr>
                 ))}
