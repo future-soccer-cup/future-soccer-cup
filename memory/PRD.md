@@ -16,6 +16,15 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-02-26 — Iter40: Eliminaciones admin con modales + retoques visuales Home
+- **Admin DELETE UX (4 paneles)**: Botones papelera añadidos en `AdminClubsTree.jsx` (cascada club → equipos → jugadores → cotizaciones → pagos), `AdminQuotes.jsx`, `AdminPayments.jsx` y `AdminFixtureGenerator.jsx` (sustituyendo `window.confirm`). Todos usan el componente reutilizable `ConfirmDeleteDialog.jsx` (AlertDialog de shadcn con estado loading + data-testids `{prefix}-content/-cancel/-confirm`).
+- **Backend cascada**: `DELETE /api/clubs/{cid}` borra en orden players → teams → quotes → payments → club, devolviendo métricas por cada colección. Mostradas en el toast de éxito.
+- **Home — segundo chevron**: añadida clase `fsc-bounce` al chevron debajo de "Conoce más de FSC" (`data-testid=finales-chevron`) para igualar la animación de rebote del chevron del hero.
+- **Home — teléfono footer**: tamaño unificado al del email (`text-lg md:text-xl lg:text-2xl whitespace-nowrap`).
+- **Tests**: `/app/backend/tests/test_iter40_delete_endpoints.py` — 8/8 PASS (cascada club, quote, payment, fixture; auth admin requerido, 401 sin token, 404 segunda llamada). Frontend verificado E2E por testing agent (4 modales abren, confirman, cierran, lista se refresca).
+- **Cosmético menor**: `testIdPrefix` del modal de payments unificado a `admin-pay-delete-modal-{id}` (consistencia con trigger).
+
+
 ### 2026-02-25 — Galería Finales: transición slide horizontal
 - Reemplazado el cambio brusco (fade simple) por **slide horizontal animado** con `framer-motion` (`AnimatePresence` + `motion.img`, `mode="popLayout"`).
 - Nuevo estado `gDirection` (+1/-1) pasado como `custom` a AnimatePresence para que el slide entre/salga por el lado correcto: avance → nueva imagen entra desde la derecha, anterior sale hacia la izquierda. Retroceso (prev) invierte la dirección.

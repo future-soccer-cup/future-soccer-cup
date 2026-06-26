@@ -228,7 +228,7 @@ export default function AdminPayments() {
                         </span>
                       }
                       onConfirm={() => deletePayment(p.id)}
-                      testIdPrefix={`pay-delete-modal-${p.id}`}
+                      testIdPrefix={`admin-pay-delete-modal-${p.id}`}
                     />
                   </td>
                 </tr>
