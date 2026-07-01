@@ -16,6 +16,20 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-02-26 — Iter42: Carga masiva alineada al schema actual + dropdowns dinámicos
+- **Plantilla Equipos** ahora incluye: `Club`, `Nombre del equipo`, `Evento` (festival/premier_par/premier_impar), `Categoría`, `Año de nacimiento`, `Designación (Único/A/B)`, `Grupo`, `DT`, `Ciudad`, `País`, `Presidente`, `Teléfono delegado`, `Color HEX`. Dropdowns en Excel para Evento (desde `db.event_types`), Categoría (desde `db.categories` — dinámico según catálogo actual del admin) y Designación.
+- **Plantilla Jugadores** añade `Número COMET` (columna faltante). Dropdowns para `Posición` (18 valores válidos, publicados en hoja `Listas`) y `Género` (M/F). Se mantienen los datos del acudiente (nombre, doc, parentesco, teléfono).
+- **`_build_styled_template`** acepta parámetro `validations={col_1based: [values]}` y crea `DataValidation` con estrategia inline (<240 chars) o vía rango en hoja `Listas` para listas largas.
+- **Import Equipos** ahora:
+   - Valida `category` contra `db.categories` (fallback a `CATEGORIES` constante) — permite Sub-8/Sub-18 legacy o 2009/2010/… nuevos según lo que el admin configuró.
+   - Valida `event_type` contra `EVENT_TYPES` keys.
+   - Resuelve `club_name` → `club_id`. Si el club no existe, se **auto-crea en estado `pendiente`** con `country`, `city`, `color` heredados de la fila.
+   - Devuelve nuevo campo `clubs_auto_created: [{id, name}]` para que el admin apruebe manualmente.
+- **Import Jugadores** persiste `comet_number`.
+- **`AdminBulkUpload.jsx`** actualizado con descripciones acordes y sección "Clubes creados automáticamente" en amber para que el admin apruebe.
+- **Verificado E2E** vía curl: descarga de ambas plantillas (7.5KB/7.8KB, con 3 y 2 data validations respectivamente), preview con errores (categoría inválida, nombre vacío) y confirmación de import saved=true creando 3 equipos + 2 clubes pendientes + 1 jugador con COMET; delete cascade limpia todo correctamente.
+
+
 ### 2026-02-26 — Iter41: Footer global, mascota XL, colores por categoría en carnet + logo FSC junto al QR
 - **Footer global (`Footer.jsx`)**: teléfono unificado al mismo tamaño del email (`text-lg md:text-xl lg:text-2xl whitespace-nowrap`). Aplica a Nosotros, Eventos, Estadísticas, Noticias, Contacto, Registro y todas las páginas no-Home. Las redes (IG, FB, YouTube) ya estaban renderizadas condicionalmente desde `home_settings`.
 - **Home — Mascota XL**: la mascota entre Festival y Premier crece de `max-h-[780px]` a `max-h-[1000px] + scale-110 origin-bottom` (desktop) y de `max-h-[600px]` a `max-h-[780px]` (mobile).

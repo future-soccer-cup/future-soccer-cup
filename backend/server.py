@@ -4965,15 +4965,18 @@ async def serve_file(path: str):
     return FastAPIResponse(content=data, media_type=record.get("content_type", ct))
 
 # -------------------- Bulk Import (XLSX) --------------------
-TEAM_TEMPLATE_HEADERS = ["name", "category", "birth_year", "group_name", "coach", "city", "country", "president", "delegate_phone", "color"]
-PLAYER_TEMPLATE_HEADERS = ["team_name", "name", "jersey_number", "position", "birth_date", "document_id", "nickname", "gender", "eps", "guardian_name", "guardian_doc", "guardian_relation", "guardian_phone"]
+TEAM_TEMPLATE_HEADERS = ["club_name", "name", "event_type", "category", "birth_year", "designation", "group_name", "coach", "city", "country", "president", "delegate_phone", "color"]
+PLAYER_TEMPLATE_HEADERS = ["team_name", "name", "jersey_number", "position", "birth_date", "document_id", "comet_number", "nickname", "gender", "eps", "guardian_name", "guardian_doc", "guardian_relation", "guardian_phone"]
 
 # Spanish display headers + import alias mapping (Spanish → canonical English keys used internally)
 TEAM_HEADERS_ES = [
-    ("name",            "Nombre"),
+    ("club_name",       "Club"),
+    ("name",            "Nombre del equipo"),
+    ("event_type",      "Evento"),
     ("category",        "Categoría"),
     ("birth_year",      "Año de nacimiento"),
-    ("group_name",      "Grupo"),
+    ("designation",     "Designación (Único/A/B)"),
+    ("group_name",      "Grupo (Grupo A, Grupo B…)"),
     ("coach",           "Director técnico"),
     ("city",            "Ciudad"),
     ("country",         "País"),
@@ -4981,7 +4984,7 @@ TEAM_HEADERS_ES = [
     ("delegate_phone",  "Teléfono delegado"),
     ("color",           "Color (HEX)"),
 ]
-TEAM_SAMPLE_ES = ["Leones FC", "Sub-12", 2014, "Grupo A", "Pedro Coach", "Bogotá", "Colombia", "María Pdta.", "+57 310 123 4567", "#1d4ed8"]
+TEAM_SAMPLE_ES = ["Leones FC", "Leones FC 2014 Único", "festival", "Sub-12", 2014, "Único", "Grupo A", "Pedro Coach", "Bogotá", "Colombia", "María Pdta.", "+57 310 123 4567", "#1d4ed8"]
 
 PLAYER_HEADERS_ES = [
     ("team_name",         "Equipo"),
@@ -4990,6 +4993,7 @@ PLAYER_HEADERS_ES = [
     ("position",          "Posición"),
     ("birth_date",        "Fecha de nacimiento (AAAA-MM-DD)"),
     ("document_id",       "Documento de identidad"),
+    ("comet_number",      "Número COMET"),
     ("nickname",          "Apodo"),
     ("gender",            "Género (M/F)"),
     ("eps",               "EPS / Seguro médico"),
@@ -4998,7 +5002,16 @@ PLAYER_HEADERS_ES = [
     ("guardian_relation", "Parentesco"),
     ("guardian_phone",    "Teléfono del acudiente"),
 ]
-PLAYER_SAMPLE_ES = ["Leones FC", "Carlos Pérez", 10, "Delantero", "2014-03-15", "1750000000", "Pipo", "M", "Sanitas", "María Pérez", "0701234567", "Madre", "+57 310 765 4321"]
+PLAYER_SAMPLE_ES = ["Leones FC 2014 Único", "Carlos Pérez", 10, "Delantero", "2014-03-15", "1750000000", "COMET-12345", "Pipo", "M", "Sanitas", "María Pérez", "0701234567", "Madre", "+57 310 765 4321"]
+
+# Posiciones válidas (sincronizado con AdminClubsTree.jsx). Se usan como dropdown en el XLSX.
+POSITIONS_LIST = [
+    "Portero", "Defensa central", "Lateral derecho", "Lateral izquierdo",
+    "Carrilero derecho", "Carrilero izquierdo", "Mediocampista defensivo",
+    "Mediocampista central", "Mediocampista mixto", "Mediocampista ofensivo",
+    "Volante por derecha", "Volante por izquierda", "Extremo derecho", "Extremo izquierdo",
+    "Mediapunta / Enganche", "Segundo delantero", "Delantero centro", "Delantero",
+]
 
 STAFF_ROLES = [
     "Director técnico",
@@ -5027,11 +5040,16 @@ STAFF_SAMPLE_ES = ["Pedro Coach", "Director técnico", "1700000000", "+57 310 55
 # Aliases: lowercased Spanish/English variants → canonical English key
 HEADER_ALIASES = {
     # Equipos
-    "nombre": "name", "name": "name", "nombre del equipo": "team_name",
+    "nombre": "name", "name": "name",
+    "nombre del equipo": "name",
     "equipo": "team_name", "team_name": "team_name",
+    "club": "club_name", "club_name": "club_name", "nombre del club": "club_name",
+    "evento": "event_type", "event_type": "event_type", "tipo de evento": "event_type",
+    "designacion": "designation", "designación": "designation", "designation": "designation", "designacion (unico/a/b)": "designation", "designación (único/a/b)": "designation",
     "categoria": "category", "categoría": "category", "category": "category",
     "ano de nacimiento": "birth_year", "año de nacimiento": "birth_year", "birth_year": "birth_year",
     "grupo": "group_name", "group_name": "group_name",
+    "grupo (grupo a, grupo b…)": "group_name", "grupo (grupo a, grupo b...)": "group_name",
     "director tecnico": "coach", "director técnico": "coach", "dt": "coach", "coach": "coach",
     "ciudad": "city", "city": "city",
     "pais": "country", "país": "country", "country": "country",
@@ -5044,6 +5062,7 @@ HEADER_ALIASES = {
     "posicion": "position", "posición": "position", "position": "position",
     "fecha de nacimiento": "birth_date", "fecha de nacimiento (aaaa-mm-dd)": "birth_date", "birth_date": "birth_date",
     "documento de identidad": "document_id", "documento": "document_id", "document_id": "document_id",
+    "numero comet": "comet_number", "número comet": "comet_number", "comet_number": "comet_number", "comet": "comet_number",
     "apodo": "nickname", "nickname": "nickname",
     "genero": "gender", "género": "gender", "género (m/f)": "gender", "genero (m/f)": "gender", "gender": "gender",
     "eps": "eps", "eps / seguro medico": "eps", "eps / seguro médico": "eps",
@@ -5062,10 +5081,17 @@ def _norm_key(h: str) -> str:
     return HEADER_ALIASES.get(k, k)
 
 
-def _build_styled_template(sheet_name: str, headers_es: list, sample: list, *, brand_color: str = "1D4ED8", instructions: list = None) -> bytes:
+def _build_styled_template(sheet_name: str, headers_es: list, sample: list, *, brand_color: str = "1D4ED8", instructions: list = None, validations: dict = None) -> bytes:
     """Build a styled XLSX template with Spanish headers, bold colored header row, borders, and column widths.
-    Optional instructions go into a separate 'Instrucciones' sheet so they aren't parsed as data."""
+    Optional instructions go into a separate 'Instrucciones' sheet so they aren't parsed as data.
+
+    Args:
+      validations: dict {col_index_1based: [allowed_values]} — se añaden Data Validation dropdowns
+                   sobre las filas 2..1000 de la columna indicada. Las listas de allowed_values
+                   también se copian a la hoja 'Listas' para que el usuario pueda verlas.
+    """
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.worksheet.datavalidation import DataValidation
     from openpyxl.utils import get_column_letter
     wb = Workbook()
     ws = wb.active
@@ -5099,6 +5125,41 @@ def _build_styled_template(sheet_name: str, headers_es: list, sample: list, *, b
 
     ws.row_dimensions[1].height = 30
     ws.freeze_panes = "A2"
+
+    # Data validation dropdowns (listas desplegables).
+    # openpyxl formula1 length limit is ~255 chars → si la lista es larga, la publicamos en la hoja 'Listas'
+    # y referenciamos el rango. Si es corta, usamos inline.
+    if validations:
+        ws_list = wb.create_sheet("Listas")
+        ws_list.column_dimensions["A"].width = 30
+        # We'll allocate columns in "Listas" one per validation set (only used when list is too long for inline).
+        used_cols = 0
+        for col_idx, values in validations.items():
+            if not values:
+                continue
+            clean = [str(v) for v in values if v is not None and str(v).strip() != ""]
+            if not clean:
+                continue
+            inline = ",".join(clean)
+            # If the inline representation is short enough, use it directly
+            if len(inline) < 240:
+                dv = DataValidation(type="list", formula1=f'"{inline}"', allow_blank=True, showDropDown=False)
+            else:
+                # Publish list in Listas sheet, one column per validation
+                used_cols += 1
+                target_col = get_column_letter(used_cols)
+                ws_list.cell(row=1, column=used_cols, value=f"Columna {get_column_letter(col_idx)}").font = Font(bold=True)
+                for i, v in enumerate(clean):
+                    ws_list.cell(row=2 + i, column=used_cols, value=v)
+                ref = f"Listas!${target_col}$2:${target_col}${1 + len(clean)}"
+                dv = DataValidation(type="list", formula1=f"={ref}", allow_blank=True, showDropDown=False)
+            dv.error = "Valor no permitido. Elige uno de la lista desplegable."
+            dv.errorTitle = "Valor inválido"
+            dv.prompt = "Selecciona un valor de la lista"
+            dv.promptTitle = "Lista desplegable"
+            col_letter = get_column_letter(col_idx)
+            dv.add(f"{col_letter}2:{col_letter}1000")
+            ws.add_data_validation(dv)
 
     # Instructions in separate sheet
     if instructions:
@@ -5137,18 +5198,46 @@ def _parse_uploaded(file: UploadFile, raw: bytes) -> List[dict]:
 
 @api.get("/import/template/{kind}")
 async def download_template(kind: str, _: dict = Depends(require_admin)):
+    # Categorías activas del catálogo (para dropdown). Si está vacío, fallback a CATEGORIES.
+    cat_rows = await db.categories.find({}, {"_id": 0, "name": 1}).sort([("sort_order", 1), ("name", 1)]).to_list(200)
+    cat_names = [r["name"] for r in cat_rows if r.get("name")] or list(CATEGORIES)
+
+    # Event types del catálogo (para dropdown de 'event_type'). Se envían las claves (festival, premier_par…)
+    ev_rows = await db.event_types.find({}, {"_id": 0, "id": 1, "name": 1}).sort([("sort_order", 1)]).to_list(50)
+    ev_keys = [r["id"] for r in ev_rows if r.get("id")] or list(EVENT_TYPES.keys())
+
     base_instr = [
-        "• Conserva el nombre y el orden de las columnas. Puedes traducirlos, pero no los borres.",
+        "• Conserva el orden de las columnas. Puedes traducir los encabezados, pero no los borres.",
         "• La fila 2 es un ejemplo: bórrala antes de cargar tu información real.",
         "• Formato de fecha: AAAA-MM-DD (ejemplo: 2014-03-15).",
-        "• Categoría válida: Sub-8, Sub-10, Sub-12, Sub-14, Sub-16, Sub-18.",
-        "• Para Jugadores: la columna 'Equipo' debe coincidir con el nombre del equipo ya creado en la plataforma.",
+        f"• Categorías válidas ({len(cat_names)}): {', '.join(cat_names)}. Se administran en /admin/categorias.",
+        "• Para Equipos:",
+        "   - 'Club' debe coincidir con un club existente (si no existe, se crea automáticamente en estado 'pendiente').",
+        f"   - 'Evento' debe ser una de las claves: {', '.join(ev_keys)}. Se administran en /admin/tipos-de-evento.",
+        "   - 'Designación' es opcional: Único, A, B (usada para diferenciar equipos del mismo club/año).",
+        "   - 'Grupo' es opcional: se llena si el fixture ya está definido.",
+        "• Para Jugadores: 'Equipo' debe coincidir con el nombre exacto del equipo ya creado.",
+        "• Género: solo M o F. Posición: usar la lista desplegable (Portero, Delantero, etc.).",
         "• Color en formato HEX (ej. #1d4ed8). Si no lo sabes, déjalo en blanco.",
+        "• 'Número COMET' es opcional (matrícula federativa del jugador).",
     ]
+
     if kind == "teams":
-        content = _build_styled_template("Equipos", TEAM_HEADERS_ES, TEAM_SAMPLE_ES, brand_color="1D4ED8", instructions=base_instr)
+        # Índices 1-based de las columnas donde queremos dropdown
+        headers = [h[0] for h in TEAM_HEADERS_ES]
+        vals = {
+            headers.index("event_type") + 1: ev_keys,
+            headers.index("category") + 1: cat_names,
+            headers.index("designation") + 1: ["Único", "A", "B", "C"],
+        }
+        content = _build_styled_template("Equipos", TEAM_HEADERS_ES, TEAM_SAMPLE_ES, brand_color="1D4ED8", instructions=base_instr, validations=vals)
     elif kind == "players":
-        content = _build_styled_template("Jugadores", PLAYER_HEADERS_ES, PLAYER_SAMPLE_ES, brand_color="DC2626", instructions=base_instr)
+        headers = [h[0] for h in PLAYER_HEADERS_ES]
+        vals = {
+            headers.index("position") + 1: POSITIONS_LIST,
+            headers.index("gender") + 1: ["M", "F"],
+        }
+        content = _build_styled_template("Jugadores", PLAYER_HEADERS_ES, PLAYER_SAMPLE_ES, brand_color="DC2626", instructions=base_instr, validations=vals)
     else:
         raise HTTPException(status_code=400, detail="Tipo inválido (teams|players)")
     return FastAPIResponse(
@@ -5164,21 +5253,72 @@ async def import_teams(file: UploadFile = File(...), preview: bool = False, _: d
         raise HTTPException(status_code=400, detail="Archivo > 5MB")
     rows = _parse_uploaded(file, raw)
 
-    created, errors = [], []
+    # Categorías vigentes (BD + fallback)
+    cat_rows = await db.categories.find({}, {"_id": 0, "name": 1}).to_list(300)
+    valid_cats = set(r["name"] for r in cat_rows if r.get("name")) or set(CATEGORIES)
+    valid_events = set(EVENT_TYPES.keys())
+    # Mapa club_name (lowercase) → club_id (existente)
+    clubs_existing = await db.clubs.find({}, {"_id": 0, "id": 1, "name": 1}).to_list(2000)
+    club_map = {c["name"].strip().lower(): c["id"] for c in clubs_existing}
+
+    created, errors, clubs_created = [], [], []
     for idx, r in enumerate(rows, start=2):
-        name = r.get("name") or r.get("nombre") or ""
-        category = r.get("category") or r.get("categoria") or ""
+        name = r.get("name") or ""
+        category = r.get("category") or ""
+        event_type = (r.get("event_type") or "").strip().lower()
+        club_name = (r.get("club_name") or "").strip()
+
         if not name:
             errors.append({"row": idx, "error": "Falta el nombre del equipo"})
             continue
-        if category not in CATEGORIES:
-            errors.append({"row": idx, "error": f"Categoría '{category}' inválida (use {', '.join(CATEGORIES)})"})
+        if category not in valid_cats:
+            errors.append({"row": idx, "error": f"Categoría '{category}' inválida. Válidas: {', '.join(sorted(valid_cats))}"})
             continue
+        if event_type and event_type not in valid_events:
+            errors.append({"row": idx, "error": f"Evento '{event_type}' inválido. Válidos: {', '.join(sorted(valid_events))}"})
+            continue
+
+        # Resolver o crear club por nombre (opcional)
+        club_id = ""
+        if club_name:
+            k = club_name.lower()
+            if k in club_map:
+                club_id = club_map[k]
+            else:
+                # Crear club pendiente
+                new_club = {
+                    "id": str(uuid.uuid4()),
+                    "name": club_name,
+                    "country": r.get("country") or "Colombia",
+                    "city": r.get("city") or "",
+                    "phone": "", "email": "", "website": "",
+                    "logo_url": "",
+                    "color": r.get("color") or "#1d4ed8",
+                    "status": "pendiente",
+                    "manager_user_id": "",
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                }
+                club_id = new_club["id"]
+                club_map[k] = club_id
+                if not preview:
+                    await db.clubs.insert_one(new_club.copy())
+                clubs_created.append({"id": club_id, "name": club_name})
+
+        try:
+            by_val = r.get("birth_year", "")
+            birth_year = int(by_val) if str(by_val).strip().isdigit() else None
+        except Exception:
+            birth_year = None
+
         doc = {
             "id": str(uuid.uuid4()),
             "name": name,
+            "club_id": club_id,
+            "club_name": club_name or None,
             "category": category,
-            "birth_year": int(r["birth_year"]) if r.get("birth_year", "").isdigit() else None,
+            "event_type": event_type,
+            "designation": (r.get("designation") or "Único").strip() or "Único",
+            "birth_year": birth_year,
             "group_name": r.get("group_name", ""),
             "coach": r.get("coach", ""),
             "city": r.get("city", ""),
@@ -5187,6 +5327,7 @@ async def import_teams(file: UploadFile = File(...), preview: bool = False, _: d
             "delegate_phone": r.get("delegate_phone", ""),
             "color": r.get("color") or "#1d4ed8",
             "logo_url": "",
+            "cuerpo_tecnico": [],
             "status": "aprobado",
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
@@ -5197,7 +5338,14 @@ async def import_teams(file: UploadFile = File(...), preview: bool = False, _: d
         for d in created:
             d.pop("_id", None)
 
-    return {"total_rows": len(rows), "ok": len(created), "errors": errors, "saved": not preview, "created": [{"id": d["id"], "name": d["name"], "category": d["category"]} for d in created]}
+    return {
+        "total_rows": len(rows),
+        "ok": len(created),
+        "errors": errors,
+        "saved": not preview,
+        "created": [{"id": d["id"], "name": d["name"], "category": d["category"]} for d in created],
+        "clubs_auto_created": clubs_created,
+    }
 
 @api.post("/import/players")
 async def import_players(file: UploadFile = File(...), preview: bool = False, _: dict = Depends(require_admin)):
@@ -5233,6 +5381,7 @@ async def import_players(file: UploadFile = File(...), preview: bool = False, _:
             "position": r.get("position") or "Mediocampista",
             "birth_date": r.get("birth_date") or "",
             "document_id": r.get("document_id") or "",
+            "comet_number": r.get("comet_number") or "",
             "nickname": r.get("nickname") or "",
             "gender": r.get("gender") or "",
             "eps": r.get("eps") or "",

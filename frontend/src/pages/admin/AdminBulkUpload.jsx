@@ -4,8 +4,8 @@ import { toast, Toaster } from "sonner";
 import { Download, Upload, FileSpreadsheet, CheckCircle2, AlertTriangle } from "lucide-react";
 
 const TABS = [
-  { key: "teams", label: "Equipos", endpoint: "teams", description: "Carga masiva de clubes/equipos. Incluye categoría, año de nacimiento, grupo, DT, presidente y delegado." },
-  { key: "players", label: "Jugadores", endpoint: "players", description: "Carga masiva de jugadores. Vincula cada fila a un equipo por su nombre exacto. Incluye datos del acudiente." },
+  { key: "teams", label: "Equipos", endpoint: "teams", description: "Carga masiva de equipos vinculados a clubes. Incluye Club, Evento (Festival/Premier), Categoría, Año de nacimiento, Designación (Único/A/B), Grupo, DT, Presidente y Delegado. La plantilla trae listas desplegables con las categorías y eventos vigentes. Si el club no existe se crea en estado 'pendiente'." },
+  { key: "players", label: "Jugadores", endpoint: "players", description: "Carga masiva de jugadores. Cada fila se vincula por 'Equipo' (nombre exacto). Incluye Dorsal, Posición (dropdown), Fecha de nacimiento, Documento, Número COMET, Apodo, Género (M/F), EPS y datos del acudiente (nombre, documento, parentesco, teléfono)." },
 ];
 
 export default function AdminBulkUpload() {
@@ -146,6 +146,22 @@ export default function AdminBulkUpload() {
                     {result.created.map((c) => (
                       <div key={c.id} className="bg-white/5 rounded px-2 py-1">
                         {c.name} {c.category && <span className="text-slate-400">· {c.category}</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {result.clubs_auto_created?.length > 0 && (
+                <div className="border-t border-white/10 pt-3">
+                  <div className="text-xs uppercase tracking-widest text-amber-300 mb-2 flex items-center gap-1">
+                    <AlertTriangle size={14}/> Clubes creados automáticamente ({result.clubs_auto_created.length})
+                  </div>
+                  <div className="text-[10px] text-amber-200/80 mb-1">Quedan en estado <strong>pendiente</strong>. Apruébalos en /admin/clubes.</div>
+                  <div className="max-h-32 overflow-y-auto space-y-1 text-xs">
+                    {result.clubs_auto_created.map((c) => (
+                      <div key={c.id} className="bg-amber-500/10 rounded px-2 py-1 text-amber-100" data-testid={`bulk-club-auto-${c.id}`}>
+                        {c.name}
                       </div>
                     ))}
                   </div>
