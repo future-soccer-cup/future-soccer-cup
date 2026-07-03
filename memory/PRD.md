@@ -16,6 +16,16 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-02-26 — Iter44: Clasificación y Juego Limpio ocultos cuando no hay fixture
+- **Backend `/stats/standings`**: primero valida que exista al menos un fixture para el `tournament_id × category × (group_name opcional)`. Si no hay ningún fixture, devuelve `[]` (antes construía la tabla con todos los equipos que cumplían filtros aunque no hubiera partidos ni fixture). También filtra `teams` para incluir solo los que están dentro de los `team_ids` del/los fixture(s) encontrado(s).
+- **Frontend `AdminMatches.jsx`**:
+  - Se carga `/fixtures` al inicio y se pasa a `FilterAndExportBar`.
+  - **Filtro de grupos**: ahora se deriva de `fixtures.filter(tid==f.tournament_id && cat==f.category).map(f.group_name)`. Antes usaba `teams.map(group_name)` — por eso mostraba "Grupo A" aunque el fixture nunca se hubiera generado, ya que el field `group_name` en el schema del team podía tener valores viejos.
+  - **Tabs Clasificación y Juego Limpio**: quedan deshabilitadas cuando `!hasFixtureForFilters(fixtures, tid, cat, grp)`, además del check anterior de tid/cat.
+  - **Estado vacío** de `StandingsTable`: mensaje más claro — "Aún no hay fixture creado para el torneo, categoría y grupo seleccionados. La tabla se generará cuando cargues resultados de partidos.".
+- **Verificado curl**: sin fixture → `/stats/standings` retorna `[]`; con fixture creado (4 equipos) → retorna 4 filas con `group_name` correcto; al eliminar el fixture → vuelve a `[]`.
+
+
 ### 2026-02-26 — Iter43: Delete de fixture cascada standings + Bracket editor + Canchas como dropdown
 - **Backend `DELETE /api/fixtures/{id}`**: ahora elimina TODOS los partidos (programados y finalizados) + limpia `historical_standings` del mismo `tournament_id × category × group_name`. Retorna `{matches_deleted, standings_deleted}`. Efecto: la tabla de posiciones y de juego limpio quedan reseteadas (se calculan live desde matches).
 - **Backend `POST /api/fixtures/generate`**: persiste `venues` y `time_slots` en el documento del fixture para que el editor los pueda usar como dropdown más adelante.

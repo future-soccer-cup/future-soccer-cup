@@ -2408,7 +2408,28 @@ def _cat_config(tournament: dict, category: str) -> dict:
 
 @api.get("/stats/standings")
 async def standings(category: Optional[str] = None, group_name: Optional[str] = None, tournament_id: Optional[str] = None):
-    q_team = {}
+    # Iter44: si no hay fixture creado para el torneo × categoría × grupo,
+    # la tabla NO se muestra (evita listar equipos "0-0-0-0" cuando el fixture
+    # aún no fue generado).
+    fx_q = {}
+    if tournament_id:
+        fx_q["tournament_id"] = tournament_id
+    if category:
+        fx_q["category"] = category
+    if group_name:
+        fx_q["group_name"] = group_name
+    fixtures_exist = await db.fixtures.find(fx_q, {"_id": 0, "team_ids": 1}).to_list(200)
+    if not fixtures_exist:
+        return []
+    # team_ids permitidos = unión de team_ids de los fixtures que aplican
+    allowed_team_ids = set()
+    for fx in fixtures_exist:
+        for tid in (fx.get("team_ids") or []):
+            allowed_team_ids.add(tid)
+    if not allowed_team_ids:
+        return []
+
+    q_team = {"id": {"$in": list(allowed_team_ids)}}
     if category:
         q_team["category"] = category
     if group_name:

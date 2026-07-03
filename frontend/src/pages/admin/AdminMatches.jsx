@@ -37,10 +37,11 @@ export default function AdminMatches() {
   const [filterGrp, setFilterGrp] = useState("");
   const [tab, setTab] = useState("partidos"); // partidos | clasificacion | juego_limpio
   const [standings, setStandings] = useState([]);
+  const [fixtures, setFixtures] = useState([]);
 
   const load = useCallback(() => Promise.all([
-    api.get("/matches"), api.get("/teams"), api.get("/tournaments")
-  ]).then(([m, t, tr]) => { setMatches(m.data); setTeams(t.data); setTournaments(tr.data); }), []);
+    api.get("/matches"), api.get("/teams"), api.get("/tournaments"), api.get("/fixtures")
+  ]).then(([m, t, tr, fx]) => { setMatches(m.data); setTeams(t.data); setTournaments(tr.data); setFixtures(fx.data || []); }), []);
   useEffect(() => { load(); }, [load]);
 
   // Cargar clasificación cuando hay filtros suficientes y se cambia a tabs de stats
@@ -151,7 +152,7 @@ export default function AdminMatches() {
       </div>
 
       <FilterAndExportBar
-        tournaments={tournaments} teams={teams}
+        tournaments={tournaments} teams={teams} fixtures={fixtures}
         tid={filterTid} setTid={setFilterTid}
         cat={filterCat} setCat={setFilterCat}
         grp={filterGrp} setGrp={setFilterGrp}
@@ -159,8 +160,18 @@ export default function AdminMatches() {
 
       <div className="flex gap-1 mb-4 border-b border-slate-200" data-testid="matches-tabs">
         <TabBtn active={tab === "partidos"} onClick={() => setTab("partidos")} testId="tab-partidos">Partidos · {filteredMatches.length}</TabBtn>
-        <TabBtn active={tab === "clasificacion"} onClick={() => setTab("clasificacion")} testId="tab-clasificacion" disabled={!filterTid || !filterCat}>Clasificación</TabBtn>
-        <TabBtn active={tab === "juego_limpio"} onClick={() => setTab("juego_limpio")} testId="tab-juego-limpio" disabled={!filterTid || !filterCat}>Juego Limpio</TabBtn>
+        <TabBtn
+          active={tab === "clasificacion"}
+          onClick={() => setTab("clasificacion")}
+          testId="tab-clasificacion"
+          disabled={!filterTid || !filterCat || !hasFixtureForFilters(fixtures, filterTid, filterCat, filterGrp)}
+        >Clasificación</TabBtn>
+        <TabBtn
+          active={tab === "juego_limpio"}
+          onClick={() => setTab("juego_limpio")}
+          testId="tab-juego-limpio"
+          disabled={!filterTid || !filterCat || !hasFixtureForFilters(fixtures, filterTid, filterCat, filterGrp)}
+        >Juego Limpio</TabBtn>
       </div>
 
       {tab === "partidos" && (
@@ -615,7 +626,17 @@ async function downloadPdf(url, fname) {
   }
 }
 
-function FilterAndExportBar({ tournaments, teams, tid, setTid, cat, setCat, grp, setGrp }) {
+function hasFixtureForFilters(fixtures, tid, cat, grp) {
+  if (!Array.isArray(fixtures)) return false;
+  return fixtures.some((f) => {
+    if (tid && f.tournament_id !== tid) return false;
+    if (cat && f.category !== cat) return false;
+    if (grp && (f.group_name || "") !== grp) return false;
+    return true;
+  });
+}
+
+function FilterAndExportBar({ tournaments, teams, fixtures = [], tid, setTid, cat, setCat, grp, setGrp }) {
   const activeTournaments = (tournaments || []).filter((t) => !t.archived);
   const tournament = activeTournaments.find((t) => t.id === tid);
   const cats = tournament
@@ -623,8 +644,13 @@ function FilterAndExportBar({ tournaments, teams, tid, setTid, cat, setCat, grp,
         ? (tournament.categories || []).map((c) => c.name).filter(Boolean)
         : (tournament.category ? [tournament.category] : []))
     : [];
+  // Iter44: los grupos disponibles vienen de FIXTURES existentes (no de teams sueltos),
+  // así no aparece "Grupo A" cuando aún no se generó ningún fixture para ese torneo+categoría.
   const groupsAvail = Array.from(new Set(
-    (teams || []).filter((t) => !cat || t.category === cat).map((t) => t.group_name).filter(Boolean)
+    (fixtures || [])
+      .filter((f) => (!tid || f.tournament_id === tid) && (!cat || f.category === cat))
+      .map((f) => f.group_name)
+      .filter(Boolean)
   )).sort();
 
   const params = () => {
@@ -701,7 +727,9 @@ function TabBtn({ active, onClick, children, testId, disabled }) {
 
 function StandingsTable({ rows, mode = "full" }) {
   if (!rows || rows.length === 0) {
-    return <div className="text-center text-sm text-slate-400 py-12 bg-white border border-slate-200 rounded-lg" data-testid="standings-empty">Selecciona Evento y Categoría para ver la tabla.</div>;
+    return <div className="text-center text-sm text-slate-400 py-12 bg-white border border-slate-200 rounded-lg" data-testid="standings-empty">
+      Aún no hay fixture creado para el torneo, categoría y grupo seleccionados. La tabla se generará cuando cargues resultados de partidos.
+    </div>;
   }
   if (mode === "fairplay") {
     return (
