@@ -29,6 +29,8 @@ export default function AdminFixtureGenerator() {
   const [editingFixtureId, setEditingFixtureId] = useState(null);
   const [editingMatches, setEditingMatches] = useState([]);
   const [editingLoading, setEditingLoading] = useState(false);
+  // Canchas persistidas en el fixture que se está editando (para el <select> del editor).
+  const [editingVenues, setEditingVenues] = useState([]);
 
   useEffect(() => {
     Promise.all([
@@ -141,9 +143,15 @@ export default function AdminFixtureGenerator() {
     setEditingFixtureId(fix.id);
     setEditingLoading(true);
     setEditingMatches([]);
+    setEditingVenues([]);
     try {
       const r = await api.get(`/fixtures/${fix.id}/matches`);
       setEditingMatches(r.data.matches || []);
+      const fx = r.data.fixture || {};
+      const venuesFromFixture = Array.isArray(fx.venues) && fx.venues.length > 0
+        ? fx.venues
+        : Array.from(new Set((r.data.matches || []).map((m) => m.venue).filter(Boolean)));
+      setEditingVenues(venuesFromFixture);
     } catch (err) {
       toast.error(formatApiError(err.response?.data?.detail));
     } finally {
@@ -154,10 +162,13 @@ export default function AdminFixtureGenerator() {
   const deleteFixture = async (fix) => {
     try {
       const r = await api.delete(`/fixtures/${fix.id}`);
-      toast.success(`Fixture eliminado (${r.data.matches_deleted} partidos)`);
+      const parts = [`${r.data.matches_deleted || 0} partidos`];
+      if ((r.data.standings_deleted || 0) > 0) parts.push(`${r.data.standings_deleted} filas de tabla`);
+      toast.success(`Fixture eliminado (${parts.join(", ")}). Tabla de posiciones y juego limpio reseteadas.`);
       if (editingFixtureId === fix.id) {
         setEditingFixtureId(null);
         setEditingMatches([]);
+        setEditingVenues([]);
       }
       reloadFixtures();
     } catch (err) {
@@ -403,9 +414,9 @@ export default function AdminFixtureGenerator() {
                         title={`Eliminar fixture · ${f.category} ${f.group_name}`}
                         description={
                           <span>
-                            Se eliminará el fixture <strong>"{f.tournament_name} · {f.category} · {f.group_name}"</strong>{" "}
-                            y sus partidos programados ({f.active_matches ?? f.matches_count ?? 0}).
-                            Los partidos ya <em>finalizados</em> se conservan en el historial.
+                            Se eliminará el fixture <strong>"{f.tournament_name} · {f.category} · {f.group_name}"</strong>,{" "}
+                            <strong>todos sus partidos</strong> ({f.matches_count ?? 0}, incluidos los finalizados),
+                            y la <strong>tabla de clasificación</strong> y <strong>tabla de juego limpio</strong> de este grupo se resetearán.
                             <br/><br/>Esta acción no se puede deshacer.
                           </span>
                         }
@@ -431,7 +442,7 @@ export default function AdminFixtureGenerator() {
             ) : editingMatches.length === 0 ? (
               <p className="text-sm text-slate-400 py-6 text-center">Sin partidos.</p>
             ) : (
-              <EditableMatchesTable matches={editingMatches} venues={venues.filter(Boolean)} onPersist={persistMatch} onLocalChange={(mid, patch) => setEditingMatches((ms) => ms.map((m) => m.id === mid ? { ...m, ...patch } : m))} />
+              <EditableMatchesTable matches={editingMatches} venues={(editingVenues.length > 0 ? editingVenues : venues.filter(Boolean))} onPersist={persistMatch} onLocalChange={(mid, patch) => setEditingMatches((ms) => ms.map((m) => m.id === mid ? { ...m, ...patch } : m))} />
             )}
           </div>
         )}
@@ -468,8 +479,18 @@ function PreviewEditableTable({ matches, venues, onChange }) {
                 <td className="px-1 py-2 text-center text-slate-400">vs</td>
                 <td className="px-2 py-2 font-semibold">{m.away_team_name}</td>
                 <td className="px-2 py-2">
-                  <input list={`venues-list-${m.id}`} value={m.venue || ""} onChange={(e) => onChange(m.id, { venue: e.target.value })} className="w-full px-2 py-1 border border-slate-200 rounded text-xs" placeholder="Cancha" data-testid={`fg-preview-venue-${m.id}`} />
-                  <datalist id={`venues-list-${m.id}`}>{venues.map((v) => <option key={v} value={v} />)}</datalist>
+                  <select
+                    value={m.venue || ""}
+                    onChange={(e) => onChange(m.id, { venue: e.target.value })}
+                    className="w-full px-2 py-1 border border-slate-200 rounded text-xs bg-white"
+                    data-testid={`fg-preview-venue-${m.id}`}
+                  >
+                    <option value="">— Sin cancha —</option>
+                    {venues.map((v) => <option key={v} value={v}>{v}</option>)}
+                    {m.venue && !venues.includes(m.venue) && (
+                      <option value={m.venue}>{m.venue}</option>
+                    )}
+                  </select>
                 </td>
               </tr>
             );
@@ -509,8 +530,18 @@ function EditableMatchesTable({ matches, venues, onPersist, onLocalChange }) {
                 <td className="px-1 py-2 text-center text-slate-400">vs</td>
                 <td className="px-2 py-2 font-semibold">{m.away_team_name}</td>
                 <td className="px-2 py-2">
-                  <input list={`ed-venues-${m.id}`} value={m.venue || ""} onChange={(e) => onLocalChange(m.id, { venue: e.target.value })} className="w-full px-2 py-1 border border-slate-200 rounded text-xs" placeholder="Cancha" data-testid={`editor-venue-${m.id}`} />
-                  <datalist id={`ed-venues-${m.id}`}>{venues.map((v) => <option key={v} value={v} />)}</datalist>
+                  <select
+                    value={m.venue || ""}
+                    onChange={(e) => onLocalChange(m.id, { venue: e.target.value })}
+                    className="w-full px-2 py-1 border border-slate-200 rounded text-xs bg-white"
+                    data-testid={`editor-venue-${m.id}`}
+                  >
+                    <option value="">— Sin cancha —</option>
+                    {venues.map((v) => <option key={v} value={v}>{v}</option>)}
+                    {m.venue && !venues.includes(m.venue) && (
+                      <option value={m.venue}>{m.venue}</option>
+                    )}
+                  </select>
                 </td>
                 <td className="px-2 py-2 text-right">
                   <button onClick={() => onPersist(m.id, { match_date: m.match_date, venue: m.venue })} className="px-2 py-1 text-xs font-bold rounded bg-blue-600 text-white hover:bg-blue-700" data-testid={`editor-save-${m.id}`}>Guardar</button>

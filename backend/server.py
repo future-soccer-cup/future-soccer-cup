@@ -1826,6 +1826,8 @@ async def generate_fixture(payload: FixtureGenerateIn, _: dict = Depends(require
             "end_date": end_date_str or (last_match_dt.date().isoformat() if last_match_dt else payload.start_date),
             "rounds": int(payload.rounds or 1),
             "matches_count": len(generated),
+            "venues": [v for v in (payload.venues or []) if v],
+            "time_slots": [s for s in (payload.time_slots or []) if s],
             "created_at": datetime.now(timezone.utc).isoformat(),
         })
 
@@ -1875,22 +1877,41 @@ async def list_fixtures(_: dict = Depends(require_admin)):
 
 @api.delete("/fixtures/{fixture_id}")
 async def delete_fixture(fixture_id: str, _: dict = Depends(require_admin)):
-    """Elimina un fixture y todos sus partidos (que sigan en estado 'programado')."""
+    """Elimina un fixture y TODOS sus partidos (programados y finalizados), además
+    de las tablas de clasificación / juego limpio históricas del mismo torneo,
+    categoría y grupo. Después de esta operación las tablas live quedan vacías
+    porque se calculan a partir de `matches`."""
     f = await db.fixtures.find_one({"id": fixture_id}, {"_id": 0})
     if not f:
         raise HTTPException(status_code=404, detail="Fixture no encontrado")
     team_ids = f.get("team_ids") or []
-    deleted = await db.matches.delete_many({
-        "tournament_id": f.get("tournament_id"),
-        "group_name": f.get("group_name"),
-        "status": "programado",
-        "$or": [
+    tournament_id = f.get("tournament_id")
+    category = f.get("category")
+    group_name = f.get("group_name")
+
+    # Borrar todos los partidos del fixture (incluye finalizados) — necesario
+    # para que la tabla de posiciones y juego limpio se resetee.
+    match_q = {
+        "tournament_id": tournament_id,
+        "group_name": group_name,
+    }
+    if team_ids:
+        match_q["$or"] = [
             {"home_team_id": {"$in": team_ids}},
             {"away_team_id": {"$in": team_ids}},
-        ],
-    })
+        ]
+    deleted_matches = await db.matches.delete_many(match_q)
+
+    # Borrar standings/fair-play históricos del mismo tournament × category × group.
+    hs_q = {"tournament_id": tournament_id, "category": category, "group_name": group_name}
+    deleted_standings = await db.historical_standings.delete_many(hs_q)
+
     await db.fixtures.delete_one({"id": fixture_id})
-    return {"ok": True, "matches_deleted": deleted.deleted_count}
+    return {
+        "ok": True,
+        "matches_deleted": deleted_matches.deleted_count,
+        "standings_deleted": deleted_standings.deleted_count,
+    }
 
 
 @api.get("/fixtures/{fixture_id}/matches")
@@ -2305,6 +2326,8 @@ async def create_bracket(payload: BracketIn, _: dict = Depends(require_admin)):
         "third_place_match_id": third_place_id,
         "total_rounds": total_rounds,
         "tournament_id": payload.tournament_id or bid,
+        "venues": [v for v in (payload.venues or []) if v],
+        "time_slots": [s for s in (payload.time_slots or []) if s],
         "status": "activo",
         "created_at": now,
     }

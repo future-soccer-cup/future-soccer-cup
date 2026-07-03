@@ -16,6 +16,20 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-02-26 — Iter43: Delete de fixture cascada standings + Bracket editor + Canchas como dropdown
+- **Backend `DELETE /api/fixtures/{id}`**: ahora elimina TODOS los partidos (programados y finalizados) + limpia `historical_standings` del mismo `tournament_id × category × group_name`. Retorna `{matches_deleted, standings_deleted}`. Efecto: la tabla de posiciones y de juego limpio quedan reseteadas (se calculan live desde matches).
+- **Backend `POST /api/fixtures/generate`**: persiste `venues` y `time_slots` en el documento del fixture para que el editor los pueda usar como dropdown más adelante.
+- **Backend `POST /api/brackets`**: persiste `venues` y `time_slots` en el bracket doc.
+- **Fixture editor (`AdminFixtureGenerator.jsx`)**: al abrir un fixture guardado, carga sus `venues` desde el GET y los usa en `<select>` de cancha en `EditableMatchesTable` y `PreviewEditableTable` (reemplazo de `<input list=datalist>` por `<select>` real). Mensaje del modal de eliminación actualizado para reflejar el nuevo comportamiento.
+- **Bracket admin (`AdminBracketGenerator.jsx`)**:
+  - Canchas en el formulario ahora son **array + `VenuePicker`** (dropdown desde `/venues` catalog, con botón "+ Crear nueva"), remplazando el input CSV. Botón "+ Agregar cancha" para múltiples canchas.
+  - Nuevo botón **Editar** por bracket → abre `BracketMatchesTable` inline con fecha/hora y **cancha como `<select>`** por partido.
+  - Botón Eliminar ahora usa `ConfirmDeleteDialog` (antes usaba `window.confirm`).
+  - Al guardar un bracket nuevo, se abre automáticamente el editor para ajustar fechas/canchas.
+- **Pruebas curl**: creación de fixture con 4 equipos + 6 matches → persiste `venues:[Cancha A, Cancha B]` + `time_slots:[09:00, 11:00]`. Inyección de 1 fila `historical_standings` → DELETE devuelve `{matches_deleted:6, standings_deleted:1}` y GET público confirma remaining=0.
+- **Screenshot**: 8 selects de cancha visibles en el editor del bracket (`br-editor-venue-*`).
+
+
 ### 2026-02-26 — Iter42: Carga masiva alineada al schema actual + dropdowns dinámicos
 - **Plantilla Equipos** ahora incluye: `Club`, `Nombre del equipo`, `Evento` (festival/premier_par/premier_impar), `Categoría`, `Año de nacimiento`, `Designación (Único/A/B)`, `Grupo`, `DT`, `Ciudad`, `País`, `Presidente`, `Teléfono delegado`, `Color HEX`. Dropdowns en Excel para Evento (desde `db.event_types`), Categoría (desde `db.categories` — dinámico según catálogo actual del admin) y Designación.
 - **Plantilla Jugadores** añade `Número COMET` (columna faltante). Dropdowns para `Posición` (18 valores válidos, publicados en hoja `Listas`) y `Género` (M/F). Se mantienen los datos del acudiente (nombre, doc, parentesco, teléfono).

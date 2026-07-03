@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api, { formatApiError } from "../../lib/api";
 import { toast, Toaster } from "sonner";
-import { Plus, X, Eye, Save, Trophy, Trash2 } from "lucide-react";
+import { Plus, X, Eye, Save, Trophy, Trash2, Edit2 } from "lucide-react";
 import { formatDateTime } from "../../lib/dateFormat";
 import CategorySelect from "../../components/CategorySelect";
+import VenuePicker from "../../components/VenuePicker";
+import ConfirmDeleteDialog from "../../components/ConfirmDeleteDialog";
 
 const SIZES = [4, 8, 16, 32];
 
@@ -19,12 +21,17 @@ export default function AdminBracketGenerator() {
     include_third_place: true,
     start_date: new Date().toISOString().slice(0, 10),
     days_between_rounds: 7,
-    venues: "Cancha A, Cancha B",
+    venues: [""],           // ahora es array; cada slot usa VenuePicker (dropdown)
     time_slots: "10:00, 12:00",
   });
   const [seeds, setSeeds] = useState([]); // team_ids in seed order
   const [preview, setPreview] = useState(null);
   const [saving, setSaving] = useState(false);
+  // Editor de un bracket ya guardado
+  const [editingBracketId, setEditingBracketId] = useState(null);
+  const [editingMatches, setEditingMatches] = useState([]);
+  const [editingVenues, setEditingVenues] = useState([]);
+  const [editingLoading, setEditingLoading] = useState(false);
 
   const loadTeams = () => api.get("/teams").then((r) => setTeams(r.data.filter((t) => (t.status || "aprobado") === "aprobado")));
   const loadBrackets = () => api.get("/brackets").then((r) => setBrackets(r.data));
@@ -45,6 +52,18 @@ export default function AdminBracketGenerator() {
     setSeeds(next);
   };
 
+  const setVenueAt = (i, name) => {
+    const next = [...(form.venues || [])];
+    next[i] = name;
+    setForm({ ...form, venues: next });
+  };
+  const addVenueSlot = () => setForm({ ...form, venues: [...(form.venues || []), ""] });
+  const removeVenueSlot = (i) => {
+    const next = [...(form.venues || [])];
+    next.splice(i, 1);
+    setForm({ ...form, venues: next.length ? next : [""] });
+  };
+
   const buildPayload = (asPreview) => ({
     name: form.name || `Copa ${form.category}`,
     category: form.category,
@@ -53,7 +72,7 @@ export default function AdminBracketGenerator() {
     include_third_place: form.include_third_place,
     start_date: form.start_date,
     days_between_rounds: Number(form.days_between_rounds),
-    venues: form.venues.split(",").map((s) => s.trim()).filter(Boolean),
+    venues: (form.venues || []).map((s) => (s || "").trim()).filter(Boolean),
     time_slots: form.time_slots.split(",").map((s) => s.trim()).filter(Boolean),
     preview: asPreview,
   });
@@ -75,7 +94,9 @@ export default function AdminBracketGenerator() {
     try {
       const r = await api.post("/brackets", buildPayload(false));
       toast.success("Bracket creado");
-      navigate(`/bracket?id=${r.data.id}`);
+      loadBrackets();
+      // Abrir el editor inmediatamente para que el admin ajuste fechas/canchas.
+      openBracketEditor({ id: r.data.id });
     } catch (err) {
       toast.error(formatApiError(err.response?.data?.detail) || "Error al guardar");
     } finally {
@@ -83,11 +104,49 @@ export default function AdminBracketGenerator() {
     }
   };
 
-  const remove = async (id) => {
-    if (!window.confirm("¿Eliminar bracket y sus partidos?")) return;
-    await api.delete(`/brackets/${id}`);
-    toast.success("Eliminado");
-    loadBrackets();
+  const openBracketEditor = async (b) => {
+    setEditingBracketId(b.id);
+    setEditingLoading(true);
+    setEditingMatches([]);
+    setEditingVenues([]);
+    try {
+      const r = await api.get(`/brackets/${b.id}`);
+      const bd = r.data || {};
+      setEditingMatches(bd.matches || []);
+      const vs = Array.isArray(bd.venues) && bd.venues.length > 0
+        ? bd.venues
+        : Array.from(new Set((bd.matches || []).map((m) => m.venue).filter(Boolean)));
+      setEditingVenues(vs);
+    } catch (err) {
+      toast.error(formatApiError(err.response?.data?.detail));
+    } finally {
+      setEditingLoading(false);
+    }
+  };
+
+  const persistBracketMatch = async (mid, patch) => {
+    try {
+      await api.put(`/matches/${mid}`, patch);
+      toast.success("Partido actualizado");
+    } catch (err) {
+      toast.error(formatApiError(err.response?.data?.detail));
+    }
+  };
+
+  const removeBracket = async (b) => {
+    try {
+      await api.delete(`/brackets/${b.id}`);
+      toast.success("Bracket eliminado");
+      if (editingBracketId === b.id) {
+        setEditingBracketId(null);
+        setEditingMatches([]);
+        setEditingVenues([]);
+      }
+      loadBrackets();
+    } catch (err) {
+      toast.error(formatApiError(err.response?.data?.detail));
+      throw err;
+    }
   };
 
   return (
@@ -112,8 +171,19 @@ export default function AdminBracketGenerator() {
                   <div className="text-xs text-slate-500">{b.category} · {b.size} equipos {b.include_third_place ? "· con 3er puesto" : ""}</div>
                 </div>
                 <div className="flex gap-2">
+                  <button onClick={() => openBracketEditor(b)} className="px-2 py-1 text-xs font-bold rounded bg-blue-50 text-blue-700 hover:bg-blue-100" data-testid={`edit-bracket-${b.id}`}><Edit2 size={12} className="inline -mt-0.5 mr-1"/>Editar</button>
                   <button onClick={() => navigate(`/bracket?id=${b.id}`)} className="text-blue-700 hover:underline text-xs font-bold uppercase" data-testid={`view-bracket-${b.id}`}>Ver</button>
-                  <button onClick={() => remove(b.id)} className="text-red-600 hover:underline" data-testid={`delete-bracket-${b.id}`}><Trash2 size={14}/></button>
+                  <ConfirmDeleteDialog
+                    trigger={
+                      <button className="text-red-600 hover:underline" data-testid={`delete-bracket-${b.id}`}><Trash2 size={14}/></button>
+                    }
+                    title={`Eliminar bracket "${b.name}"`}
+                    description={
+                      <span>Se eliminará el bracket <strong>"{b.name}"</strong> ({b.size} equipos) y <strong>todos sus partidos</strong>. Esta acción no se puede deshacer.</span>
+                    }
+                    onConfirm={() => removeBracket(b)}
+                    testIdPrefix={`bracket-delete-modal-${b.id}`}
+                  />
                 </div>
               </div>
             ))}
@@ -147,8 +217,18 @@ export default function AdminBracketGenerator() {
             </label>
           </div>
           <label className="block">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Canchas (separadas por coma)</span>
-            <input value={form.venues} onChange={(e) => setForm({ ...form, venues: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" />
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Canchas disponibles</span>
+            <div className="mt-1 space-y-2" data-testid="bracket-venues-picker">
+              {(form.venues || []).map((v, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <VenuePicker value={v} onChange={(name) => setVenueAt(i, name)} testId={`bracket-venue-${i}`} className="flex-1" />
+                  <button type="button" onClick={() => removeVenueSlot(i)} className="px-2 text-slate-400 hover:text-red-600" data-testid={`bracket-venue-remove-${i}`}><X size={14}/></button>
+                </div>
+              ))}
+              <button type="button" onClick={addVenueSlot} className="text-xs font-bold text-blue-700 flex items-center gap-1" data-testid="bracket-venues-add">
+                <Plus size={12}/> Agregar cancha
+              </button>
+            </div>
           </label>
           <label className="block">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Horarios (separados por coma)</span>
@@ -237,6 +317,86 @@ export default function AdminBracketGenerator() {
           </div>
         </div>
       )}
+
+      {/* Editor de un bracket YA guardado */}
+      {editingBracketId && (
+        <div className="mt-6 bg-white border border-blue-300 rounded-xl p-5" data-testid="bracket-editor">
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="font-display text-xl font-black uppercase tracking-tight">Editar partidos del bracket</h4>
+            <button onClick={() => { setEditingBracketId(null); setEditingMatches([]); setEditingVenues([]); }} className="text-slate-500 hover:text-slate-900" data-testid="bracket-editor-close"><X size={18}/></button>
+          </div>
+          {editingLoading ? (
+            <p className="text-sm text-slate-500 py-6 text-center">Cargando...</p>
+          ) : editingMatches.length === 0 ? (
+            <p className="text-sm text-slate-400 py-6 text-center">Sin partidos.</p>
+          ) : (
+            <BracketMatchesTable
+              matches={editingMatches}
+              teams={teams}
+              venues={editingVenues}
+              onPersist={persistBracketMatch}
+              onLocalChange={(mid, patch) => setEditingMatches((ms) => ms.map((m) => m.id === mid ? { ...m, ...patch } : m))}
+            />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+function BracketMatchesTable({ matches, teams, venues, onPersist, onLocalChange }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead className="bg-blue-50 text-xs uppercase tracking-wider">
+          <tr>
+            <th className="text-left px-2 py-2">Ronda</th>
+            <th className="text-left px-2 py-2">Fecha + hora</th>
+            <th className="text-right px-2 py-2">Local</th>
+            <th className="text-center px-1 py-2">vs</th>
+            <th className="text-left px-2 py-2">Visitante</th>
+            <th className="text-left px-2 py-2">Cancha</th>
+            <th className="text-right px-2 py-2">Acción</th>
+          </tr>
+        </thead>
+        <tbody>
+          {matches.map((m) => {
+            const dtVal = (m.match_date || "").slice(0, 16);
+            const homeT = teams.find((x) => x.id === m.home_team_id);
+            const awayT = teams.find((x) => x.id === m.away_team_id);
+            const round = m.is_third_place ? "3er puesto" : `R${m.bracket_round}P${m.bracket_position}`;
+            return (
+              <tr key={m.id} className="border-t border-slate-100" data-testid={`br-editor-row-${m.id}`}>
+                <td className="px-2 py-2 font-display font-black text-blue-700">{round}</td>
+                <td className="px-2 py-2">
+                  <input type="datetime-local" value={dtVal} onChange={(e) => onLocalChange(m.id, { match_date: e.target.value })} className="w-full px-2 py-1 border border-slate-200 rounded text-xs" data-testid={`br-editor-date-${m.id}`} />
+                </td>
+                <td className="px-2 py-2 text-right font-semibold">{homeT?.name || m.home_team_name || "Por definir"}</td>
+                <td className="px-1 py-2 text-center text-slate-400">vs</td>
+                <td className="px-2 py-2 font-semibold">{awayT?.name || m.away_team_name || "Por definir"}</td>
+                <td className="px-2 py-2">
+                  <select
+                    value={m.venue || ""}
+                    onChange={(e) => onLocalChange(m.id, { venue: e.target.value })}
+                    className="w-full px-2 py-1 border border-slate-200 rounded text-xs bg-white"
+                    data-testid={`br-editor-venue-${m.id}`}
+                  >
+                    <option value="">— Sin cancha —</option>
+                    {venues.map((v) => <option key={v} value={v}>{v}</option>)}
+                    {m.venue && !venues.includes(m.venue) && (
+                      <option value={m.venue}>{m.venue}</option>
+                    )}
+                  </select>
+                </td>
+                <td className="px-2 py-2 text-right">
+                  <button onClick={() => onPersist(m.id, { match_date: m.match_date, venue: m.venue })} className="px-2 py-1 text-xs font-bold rounded bg-blue-600 text-white hover:bg-blue-700" data-testid={`br-editor-save-${m.id}`}>Guardar</button>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
