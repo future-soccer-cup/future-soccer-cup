@@ -16,6 +16,26 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-02-26 — Iter45: Generador de Fixture con sorteo manual + matrices fijas
+- **Backend `POST /api/fixtures/generate`**:
+  - Nuevo campo opcional `matrix_matches: [{matchday, home_pos, away_pos}]`. Si viene, el backend usa esta matriz manual (respetando el orden de posiciones asignado por el admin) en vez del round-robin automático. Los partidos cuya posición supere `len(team_ids)` se descartan (permite representar "DESCANSA").
+  - Se removió la validación estricta de que `end_date >= último_partido`. Ahora solo se valida el formato. El admin puede fijar libremente el rango de fechas y ajustar los partidos después.
+- **Nueva librería `frontend/src/lib/fixtureMatrices.js`**:
+  - Matrices fijas EXACTAS para **4, 5, 6 y 10 equipos** según el artifact del usuario.
+  - `genericRoundRobinMatrix(n)`: para cualquier otro N (7, 8, 9, 11, 12…), usa round-robin con posición 1 fija y agrega posición "D" (DESCANSA) si N es impar.
+  - `withRounds(matrix, rounds)`: repite la matriz con local ↔ visitante invertidos para simular ida y vuelta.
+- **`AdminFixtureGenerator.jsx`**:
+  - Label **"Días/jornada" → "Fechas por día"** (solo cambio visual).
+  - Filtro de equipos: ahora solo muestra los del `tournament_id === seleccionado && category === seleccionada`. Mensaje adaptado: "No hay equipos inscritos en esta categoría para este evento.".
+  - Validación de fechas: solo error inline si `end < start`. Se removió el `min` del input.
+  - Botón "Vista Previa" ahora abre un **`SeedingModal`** — modal de sorteo con:
+    - Lista de posiciones 1..N (+ "DESCANSA" sintética al final si N es impar) con `<select>` para asignar cada equipo.
+    - Vista en tiempo real a la derecha: la matriz de partidos se muestra usando las etiquetas de los equipos apenas se asignan; posiciones sin asignar se muestran como "Pos. X".
+    - Los partidos que involucran DESCANSA se muestran opacos y se marcarán como no-generados en backend.
+  - Botón "Confirmar sorteo y generar vista previa" → envía la matriz + `team_ids` ordenados al backend, obtiene el fixture, y muestra la tabla editable existente.
+- **Verificado curl**: matriz 4-equipos aplicada exactamente (`1v4, 2v3` en MD1, etc.) con horarios y canchas rotando correctamente; posiciones fuera de rango se descartan.
+
+
 ### 2026-02-26 — Iter44: Clasificación y Juego Limpio ocultos cuando no hay fixture
 - **Backend `/stats/standings`**: primero valida que exista al menos un fixture para el `tournament_id × category × (group_name opcional)`. Si no hay ningún fixture, devuelve `[]` (antes construía la tabla con todos los equipos que cumplían filtros aunque no hubiera partidos ni fixture). También filtra `teams` para incluir solo los que están dentro de los `team_ids` del/los fixture(s) encontrado(s).
 - **Frontend `AdminMatches.jsx`**:

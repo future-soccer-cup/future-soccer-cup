@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
 import api, { formatApiError } from "../../lib/api";
 import { toast, Toaster } from "sonner";
-import { Wand2, Save, Plus, X, Trophy, MapPin, Edit2, Trash2, ListChecks, RefreshCw } from "lucide-react";
+import { Wand2, Save, Plus, X, Trophy, MapPin, Edit2, Trash2, ListChecks, RefreshCw, Shuffle } from "lucide-react";
 import VenuePicker from "../../components/VenuePicker";
 import ConfirmDeleteDialog from "../../components/ConfirmDeleteDialog";
 import { formatDate, formatDateTime } from "../../lib/dateFormat";
+import { getFixtureMatrix, withRounds } from "../../lib/fixtureMatrices";
 
 export default function AdminFixtureGenerator() {
   const [tournaments, setTournaments] = useState([]);
@@ -31,6 +32,10 @@ export default function AdminFixtureGenerator() {
   const [editingLoading, setEditingLoading] = useState(false);
   // Canchas persistidas en el fixture que se está editando (para el <select> del editor).
   const [editingVenues, setEditingVenues] = useState([]);
+  // Iter45: modal de sorteo/asignación manual de posiciones.
+  const [seedingOpen, setSeedingOpen] = useState(false);
+  const [seeding, setSeeding] = useState([]); // array de team_ids por posición (índice 0-based, DESCANSA representado como string "__DESCANSA__")
+  const [dateError, setDateError] = useState("");
 
   useEffect(() => {
     Promise.all([
@@ -80,25 +85,47 @@ export default function AdminFixtureGenerator() {
     return tournament.category ? [tournament.category] : [];
   }, [tournament]);
 
-  const filtered = category ? teams.filter((t) => t.category === category) : [];
+  // Iter45: los equipos disponibles son los que están inscritos EN EL TORNEO seleccionado
+  // y coinciden con la categoría. Antes solo se filtraba por categoría.
+  const filtered = (tournamentId && category)
+    ? teams.filter((t) => (t.tournament_id === tournamentId) && (t.category === category))
+    : [];
 
   const toggleTeam = (id) => {
     setSelectedIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
   };
 
-  const generate = async (saveIt) => {
+  // Iter45: abrir el sorteo/asignación manual antes de generar.
+  const openSeeding = () => {
     if (!tournamentId) { toast.error("Selecciona un Evento"); return; }
     if (!category) { toast.error("Selecciona una Categoría"); return; }
     if (selectedIds.length < 2) { toast.error("Selecciona al menos 2 equipos"); return; }
     if (!startDate) { toast.error("Indica la fecha de inicio"); return; }
-    if (endDate && startDate && endDate < startDate) { toast.error("La fecha fin no puede ser anterior a la fecha de inicio"); return; }
+    if (endDate && startDate && endDate < startDate) {
+      setDateError("La fecha fin no puede ser anterior a la fecha de inicio.");
+      return;
+    }
+    setDateError("");
+    // Pre-cargar el sorteo con los equipos seleccionados en orden actual.
+    // Si N es impar, agregar DESCANSA al final.
+    const initial = [...selectedIds];
+    if (initial.length % 2 === 1) initial.push("__DESCANSA__");
+    setSeeding(initial);
+    setSeedingOpen(true);
+  };
+
+  const generate = async (saveIt, opts = {}) => {
+    if (!tournamentId) { toast.error("Selecciona un Evento"); return; }
+    if (!category) { toast.error("Selecciona una Categoría"); return; }
     setLoading(true);
     try {
-      const res = await api.post("/fixtures/generate", {
+      // Iter45: si el admin ya asignó posiciones (opts.matrix + opts.orderedTeamIds), usarlas.
+      const teamIdsToSend = opts.orderedTeamIds || selectedIds;
+      const body = {
         tournament_id: tournamentId,
         category,
         group_name: groupName,
-        team_ids: selectedIds,
+        team_ids: teamIdsToSend,
         start_date: startDate,
         end_date: endDate || null,
         days_between_rounds: Number(daysBetween),
@@ -107,7 +134,9 @@ export default function AdminFixtureGenerator() {
         time_slots: slots.filter(Boolean),
         ...rules,
         preview: !saveIt,
-      });
+      };
+      if (opts.matrix) body.matrix_matches = opts.matrix;
+      const res = await api.post("/fixtures/generate", body);
       setPreview(res.data);
       if (saveIt) {
         toast.success(`Fixture creado: ${res.data.matches.length} partidos en ${res.data.rounds} jornadas`);
@@ -120,6 +149,32 @@ export default function AdminFixtureGenerator() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const confirmSeeding = async () => {
+    // Los slots vacíos (DESCANSA) NO forman parte de team_ids reales, solo de la matriz.
+    const realIds = seeding.filter((s) => s && s !== "__DESCANSA__");
+    if (new Set(realIds).size !== realIds.length) {
+      toast.error("Hay equipos duplicados en el sorteo. Corrígelo antes de continuar.");
+      return;
+    }
+    if (realIds.length !== selectedIds.length) {
+      toast.error("Falta asignar equipos a alguna posición.");
+      return;
+    }
+    // Construir la matriz aplicando las posiciones asignadas.
+    // La matriz base usa posiciones 1..N (o 1..N+1 si hay DESCANSA).
+    const totalPositions = seeding.length;
+    const baseMatrix = getFixtureMatrix(seeding.filter((s) => s !== "__DESCANSA__").length);
+    const matrix = withRounds(baseMatrix, rounds);
+    // Enviamos team_ids en el orden del sorteo (excluyendo DESCANSA). El backend
+    // ignora los partidos cuya posición supere la longitud de team_ids (o sea, los "DESCANSA").
+    // Mapa posición → team_id (o null si es DESCANSA).
+    const orderedTeamIds = seeding.filter((s) => s !== "__DESCANSA__");
+    // Si la matriz usa una posición que apunta a DESCANSA (índice `totalPositions` cuando hay N impar),
+    // esa posición es > orderedTeamIds.length y el backend la descartará automáticamente.
+    setSeedingOpen(false);
+    await generate(false, { matrix, orderedTeamIds });
   };
 
   // Editar campo de un partido en la VISTA PREVIA (en memoria, antes de guardar)
@@ -216,13 +271,13 @@ export default function AdminFixtureGenerator() {
             </label>
             <label className="block">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Fecha fin</span>
-              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} min={startDate || undefined} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="fg-end-date" />
+              <input type="date" value={endDate} onChange={(e) => { setEndDate(e.target.value); setDateError(""); }} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="fg-end-date" />
               {endDate && <span className="text-[10px] text-slate-400 mt-0.5 block">{formatDate(endDate)}</span>}
             </label>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <label className="block">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Días/jornada</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Fechas por día</span>
               <input type="number" min="1" value={daysBetween} onChange={(e) => setDaysBetween(e.target.value)} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="fg-days" />
             </label>
             <label className="block">
@@ -273,7 +328,7 @@ export default function AdminFixtureGenerator() {
           </div>
 
           <div className="flex gap-2 pt-2">
-            <button onClick={() => generate(false)} disabled={loading} className="flex-1 fsc-btn-primary py-2 rounded-md text-sm flex items-center justify-center gap-2 disabled:opacity-50" data-testid="fg-preview-btn">
+            <button onClick={openSeeding} disabled={loading} className="flex-1 fsc-btn-primary py-2 rounded-md text-sm flex items-center justify-center gap-2 disabled:opacity-50" data-testid="fg-preview-btn">
               <Wand2 size={16}/> {loading ? "..." : "Vista previa"}
             </button>
             {preview && !preview.saved && (
@@ -282,6 +337,9 @@ export default function AdminFixtureGenerator() {
               </button>
             )}
           </div>
+          {dateError && (
+            <p className="text-xs font-bold text-red-600 mt-1" data-testid="fg-date-error">{dateError}</p>
+          )}
         </div>
 
         <div className="lg:col-span-1 bg-white border border-slate-200 rounded-xl p-5">
@@ -289,10 +347,10 @@ export default function AdminFixtureGenerator() {
             <h3 className="font-display text-lg font-black uppercase tracking-tight">Equipos {category && `(${category})`}</h3>
             <span className="text-xs font-bold text-blue-700">{selectedIds.length} seleccionados</span>
           </div>
-          {!category ? (
+          {(!tournamentId || !category) ? (
             <p className="text-sm text-slate-400 py-6 text-center">Selecciona Evento y Categoría primero.</p>
           ) : filtered.length === 0 ? (
-            <p className="text-sm text-slate-400 py-6 text-center">Sin equipos en esta categoría.</p>
+            <p className="text-sm text-slate-400 py-6 text-center">No hay equipos inscritos en esta categoría para este evento.</p>
           ) : (
             <div className="max-h-96 overflow-y-auto space-y-1.5">
               {filtered.map((t) => (
@@ -447,6 +505,18 @@ export default function AdminFixtureGenerator() {
           </div>
         )}
       </div>
+
+      {seedingOpen && (
+        <SeedingModal
+          seeding={seeding}
+          setSeeding={setSeeding}
+          teams={teams}
+          selectedIds={selectedIds}
+          rounds={Number(rounds) || 1}
+          onCancel={() => setSeedingOpen(false)}
+          onConfirm={confirmSeeding}
+        />
+      )}
     </div>
   );
 }
@@ -568,5 +638,141 @@ function NumField({ label, value, onChange, testId }) {
         data-testid={testId}
       />
     </label>
+  );
+}
+
+
+/**
+ * Modal de sorteo: el admin asigna cada equipo a una posición (1..N).
+ * Si N es impar, se agrega "DESCANSA" al final. A la derecha se muestra
+ * la matriz en tiempo real: los números de posición se reemplazan por los
+ * nombres de los equipos apenas se asignan.
+ */
+function SeedingModal({ seeding, setSeeding, teams, selectedIds, rounds, onCancel, onConfirm }) {
+  const tmap = Object.fromEntries(teams.map((t) => [t.id, t]));
+  const totalPositions = seeding.length;
+  const realCount = seeding.filter((s) => s !== "__DESCANSA__").length;
+  const baseMatrix = getFixtureMatrix(realCount);
+  const matrix = withRounds(baseMatrix, rounds);
+
+  // Etiqueta de una posición (1..N) según lo que el admin haya asignado.
+  const labelFor = (pos) => {
+    const idx = pos - 1;
+    if (idx < 0 || idx >= seeding.length) return `Pos. ${pos}`;
+    const val = seeding[idx];
+    if (val === "__DESCANSA__") return "DESCANSA";
+    if (!val) return `Pos. ${pos}`;
+    return tmap[val]?.name || `Pos. ${pos}`;
+  };
+
+  const availableForSlot = (idx) => {
+    // Todos los equipos seleccionados que aún no están en otra posición (excepto la actual)
+    return selectedIds.filter((id) => !seeding.includes(id) || seeding[idx] === id);
+  };
+
+  const setAtSlot = (idx, teamId) => {
+    const next = [...seeding];
+    next[idx] = teamId;
+    setSeeding(next);
+  };
+
+  // Agrupar la matriz por matchday para mostrar preview
+  const byMd = matrix.reduce((acc, it) => {
+    (acc[it.matchday] = acc[it.matchday] || []).push(it);
+    return acc;
+  }, {});
+
+  const readyToConfirm = seeding.every((s) => !!s);
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" data-testid="seeding-modal">
+      <div className="bg-white rounded-xl w-full max-w-6xl max-h-[92vh] overflow-hidden flex flex-col shadow-2xl">
+        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+          <div>
+            <h3 className="font-display text-xl font-black uppercase tracking-tight flex items-center gap-2">
+              <Shuffle size={18} className="text-fsc-azul"/> Sorteo — Asignar posiciones
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Asigna cada equipo a una posición. La matriz de fixture de la derecha se actualiza en tiempo real.
+              {totalPositions > realCount && <span className="text-amber-700 font-bold ml-1">Número impar: se agregó una posición "DESCANSA".</span>}
+            </p>
+          </div>
+          <button onClick={onCancel} className="text-slate-500 hover:text-slate-900" data-testid="seeding-close"><X size={22}/></button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto grid md:grid-cols-2 gap-0">
+          {/* Panel izquierdo: asignación */}
+          <div className="p-5 border-r border-slate-200">
+            <h4 className="text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-3">Posiciones</h4>
+            <div className="space-y-2">
+              {seeding.map((val, idx) => (
+                <div key={idx} className="flex items-center gap-3" data-testid={`seeding-slot-${idx + 1}`}>
+                  <div className="w-16 shrink-0 font-display text-2xl font-black text-fsc-azul tabular-nums">
+                    {val === "__DESCANSA__" ? "D" : idx + 1}
+                  </div>
+                  {val === "__DESCANSA__" ? (
+                    <div className="flex-1 px-3 py-2 bg-amber-50 border border-amber-200 rounded font-bold text-amber-700 uppercase text-sm tracking-wide">
+                      DESCANSA (equipo sintético)
+                    </div>
+                  ) : (
+                    <select
+                      value={val || ""}
+                      onChange={(e) => setAtSlot(idx, e.target.value)}
+                      className="flex-1 px-3 py-2 border border-slate-300 rounded text-sm"
+                      data-testid={`seeding-select-${idx + 1}`}
+                    >
+                      <option value="">— Elegir equipo —</option>
+                      {availableForSlot(idx).map((id) => (
+                        <option key={id} value={id}>{tmap[id]?.name || id}</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Panel derecho: matriz en tiempo real */}
+          <div className="p-5 bg-slate-50">
+            <h4 className="text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-3">
+              Vista en tiempo real · {matrix.length} partidos en {Object.keys(byMd).length} jornada(s)
+            </h4>
+            <div className="space-y-4">
+              {Object.entries(byMd).map(([md, items]) => (
+                <div key={md} className="bg-white border border-slate-200 rounded-lg p-3">
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-blue-700 mb-2">Jornada {md}</div>
+                  <div className="space-y-1">
+                    {items.map((it, i) => {
+                      const homeIsBye = it.home_pos > realCount;
+                      const awayIsBye = it.away_pos > realCount;
+                      const skipped = homeIsBye || awayIsBye;
+                      return (
+                        <div key={i} className={`flex items-center gap-2 text-sm ${skipped ? "opacity-40" : ""}`} data-testid={`seeding-preview-md-${md}-${i}`}>
+                          <span className="flex-1 text-right font-semibold truncate">{labelFor(it.home_pos)}</span>
+                          <span className="text-xs text-slate-400 px-1">vs</span>
+                          <span className="flex-1 text-left font-semibold truncate">{labelFor(it.away_pos)}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="px-6 py-4 border-t border-slate-200 flex items-center justify-between bg-slate-50">
+          <button onClick={onCancel} className="px-4 py-2 border border-slate-300 rounded font-bold text-sm hover:bg-white" data-testid="seeding-cancel">Cancelar</button>
+          <button
+            onClick={onConfirm}
+            disabled={!readyToConfirm}
+            className="fsc-btn-red px-6 py-2 rounded font-bold text-sm disabled:opacity-40 flex items-center gap-2"
+            data-testid="seeding-confirm"
+          >
+            <Wand2 size={16}/> Confirmar sorteo y generar vista previa
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

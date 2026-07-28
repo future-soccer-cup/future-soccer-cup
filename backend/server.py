@@ -644,7 +644,12 @@ class FixtureGenerateIn(BaseModel):
     venues: List[str] = []
     time_slots: List[str] = []  # ["08:00", "09:30"]
     rounds: int = 1  # 1 = una vuelta, 2 = ida y vuelta, etc.
-    end_date: Optional[str] = None  # YYYY-MM-DD opcional, debe ser >= a la fecha del último partido generado
+    end_date: Optional[str] = None  # YYYY-MM-DD opcional
+    # Iter45: matriz manual de emparejamientos por posición. Si viene, el backend
+    # usa esta matriz en vez del round-robin automático. Cada item es
+    # {matchday: int, home_pos: int, away_pos: int}, donde home_pos / away_pos son
+    # índices 1-based sobre `team_ids` (la lista viene ordenada por el "sorteo" del admin).
+    matrix_matches: Optional[List[dict]] = None
     # Reglas deportivas (puntos + Juego Limpio) — opcional. Si vienen, sobreescriben
     # la configuración de la categoría dentro del torneo.
     points_win: Optional[int] = None
@@ -1726,8 +1731,36 @@ async def generate_fixture(payload: FixtureGenerateIn, _: dict = Depends(require
 
     tournament_id = payload.tournament_id
 
-    rounds = _round_robin_pairs(payload.team_ids, rounds_n=max(1, int(payload.rounds or 1)))
-    byes = _byes_per_round(payload.team_ids)
+    # Iter45: si viene una matriz manual (matrix_matches) con posiciones asignadas
+    # por el admin, la usamos directamente. Si no, caemos al round-robin automático.
+    matrix = payload.matrix_matches or []
+    rounds_data = []
+    byes = {}
+    if matrix:
+        # Validar y agrupar por matchday manteniendo el orden dentro de cada jornada.
+        by_md = {}
+        for it in matrix:
+            try:
+                md = int(it.get("matchday"))
+                hp = int(it.get("home_pos"))
+                ap = int(it.get("away_pos"))
+            except Exception:
+                raise HTTPException(status_code=400, detail="matrix_matches inválido (matchday/home_pos/away_pos deben ser enteros)")
+            if md < 1 or hp < 1 or ap < 1:
+                raise HTTPException(status_code=400, detail="matrix_matches: posiciones y jornadas deben ser ≥ 1")
+            if hp > len(payload.team_ids) or ap > len(payload.team_ids):
+                # posición fuera del rango → puede ser DESCANSA (última posición sintética). Ignorar el partido.
+                # DESCANSA se representa como posición == len(team_ids) + 1 en el front, pero aquí
+                # simplemente omitimos los partidos que involucren posiciones inválidas.
+                continue
+            if hp == ap:
+                continue
+            by_md.setdefault(md, []).append((payload.team_ids[hp - 1], payload.team_ids[ap - 1]))
+        for md in sorted(by_md.keys()):
+            rounds_data.append(by_md[md])
+    else:
+        rounds_data = _round_robin_pairs(payload.team_ids, rounds_n=max(1, int(payload.rounds or 1)))
+        byes = _byes_per_round(payload.team_ids)
     tmap = {t["id"]: t for t in teams}
 
     # Persistir reglas deportivas (si vinieron en el payload y no es vista previa)
@@ -1755,13 +1788,13 @@ async def generate_fixture(payload: FixtureGenerateIn, _: dict = Depends(require
     slots = payload.time_slots or ["10:00"]
 
     generated = []
-    for r_idx, pairs in enumerate(rounds):
+    for r_idx, pairs in enumerate(rounds_data):
         # Doble jornada eliminada: cada jornada usa SU PROPIO día.
         day_index = r_idx
         round_date = start + timedelta(days=day_index * payload.days_between_rounds)
         for i, (home_id, away_id) in enumerate(pairs):
             slot = slots[i % len(slots)]
-            venue = venues[i % len(venues)]
+            venue = venues[i % len(venues)] if venues else ""
             try:
                 hh, mm = slot.split(":")
                 match_dt = round_date.replace(hour=int(hh), minute=int(mm), second=0, microsecond=0)
@@ -1783,7 +1816,9 @@ async def generate_fixture(payload: FixtureGenerateIn, _: dict = Depends(require
             }
             generated.append(doc)
 
-    # Validación de fecha fin (si viene): debe ser >= fecha del último partido generado.
+    # Validación de fecha fin (Iter45): solo se valida que el formato sea válido.
+    # Ya NO se rechaza si la fecha fin es anterior al último partido generado — el admin puede
+    # fijar libremente el rango de fechas y ajustar los partidos manualmente después.
     last_match_dt = None
     for d in generated:
         try:
@@ -1795,14 +1830,9 @@ async def generate_fixture(payload: FixtureGenerateIn, _: dict = Depends(require
     end_date_str = (payload.end_date or "").strip()
     if end_date_str:
         try:
-            end_dt = datetime.strptime(end_date_str, "%Y-%m-%d")
+            datetime.strptime(end_date_str, "%Y-%m-%d")
         except ValueError:
             raise HTTPException(status_code=400, detail="Formato de fecha fin inválido (YYYY-MM-DD)")
-        if last_match_dt and end_dt.date() < last_match_dt.date():
-            raise HTTPException(
-                status_code=400,
-                detail=f"La fecha fin ({end_date_str}) es anterior a la fecha del último partido ({last_match_dt.date().isoformat()})."
-            )
 
     fixture_id = None
     if not payload.preview:
@@ -1846,7 +1876,7 @@ async def generate_fixture(payload: FixtureGenerateIn, _: dict = Depends(require
     return {
         "tournament_id": tournament_id,
         "fixture_id": fixture_id,
-        "rounds": len(rounds),
+        "rounds": len(rounds_data),
         "matches": enriched,
         "byes_per_round": [{"round": k, "team_id": v, "team_name": tmap.get(v, {}).get("name", "")} for k, v in byes.items()],
         "saved": not payload.preview,
