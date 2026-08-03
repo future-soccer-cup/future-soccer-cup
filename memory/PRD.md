@@ -16,6 +16,19 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-02-26 — Iter46: Tarjetas amarilla/roja para staff + nueva tarjeta azul de equipo
+- **Modelo de tarjetas ampliado** (backend `cards: List[dict]` ya acepta cualquier estructura, no requiere cambios de schema):
+  - **Amarilla/Roja/Otra**: nuevo campo `target_kind: 'player' | 'staff'`. Si es `staff`, se guarda `staff_name` en vez de `player_id` (el cuerpo técnico está anidado en `team.cuerpo_tecnico` sin ID único global). Backward-compatible: si no viene `target_kind`, se asume `'player'`.
+  - **Nueva tarjeta AZUL** (`type: 'blue'`): `target_kind: 'team'`, `description: string`, sin jugador ni staff. Afecta al equipo como descriptor disciplinario. NO descuenta puntos de fair-play (a diferencia de yellow/red/other), es puramente informativa por ahora.
+- **`AdminMatches.jsx` → `CardsEditor`** reescrito:
+  - 4 botones: **+ Amarilla · + Roja · + Azul · + Otra**.
+  - Para amarilla/roja/otra: toggle "Jugador / Cuerpo Técnico" (data-testid `card-kind-player-{i}` y `card-kind-staff-{i}`). Si es staff, muestra selects encadenados: primero Equipo, luego lista de cuerpo técnico de ese equipo (leída de `team.cuerpo_tecnico`).
+  - Para azul: solo select de equipo (local/visitante) + textarea de descripción; sin campo de jugador. Ejemplo placeholder: "Conducta antideportiva del banco / protesta grupal…".
+  - Se pasa `teams` como prop al editor para poder listar el cuerpo técnico por equipo.
+- **Compatibilidad estadísticas**: `/stats/standings` sigue descontando fair-play solo para yellow/red/other. Las azules se persisten pero no penalizan puntos, alineado con la intención del usuario ("es más una descripción, afecta al equipo").
+- **Verificado curl**: PUT `/api/matches/{id}/result` con 3 cards mixtas (yellow-player, red-staff, blue-team) → persistidas correctamente en la respuesta del backend con todos los campos preservados.
+
+
 ### 2026-02-26 — Iter45: Generador de Fixture con sorteo manual + matrices fijas
 - **Backend `POST /api/fixtures/generate`**:
   - Nuevo campo opcional `matrix_matches: [{matchday, home_pos, away_pos}]`. Si viene, el backend usa esta matriz manual (respetando el orden de posiciones asignado por el admin) en vez del round-robin automático. Los partidos cuya posición supere `len(team_ids)` se descartan (permite representar "DESCANSA").
