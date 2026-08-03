@@ -16,6 +16,11 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-02-26 — Iter47: Sorteo con posiciones vacías por defecto
+- **`AdminFixtureGenerator.jsx` → `openSeeding`**: al abrir el modal de sorteo, todas las posiciones se inicializan como cadena vacía (`""`). El admin ahora debe elegir manualmente cada equipo en cada posición 1..N (antes se pre-cargaban en el orden en que los eligió con los checkboxes, lo cual daba pie a "sorteos" automáticos indeseados). Si N es impar, sigue agregándose "DESCANSA" al final como posición sintética.
+- El resto del flujo (validación de duplicados, vista en tiempo real, confirmación, construcción de matriz según N) se mantiene tal cual — verificado E2E: 4 equipos asignados → confirmar → toast "Vista previa generada" → 6 partidos en 3 jornadas creados correctamente.
+
+
 ### 2026-02-26 — Iter46: Tarjetas amarilla/roja para staff + nueva tarjeta azul de equipo
 - **Modelo de tarjetas ampliado** (backend `cards: List[dict]` ya acepta cualquier estructura, no requiere cambios de schema):
   - **Amarilla/Roja/Otra**: nuevo campo `target_kind: 'player' | 'staff'`. Si es `staff`, se guarda `staff_name` en vez de `player_id` (el cuerpo técnico está anidado en `team.cuerpo_tecnico` sin ID único global). Backward-compatible: si no viene `target_kind`, se asume `'player'`.

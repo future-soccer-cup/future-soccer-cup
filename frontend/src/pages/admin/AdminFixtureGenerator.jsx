@@ -106,10 +106,11 @@ export default function AdminFixtureGenerator() {
       return;
     }
     setDateError("");
-    // Pre-cargar el sorteo con los equipos seleccionados en orden actual.
-    // Si N es impar, agregar DESCANSA al final.
-    const initial = [...selectedIds];
-    if (initial.length % 2 === 1) initial.push("__DESCANSA__");
+    // Iter47: TODAS las posiciones arrancan vacías — el admin debe elegir manualmente cada equipo.
+    // Si N es impar, se agrega una posición extra "DESCANSA" (equipo sintético) al final.
+    const N = selectedIds.length;
+    const initial = new Array(N).fill("");
+    if (N % 2 === 1) initial.push("__DESCANSA__");
     setSeeding(initial);
     setSeedingOpen(true);
   };
