@@ -85,10 +85,12 @@ export default function AdminFixtureGenerator() {
     return tournament.category ? [tournament.category] : [];
   }, [tournament]);
 
-  // Iter45: los equipos disponibles son los que están inscritos EN EL TORNEO seleccionado
-  // y coinciden con la categoría. Antes solo se filtraba por categoría.
+  // Iter49: los equipos disponibles son los que coinciden con la categoría del torneo
+  // seleccionado. Si tienen `tournament_id` explícito, debe coincidir con el elegido;
+  // si NO tienen `tournament_id` (típico de la carga masiva), se muestran igual —
+  // así los equipos importados vía XLSX no quedan invisibles en el generador.
   const filtered = (tournamentId && category)
-    ? teams.filter((t) => (t.tournament_id === tournamentId) && (t.category === category))
+    ? teams.filter((t) => (t.category === category) && (!t.tournament_id || t.tournament_id === tournamentId))
     : [];
 
   const toggleTeam = (id) => {

@@ -16,6 +16,11 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-02-26 — Iter49: Fuente Natura Script + bug de filtro en generador de fixture
+- **Fuente Natura Script**: archivo `.otf` (147 KB) subido a `/frontend/public/fonts/NaturaScript.otf`. Declaración `@font-face` movida a `public/fonts.css` con `url('/fonts/NaturaScript.otf')` para servirse estáticamente (evita que webpack la procese como módulo, que causaba "Cannot find module '/fonts/NaturaScript.otf'"). En `src/index.css` queda solo el fallback `local()`. Aplicada al texto "Torneo Internacional" del Navbar y Home.
+- **Bug de fixture — teams de carga masiva no aparecían**: el filtro del generador (`AdminFixtureGenerator.jsx`) requería `t.tournament_id === tournamentId`, pero el endpoint `POST /import/teams` NO establece `tournament_id` en los teams importados. Fix: relajado a `(t.category === category) && (!t.tournament_id || t.tournament_id === tournamentId)` — así aparecen tanto los equipos sin `tournament_id` (bulk import) como los que sí lo tienen y coinciden.
+
+
 ### 2026-02-26 — Iter48: Eliminada tarjeta Azul (comportamiento movido a "Otra") + alineación Jugador/Min
 - **`CardsEditor` en `AdminMatches.jsx`**:
   - **Botón "+ Azul" eliminado** de la UI. Solo quedan **Amarilla, Roja y Otra**.

@@ -52,9 +52,12 @@
 }
 @font-face {
     font-family: 'Natura Script';
+    /* La URL con url('/fonts/NaturaScript.otf') se declara en public/fonts.css
+       (cargado como link estático en index.html) para evitar que webpack la
+       procese como módulo. Aquí solo declaramos el fallback local. */
     src: local('Natura Script'), local('NaturaScript'), local('Natura Script Regular');
     font-weight: 400 700;
-    font-style: italic;
+    font-style: normal;
     font-display: swap;
 }
 

@@ -14,6 +14,17 @@
   font-display: block;
 }
 
+/* Natura Script — fuente manuscrita del manual de marca FSC.
+   Se usa para "Torneo Internacional" en el navbar y otros textos cursivos. */
+@font-face {
+  font-family: 'Natura Script';
+  src: local('Natura Script'), local('NaturaScript'),
+       url('/fonts/NaturaScript.otf') format('opentype');
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* Oculta los elementos con fuente custom hasta que document.fonts.ready haya resuelto.
    Esto previene el "flash" en minúsculas con fuente sans-serif fallback. */
 html:not(.fsc-fonts-ready) .fsc-needs-plane-crash {
