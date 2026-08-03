@@ -16,6 +16,14 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-02-26 — Iter48: Eliminada tarjeta Azul (comportamiento movido a "Otra") + alineación Jugador/Min
+- **`CardsEditor` en `AdminMatches.jsx`**:
+  - **Botón "+ Azul" eliminado** de la UI. Solo quedan **Amarilla, Roja y Otra**.
+  - La tarjeta **"Otra"** ahora afecta a todo el equipo: solo pide `team_id` + `description`. Ya no muestra selector de jugador ni de cuerpo técnico. El descriptor disciplinario (ej. "Conducta antideportiva del banco") va en el textarea.
+  - **Amarilla/Roja** mantienen el toggle Jugador/Cuerpo Técnico pero se **reestructuró el layout** para alinear correctamente los campos: primera fila con badge + toggle; segunda fila (grid 12 cols) con **Jugador (col-span-8) + Min (col-span-3) + ✕ (col-span-1)** e `items-center`. Ya no hay desalineación cuando el select del jugador está solo o cuando está en modo "Cuerpo Técnico" (dos selects encadenados).
+- Backward-compatible: los partidos ya guardados con `type: "blue"` no rompen; se persisten pero el UI no expone la creación de nuevas. Los cálculos de fair-play siguen ignorando cualquier `type != yellow/red/other-with-player`, y "Otra" ahora en modo team ya no cuenta hacia disciplina personal.
+
+
 ### 2026-02-26 — Iter47: Sorteo con posiciones vacías por defecto
 - **`AdminFixtureGenerator.jsx` → `openSeeding`**: al abrir el modal de sorteo, todas las posiciones se inicializan como cadena vacía (`""`). El admin ahora debe elegir manualmente cada equipo en cada posición 1..N (antes se pre-cargaban en el orden en que los eligió con los checkboxes, lo cual daba pie a "sorteos" automáticos indeseados). Si N es impar, sigue agregándose "DESCANSA" al final como posición sintética.
 - El resto del flujo (validación de duplicados, vista en tiempo real, confirmación, construcción de matriz según N) se mantiene tal cual — verificado E2E: 4 equipos asignados → confirmar → toast "Vista previa generada" → 6 partidos en 3 jornadas creados correctamente.

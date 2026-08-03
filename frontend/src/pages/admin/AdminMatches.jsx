@@ -502,11 +502,11 @@ function CardsEditor({ scoring, setScoring, teams = [] }) {
 
   const cards = scoring.cards || [];
   const addCard = (type) => {
-    // Iter46:
-    //  - Amarilla/Roja/Otra: por defecto target_kind='player' (comportamiento anterior). Se puede cambiar a 'staff'.
-    //  - Azul: target_kind='team' (afecta a todo el equipo). Solo pide equipo + descripción.
+    // Iter48:
+    //  - Amarilla/Roja: por defecto target_kind='player'. Se puede cambiar a 'staff'.
+    //  - Otra: afecta a todo el equipo — solo pide equipo + descripción (SIN jugador ni staff).
     const base = { _uid: crypto.randomUUID(), team_id: "", type, minute: 0 };
-    if (type === "blue") {
+    if (type === "other") {
       base.target_kind = "team";
       base.description = "";
     } else {
@@ -539,17 +539,16 @@ function CardsEditor({ scoring, setScoring, teams = [] }) {
         <div className="flex gap-2 flex-wrap">
           <button type="button" onClick={() => addCard("yellow")} className="text-xs font-bold text-yellow-600 flex items-center gap-1" data-testid="add-yellow-card"><span className="inline-block w-3 h-4 bg-yellow-400 rounded-sm" />+ Amarilla</button>
           <button type="button" onClick={() => addCard("red")} className="text-xs font-bold text-red-600 flex items-center gap-1" data-testid="add-red-card"><span className="inline-block w-3 h-4 bg-red-600 rounded-sm" />+ Roja</button>
-          <button type="button" onClick={() => addCard("blue")} className="text-xs font-bold text-blue-600 flex items-center gap-1" data-testid="add-blue-card"><span className="inline-block w-3 h-4 bg-blue-600 rounded-sm" />+ Azul</button>
           <button type="button" onClick={() => addCard("other")} className="text-xs font-bold text-slate-600 flex items-center gap-1" data-testid="add-other-card"><span className="inline-block w-3 h-4 bg-slate-400 rounded-sm" />+ Otra</button>
         </div>
       </div>
       {cards.length === 0 && <p className="text-xs text-slate-400 py-1">Sin tarjetas registradas</p>}
       {cards.map((c, i) => {
-        const badge = c.type === "red" ? "bg-red-600" : c.type === "blue" ? "bg-blue-600" : c.type === "other" ? "bg-slate-400" : "bg-yellow-400";
-        // TARJETA AZUL: solo equipo + descripción, sin jugador/staff.
-        if (c.type === "blue") {
+        const badge = c.type === "red" ? "bg-red-600" : c.type === "other" ? "bg-slate-400" : "bg-yellow-400";
+        // "Otra": afecta a todo el equipo. Solo equipo + descripción, sin jugador/staff/minuto (opcional).
+        if (c.type === "other") {
           return (
-            <div key={c._uid || `card-${i}`} className="grid grid-cols-12 gap-2 mb-2 items-start" data-testid={`card-blue-${i}`}>
+            <div key={c._uid || `card-${i}`} className="grid grid-cols-12 gap-2 mb-2 items-start" data-testid={`card-other-${i}`}>
               <span className={`col-span-1 inline-block w-3 h-4 rounded-sm mt-2 ${badge}`} />
               <div className="col-span-10 space-y-1">
                 <select
@@ -570,17 +569,18 @@ function CardsEditor({ scoring, setScoring, teams = [] }) {
                   data-testid={`card-description-${i}`}
                 />
               </div>
-              <button type="button" onClick={() => removeCard(i)} className="col-span-1 text-red-600">✕</button>
+              <button type="button" onClick={() => removeCard(i)} className="col-span-1 text-red-600 mt-2">✕</button>
             </div>
           );
         }
-        // TARJETAS amarilla/roja/otra: toggle Jugador/Cuerpo técnico
+        // Amarilla / Roja: toggle Jugador/Cuerpo Técnico + fila alineada con Min.
         const kind = c.target_kind || "player";
         const staffForTeam = tmap[c.team_id]?.cuerpo_tecnico || [];
         return (
-          <div key={c._uid || `card-${i}`} className="grid grid-cols-12 gap-2 mb-2 items-center" data-testid={`card-${c.type}-${i}`}>
-            <span className={`col-span-1 inline-block w-3 h-4 rounded-sm ${badge}`} />
-            <div className="col-span-7 space-y-1">
+          <div key={c._uid || `card-${i}`} className="mb-3" data-testid={`card-${c.type}-${i}`}>
+            {/* Selector de tipo (Jugador / Cuerpo técnico) — fila superior */}
+            <div className="flex items-center gap-2 mb-1">
+              <span className={`inline-block w-3 h-4 rounded-sm ${badge}`} />
               <div className="flex gap-1 text-[10px] font-bold uppercase tracking-wider">
                 <button
                   type="button"
@@ -595,18 +595,21 @@ function CardsEditor({ scoring, setScoring, teams = [] }) {
                   data-testid={`card-kind-staff-${i}`}
                 >Cuerpo Técnico</button>
               </div>
+            </div>
+            {/* Fila principal: Jugador/CT (grande) + Min (angosto) + eliminar — alineadas horizontalmente */}
+            <div className="grid grid-cols-12 gap-2 items-center pl-5">
               {kind === "player" ? (
                 <select
                   value={c.player_id || ""}
                   onChange={(e) => updateCard(i, { player_id: e.target.value })}
-                  className="w-full px-2 py-1 border border-slate-200 rounded text-sm"
+                  className="col-span-8 px-2 py-1 border border-slate-200 rounded text-sm"
                   data-testid={`card-player-${i}`}
                 >
                   <option value="">Jugador...</option>
                   {players.map((p) => <option key={p.id} value={p.id}>{p.name} (#{p.jersey_number})</option>)}
                 </select>
               ) : (
-                <div className="flex gap-1">
+                <div className="col-span-8 flex gap-1">
                   <select
                     value={c.team_id || ""}
                     onChange={(e) => updateCard(i, { team_id: e.target.value, staff_name: "" })}
@@ -630,9 +633,9 @@ function CardsEditor({ scoring, setScoring, teams = [] }) {
                   </select>
                 </div>
               )}
+              <input type="number" placeholder="Min" value={c.minute || ""} onChange={(e) => updateCard(i, { minute: Number(e.target.value) })} className="col-span-3 px-2 py-1 border border-slate-200 rounded text-sm" />
+              <button type="button" onClick={() => removeCard(i)} className="col-span-1 text-red-600">✕</button>
             </div>
-            <input type="number" placeholder="Min" value={c.minute || ""} onChange={(e) => updateCard(i, { minute: Number(e.target.value) })} className="col-span-3 px-2 py-1 border border-slate-200 rounded text-sm" />
-            <button type="button" onClick={() => removeCard(i)} className="col-span-1 text-red-600">✕</button>
           </div>
         );
       })}
