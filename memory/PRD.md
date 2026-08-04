@@ -16,6 +16,13 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-02-27 — Iter52: Fix filtro categoría en AdminMatches ocultaba partidos DESCANSA
+- **Bug reportado**: al seleccionar una Categoría en el módulo Partidos (`/admin/partidos`), los partidos DESCANSA (BYE) desaparecían de la lista aunque el fixture los tuviera. El editor de Fixture sí los mostraba.
+- **Root cause**: `AdminMatches.jsx` línea 62 buscaba el team por `home_team_id`; cuando ese id era `"__BYE__"`, `teams.find()` devolvía `undefined` y el filtro descartaba la fila.
+- **Fix**: en `filteredMatches`, ahora se usa `hTeam || aTeam` como referencia de categoría — así los partidos DESCANSA que tienen team real en cualquiera de los dos lados se muestran correctamente.
+- **Verificado** vía screenshot: creado torneo BYE_TEST con 5 equipos + fixture 6 partidos (2 DESCANSA). Al filtrar por categoría Sub-10 aparecen las 2 filas amber "descansa" con "SIN ACCIONES", junto con los 4 partidos normales.
+
+
 ### 2026-02-26 — Iter51: Bug DESCANSA (BYE) + filtros AdminMatches — VERIFICADO
 - **Backend `POST /api/fixtures/generate`**: partidos BYE (`__BYE__`) se generan con `is_bye=true`, `status="descansa"`, `venue=""` y `match_date` a las 00:00. Los endpoints `GET /api/matches` y `GET /api/fixtures/{id}/matches` enriquecen `home_team_name`/`away_team_name` a "DESCANSA" cuando el team_id es `__BYE__`.
 - **`AdminFixtureGenerator.jsx`** (Preview + Editor): filas DESCANSA muestran (a) input `type="date"` (sin hora), (b) span "— sin cancha —" en lugar del select, (c) fondo `bg-amber-50/60`, (d) etiqueta "descansa" en la columna vs. Partidos normales conservan `datetime-local` + selector de cancha.
