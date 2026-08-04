@@ -1,0 +1,37 @@
+{
+  "summary": "Iter42 - Re-test BUG 1 (DESCANSA/BYE) en EditableMatchesTable del editor de fixture guardado (AdminFixtureGenerator.jsx). El fix aplicado en líneas 604-645 fue validado end-to-end vía UI: se creó un fixture con 5 equipos + matrix_matches forzando un BYE, se abrió el editor y se verificaron 8/8 criterios en la fila BYE y en la fila normal.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "frontend_tests_executed": {
+    "BUG 1 (Editor, EditableMatchesTable) — RETEST": "PASS (8/8 checks)",
+    "details": {
+      "bye_amber_bg": "PASS — class 'border-t border-slate-100 bg-amber-50/60'",
+      "bye_date_is_date": "PASS — input[data-testid=editor-date-{bye_id}] type='date'",
+      "bye_no_venue_select": "PASS — data-testid=editor-venue-{bye_id} count=0",
+      "bye_shows_sin_cancha": "PASS — celda con texto '— sin cancha —'",
+      "bye_shows_descansa": "PASS — span 'descansa' en columna vs",
+      "normal_date_is_datetime_local": "PASS — input[data-testid=editor-date-{normal_id}] type='datetime-local'",
+      "normal_has_venue_select": "PASS — data-testid=editor-venue-{normal_id} count=1",
+      "normal_no_amber": "PASS — normal row sin bg-amber-50"
+    },
+    "seed": "POST /api/fixtures/generate con 5 team_ids + matrix [{1v6},{2v5},{3v4}] → 1 BYE + 2 partidos normales. GET /api/fixtures/{fid}/matches devuelve BYE con is_bye=true, status='descansa', away_team_id='__BYE__', match_date '..T00:00:00', venue=''. Fixture id=794e1c01-...; BYE match id=e2182ce0-...; Normal match id=15935500-....",
+    "cleanup": "OK - fixture, 5 clubes y torneo TEST_ByeEdit_* eliminados (todos con status 200)."
+  },
+  "test_report_links": ["/app/backend/tests/test_iter41_bye_fixture.py"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "El fix de EditableMatchesTable ahora es idéntico al de PreviewEditableTable (mismo bloque isBye + <input type='date'> + span '— sin cancha —' + fila amber). Recomendación (no bloqueante) de refactor futuro: extraer un componente <MatchRowEditor m={m} venues={venues} onChange={..} onPersist={..} showPersistButton={boolean} /> para eliminar la duplicación de ~40 líneas entre ambas tablas."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (frontend-only retest)", "frontend": "100% (8/8 checks; BUG1 editor PASS)"},
+  "seed_data_creation": "TEST_ByeEdit_<sfx> torneo + 5 clubes/equipos + 1 fixture grupo EDITBYE_<sfx> con 1 BYE — todo eliminado al finalizar el test.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": false,
+  "test_credentials": "admin@futuresoccercup.com / FSCAdmin2025! (login vía Enter en input password; el <button>INGRESAR</button> también funciona con selector 'button:has-text(\"INGRESAR\")' — get_by_role no lo resuelve porque el botón contiene un <span> con estilos que oscurecen el accessible name).",
+  "context_for_next_testing_agent": "BUG 1 (editor + preview), BUG 2, BUG 3 y BUG 4 están todos verificados y pasan. No queda nada pendiente del feature DESCANSA/BYE. Nota: quedaron algunos fixtures TEST_ByeTour_*/TEST_ByeEdit_2d0128 de iteraciones previas — no bloquean pero pueden purgarse manualmente si se desea.",
+  "rca_of_the_issue": "Iter41 dejó el fix aplicado sólo en PreviewEditableTable; iter42 ya trae la misma ramificación isBye en EditableMatchesTable (líneas 604-645). Verificado en runtime real con un fixture recién generado."
+}
