@@ -58,9 +58,13 @@ export default function AdminMatches() {
     if (filterTid && m.tournament_id !== filterTid) return false;
     if (filterGrp && (m.group_name || "") !== filterGrp) return false;
     if (filterCat) {
-      // Necesitamos atar partido a categoría vía el equipo local
+      // Necesitamos atar partido a categoría vía el equipo local o visitante.
+      // En partidos DESCANSA (BYE) uno de los ids es "__BYE__" y no está en `teams`,
+      // por eso usamos el otro id como fallback para no ocultar la fila.
       const hTeam = teams.find((t) => t.id === m.home_team_id);
-      if (!hTeam || hTeam.category !== filterCat) return false;
+      const aTeam = teams.find((t) => t.id === m.away_team_id);
+      const refTeam = hTeam || aTeam;
+      if (!refTeam || refTeam.category !== filterCat) return false;
     }
     return true;
   });
