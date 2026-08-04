@@ -1,0 +1,64 @@
+{
+  "summary": "Iter41 - Validación completa de bugs DESCANSA (BYE) y filtros AdminMatches. Backend 2/2 pytest PASS. Frontend 3 de 4 bugs OK. BUG1 solo verificado en 'vista previa' (código); el EDITOR (EditableMatchesTable) de AdminFixtureGenerator NO maneja BYE — sigue mostrando datetime-local + selector de cancha + sin fondo amber.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "AdminFixtureGenerator › EditableMatchesTable (editor de fixture guardado)",
+        "issue": "BUG 1 (editor) FAILS: la fila DESCANSA en el editor de un fixture guardado renderiza <input type='datetime-local'> (debería ser 'date' sin hora), muestra el <select> de canchas (debería mostrar '— sin cancha —'), y la fila no está resaltada con bg-amber-50. Reproducido con matchid BYE via testid editor-date-{id}=type='datetime-local' y editor-venue-{id} count=1.",
+        "selector": "[data-testid=editor-row-{bye_id}], [data-testid=editor-date-{bye_id}], [data-testid=editor-venue-{bye_id}]",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "AdminMatches › FilterAndExportBar (y AdminFixtureGenerator › selects)",
+        "issues": ["Hydration warning en consola: '<span> cannot be a child of <option>'. Los <option> del <select> de torneos contienen wrappers <span data-ve-dynamic> inyectados en tiempo de desarrollo. No bloquea funcionalidad pero mancha logs; revisar herramienta que inyecta esos spans."]
+      }
+    ]
+  },
+  "backend_tests_executed": {
+    "file": "/app/backend/tests/test_iter41_bye_fixture.py",
+    "results": {
+      "TestByeFixture::test_generate_fixture_with_bye_matches": "PASS - POST /api/fixtures/generate con 5 equipos + matrix_matches produce 1 BYE match con is_bye=true, status='descansa', home_team_name='DESCANSA' (o away), venue='', match_date con T00:00:00. Los 2 partidos normales tienen venue asignada y hora 09:00/11:00. GET /api/fixtures/{id}/matches devuelve la misma etiqueta DESCANSA.",
+      "TestByeFixture::test_matches_endpoint_returns_descansa_labels": "PASS - GET /api/matches?tournament_id filtrado por grupo devuelve el partido BYE con home/away_team_name='DESCANSA', is_bye=true y venue=''."
+    },
+    "junit_xml": "/app/test_reports/pytest/iteration_41.xml",
+    "pass_rate": "2/2 (100%)"
+  },
+  "frontend_tests_executed": {
+    "BUG 3 (FilterAndExportBar disabled states)": "PASS - Estado inicial: category y group ambos disabled. Al seleccionar torneo: cat habilita, group SIGUE disabled. Al seleccionar categoría: group habilita. Al cambiar categoría (a ''), el valor de group se resetea a ''.",
+    "BUG 2 (AdminMatches DESCANSA row)": "PASS - Fila con is_bye=true tiene class bg-amber-50/60, columna acciones muestra 'Sin acciones' (sin botones edit-match-{id}/score-match-{id}). Solo botón Trash disponible. Fila normal conserva ambos botones.",
+    "BUG 4a (AdminMatches columnas y label FECHA N)": "PASS - Headers de la tabla: ['FECHA','Cuándo','Local','Score','Visitante','Estado','Sede','Acciones']. Fila BYE muestra 'FECHA 1' (no 'F1' ni 'Jorn.').",
+    "BUG 4b (AdminFixtureGenerator preview label)": "PASS por code-review - PreviewEditableTable línea 550 renderiza 'FECHA {matchday}' y línea 535 header 'FECHAS'. EditableMatchesTable línea 609 también 'FECHA {matchday}'.",
+    "BUG 1 (Preview editable, PreviewEditableTable)": "PASS por code-review - Líneas 545-577 de AdminFixtureGenerator.jsx: si isBye → <input type='date'> con testid fg-preview-date-{id}, sin selector de cancha (span '— sin cancha —'), fila con clase bg-amber-50/60 y span 'descansa'. No se pudo ejercitar visualmente sin generar preview desde cero (requiere flujo completo del formulario).",
+    "BUG 1 (Editor, EditableMatchesTable)": "FAIL - La fila BYE del fixture guardado abierta en editor mostró input type='datetime-local' (esperado 'date'), venue-selector presente (esperado ausente), y sin bg-amber-50. Ver screenshot fixture_editor_open.png. Falta ramificación isBye en EditableMatchesTable (líneas 589-640)."
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter41_bye_fixture.py",
+    "/app/test_reports/pytest/iteration_41.xml"
+  ],
+  "action_items": [
+    "BUG 1 - Aplicar la misma ramificación isBye del PreviewEditableTable dentro de EditableMatchesTable (AdminFixtureGenerator.jsx líneas 589-640): (a) calcular const isBye = m.is_bye || m.status==='descansa' || m.home_team_id==='__BYE__' || m.away_team_id==='__BYE__'; (b) usar <input type='date'> con match_date.slice(0,10) cuando isBye y convertir el onLocalChange a `${e.target.value}T00:00`; (c) reemplazar el <select> de cancha por un span '— sin cancha —'; (d) añadir class bg-amber-50/60 al <tr> y un span 'descansa' en la columna vs.",
+    "(opcional) Revisar el injector de <span data-ve-dynamic> en <option> — causa hydration warning en consola. No afecta funcionalidad pero es ruido en logs."
+  ],
+  "critical_code_review_comments": [
+    "AdminFixtureGenerator.jsx: PreviewEditableTable maneja BYE correctamente pero EditableMatchesTable (mismo archivo, ~50 líneas más abajo) no. Recomiendo extraer un componente MatchRowEditor(m, isBye) reutilizable en ambas tablas para evitar esta duplicación/desalineación futura.",
+    "backend server.py línea 1820-1824: correcto guardado de is_bye + status='descansa' + venue='' + hora 00:00. Fixture correctamente enriquecido en GET /api/matches (línea 1585-1587) y GET /api/fixtures/{id}/matches (línea 2013-2014).",
+    "AdminMatches.jsx línea 787-791: buen uso de disabled={!tid} y disabled={!tid || !cat}. Los onChange resetean valores dependientes (setCat('') / setGrp('')) al cambiar padre — patrón correcto que evita filtros inconsistentes."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter41_bye_fixture.py (new)"
+  ],
+  "success_rate": {"backend": "100% (2/2)", "frontend": "75% (3/4 bugs OK; BUG1 falla solo en el editor de fixture guardado)"},
+  "test_credentials": "admin@futuresoccercup.com / FSCAdmin2025! (de /app/memory/test_credentials.md)",
+  "seed_data_creation": "Se creó torneo TEST_UIBye_<sfx> + 5 clubes/equipos + 1 fixture grupo 'UI' con 3 partidos (1 BYE) via POST /api/fixtures/generate con matrix_matches. Todo eliminado al finalizar.",
+  "should_call_test_agent_after_fix": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Bugs 2, 3, 4 y 1(preview) están correctamente implementados. Solo falta aplicar la lógica isBye en EditableMatchesTable de /app/frontend/src/pages/admin/AdminFixtureGenerator.jsx (líneas 589-640) — la implementación de referencia ya existe en PreviewEditableTable (líneas 528-586) del mismo archivo. Rutas relevantes: /admin/partidos (no /admin/matches) y /admin/generador-fixture (no /admin/fixtures). Endpoint fixture: POST /api/fixtures/generate (no POST /api/fixtures). Para reproducir BYE via API sin UI: POST /api/fixtures/generate con team_ids (5) + matrix_matches con home_pos/away_pos > len(team_ids) para forzar '__BYE__'.",
+  "rca_of_the_issue": "El agente anterior parcheó PreviewEditableTable pero omitió aplicar la misma lógica de isBye en EditableMatchesTable (el editor de fixtures ya guardados). Ambas tablas son estructuralmente muy similares; hubo un cambio incompleto."
+}
