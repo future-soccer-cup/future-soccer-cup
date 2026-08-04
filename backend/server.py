@@ -1582,9 +1582,9 @@ async def list_matches(tournament_id: Optional[str] = None, status: Optional[str
     for m in items:
         ht = tmap.get(m["home_team_id"], {})
         at = tmap.get(m["away_team_id"], {})
-        m["home_team_name"] = ht.get("name", "—")
+        m["home_team_name"] = "DESCANSA" if m["home_team_id"] == "__BYE__" else ht.get("name", "—")
         m["home_team_logo"] = ht.get("logo_url", "")
-        m["away_team_name"] = at.get("name", "—")
+        m["away_team_name"] = "DESCANSA" if m["away_team_id"] == "__BYE__" else at.get("name", "—")
         m["away_team_logo"] = at.get("logo_url", "")
     return items
 
@@ -1749,14 +1749,21 @@ async def generate_fixture(payload: FixtureGenerateIn, _: dict = Depends(require
                 raise HTTPException(status_code=400, detail="matrix_matches inválido (matchday/home_pos/away_pos deben ser enteros)")
             if md < 1 or hp < 1 or ap < 1:
                 raise HTTPException(status_code=400, detail="matrix_matches: posiciones y jornadas deben ser ≥ 1")
-            if hp > len(payload.team_ids) or ap > len(payload.team_ids):
-                # posición fuera del rango → puede ser DESCANSA (última posición sintética). Ignorar el partido.
-                # DESCANSA se representa como posición == len(team_ids) + 1 en el front, pero aquí
-                # simplemente omitimos los partidos que involucren posiciones inválidas.
+            n = len(payload.team_ids)
+            home_bye = hp > n
+            away_bye = ap > n
+            if home_bye and away_bye:
+                # ambos son DESCANSA → no genera partido
                 continue
             if hp == ap:
                 continue
-            by_md.setdefault(md, []).append((payload.team_ids[hp - 1], payload.team_ids[ap - 1]))
+            if home_bye or away_bye:
+                # BYE: un equipo descansa. Guardamos "__BYE__" en el slot de descanso.
+                home_id = "__BYE__" if home_bye else payload.team_ids[hp - 1]
+                away_id = "__BYE__" if away_bye else payload.team_ids[ap - 1]
+                by_md.setdefault(md, []).append((home_id, away_id))
+            else:
+                by_md.setdefault(md, []).append((payload.team_ids[hp - 1], payload.team_ids[ap - 1]))
         for md in sorted(by_md.keys()):
             rounds_data.append(by_md[md])
     else:
@@ -1810,13 +1817,19 @@ async def generate_fixture(payload: FixtureGenerateIn, _: dict = Depends(require
         # Horarios de ESTA jornada (subconjunto de todos los slots)
         md_slots = slots[slot_group * slots_per_md:(slot_group + 1) * slots_per_md] or slots
         for i, (home_id, away_id) in enumerate(pairs):
-            slot = md_slots[i % len(md_slots)]
-            venue = venues[i % len(venues)] if venues else ""
-            try:
-                hh, mm = slot.split(":")
-                match_dt = round_date.replace(hour=int(hh), minute=int(mm), second=0, microsecond=0)
-            except Exception:
-                match_dt = round_date
+            is_bye = (home_id == "__BYE__" or away_id == "__BYE__")
+            if is_bye:
+                # Iter51: partido "DESCANSA" — solo asigna fecha (sin hora ni cancha).
+                match_dt = round_date.replace(hour=0, minute=0, second=0, microsecond=0)
+                venue = ""
+            else:
+                slot = md_slots[i % len(md_slots)]
+                venue = venues[i % len(venues)] if venues else ""
+                try:
+                    hh, mm = slot.split(":")
+                    match_dt = round_date.replace(hour=int(hh), minute=int(mm), second=0, microsecond=0)
+                except Exception:
+                    match_dt = round_date
             doc = {
                 "id": str(uuid.uuid4()),
                 "tournament_id": tournament_id,
@@ -1827,7 +1840,8 @@ async def generate_fixture(payload: FixtureGenerateIn, _: dict = Depends(require
                 "group_name": payload.group_name,
                 "matchday": r_idx + 1,
                 "stage": "grupos",
-                "status": "programado",
+                "status": "descansa" if is_bye else "programado",
+                "is_bye": is_bye,
                 "home_score": None,
                 "away_score": None,
             }
@@ -1900,8 +1914,8 @@ async def generate_fixture(payload: FixtureGenerateIn, _: dict = Depends(require
         at = tmap.get(d["away_team_id"], {})
         enriched.append({
             **d,
-            "home_team_name": ht.get("name", ""),
-            "away_team_name": at.get("name", ""),
+            "home_team_name": "DESCANSA" if d["home_team_id"] == "__BYE__" else ht.get("name", ""),
+            "away_team_name": "DESCANSA" if d["away_team_id"] == "__BYE__" else at.get("name", ""),
         })
 
     return {
@@ -1996,8 +2010,8 @@ async def get_fixture_matches(fixture_id: str, _: dict = Depends(require_admin))
         "fixture": f,
         "matches": [{
             **m,
-            "home_team_name": tmap.get(m.get("home_team_id"), {}).get("name", ""),
-            "away_team_name": tmap.get(m.get("away_team_id"), {}).get("name", ""),
+            "home_team_name": "DESCANSA" if m.get("home_team_id") == "__BYE__" else tmap.get(m.get("home_team_id"), {}).get("name", ""),
+            "away_team_name": "DESCANSA" if m.get("away_team_id") == "__BYE__" else tmap.get(m.get("away_team_id"), {}).get("name", ""),
         } for m in matches],
     }
 

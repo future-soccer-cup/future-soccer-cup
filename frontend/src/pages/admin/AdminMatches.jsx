@@ -675,7 +675,8 @@ function MatchesTable({ matches, onEdit, onScore, onRemove }) {
         <table className="w-full text-sm">
           <thead className="bg-blue-50 text-xs uppercase tracking-wider">
             <tr>
-              <th className="text-left px-4 py-2">Fecha</th>
+              <th className="text-left px-4 py-2">FECHA</th>
+              <th className="text-left px-4 py-2">Cuándo</th>
               <th className="text-left px-4 py-2">Local</th>
               <th className="text-center px-4 py-2">Score</th>
               <th className="text-left px-4 py-2">Visitante</th>
@@ -685,27 +686,37 @@ function MatchesTable({ matches, onEdit, onScore, onRemove }) {
             </tr>
           </thead>
           <tbody>
-            {pageItems.map((m) => (
-              <tr key={m.id} className="border-t border-slate-100" data-testid={`match-row-${m.id}`}>
-                <td className="px-4 py-2">{m.match_date ? formatDateTime(m.match_date) : "—"}</td>
+            {pageItems.map((m) => {
+              const isBye = m.is_bye || m.status === "descansa" || m.home_team_id === "__BYE__" || m.away_team_id === "__BYE__";
+              return (
+              <tr key={m.id} className={`border-t border-slate-100 ${isBye ? "bg-amber-50/60" : ""}`} data-testid={`match-row-${m.id}`}>
+                <td className="px-4 py-2 font-display font-black text-blue-700">FECHA {m.matchday || "?"}</td>
+                <td className="px-4 py-2">{isBye ? (m.match_date ? formatDateTime(m.match_date).split(" ")[0] : "—") : (m.match_date ? formatDateTime(m.match_date) : "—")}</td>
                 <td className="px-4 py-2 font-semibold">{m.home_team_name}</td>
                 <td className="px-4 py-2 text-center font-display font-black tabular-nums">
-                  {m.status === "finalizado" ? `${m.home_score} - ${m.away_score}` : "vs"}
+                  {isBye ? <span className="text-amber-600 uppercase text-xs">Descansa</span> : (m.status === "finalizado" ? `${m.home_score} - ${m.away_score}` : "vs")}
                 </td>
                 <td className="px-4 py-2 font-semibold">{m.away_team_name}</td>
                 <td className="px-4 py-2"><span className="text-xs uppercase tracking-wider font-bold">{m.status}</span></td>
-                <td className="px-4 py-2 text-slate-500">{m.venue || "—"}</td>
+                <td className="px-4 py-2 text-slate-500">{isBye ? "—" : (m.venue || "—")}</td>
                 <td className="px-4 py-2 text-right space-x-2">
-                  <button onClick={() => onEdit(m)} className="text-slate-600 hover:text-blue-700" title="Editar fecha/hora/cancha" data-testid={`edit-match-${m.id}`}>
-                    <CalendarClock size={16}/>
-                  </button>
-                  <button onClick={() => onScore(m)} className="text-blue-700" data-testid={`score-match-${m.id}`}><Edit3 size={16}/></button>
+                  {isBye ? (
+                    <span className="text-[10px] text-amber-600 uppercase tracking-wider font-bold" title="Los partidos con equipo que descansa no admiten marcador ni tarjetas">Sin acciones</span>
+                  ) : (
+                    <>
+                      <button onClick={() => onEdit(m)} className="text-slate-600 hover:text-blue-700" title="Editar fecha/hora/cancha" data-testid={`edit-match-${m.id}`}>
+                        <CalendarClock size={16}/>
+                      </button>
+                      <button onClick={() => onScore(m)} className="text-blue-700" data-testid={`score-match-${m.id}`}><Edit3 size={16}/></button>
+                    </>
+                  )}
                   <button onClick={() => onRemove(m.id)} className="text-red-600"><Trash2 size={16}/></button>
                 </td>
               </tr>
-            ))}
-            {matches.length === 0 && <tr><td colSpan="7" className="text-center py-12 text-slate-400">Sin partidos</td></tr>}
-            {matches.length > 0 && pageItems.length === 0 && <tr><td colSpan="7" className="text-center py-12 text-slate-400">Sin resultados para la búsqueda.</td></tr>}
+              );
+            })}
+            {matches.length === 0 && <tr><td colSpan="8" className="text-center py-12 text-slate-400">Sin partidos</td></tr>}
+            {matches.length > 0 && pageItems.length === 0 && <tr><td colSpan="8" className="text-center py-12 text-slate-400">Sin resultados para la búsqueda.</td></tr>}
           </tbody>
         </table>
       </div>
@@ -773,11 +784,11 @@ function FilterAndExportBar({ tournaments, teams, fixtures = [], tid, setTid, ca
           <option value="">Evento activo...</option>
           {activeTournaments.map((t) => <option key={t.id} value={t.id}>{t.name} · {t.season}</option>)}
         </select>
-        <select value={cat} onChange={(e) => setCat(e.target.value)} className="px-2 py-1.5 border border-slate-200 rounded text-xs disabled:bg-slate-50" disabled={!tid} data-testid="pdf-export-category">
+        <select value={cat} onChange={(e) => { setCat(e.target.value); setGrp(""); }} className="px-2 py-1.5 border border-slate-200 rounded text-xs disabled:bg-slate-50" disabled={!tid} data-testid="pdf-export-category">
           <option value="">Todas las categorías</option>
           {cats.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
-        <select value={grp} onChange={(e) => setGrp(e.target.value)} className="px-2 py-1.5 border border-slate-200 rounded text-xs disabled:bg-slate-50" disabled={!tid} data-testid="pdf-export-group">
+        <select value={grp} onChange={(e) => setGrp(e.target.value)} className="px-2 py-1.5 border border-slate-200 rounded text-xs disabled:bg-slate-50" disabled={!tid || !cat} data-testid="pdf-export-group">
           <option value="">Todos los grupos</option>
           {groupsAvail.map((g) => <option key={g} value={g}>{g}</option>)}
         </select>

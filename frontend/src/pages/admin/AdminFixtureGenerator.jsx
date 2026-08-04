@@ -542,29 +542,39 @@ function PreviewEditableTable({ matches, venues, onChange }) {
         </thead>
         <tbody>
           {matches.map((m) => {
+            const isBye = m.is_bye || m.status === "descansa" || m.home_team_id === "__BYE__" || m.away_team_id === "__BYE__";
             const dtVal = (m.match_date || "").slice(0, 16);
+            const dateOnly = (m.match_date || "").slice(0, 10);
             return (
-              <tr key={m.id} className="border-t border-slate-100" data-testid={`fg-preview-row-${m.id}`}>
+              <tr key={m.id} className={`border-t border-slate-100 ${isBye ? "bg-amber-50/60" : ""}`} data-testid={`fg-preview-row-${m.id}`}>
                 <td className="px-2 py-2 font-display font-black text-blue-700">FECHA {m.matchday}</td>
                 <td className="px-2 py-2">
-                  <input type="datetime-local" value={dtVal} onChange={(e) => onChange(m.id, { match_date: e.target.value })} className="w-full px-2 py-1 border border-slate-200 rounded text-xs" data-testid={`fg-preview-date-${m.id}`} />
+                  {isBye ? (
+                    <input type="date" value={dateOnly} onChange={(e) => onChange(m.id, { match_date: `${e.target.value}T00:00` })} className="w-full px-2 py-1 border border-slate-200 rounded text-xs bg-amber-50" data-testid={`fg-preview-date-${m.id}`} />
+                  ) : (
+                    <input type="datetime-local" value={dtVal} onChange={(e) => onChange(m.id, { match_date: e.target.value })} className="w-full px-2 py-1 border border-slate-200 rounded text-xs" data-testid={`fg-preview-date-${m.id}`} />
+                  )}
                 </td>
                 <td className="px-2 py-2 text-right font-semibold">{m.home_team_name}</td>
-                <td className="px-1 py-2 text-center text-slate-400">vs</td>
+                <td className="px-1 py-2 text-center text-slate-400">{isBye ? <span className="text-amber-600 uppercase text-[10px]">descansa</span> : "vs"}</td>
                 <td className="px-2 py-2 font-semibold">{m.away_team_name}</td>
                 <td className="px-2 py-2">
-                  <select
-                    value={m.venue || ""}
-                    onChange={(e) => onChange(m.id, { venue: e.target.value })}
-                    className="w-full px-2 py-1 border border-slate-200 rounded text-xs bg-white"
-                    data-testid={`fg-preview-venue-${m.id}`}
-                  >
-                    <option value="">— Sin cancha —</option>
-                    {venues.map((v) => <option key={v} value={v}>{v}</option>)}
-                    {m.venue && !venues.includes(m.venue) && (
-                      <option value={m.venue}>{m.venue}</option>
-                    )}
-                  </select>
+                  {isBye ? (
+                    <span className="text-slate-400 text-xs italic">— sin cancha —</span>
+                  ) : (
+                    <select
+                      value={m.venue || ""}
+                      onChange={(e) => onChange(m.id, { venue: e.target.value })}
+                      className="w-full px-2 py-1 border border-slate-200 rounded text-xs bg-white"
+                      data-testid={`fg-preview-venue-${m.id}`}
+                    >
+                      <option value="">— Sin cancha —</option>
+                      {venues.map((v) => <option key={v} value={v}>{v}</option>)}
+                      {m.venue && !venues.includes(m.venue) && (
+                        <option value={m.venue}>{m.venue}</option>
+                      )}
+                    </select>
+                  )}
                 </td>
               </tr>
             );
