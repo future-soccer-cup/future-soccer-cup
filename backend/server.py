@@ -640,7 +640,8 @@ class FixtureGenerateIn(BaseModel):
     group_name: str
     team_ids: List[str]
     start_date: str  # YYYY-MM-DD
-    days_between_rounds: int = 7
+    days_between_rounds: int = 7  # DEPRECADO — ver `matchdays_per_day` (Iter50)
+    matchdays_per_day: int = 1     # Iter50: número de FECHAS/jornadas que caben en un mismo día calendario
     venues: List[str] = []
     time_slots: List[str] = []  # ["08:00", "09:30"]
     rounds: int = 1  # 1 = una vuelta, 2 = ida y vuelta, etc.
@@ -1788,12 +1789,28 @@ async def generate_fixture(payload: FixtureGenerateIn, _: dict = Depends(require
     slots = payload.time_slots or ["10:00"]
 
     generated = []
+    # Iter50: Nueva lógica de fechas y horarios:
+    #   - `matchdays_per_day` = cuántas FECHAS (jornadas) caben en un mismo día calendario.
+    #   - Los horarios se reparten equitativamente entre las jornadas del mismo día:
+    #     Ej: 4 horarios [08:00, 09:30, 14:00, 15:30] con matchdays_per_day=2
+    #         → jornada A de ese día usa [08:00, 09:30], jornada B usa [14:00, 15:30].
+    mpd = max(1, int(payload.matchdays_per_day or 1))
+    # Fallback compat: si el admin no indicó matchdays_per_day pero sí un `days_between_rounds`
+    # distinto del default de 7 y >= 1, seguimos usando la vieja semántica "un día entre jornadas".
+    use_legacy_gap = (mpd == 1 and payload.days_between_rounds and payload.days_between_rounds > 1)
+    slots_per_md = max(1, len(slots) // mpd) if mpd > 0 else len(slots)
     for r_idx, pairs in enumerate(rounds_data):
-        # Doble jornada eliminada: cada jornada usa SU PROPIO día.
-        day_index = r_idx
-        round_date = start + timedelta(days=day_index * payload.days_between_rounds)
+        if use_legacy_gap:
+            calendar_day_offset = r_idx * payload.days_between_rounds
+            slot_group = 0
+        else:
+            calendar_day_offset = r_idx // mpd
+            slot_group = r_idx % mpd
+        round_date = start + timedelta(days=calendar_day_offset)
+        # Horarios de ESTA jornada (subconjunto de todos los slots)
+        md_slots = slots[slot_group * slots_per_md:(slot_group + 1) * slots_per_md] or slots
         for i, (home_id, away_id) in enumerate(pairs):
-            slot = slots[i % len(slots)]
+            slot = md_slots[i % len(md_slots)]
             venue = venues[i % len(venues)] if venues else ""
             try:
                 hh, mm = slot.split(":")
@@ -1830,9 +1847,23 @@ async def generate_fixture(payload: FixtureGenerateIn, _: dict = Depends(require
     end_date_str = (payload.end_date or "").strip()
     if end_date_str:
         try:
-            datetime.strptime(end_date_str, "%Y-%m-%d")
+            end_dt = datetime.strptime(end_date_str, "%Y-%m-%d")
         except ValueError:
             raise HTTPException(status_code=400, detail="Formato de fecha fin inválido (YYYY-MM-DD)")
+        # Iter50: los partidos NO deben salirse del rango de fechas.
+        if last_match_dt and last_match_dt.date() > end_dt.date():
+            days_needed = (last_match_dt.date() - start.date()).days + 1
+            days_range = (end_dt.date() - start.date()).days + 1
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Los partidos no caben en el rango de fechas ({payload.start_date}"
+                    f" a {end_date_str}, {days_range} día(s)). Se requieren {days_needed} día(s) "
+                    f"con la configuración actual ({len(rounds_data)} fecha(s), "
+                    f"{mpd} por día). Sugerencia: extiende la fecha fin, aumenta 'Fechas por día', "
+                    "o reduce las vueltas."
+                )
+            )
 
     fixture_id = None
     if not payload.preview:

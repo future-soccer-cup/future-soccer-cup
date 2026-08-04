@@ -16,7 +16,7 @@ export default function AdminFixtureGenerator() {
   const [selectedIds, setSelectedIds] = useState([]);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [daysBetween, setDaysBetween] = useState(1);
+  const [daysBetween, setDaysBetween] = useState(1); // Iter50: semánticamente "fechas por día" (matchdays_per_day)
   const [rounds, setRounds] = useState(1);
   const [venues, setVenues] = useState([""]);
   const [slots, setSlots] = useState(["10:00"]);
@@ -131,7 +131,8 @@ export default function AdminFixtureGenerator() {
         team_ids: teamIdsToSend,
         start_date: startDate,
         end_date: endDate || null,
-        days_between_rounds: Number(daysBetween),
+        days_between_rounds: 1, // legacy — ignorado por backend cuando matchdays_per_day está presente
+        matchdays_per_day: Number(daysBetween) || 1,
         rounds: Number(rounds) || 1,
         venues: venues.filter(Boolean),
         time_slots: slots.filter(Boolean),
@@ -410,7 +411,7 @@ export default function AdminFixtureGenerator() {
               <tbody>
                 {preview.matches.map((m) => (
                   <tr key={m.id} className="border-t border-slate-100" data-testid={`fg-match-${m.id}`}>
-                    <td className="px-4 py-2 font-display font-black text-blue-700">F{m.matchday}</td>
+                    <td className="px-4 py-2 font-display font-black text-blue-700">FECHA {m.matchday}</td>
                     <td className="px-4 py-2 text-slate-600">{formatDateTime(m.match_date)}</td>
                     <td className="px-4 py-2 text-right font-semibold">{m.home_team_name}</td>
                     <td className="px-4 py-2 text-center text-slate-400">vs</td>
@@ -531,7 +532,7 @@ function PreviewEditableTable({ matches, venues, onChange }) {
       <table className="w-full text-sm">
         <thead className="bg-blue-50 text-xs uppercase tracking-wider">
           <tr>
-            <th className="text-left px-2 py-2">Jorn.</th>
+            <th className="text-left px-2 py-2">FECHAS</th>
             <th className="text-left px-2 py-2">Fecha + hora</th>
             <th className="text-right px-2 py-2">Local</th>
             <th className="text-center px-1 py-2">vs</th>
@@ -544,7 +545,7 @@ function PreviewEditableTable({ matches, venues, onChange }) {
             const dtVal = (m.match_date || "").slice(0, 16);
             return (
               <tr key={m.id} className="border-t border-slate-100" data-testid={`fg-preview-row-${m.id}`}>
-                <td className="px-2 py-2 font-display font-black text-blue-700">F{m.matchday}</td>
+                <td className="px-2 py-2 font-display font-black text-blue-700">FECHA {m.matchday}</td>
                 <td className="px-2 py-2">
                   <input type="datetime-local" value={dtVal} onChange={(e) => onChange(m.id, { match_date: e.target.value })} className="w-full px-2 py-1 border border-slate-200 rounded text-xs" data-testid={`fg-preview-date-${m.id}`} />
                 </td>
@@ -581,7 +582,7 @@ function EditableMatchesTable({ matches, venues, onPersist, onLocalChange }) {
       <table className="w-full text-sm">
         <thead className="bg-blue-50 text-xs uppercase tracking-wider">
           <tr>
-            <th className="text-left px-2 py-2">Jorn.</th>
+            <th className="text-left px-2 py-2">FECHAS</th>
             <th className="text-left px-2 py-2">Fecha + hora</th>
             <th className="text-right px-2 py-2">Local</th>
             <th className="text-center px-1 py-2">vs</th>
@@ -595,7 +596,7 @@ function EditableMatchesTable({ matches, venues, onPersist, onLocalChange }) {
             const dtVal = (m.match_date || "").slice(0, 16);
             return (
               <tr key={m.id} className="border-t border-slate-100" data-testid={`editor-row-${m.id}`}>
-                <td className="px-2 py-2 font-display font-black text-blue-700">F{m.matchday}</td>
+                <td className="px-2 py-2 font-display font-black text-blue-700">FECHA {m.matchday}</td>
                 <td className="px-2 py-2">
                   <input type="datetime-local" value={dtVal} onChange={(e) => onLocalChange(m.id, { match_date: e.target.value })} className="w-full px-2 py-1 border border-slate-200 rounded text-xs" data-testid={`editor-date-${m.id}`} />
                 </td>
@@ -738,12 +739,12 @@ function SeedingModal({ seeding, setSeeding, teams, selectedIds, rounds, onCance
           {/* Panel derecho: matriz en tiempo real */}
           <div className="p-5 bg-slate-50">
             <h4 className="text-[11px] font-bold uppercase tracking-widest text-slate-500 mb-3">
-              Vista en tiempo real · {matrix.length} partidos en {Object.keys(byMd).length} jornada(s)
+              Vista en tiempo real · {matrix.length} partidos en {Object.keys(byMd).length} fecha(s)
             </h4>
             <div className="space-y-4">
               {Object.entries(byMd).map(([md, items]) => (
                 <div key={md} className="bg-white border border-slate-200 rounded-lg p-3">
-                  <div className="text-[10px] font-bold uppercase tracking-widest text-blue-700 mb-2">Jornada {md}</div>
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-blue-700 mb-2">FECHA {md}</div>
                   <div className="space-y-1">
                     {items.map((it, i) => {
                       const homeIsBye = it.home_pos > realCount;

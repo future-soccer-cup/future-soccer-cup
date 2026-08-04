@@ -16,6 +16,24 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-02-26 — Iter50: "Fechas por día" real + horarios distribuidos + rango estricto
+- **Backend `POST /api/fixtures/generate`**: nuevo campo `matchdays_per_day: int = 1` con semántica correcta ("cuántas FECHAS caben en un mismo día calendario"). El campo `days_between_rounds` (default 7) se mantiene solo por compatibilidad backward para clientes viejos (activa `use_legacy_gap` cuando `matchdays_per_day=1 && days_between_rounds > 1`).
+- **Distribución de horarios**: los slots se dividen equitativamente entre las FECHAS de un mismo día. Ej. `slots=[08:00, 09:30, 14:00, 15:30]` con `matchdays_per_day=2` → 1ra FECHA del día usa `[08:00, 09:30]`, 2da FECHA usa `[14:00, 15:30]`. Antes se reutilizaban solo los primeros dos horarios.
+- **Rango de fechas estricto**: si los partidos generados exceden `end_date`, se lanza HTTPException 400 con mensaje informativo: "Los partidos no caben en el rango de fechas (X a Y, N día(s)). Se requieren M día(s) con la configuración actual (K fecha(s), P por día). Sugerencia: extiende la fecha fin, aumenta 'Fechas por día', o reduce las vueltas.".
+- **Frontend**:
+  - El campo "Fechas por día" ahora se envía como `matchdays_per_day` (además de `days_between_rounds:1` legacy).
+  - **Labels renombrados**:
+    - "Jorn." → **"FECHAS"** en las cabeceras de tablas (Preview y Editor).
+    - **"F1", "F2"** → **"FECHA 1", "FECHA 2"** en la celda de matchday.
+    - "Jornada X" → **"FECHA X"** en el modal de sorteo (SeedingModal).
+    - "N jornadas" → "N fecha(s)" en el header del preview.
+- **Verificado curl** con caso del usuario (5 equipos con DESCANSA, matriz M5, 4 horarios, rango 14-17 dic, 2 fechas/día):
+  - FECHAS 1+2 → 14 dic (08:00 y 14:00)
+  - FECHAS 3+4 → 15 dic (08:00, 14:00, 15:30)
+  - FECHA 5 → 16 dic (08:00)
+  - Total 6 partidos reales (los que involucraban DESCANSA se omitieron), 5 fechas totales, todos dentro del rango.
+
+
 ### 2026-02-26 — Iter49: Fuente Natura Script + bug de filtro en generador de fixture
 - **Fuente Natura Script**: archivo `.otf` (147 KB) subido a `/frontend/public/fonts/NaturaScript.otf`. Declaración `@font-face` movida a `public/fonts.css` con `url('/fonts/NaturaScript.otf')` para servirse estáticamente (evita que webpack la procese como módulo, que causaba "Cannot find module '/fonts/NaturaScript.otf'"). En `src/index.css` queda solo el fallback `local()`. Aplicada al texto "Torneo Internacional" del Navbar y Home.
 - **Bug de fixture — teams de carga masiva no aparecían**: el filtro del generador (`AdminFixtureGenerator.jsx`) requería `t.tournament_id === tournamentId`, pero el endpoint `POST /import/teams` NO establece `tournament_id` en los teams importados. Fix: relajado a `(t.category === category) && (!t.tournament_id || t.tournament_id === tournamentId)` — así aparecen tanto los equipos sin `tournament_id` (bulk import) como los que sí lo tienen y coinciden.
