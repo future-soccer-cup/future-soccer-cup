@@ -16,6 +16,16 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-02-27 — Iter53: Fix crítico — DESCANSA se perdía al Guardar el fixture
+- **Bug reportado por el usuario**: "una vez se guarda el fixture ya se pierde la fecha de descanso, no vuelve a salir ni en editar el fixture, ni una vez guardado, ni en el módulo de partidos".
+- **Root cause**: al pulsar "Guardar", el frontend llamaba `generate(true)` **sin `matrix_matches`**. El backend entonces caía al `_round_robin_pairs` automático (server.py línea 1770) — y ese algoritmo **omite** cualquier partido con BYE (`if home is not None and away is not None`). Resultado: fixture guardado sin partidos DESCANSA.
+- **Fix (AdminFixtureGenerator.jsx)**:
+  1. Nuevo estado `lastGenOpts = { matrix, orderedTeamIds }` guardado al generar la Vista Previa.
+  2. Al pulsar "Guardar", si el usuario no pasa opts, se reutiliza automáticamente la matriz de la preview → el backend recibe los mismos slots (incl. BYE) y persiste los partidos DESCANSA con `is_bye=true`, `status="descansa"`, `venue=""`.
+  3. Adicionalmente, las ediciones de fecha/hora/cancha que el admin hizo en la preview se aplican vía PUT sobre los partidos recién persistidos (matching por `matchday|home_team_id|away_team_id`).
+- **Verificado end-to-end** vía Playwright: 5 equipos → sorteo → preview 15 partidos (5 BYE) → Guardar → abrir editor → 15 filas / 5 BYE con fondo amber, "— sin cancha —", input `type="date"` y etiqueta "descansa". Screenshot confirmó "T52_kwl31_1 vs DESCANSA", "DESCANSA vs T52_kwl31_4", etc.
+
+
 ### 2026-02-27 — Iter52: Fix filtro categoría en AdminMatches ocultaba partidos DESCANSA
 - **Bug reportado**: al seleccionar una Categoría en el módulo Partidos (`/admin/partidos`), los partidos DESCANSA (BYE) desaparecían de la lista aunque el fixture los tuviera. El editor de Fixture sí los mostraba.
 - **Root cause**: `AdminMatches.jsx` línea 62 buscaba el team por `home_team_id`; cuando ese id era `"__BYE__"`, `teams.find()` devolvía `undefined` y el filtro descartaba la fila.

@@ -35,6 +35,9 @@ export default function AdminFixtureGenerator() {
   // Iter45: modal de sorteo/asignación manual de posiciones.
   const [seedingOpen, setSeedingOpen] = useState(false);
   const [seeding, setSeeding] = useState([]); // array de team_ids por posición (índice 0-based, DESCANSA representado como string "__DESCANSA__")
+  // Iter52: recordar la matriz + team_ids usados en la vista previa para que
+  // al pulsar "Guardar" el backend NO caiga al round-robin automático (que descarta BYE).
+  const [lastGenOpts, setLastGenOpts] = useState(null); // { matrix, orderedTeamIds }
   const [dateError, setDateError] = useState("");
 
   useEffect(() => {
@@ -122,8 +125,11 @@ export default function AdminFixtureGenerator() {
     if (!category) { toast.error("Selecciona una Categoría"); return; }
     setLoading(true);
     try {
-      // Iter45: si el admin ya asignó posiciones (opts.matrix + opts.orderedTeamIds), usarlas.
-      const teamIdsToSend = opts.orderedTeamIds || selectedIds;
+      // Iter52: al guardar, si el admin generó la vista previa con matriz manual
+      // (sorteo con posiciones + DESCANSA), reutilizamos esa matriz — de lo contrario
+      // el backend cae al round-robin automático y descarta los partidos BYE.
+      const effOpts = (Object.keys(opts).length > 0) ? opts : (saveIt && lastGenOpts ? lastGenOpts : {});
+      const teamIdsToSend = effOpts.orderedTeamIds || selectedIds;
       const body = {
         tournament_id: tournamentId,
         category,
@@ -139,13 +145,40 @@ export default function AdminFixtureGenerator() {
         ...rules,
         preview: !saveIt,
       };
-      if (opts.matrix) body.matrix_matches = opts.matrix;
+      if (effOpts.matrix) body.matrix_matches = effOpts.matrix;
       const res = await api.post("/fixtures/generate", body);
+
+      // Iter52: al pulsar "Guardar" queremos preservar las ediciones que el admin
+      // hizo en la vista previa (fecha, hora, cancha). El backend regenera los partidos
+      // con ids nuevos, así que hacemos match por (matchday + home_team_id + away_team_id)
+      // y aplicamos PUT sobre los partidos recién creados que hayan cambiado.
+      if (saveIt && preview && Array.isArray(preview.matches)) {
+        const editedMap = new Map();
+        preview.matches.forEach((pm) => {
+          const key = `${pm.matchday}|${pm.home_team_id}|${pm.away_team_id}`;
+          editedMap.set(key, { match_date: pm.match_date, venue: pm.venue });
+        });
+        const patches = [];
+        (res.data.matches || []).forEach((nm) => {
+          const key = `${nm.matchday}|${nm.home_team_id}|${nm.away_team_id}`;
+          const ed = editedMap.get(key);
+          if (!ed) return;
+          const patch = {};
+          if (ed.match_date && ed.match_date !== nm.match_date) patch.match_date = ed.match_date;
+          if ((ed.venue || "") !== (nm.venue || "")) patch.venue = ed.venue || "";
+          if (Object.keys(patch).length > 0) patches.push(api.put(`/matches/${nm.id}`, patch));
+        });
+        if (patches.length > 0) await Promise.allSettled(patches);
+      }
+
       setPreview(res.data);
       if (saveIt) {
         toast.success(`Fixture creado: ${res.data.matches.length} partidos en ${res.data.rounds} jornadas`);
+        setLastGenOpts(null); // limpiar, ya se persistió
         reloadFixtures();
       } else {
+        // Guardamos las opts para reutilizarlas al pulsar "Guardar".
+        setLastGenOpts({ matrix: effOpts.matrix || null, orderedTeamIds: teamIdsToSend });
         toast.success("Vista previa generada — puedes editar cada partido antes de guardar");
       }
     } catch (err) {
