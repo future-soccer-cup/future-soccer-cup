@@ -16,6 +16,17 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-02-26 — Iter51: Bug DESCANSA (BYE) + filtros AdminMatches — VERIFICADO
+- **Backend `POST /api/fixtures/generate`**: partidos BYE (`__BYE__`) se generan con `is_bye=true`, `status="descansa"`, `venue=""` y `match_date` a las 00:00. Los endpoints `GET /api/matches` y `GET /api/fixtures/{id}/matches` enriquecen `home_team_name`/`away_team_name` a "DESCANSA" cuando el team_id es `__BYE__`.
+- **`AdminFixtureGenerator.jsx`** (Preview + Editor): filas DESCANSA muestran (a) input `type="date"` (sin hora), (b) span "— sin cancha —" en lugar del select, (c) fondo `bg-amber-50/60`, (d) etiqueta "descansa" en la columna vs. Partidos normales conservan `datetime-local` + selector de cancha.
+- **`AdminMatches.jsx`**:
+  - Tabla MatchesTable ahora renderiza dos columnas: "FECHA" (label matchday) + "Cuándo" (fecha/hora). Filas DESCANSA muestran "Sin acciones" (sin botones edit/score), solo Trash. Fondo amber. Sin venue.
+  - FilterAndExportBar: dropdown "Grupo" ahora `disabled` cuando `!tid || !cat`. Cambiar Categoría resetea Grupo a "".
+- **Etiquetas**: "F1/F2/Jorn." → **"FECHA 1", "FECHA 2"** en todas las tablas (AdminMatches + AdminFixtureGenerator preview + editor + SeedingModal).
+- **Testing**: `/app/test_reports/iteration_41.json` (backend 2/2 pytest PASS + frontend 3/4 UI PASS) + `/app/test_reports/iteration_42.json` (retest BUG 1 editor 8/8 checks PASS). Test files: `/app/backend/tests/test_iter41_bye_fixture.py`.
+
+
+
 ### 2026-02-26 — Iter50: "Fechas por día" real + horarios distribuidos + rango estricto
 - **Backend `POST /api/fixtures/generate`**: nuevo campo `matchdays_per_day: int = 1` con semántica correcta ("cuántas FECHAS caben en un mismo día calendario"). El campo `days_between_rounds` (default 7) se mantiene solo por compatibilidad backward para clientes viejos (activa `use_legacy_gap` cuando `matchdays_per_day=1 && days_between_rounds > 1`).
 - **Distribución de horarios**: los slots se dividen equitativamente entre las FECHAS de un mismo día. Ej. `slots=[08:00, 09:30, 14:00, 15:30]` con `matchdays_per_day=2` → 1ra FECHA del día usa `[08:00, 09:30]`, 2da FECHA usa `[14:00, 15:30]`. Antes se reutilizaban solo los primeros dos horarios.
