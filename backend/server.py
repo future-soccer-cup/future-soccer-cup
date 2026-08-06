@@ -15,7 +15,7 @@ import re
 import csv
 import io
 from datetime import datetime, timezone, timedelta
-from typing import List, Optional, Literal
+from typing import List, Optional, Literal, Dict, Any
 
 from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Response, Query, UploadFile, File
 from fastapi.responses import Response as FastAPIResponse, StreamingResponse
@@ -5968,6 +5968,11 @@ class HomeSettings(BaseModel):
     nosotros_pill_4_title: Optional[str] = "Familia FSC"
     nosotros_pill_4_body: Optional[str] = "Hospedaje, transporte, tours."
 
+    # === Iter54: Sección "FSC EN LA HISTORIA" (timeline con hitos + fotos flotantes) ===
+    # Cada hito: {key: str, label: str, body: str, photos: List[str]}. Editable desde el CMS.
+    nosotros_history_title: Optional[str] = "FSC EN LA HISTORIA"
+    nosotros_history_timeline: Optional[List[Dict[str, Any]]] = None
+
     eventos_hero_kicker: Optional[str] = "temporada"
     eventos_hero_title: Optional[str] = "EVENTOS"
     eventos_hero_body: Optional[str] = "Conoce todos los torneos del calendario FSC y revive las ediciones pasadas."
@@ -5999,11 +6004,27 @@ class HomeSettings(BaseModel):
     hablemos_title: Optional[str] = "HABLEMOS"
 
 
+DEFAULT_HISTORY_TIMELINE: List[Dict[str, Any]] = [
+    {"key": "intro", "label": "INTRODUCCIÓN", "body": "", "photos": []},
+    {"key": "2019", "label": "2019", "body": "Future Soccer Cup nació en 2019, con la convicción de transformar la manera de vivir un torneo de fútbol infantil. Desde el principio, nuestro propósito fue crear una experiencia diferente, en la que cada jugador, entrenador y familia viviera momentos inolvidables dentro y fuera de la cancha. La primera edición se realizó en junio de 2019. Fue el inicio de un gran sueño y, al mismo tiempo, un enorme desafío. Gracias a la confianza de quienes creyeron en nosotros desde el comienzo, logramos realizar un evento exitoso que sentó las bases de lo que hoy es Future Soccer Cup.", "photos": []},
+    {"key": "2021", "label": "2021", "body": "", "photos": []},
+    {"key": "2022", "label": "2022", "body": "", "photos": []},
+    {"key": "2023", "label": "2023", "body": "En 2023 nació KOW, nuestra mascota oficial, un personaje que rápidamente se convirtió en uno de los grandes protagonistas del torneo. Su cercanía con los niños y la alegría que transmite han hecho de él un símbolo muy querido por jugadores, familias y clubes.", "photos": []},
+    {"key": "2025", "label": "2025", "body": "", "photos": []},
+    {"key": "2026", "label": "2026", "body": "", "photos": []},
+]
+
+
 @api.get("/home-settings", response_model=HomeSettings)
 async def get_home_settings():
     doc = await db.home_settings.find_one({"id": HOME_SETTINGS_ID}, {"_id": 0})
     if not doc:
-        return HomeSettings().model_dump()
+        base = HomeSettings().model_dump()
+        base["nosotros_history_timeline"] = DEFAULT_HISTORY_TIMELINE
+        return base
+    # Backfill del timeline si el documento existe pero aún no tiene el campo (docs antiguos).
+    if not doc.get("nosotros_history_timeline"):
+        doc["nosotros_history_timeline"] = DEFAULT_HISTORY_TIMELINE
     return doc
 
 

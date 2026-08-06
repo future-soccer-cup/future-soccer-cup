@@ -277,6 +277,13 @@ export default function AdminHomeSettings() {
               ))}
             </div>
           </div>
+
+          {/* FSC en la Historia — Timeline editor */}
+          <div className="md:col-span-2 border-t border-slate-200 pt-3">
+            <div className="text-[10px] font-bold uppercase tracking-widest text-red-700 mb-2">FSC en la Historia — Timeline</div>
+            <Field label="Título grande (ej: FSC EN LA HISTORIA)" v={s.nosotros_history_title} onChange={(v) => upd("nosotros_history_title", v)} placeholder="FSC EN LA HISTORIA" />
+            <HistoryTimelineEditor value={s.nosotros_history_timeline || []} onChange={(v) => upd("nosotros_history_timeline", v)} />
+          </div>
         </div>
       </Section>
 
@@ -412,5 +419,79 @@ function OverlaySelect({ v, onChange, testId }) {
       </select>
       <span className="text-[10px] text-slate-400 mt-1 block">Se aplica sobre la imagen de fondo. 70% de opacidad.</span>
     </label>
+  );
+}
+
+
+// Editor del timeline de "FSC en la Historia". Cada hito tiene key, label, body y hasta 6 fotos.
+// El admin puede agregar/borrar hitos y reordenar sus fotos con ImageListUpload (max 6).
+function HistoryTimelineEditor({ value, onChange }) {
+  const items = Array.isArray(value) ? value : [];
+  const update = (idx, patch) => {
+    const copy = items.map((it, i) => (i === idx ? { ...it, ...patch } : it));
+    onChange(copy);
+  };
+  const addMilestone = () => {
+    const nextKey = `hito-${Date.now()}`;
+    onChange([...items, { key: nextKey, label: "Nuevo hito", body: "", photos: [] }]);
+  };
+  const removeMilestone = (idx) => {
+    if (!window.confirm("¿Eliminar este hito? Se perderá su texto y fotos asociadas.")) return;
+    onChange(items.filter((_, i) => i !== idx));
+  };
+  const move = (idx, dir) => {
+    const target = idx + dir;
+    if (target < 0 || target >= items.length) return;
+    const copy = [...items];
+    [copy[idx], copy[target]] = [copy[target], copy[idx]];
+    onChange(copy);
+  };
+
+  return (
+    <div className="space-y-3 mt-2" data-testid="history-timeline-editor">
+      {items.length === 0 && (
+        <p className="text-sm text-slate-500 py-4 text-center border border-dashed border-slate-300 rounded-md">
+          Aún no hay hitos. Agrega el primero.
+        </p>
+      )}
+      {items.map((it, idx) => (
+        <div key={`${it.key}-${idx}`} className="border border-slate-200 rounded-md p-3 bg-white" data-testid={`timeline-milestone-${idx}`}>
+          <div className="flex items-center justify-between mb-2 gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black bg-red-100 text-red-800 px-2 py-1 rounded uppercase tracking-widest">Hito {idx + 1}</span>
+              <button type="button" onClick={() => move(idx, -1)} disabled={idx === 0} className="text-xs px-2 py-1 rounded border border-slate-200 disabled:opacity-30" data-testid={`timeline-move-up-${idx}`}>↑</button>
+              <button type="button" onClick={() => move(idx, +1)} disabled={idx === items.length - 1} className="text-xs px-2 py-1 rounded border border-slate-200 disabled:opacity-30" data-testid={`timeline-move-down-${idx}`}>↓</button>
+            </div>
+            <button type="button" onClick={() => removeMilestone(idx)} className="text-xs text-red-600 font-bold" data-testid={`timeline-delete-${idx}`}>Eliminar hito</button>
+          </div>
+          <div className="grid md:grid-cols-2 gap-3">
+            <label className="block">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Clave (única, sin espacios)</span>
+              <input type="text" value={it.key || ""} onChange={(e) => update(idx, { key: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" placeholder="intro, 2019, 2023..." data-testid={`timeline-key-${idx}`} />
+            </label>
+            <label className="block">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Etiqueta visible en la barra</span>
+              <input type="text" value={it.label || ""} onChange={(e) => update(idx, { label: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" placeholder="INTRODUCCIÓN, 2019..." data-testid={`timeline-label-${idx}`} />
+            </label>
+          </div>
+          <label className="block mt-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Texto del hito (opcional)</span>
+            <textarea rows={3} value={it.body || ""} onChange={(e) => update(idx, { body: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" placeholder="Cuéntanos qué pasó ese año..." data-testid={`timeline-body-${idx}`} />
+          </label>
+          <div className="mt-3">
+            <ImageListUpload
+              label="Fotos del hito (máximo 6, se muestran alrededor del texto FSC)"
+              hint="Se muestran flotando en 6 posiciones fijas alrededor del texto central. Recomendado: JPG horizontal, 800×450 px, < 300 KB."
+              values={it.photos || []}
+              onChange={(v) => update(idx, { photos: (v || []).slice(0, 6) })}
+              testId={`timeline-photos-${idx}`}
+            />
+          </div>
+        </div>
+      ))}
+      <button type="button" onClick={addMilestone} className="w-full py-2 border border-dashed border-slate-400 rounded-md text-sm text-slate-600 hover:bg-slate-50 hover:border-slate-500" data-testid="timeline-add-btn">
+        + Agregar hito
+      </button>
+    </div>
   );
 }

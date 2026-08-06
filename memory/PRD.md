@@ -16,6 +16,23 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-02-27 — Iter55: Página Nosotros — Sección "FSC EN LA HISTORIA" (timeline navegable)
+- **Contexto**: prompt del cliente para agregar sección arriba de "SOMOS MÁS QUE UN TORNEO" en `/nosotros`, matcheando exactamente el wireframe (fotos flotantes rotadas + texto FSC grande grunge + franja azul inferior con puntos + botones ← → circulares).
+- **Backend** (`server.py`):
+  - Modelo `HomeSettings` extendido con `nosotros_history_title` y `nosotros_history_timeline: List[Dict[str,Any]]`.
+  - `DEFAULT_HISTORY_TIMELINE` con los 7 hitos pre-poblados (INTRODUCCIÓN, 2019 con texto exacto, 2021, 2022, 2023 con texto exacto de KOW, 2025, 2026).
+  - `GET /api/home-settings` hace backfill del campo cuando el documento existe pero no lo tiene (docs antiguos).
+- **Frontend público**:
+  - Nuevo componente `/app/frontend/src/components/FSCHistorySection.jsx`: 6 slots absolutos de fotos flotantes (rotadas -2/+2.5°), texto central Plane Crash `FSC` grande + `EN LA HISTORIA` debajo (planeCrashSafe → minúsculas para el glifo grunge), botones ← → circulares rojos, timeline azul con 7 puntos + labels clickables.
+  - Al cambiar de hito se muestra el `body` en card blanco translúcido (excepto INTRODUCCIÓN que solo muestra las fotos).
+  - Mobile fallback: grid 2 columnas cuando no hay espacio para floats.
+  - Integrado en `Nosotros.jsx` ARRIBA de "SOMOS MÁS QUE UN TORNEO".
+- **Admin CMS** (`AdminHomeSettings.jsx`):
+  - Nuevo componente `HistoryTimelineEditor` dentro de la sección Nosotros: agregar/borrar/reordenar hitos (↑↓), editar clave y etiqueta, textarea del body y `ImageListUpload` (max 6) por hito.
+  - Título de la sección también editable via `nosotros_history_title`.
+- **Verificado** vía screenshot: layout coincide con el wireframe, click en dot cambia fotos + texto, click en ← → navega, admin muestra los 7 hitos con sus textos correctos.
+
+
 ### 2026-02-27 — Iter54: Feature nueva — Partidos adicionales (bonus matches)
 - **Necesidad de negocio**: en torneos de 3 o 4 equipos cada equipo debe llegar a 4 partidos jugados. Como no hay contra quién jugar (fixture limitado), el admin puede cargar directamente estadísticas complementarias que suman a la tabla de clasificación y a juego limpio, sin crear un partido físico.
 - **Reglas**: fixture de 3 equipos → 2 bonus por equipo · fixture de 4 equipos → 1 bonus por equipo · otros tamaños → no aplica.

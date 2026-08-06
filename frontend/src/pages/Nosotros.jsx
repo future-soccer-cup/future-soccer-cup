@@ -4,6 +4,7 @@ import { ShieldCheck, Trophy, Users, Heart } from "lucide-react";
 import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe, RED, BLUE } from "../lib/designSystem";
 import SecondaryHero from "../components/SecondaryHero";
 import AnimateIn from "../components/AnimateIn";
+import FSCHistorySection from "../components/FSCHistorySection";
 
 export default function Nosotros() {
   const [s, setS] = useState({});
@@ -25,6 +26,9 @@ export default function Nosotros() {
         overlay={s.nosotros_hero_overlay || "blue"}
         testIdPrefix="nosotros-hero"
       />
+
+      {/* FSC EN LA HISTORIA — timeline navegable con fotos flotantes */}
+      <FSCHistorySection settings={s} />
 
       {/* Bloque con imagen */}
       <section className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid lg:grid-cols-2 gap-12 items-center">
