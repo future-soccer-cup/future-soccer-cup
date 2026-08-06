@@ -16,6 +16,25 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-02-27 — Iter54: Feature nueva — Partidos adicionales (bonus matches)
+- **Necesidad de negocio**: en torneos de 3 o 4 equipos cada equipo debe llegar a 4 partidos jugados. Como no hay contra quién jugar (fixture limitado), el admin puede cargar directamente estadísticas complementarias que suman a la tabla de clasificación y a juego limpio, sin crear un partido físico.
+- **Reglas**: fixture de 3 equipos → 2 bonus por equipo · fixture de 4 equipos → 1 bonus por equipo · otros tamaños → no aplica.
+- **Backend** (`server.py`):
+  - Modelo `BonusMatchIn/Out`: tournament_id, category, group_name, team_id, result ('won'|'drawn'|'lost'), goals_for, goals_against, yellow_cards, red_cards, other_cards, note.
+  - Colección `bonus_matches` con CRUD: `POST/GET/PUT/DELETE /api/bonus-matches`.
+  - Validaciones POST: fixture del scope existe, tiene 3 o 4 team_ids reales, team pertenece al fixture, no supera max_per_team.
+  - `GET /api/stats/standings` extendido: itera bonus del scope y suma played+=1, W/D/L, GF/GC, tarjetas y descuenta fair_play según cfg (fairplay_yellow/red/other).
+- **Frontend** (`AdminMatches.jsx`):
+  - Estado `bonusMatches`, `bonusEdit`; helpers `scopeFixture`, `scopeTeamIds`, `bonusEnabled`, `maxBonusPerTeam`, `bonusCountByTeam`.
+  - Botón `+ Partido adicional` (`add-bonus-btn`) visible solo cuando `bonusEnabled` (n=3 o n=4).
+  - Componente `BonusMatchesList`: fila por bonus con equipo, badge de resultado, GF/GC, tarjetas, nota, edit/delete + contadores X/Y por equipo (`bonus-quota-{team_id}`).
+  - Componente `BonusMatchModal`: dropdown equipo con cupos, 3 botones para resultado, inputs numéricos, nota.
+- **Vista pública**: `/estadisticas` refleja automáticamente los bonus porque consume el mismo endpoint standings.
+- **Testing**:
+  - `/app/backend/tests/test_iter53_bonus_matches.py` (3/3 PASS): 3-team full flow (crear/editar/borrar/validaciones/standings), 4-team max=1, 5-team not allowed.
+  - `/app/test_reports/iteration_43.json` — E2E frontend 14/14 PASS.
+
+
 ### 2026-02-27 — Iter53: Fix crítico — DESCANSA se perdía al Guardar el fixture
 - **Bug reportado por el usuario**: "una vez se guarda el fixture ya se pierde la fecha de descanso, no vuelve a salir ni en editar el fixture, ni una vez guardado, ni en el módulo de partidos".
 - **Root cause**: al pulsar "Guardar", el frontend llamaba `generate(true)` **sin `matrix_matches`**. El backend entonces caía al `_round_robin_pairs` automático (server.py línea 1770) — y ese algoritmo **omite** cualquier partido con BYE (`if home is not None and away is not None`). Resultado: fixture guardado sin partidos DESCANSA.
