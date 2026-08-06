@@ -5969,9 +5969,13 @@ class HomeSettings(BaseModel):
     nosotros_pill_4_body: Optional[str] = "Hospedaje, transporte, tours."
 
     # === Iter54: Sección "FSC EN LA HISTORIA" (timeline con hitos + fotos flotantes) ===
-    # Cada hito: {key: str, label: str, body: str, photos: List[str]}. Editable desde el CMS.
+    # Cada hito: {key: str, label: str, question: str, body: str, photos: List[str]}. Editable desde el CMS.
     nosotros_history_title: Optional[str] = "FSC EN LA HISTORIA"
     nosotros_history_timeline: Optional[List[Dict[str, Any]]] = None
+
+    # === Iter58: Página Eventos — todo el contenido editable via CMS. ===
+    # Estructura anidada para agrupar por sección; ver DEFAULT_EVENTOS_CONFIG.
+    eventos: Optional[Dict[str, Any]] = None
 
     eventos_hero_kicker: Optional[str] = "temporada"
     eventos_hero_title: Optional[str] = "EVENTOS"
@@ -6015,12 +6019,67 @@ DEFAULT_HISTORY_TIMELINE: List[Dict[str, Any]] = [
 ]
 
 
+DEFAULT_EVENTOS_CONFIG: Dict[str, Any] = {
+    "hero_url": "",
+    "countries_title": "Paises que han Participado",
+    "countries": [
+        {"name": "Guatemala", "flag_url": ""},
+        {"name": "Puerto Rico", "flag_url": ""},
+        {"name": "Aruba", "flag_url": ""},
+        {"name": "Perú", "flag_url": ""},
+        {"name": "República Dominicana", "flag_url": ""},
+    ],
+    "tabs_center_top": "EVENTOS",
+    "tabs_center_bottom": "Diseñados para ti",
+    "festival": {
+        "tab_label": "FESTIVAL",
+        "tab_dates": "Oct 05 al 10",
+        "title_month": "OCTUBRE",
+        "title_word": "Festival",
+        "categories": ["18", "17", "15", "16", "14", "13", "12", "11", "10", "09"],
+        "awards_cups": ["COPA ORO", "COPA PLATA", "COPA BRONCE", "COPA KOW", "COPA TITANES"],
+        "awards_individual": ["MVP", "FAIR PLAY", "GOLEADOR", "MEJOR PORTERO"],
+    },
+    "premier": {
+        "tab_label": "PREMIER",
+        "tab_dates_even": "Dic 07 al 12 pares",
+        "tab_dates_odd": "Dic 13 al 18 impares",
+        "title_month": "DICIEMBRE",
+        "title_word": "Premier",
+        "categories_even": ["18", "16", "14", "12", "10"],
+        "categories_odd": ["17", "15", "13", "11", "09"],
+        "awards_cups": ["COPA ORO", "COPA PLATA"],
+        "awards_individual": ["MVP", "FAIR PLAY", "GOLEADOR", "MEJOR PORTERO"],
+    },
+    "stadium": {
+        "image_url": "",
+        "confirmed": False,
+        "cursive": "Estadio",
+        "title_top": "CENTENARIO",
+        "title_bottom": "ARMENIA",
+        "badge_text": "POR CONFIRMAR",
+    },
+    "adventure_title": "Día de Aventura",
+    "adventure_blocks": [{"logo_url": ""}, {"logo_url": ""}],
+    "scenarios_title": "ESCENARIOS",
+    "scenarios_cursive": "Deportivos!",
+    "scenarios_subtitle_top": "COMFENALCO",
+    "scenarios_subtitle_bottom": "ESTADIO DE ARMENIA",
+    "scenarios_photos": [],
+    "premiacion_title": "PREMIACIÓN",
+    "premiacion_subtitle": "EN LA FSC CADA NIÑO ES UN TESORO Y SU ESFUERZO MERECE UN PREMIO...",
+    "clubs_title": "Clubes que han Participado",
+    "clubs_logos": [],
+}
+
+
 @api.get("/home-settings", response_model=HomeSettings)
 async def get_home_settings():
     doc = await db.home_settings.find_one({"id": HOME_SETTINGS_ID}, {"_id": 0})
     if not doc:
         base = HomeSettings().model_dump()
         base["nosotros_history_timeline"] = DEFAULT_HISTORY_TIMELINE
+        base["eventos"] = DEFAULT_EVENTOS_CONFIG
         return base
     # Backfill del timeline si el documento existe pero aún no tiene el campo (docs antiguos).
     if not doc.get("nosotros_history_timeline"):
@@ -6031,6 +6090,9 @@ async def get_home_settings():
         for m in doc["nosotros_history_timeline"]:
             if "question" not in m:
                 m["question"] = defaults_by_key.get(m.get("key"), {}).get("question", "")
+    # Backfill de la configuración de Eventos (Iter58).
+    if not doc.get("eventos"):
+        doc["eventos"] = DEFAULT_EVENTOS_CONFIG
     return doc
 
 

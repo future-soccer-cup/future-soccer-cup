@@ -287,19 +287,8 @@ export default function AdminHomeSettings() {
         </div>
       </Section>
 
-      <Section title="Eventos (página)" icon={<Trophy size={18}/>}>
-        <div className="grid md:grid-cols-2 gap-4">
-          <Field label="Hero — kicker" v={s.eventos_hero_kicker} onChange={(v) => upd("eventos_hero_kicker", v)} placeholder="temporada" />
-          <Field label="Hero — título grande" v={s.eventos_hero_title} onChange={(v) => upd("eventos_hero_title", v)} placeholder="EVENTOS" />
-          <label className="md:col-span-2 block">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Hero — descripción</span>
-            <textarea rows={2} value={s.eventos_hero_body || ""} onChange={(e) => upd("eventos_hero_body", e.target.value)} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" />
-          </label>
-          <div className="md:col-span-2">
-            <ImageUpload value={s.eventos_hero_bg_url} onChange={(v) => upd("eventos_hero_bg_url", v)} label="Hero — imagen de fondo (ancho completo)" hint="Recomendado: JPG/WEBP horizontal 1920×800 px (12:5), alta calidad. Peso ideal < 1 MB. Se recorta tipo cover y recibe el overlay translúcido." testId="eventos-hero-bg-upload" />
-          </div>
-          <OverlaySelect v={s.eventos_hero_overlay} onChange={(v) => upd("eventos_hero_overlay", v)} testId="eventos-hero-overlay" />
-        </div>
+      <Section title="Eventos (página) — Nueva estructura" icon={<Trophy size={18}/>}>
+        <EventosEditor value={s.eventos || {}} onChange={(v) => upd("eventos", v)} />
       </Section>
 
       <Section title="Estadísticas (página)" icon={<Hash size={18}/>}>
@@ -475,7 +464,7 @@ function HistoryTimelineEditor({ value, onChange }) {
             </label>
           </div>
           <label className="block mt-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Pregunta (aparece sobre la foto principal, ej: "¿Cómo empezó todo?")</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Pregunta (aparece sobre la foto principal, ej: ¿Cómo empezó todo?)</span>
             <input type="text" value={it.question || ""} onChange={(e) => update(idx, { question: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" placeholder="¿Cómo empezó todo?" data-testid={`timeline-question-${idx}`} />
           </label>
           <label className="block mt-3">
@@ -499,3 +488,234 @@ function HistoryTimelineEditor({ value, onChange }) {
     </div>
   );
 }
+
+
+// Iter58: Editor completo de la página Eventos. Un objeto anidado `eventos` con todas
+// las secciones. Cada sub-editor actualiza su path y llama onChange con el objeto completo.
+function EventosEditor({ value, onChange }) {
+  const v = value || {};
+  const patch = (p) => onChange({ ...v, ...p });
+  const patchFestival = (p) => onChange({ ...v, festival: { ...(v.festival || {}), ...p } });
+  const patchPremier = (p) => onChange({ ...v, premier: { ...(v.premier || {}), ...p } });
+  const patchStadium = (p) => onChange({ ...v, stadium: { ...(v.stadium || {}), ...p } });
+
+  return (
+    <div className="space-y-6" data-testid="eventos-editor">
+      {/* Sección 1 — Hero */}
+      <SubSection title="1. Hero — imagen de fondo (logo FSC se muestra centrado sobre ella)">
+        <ImageUpload
+          value={v.hero_url}
+          onChange={(url) => patch({ hero_url: url })}
+          label="Imagen del Hero"
+          hint="Recomendado: JPG horizontal 1920×800 px con foto de partido de fútbol infantil. Peso < 1 MB."
+          testId="eventos-hero-upload"
+        />
+      </SubSection>
+
+      {/* Sección 2 — Países */}
+      <SubSection title="2. Países que han Participado">
+        <Field label="Título de la sección" v={v.countries_title} onChange={(x) => patch({ countries_title: x })} placeholder="Países que han Participado" />
+        <ArrayItemsEditor
+          items={v.countries || []}
+          onChange={(arr) => patch({ countries: arr })}
+          newItem={() => ({ name: "", flag_url: "" })}
+          renderItem={(it, idx, upd) => (
+            <div className="grid md:grid-cols-2 gap-3 items-end">
+              <Field label={`País #${idx + 1} — nombre`} v={it.name} onChange={(x) => upd({ name: x })} placeholder="Guatemala" />
+              <ImageUpload value={it.flag_url} onChange={(u) => upd({ flag_url: u })} label="Bandera (imagen)" hint="PNG con transparencia, 60×40 px aprox." testId={`flag-${idx}`} />
+            </div>
+          )}
+          testId="countries"
+          addLabel="+ Agregar país"
+        />
+      </SubSection>
+
+      {/* Sección 3 — Tabs */}
+      <SubSection title="3. Selector FESTIVAL / EVENTOS / PREMIER — textos centrales">
+        <div className="grid md:grid-cols-2 gap-3">
+          <Field label="Texto central superior" v={v.tabs_center_top} onChange={(x) => patch({ tabs_center_top: x })} placeholder="EVENTOS" />
+          <Field label="Texto central inferior (cursivo)" v={v.tabs_center_bottom} onChange={(x) => patch({ tabs_center_bottom: x })} placeholder="Diseñados para ti" />
+        </div>
+      </SubSection>
+
+      {/* Sección 4A — Festival */}
+      <SubSection title="4A. FESTIVAL — bloque rojo (tab) y título del evento">
+        <div className="grid md:grid-cols-2 gap-3">
+          <Field label="Etiqueta del tab" v={v.festival?.tab_label} onChange={(x) => patchFestival({ tab_label: x })} placeholder="FESTIVAL" />
+          <Field label="Fechas del tab" v={v.festival?.tab_dates} onChange={(x) => patchFestival({ tab_dates: x })} placeholder="Oct 05 al 10" />
+          <Field label="Mes del título grande" v={v.festival?.title_month} onChange={(x) => patchFestival({ title_month: x })} placeholder="OCTUBRE" />
+          <Field label="Palabra cursiva del título" v={v.festival?.title_word} onChange={(x) => patchFestival({ title_word: x })} placeholder="Festival" />
+        </div>
+        <div className="mt-3">
+          <label className="block">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Categorías Festival (separadas por coma, ej: 18, 17, 15...)</span>
+            <input
+              type="text"
+              value={arrToCsv(v.festival?.categories)}
+              onChange={(e) => patchFestival({ categories: csvToArr(e.target.value) })}
+              className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md"
+              placeholder="18, 17, 15, 16, 14, 13, 12, 11, 10, 09"
+              data-testid="festival-categories"
+            />
+          </label>
+        </div>
+      </SubSection>
+
+      {/* Sección 4B — Premier */}
+      <SubSection title="4B. PREMIER — bloque azul (tab) y título del evento">
+        <div className="grid md:grid-cols-2 gap-3">
+          <Field label="Etiqueta del tab" v={v.premier?.tab_label} onChange={(x) => patchPremier({ tab_label: x })} placeholder="PREMIER" />
+          <Field label="Fechas PARES" v={v.premier?.tab_dates_even} onChange={(x) => patchPremier({ tab_dates_even: x })} placeholder="Dic 07 al 12 pares" />
+          <Field label="Fechas IMPARES" v={v.premier?.tab_dates_odd} onChange={(x) => patchPremier({ tab_dates_odd: x })} placeholder="Dic 13 al 18 impares" />
+          <Field label="Mes del título grande" v={v.premier?.title_month} onChange={(x) => patchPremier({ title_month: x })} placeholder="DICIEMBRE" />
+          <Field label="Palabra cursiva del título" v={v.premier?.title_word} onChange={(x) => patchPremier({ title_word: x })} placeholder="Premier" />
+        </div>
+        <div className="grid md:grid-cols-2 gap-3 mt-3">
+          <label className="block">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Categorías PARES (separadas por coma)</span>
+            <input type="text" value={arrToCsv(v.premier?.categories_even)} onChange={(e) => patchPremier({ categories_even: csvToArr(e.target.value) })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" placeholder="18, 16, 14, 12, 10" data-testid="premier-cats-even" />
+          </label>
+          <label className="block">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Categorías IMPARES (separadas por coma)</span>
+            <input type="text" value={arrToCsv(v.premier?.categories_odd)} onChange={(e) => patchPremier({ categories_odd: csvToArr(e.target.value) })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" placeholder="17, 15, 13, 11, 09" data-testid="premier-cats-odd" />
+          </label>
+        </div>
+      </SubSection>
+
+      {/* Sección 5 — Estadio */}
+      <SubSection title="5. Estadio Centenario (solo se muestra en tab PREMIER)">
+        <ImageUpload value={v.stadium?.image_url} onChange={(u) => patchStadium({ image_url: u })} label="Imagen del estadio" hint="Se muestra en escala de grises. JPG horizontal 1920×600 px recomendado." testId="stadium-image" />
+        <div className="grid md:grid-cols-2 gap-3 mt-3">
+          <Field label="Texto cursivo (línea 1)" v={v.stadium?.cursive} onChange={(x) => patchStadium({ cursive: x })} placeholder="Estadio" />
+          <Field label="Título superior" v={v.stadium?.title_top} onChange={(x) => patchStadium({ title_top: x })} placeholder="CENTENARIO" />
+          <Field label="Título inferior" v={v.stadium?.title_bottom} onChange={(x) => patchStadium({ title_bottom: x })} placeholder="ARMENIA" />
+          <Field label="Texto del badge" v={v.stadium?.badge_text} onChange={(x) => patchStadium({ badge_text: x })} placeholder="POR CONFIRMAR" />
+        </div>
+        <label className="flex items-center gap-2 mt-3 text-sm">
+          <input type="checkbox" checked={!!v.stadium?.confirmed} onChange={(e) => patchStadium({ confirmed: e.target.checked })} data-testid="stadium-confirmed" />
+          <span>Marcado como <b>CONFIRMADO</b> (oculta el badge rojo)</span>
+        </label>
+      </SubSection>
+
+      {/* Sección 6 — Día de Aventura */}
+      <SubSection title="6. Día de Aventura — logos de actividades">
+        <Field label="Título" v={v.adventure_title} onChange={(x) => patch({ adventure_title: x })} placeholder="Día de Aventura" />
+        <ArrayItemsEditor
+          items={v.adventure_blocks || []}
+          onChange={(arr) => patch({ adventure_blocks: arr })}
+          newItem={() => ({ logo_url: "" })}
+          renderItem={(it, idx, upd) => (
+            <ImageUpload value={it.logo_url} onChange={(u) => upd({ logo_url: u })} label={`Logo #${idx + 1}`} hint="PNG con transparencia recomendado" testId={`adventure-${idx}`} />
+          )}
+          testId="adventure"
+          addLabel="+ Agregar actividad"
+        />
+      </SubSection>
+
+      {/* Sección 7 — Escenarios */}
+      <SubSection title="7. Escenarios Deportivos — carrusel de fotos">
+        <div className="grid md:grid-cols-2 gap-3">
+          <Field label="Título grande" v={v.scenarios_title} onChange={(x) => patch({ scenarios_title: x })} placeholder="ESCENARIOS" />
+          <Field label="Palabra cursiva" v={v.scenarios_cursive} onChange={(x) => patch({ scenarios_cursive: x })} placeholder="Deportivos!" />
+          <Field label="Subtítulo línea 1" v={v.scenarios_subtitle_top} onChange={(x) => patch({ scenarios_subtitle_top: x })} placeholder="COMFENALCO" />
+          <Field label="Subtítulo línea 2" v={v.scenarios_subtitle_bottom} onChange={(x) => patch({ scenarios_subtitle_bottom: x })} placeholder="ESTADIO DE ARMENIA" />
+        </div>
+        <div className="mt-3">
+          <ImageListUpload
+            label="Fotos del carrusel"
+            hint="Se muestran 3 a la vez con navegación ← →. JPG horizontal 1200×800 px."
+            values={v.scenarios_photos || []}
+            onChange={(arr) => patch({ scenarios_photos: arr })}
+            testId="scenarios-photos"
+          />
+        </div>
+      </SubSection>
+
+      {/* Sección 8 — Premiación */}
+      <SubSection title="8. Premiación — títulos y premios por evento">
+        <Field label="Título grande" v={v.premiacion_title} onChange={(x) => patch({ premiacion_title: x })} placeholder="PREMIACIÓN" />
+        <label className="block mt-3">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Subtítulo</span>
+          <textarea rows={2} value={v.premiacion_subtitle || ""} onChange={(e) => patch({ premiacion_subtitle: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" placeholder="EN LA FSC CADA NIÑO ES UN TESORO..." />
+        </label>
+        <div className="grid md:grid-cols-2 gap-3 mt-3">
+          <label className="block">
+            <span className="text-xs font-bold uppercase tracking-wider text-red-700">Festival — Copas (badges rojos, separadas por coma)</span>
+            <input type="text" value={arrToCsv(v.festival?.awards_cups)} onChange={(e) => patchFestival({ awards_cups: csvToArr(e.target.value) })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" placeholder="COPA ORO, COPA PLATA, COPA BRONCE..." />
+          </label>
+          <label className="block">
+            <span className="text-xs font-bold uppercase tracking-wider text-blue-700">Festival — Individuales (azul, separadas por coma)</span>
+            <input type="text" value={arrToCsv(v.festival?.awards_individual)} onChange={(e) => patchFestival({ awards_individual: csvToArr(e.target.value) })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" placeholder="MVP, FAIR PLAY, GOLEADOR, MEJOR PORTERO" />
+          </label>
+          <label className="block">
+            <span className="text-xs font-bold uppercase tracking-wider text-red-700">Premier — Copas (separadas por coma)</span>
+            <input type="text" value={arrToCsv(v.premier?.awards_cups)} onChange={(e) => patchPremier({ awards_cups: csvToArr(e.target.value) })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" placeholder="COPA ORO, COPA PLATA" />
+          </label>
+          <label className="block">
+            <span className="text-xs font-bold uppercase tracking-wider text-blue-700">Premier — Individuales (separadas por coma)</span>
+            <input type="text" value={arrToCsv(v.premier?.awards_individual)} onChange={(e) => patchPremier({ awards_individual: csvToArr(e.target.value) })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" placeholder="MVP, FAIR PLAY, GOLEADOR, MEJOR PORTERO" />
+          </label>
+        </div>
+      </SubSection>
+
+      {/* Sección 9 — Clubes */}
+      <SubSection title="9. Clubes que han Participado">
+        <Field label="Título" v={v.clubs_title} onChange={(x) => patch({ clubs_title: x })} placeholder="Clubes que han Participado" />
+        <div className="mt-3">
+          <ImageListUpload
+            label="Escudos de clubes"
+            hint="PNG con fondo transparente, 200×200 px aprox. Se muestran en fila."
+            values={v.clubs_logos || []}
+            onChange={(arr) => patch({ clubs_logos: arr })}
+            testId="clubs-logos"
+          />
+        </div>
+      </SubSection>
+    </div>
+  );
+}
+
+
+function SubSection({ title, children }) {
+  return (
+    <div className="border border-slate-200 rounded-md p-3 bg-white">
+      <div className="text-[11px] font-black uppercase tracking-widest text-red-700 mb-2">{title}</div>
+      <div className="space-y-2">{children}</div>
+    </div>
+  );
+}
+
+
+function ArrayItemsEditor({ items, onChange, newItem, renderItem, testId, addLabel }) {
+  const update = (idx, patch) => onChange(items.map((it, i) => i === idx ? { ...it, ...patch } : it));
+  const remove = (idx) => onChange(items.filter((_, i) => i !== idx));
+  const move = (idx, dir) => {
+    const t = idx + dir;
+    if (t < 0 || t >= items.length) return;
+    const copy = [...items];
+    [copy[idx], copy[t]] = [copy[t], copy[idx]];
+    onChange(copy);
+  };
+  const add = () => onChange([...items, newItem()]);
+
+  return (
+    <div className="space-y-2 mt-2" data-testid={`${testId}-editor`}>
+      {items.map((it, idx) => (
+        <div key={`${testId}-${idx}`} className="border border-slate-200 rounded-md p-3 bg-slate-50">
+          <div className="flex items-center justify-between mb-2 gap-2">
+            <div className="flex items-center gap-1">
+              <button type="button" onClick={() => move(idx, -1)} disabled={idx === 0} className="text-xs px-2 py-1 rounded border border-slate-200 disabled:opacity-30">↑</button>
+              <button type="button" onClick={() => move(idx, +1)} disabled={idx === items.length - 1} className="text-xs px-2 py-1 rounded border border-slate-200 disabled:opacity-30">↓</button>
+            </div>
+            <button type="button" onClick={() => remove(idx)} className="text-xs text-red-600 font-bold" data-testid={`${testId}-delete-${idx}`}>Eliminar</button>
+          </div>
+          {renderItem(it, idx, (patch) => update(idx, patch))}
+        </div>
+      ))}
+      <button type="button" onClick={add} className="w-full py-2 border border-dashed border-slate-400 rounded-md text-sm text-slate-600 hover:bg-slate-50" data-testid={`${testId}-add`}>
+        {addLabel || "+ Agregar"}
+      </button>
+    </div>
+  );
+}
+

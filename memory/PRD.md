@@ -16,7 +16,32 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
-### 2026-02-27 — Iter58: Timeline Nosotros — texto FSC superpuesto + animación de expansión de la foto
+### 2026-02-27 — Iter58: Página Eventos — rediseño completo (9 secciones + CMS)
+- **Scope**: reemplazo total de `Eventos.jsx` (era una landing con SecondaryHero + agenda). Nuevo diseño con 9 secciones editables desde CMS.
+- **Backend** (`server.py`):
+  - `HomeSettings.eventos: Optional[Dict[str, Any]]` — objeto anidado con toda la configuración.
+  - `DEFAULT_EVENTOS_CONFIG` con defaults del wireframe (5 países, Festival Oct 05-10 con 10 categorías, Premier Dic 07-18 con 5+5 categorías pares/impares, todos los premios, KOW/ARMENIA en estadio, etc.).
+  - Backfill en `GET /home-settings`.
+- **Frontend público** (`Eventos.jsx`):
+  - **Sec 1** Hero: imagen fondo + logo FSC (nav_logo_url) centrado.
+  - **Sec 2** Franja azul "Países que han Participado" + banderas horizontales.
+  - **Sec 3** Tabs FESTIVAL (rojo) / EVENTOS centro / PREMIER (azul) — click cambia estado sin reload, tab activo con ring visible.
+  - **Sec 4** Título grande MES + palabra cursiva dorada con chevrons rojos dobles.
+  - **Sec 4A** Festival: grid de categorías con "20 / CAT.XX".
+  - **Sec 4B** Premier: dos columnas PARES / IMPARES con línea divisoria vertical.
+  - **Sec 5** Estadio Centenario (SOLO en PREMIER): imagen grayscale + textos superpuestos + badge "POR CONFIRMAR" (opcional).
+  - **Sec 6** Día de Aventura: bloques rojos con logos (PANACA, Parque del Café).
+  - **Sec 7** Escenarios Deportivos: título Plane Crash rojo + cursivo "Deportivos!" + carrusel 3-en-vista con flechas ← →.
+  - **Sec 8** Premiación: título azul + 3 columnas (copas rojas / trofeo·V·medalla / individuales azules). Se lee del tab activo (Festival: 5 copas + 4 indiv / Premier: 2 copas + 4 indiv).
+  - **Sec 9** Clubes que han Participado: título cursivo + fila de logos.
+- **Admin CMS** (`AdminHomeSettings.jsx`):
+  - Sección "Eventos (página) — Nueva estructura" reemplaza el editor legacy (`eventos_hero_*` removidos del UI).
+  - Nuevo componente `EventosEditor` con 9 sub-secciones + helpers `SubSection` y `ArrayItemsEditor` reutilizables.
+  - Cada sub-sección permite editar: textos, subir imágenes individuales, subir listas de imágenes (ImageListUpload), agregar/reordenar/borrar países, actividades y clubes, listas CSV para categorías y premios.
+- **Verificado con screenshots**: 9/9 sections rendered, PREMIER tab muestra stadium + 2 columnas categorías, FESTIVAL oculta stadium, tabs cambian sin recargar.
+
+
+### 2026-02-27 — Iter58 (previo): Timeline Nosotros — texto FSC superpuesto + animación de expansión de la foto
 - **Cambios pedidos por el usuario**:
   1. "FSC EN LA HISTORIA" debe estar **superpuesto** (encima de las imágenes), no detrás.
   2. Al pasar a un año, la **primera foto del hito** se agranda con transición hasta ocupar todo el área; las otras 5 fotos y el texto FSC hacen fade-out.
