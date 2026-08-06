@@ -57,7 +57,7 @@ export default function Eventos() {
       />
 
       {/* SECCIÓN 4 — Título + categorías del tab activo */}
-      <EventTitleSection month={active.title_month} word={active.title_word} />
+      <EventTitleSection month={active.title_month} word={active.title_word} isFestival={isFestival} />
 
       {isFestival ? (
         <FestivalCategories categories={festival.categories || []} />
@@ -202,7 +202,20 @@ function TabsBar({ tab, onTab, festival, premier, center }) {
 }
 
 
-function EventTitleSection({ month, word }) {
+// Paleta de colores por letra para "FESTIVAL" (idéntica al ejemplo del usuario).
+// Se cicla si la palabra tiene más letras.
+const FESTIVAL_LETTER_COLORS = [
+  "#14b8a6", // F - teal
+  "#e31f27", // E - rojo
+  "#0640c8", // S - azul
+  "#e31f27", // T - rojo
+  "#facc15", // I - amarillo
+  "#a855f7", // V - morado
+  "#22c55e", // A - verde
+  "#a855f7", // L - morado
+];
+
+function EventTitleSection({ month, word, isFestival }) {
   return (
     <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8" data-testid="eventos-title-section">
       <div className="flex items-center justify-center gap-8 md:gap-16">
@@ -213,20 +226,35 @@ function EventTitleSection({ month, word }) {
           <div className="leading-[0.9]" style={{ ...PLANE_CRASH, color: BLUE, fontSize: "clamp(2.2rem, 5vw, 4rem)" }} data-testid="event-title-month">
             {planeCrashSafe(month || "")}
           </div>
-          <div
-            className="italic mt-1"
-            style={{
-              fontFamily: "'Dancing Script', 'Allura', cursive",
-              color: RED,
-              WebkitTextFillColor: RED,
-              fontSize: "clamp(2.4rem, 6vw, 4.5rem)",
-              fontWeight: 700,
-              lineHeight: 1,
-            }}
-            data-testid="event-title-word"
-          >
-            {word || ""}
-          </div>
+          {isFestival ? (
+            // "FESTIVAL" con cada letra en un color distinto — misma fuente grunge Plane Crash
+            // que usa "EDICIÓN 2026" en el hero de INICIO.
+            <div
+              className="leading-[0.9] mt-2"
+              style={{
+                ...PLANE_CRASH,
+                fontSize: "clamp(2.8rem, 6.5vw, 5rem)",
+                letterSpacing: "0.02em",
+              }}
+              data-testid="event-title-word"
+            >
+              {Array.from(planeCrashSafe(word || "")).map((ch, i) => {
+                const color = ch === " " ? "transparent" : FESTIVAL_LETTER_COLORS[i % FESTIVAL_LETTER_COLORS.length];
+                return (
+                  <span key={i} style={{ color, WebkitTextFillColor: color }}>{ch}</span>
+                );
+              })}
+            </div>
+          ) : (
+            // Premier: cursivo dorado (estilo original).
+            <div
+              className="italic mt-1"
+              style={{ ...CURSIVE, color: GOLD, fontSize: "clamp(2.4rem, 6vw, 4.5rem)", textShadow: "0 2px 0 rgba(0,0,0,0.05)" }}
+              data-testid="event-title-word"
+            >
+              {word || ""}
+            </div>
+          )}
         </div>
         <button type="button" aria-hidden className="fsc-bounce cursor-default bg-transparent border-0" data-testid="event-chevron-right">
           <ChevronStack color={RED} size={56} direction="up" count={5} />

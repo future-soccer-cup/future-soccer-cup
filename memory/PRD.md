@@ -16,6 +16,16 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-02-27 — Iter60: Festival multicolor + Premier restaurado
+- **Petición del usuario**: dejar Premier tal cual estaba antes (Natura Script cursivo dorado). Para Festival: usar la fuente grunge Plane Crash (como "EDICIÓN 2026" del hero de INICIO) pero **pintando cada letra en un color distinto**.
+- **Implementación** (`Eventos.jsx`):
+  - Prop `isFestival` en `EventTitleSection` decide qué renderer usar.
+  - Constante `FESTIVAL_LETTER_COLORS = ['#14b8a6','#e31f27','#0640c8','#e31f27','#facc15','#a855f7','#22c55e','#a855f7']`.
+  - Festival: split del string en `<span>`s con `color` + `WebkitTextFillColor` sólidos por letra (fuente Plane Crash grunge).
+  - Premier: mantiene el bloque original `italic` + `CURSIVE` (Natura Script) + `color: GOLD` + `textShadow`.
+- **Verificado con screenshots**: Festival muestra las 8 letras en teal/rojo/azul/rojo/amarillo/morado/verde/morado; Premier vuelve a lucir dorado cursivo intacto.
+
+
 ### 2026-02-27 — Iter59: Ajustes visuales Eventos — título mes + flechas apiladas
 - **Bug reportado**: la palabra "Festival" se veía con letras multicolor mientras "Premier" se veía correctamente. Además el usuario pidió que las flechas fueran como las de INICIO (apiladas apuntando hacia arriba, rojas, centradas, con rebote).
 - **Root cause del multicolor**: la fuente `Natura Script` es una fuente COLOR (COLRv1/SVG-in-OT) que aplica colores propios por glifo — para "Festival" activaba glifos con paleta arcoíris; para "Premier" no. Solución: forzar `fontFamily: "'Dancing Script', 'Allura', cursive"` + `WebkitTextFillColor: RED` + color `RED` sólido con `fontWeight: 700`. Eliminado el `textShadow` que sumaba ruido.
