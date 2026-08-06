@@ -6005,13 +6005,13 @@ class HomeSettings(BaseModel):
 
 
 DEFAULT_HISTORY_TIMELINE: List[Dict[str, Any]] = [
-    {"key": "intro", "label": "INTRODUCCIÓN", "body": "", "photos": []},
-    {"key": "2019", "label": "2019", "body": "Future Soccer Cup nació en 2019, con la convicción de transformar la manera de vivir un torneo de fútbol infantil. Desde el principio, nuestro propósito fue crear una experiencia diferente, en la que cada jugador, entrenador y familia viviera momentos inolvidables dentro y fuera de la cancha. La primera edición se realizó en junio de 2019. Fue el inicio de un gran sueño y, al mismo tiempo, un enorme desafío. Gracias a la confianza de quienes creyeron en nosotros desde el comienzo, logramos realizar un evento exitoso que sentó las bases de lo que hoy es Future Soccer Cup.", "photos": []},
-    {"key": "2021", "label": "2021", "body": "", "photos": []},
-    {"key": "2022", "label": "2022", "body": "", "photos": []},
-    {"key": "2023", "label": "2023", "body": "En 2023 nació KOW, nuestra mascota oficial, un personaje que rápidamente se convirtió en uno de los grandes protagonistas del torneo. Su cercanía con los niños y la alegría que transmite han hecho de él un símbolo muy querido por jugadores, familias y clubes.", "photos": []},
-    {"key": "2025", "label": "2025", "body": "", "photos": []},
-    {"key": "2026", "label": "2026", "body": "", "photos": []},
+    {"key": "intro", "label": "INTRODUCCIÓN", "question": "", "body": "", "photos": []},
+    {"key": "2019", "label": "2019", "question": "¿Cómo empezó todo?", "body": "Future Soccer Cup nació en 2019, con la convicción de transformar la manera de vivir un torneo de fútbol infantil. Desde el principio, nuestro propósito fue crear una experiencia diferente, en la que cada jugador, entrenador y familia viviera momentos inolvidables dentro y fuera de la cancha. La primera edición se realizó en junio de 2019. Fue el inicio de un gran sueño y, al mismo tiempo, un enorme desafío. Gracias a la confianza de quienes creyeron en nosotros desde el comienzo, logramos realizar un evento exitoso que sentó las bases de lo que hoy es Future Soccer Cup.", "photos": []},
+    {"key": "2021", "label": "2021", "question": "", "body": "", "photos": []},
+    {"key": "2022", "label": "2022", "question": "", "body": "", "photos": []},
+    {"key": "2023", "label": "2023", "question": "¿Quién es KOW?", "body": "En 2023 nació KOW, nuestra mascota oficial, un personaje que rápidamente se convirtió en uno de los grandes protagonistas del torneo. Su cercanía con los niños y la alegría que transmite han hecho de él un símbolo muy querido por jugadores, familias y clubes.", "photos": []},
+    {"key": "2025", "label": "2025", "question": "", "body": "", "photos": []},
+    {"key": "2026", "label": "2026", "question": "", "body": "", "photos": []},
 ]
 
 
@@ -6025,6 +6025,12 @@ async def get_home_settings():
     # Backfill del timeline si el documento existe pero aún no tiene el campo (docs antiguos).
     if not doc.get("nosotros_history_timeline"):
         doc["nosotros_history_timeline"] = DEFAULT_HISTORY_TIMELINE
+    else:
+        # Backfill del campo `question` en hitos ya guardados (agregado Iter55).
+        defaults_by_key = {m["key"]: m for m in DEFAULT_HISTORY_TIMELINE}
+        for m in doc["nosotros_history_timeline"]:
+            if "question" not in m:
+                m["question"] = defaults_by_key.get(m.get("key"), {}).get("question", "")
     return doc
 
 

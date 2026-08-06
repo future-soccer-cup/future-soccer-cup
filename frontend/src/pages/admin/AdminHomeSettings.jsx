@@ -475,8 +475,12 @@ function HistoryTimelineEditor({ value, onChange }) {
             </label>
           </div>
           <label className="block mt-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Texto del hito (opcional)</span>
-            <textarea rows={3} value={it.body || ""} onChange={(e) => update(idx, { body: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" placeholder="Cuéntanos qué pasó ese año..." data-testid={`timeline-body-${idx}`} />
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Pregunta (aparece sobre la foto principal, ej: "¿Cómo empezó todo?")</span>
+            <input type="text" value={it.question || ""} onChange={(e) => update(idx, { question: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" placeholder="¿Cómo empezó todo?" data-testid={`timeline-question-${idx}`} />
+          </label>
+          <label className="block mt-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Texto del hito (se muestra en modal al hacer clic en LEE AQUÍ)</span>
+            <textarea rows={4} value={it.body || ""} onChange={(e) => update(idx, { body: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" placeholder="Respuesta larga del hito..." data-testid={`timeline-body-${idx}`} />
           </label>
           <div className="mt-3">
             <ImageListUpload

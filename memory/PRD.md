@@ -16,6 +16,19 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-02-27 — Iter56: Página Nosotros — ajustes funcionales (posiciones foto principal + modal LEE AQUÍ)
+- **Cambio de scope**: eliminadas las secciones `SecondaryHero` ("conócenos → NOSOTROS") y "SOMOS MÁS QUE UN TORNEO" de `Nosotros.jsx` — ahora la página es EXCLUSIVAMENTE la sección "FSC EN LA HISTORIA".
+- **Layout matcheado al wireframe** (6 slots absolutos con tamaños distintos):
+  - idx 0: sup-izq mediana (rot -2°), idx 1: **sup-centro GRANDE (rot 1.5°)** — foto principal con overlay,
+  - idx 2: sup-der mediana (rot 2°), idx 3: inf-izq mediana (rot -2°), idx 4: inf-centro (rot -1°), idx 5: inf-der pequeña (rot 2.5°).
+- **Overlay en la foto principal**: gradiente oscuro bottom-to-top + `question` en Plane Crash blanco + botón "LEE AQUÍ" (fondo blanco / texto rojo Plane Crash).
+- **Modal LEE AQUÍ** (`HistoryReadModal`): fondo `rgba(0,0,0,0.72)`, header azul FSC (#0640c8) con label del hito + pregunta en Plane Crash + X, cuerpo blanco con `whitespace-pre-line` scrollable, cierra con Escape/click fuera/X, bloquea scroll del body.
+- **Transición**: fade opacity 200ms entre hitos (state `phase = "in"|"out"`).
+- **Backend**: campo `question` agregado al `DEFAULT_HISTORY_TIMELINE` (2019: "¿Cómo empezó todo?", 2023: "¿Quién es KOW?") + backfill automático en GET para docs guardados sin el campo.
+- **Admin CMS**: nuevo input "Pregunta" por hito (`timeline-question-{idx}`) y label actualizada del body a "se muestra en modal al hacer clic en LEE AQUÍ".
+- **Mobile**: layout responsivo con foto principal fija + grid 3 col de auxiliares.
+
+
 ### 2026-02-27 — Iter55: Página Nosotros — Sección "FSC EN LA HISTORIA" (timeline navegable)
 - **Contexto**: prompt del cliente para agregar sección arriba de "SOMOS MÁS QUE UN TORNEO" en `/nosotros`, matcheando exactamente el wireframe (fotos flotantes rotadas + texto FSC grande grunge + franja azul inferior con puntos + botones ← → circulares).
 - **Backend** (`server.py`):
