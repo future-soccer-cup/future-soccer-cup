@@ -38,6 +38,9 @@ export default function AdminMatches() {
   const [tab, setTab] = useState("partidos"); // partidos | clasificacion | juego_limpio
   const [standings, setStandings] = useState([]);
   const [fixtures, setFixtures] = useState([]);
+  // Iter53: Partidos adicionales (bonus matches). Aplican SOLO en fixtures de 3 o 4 equipos.
+  const [bonusMatches, setBonusMatches] = useState([]);
+  const [bonusEdit, setBonusEdit] = useState(null); // {id?, team_id, result, goals_for, ...}
 
   const load = useCallback(() => Promise.all([
     api.get("/matches"), api.get("/teams"), api.get("/tournaments"), api.get("/fixtures")
@@ -52,6 +55,31 @@ export default function AdminMatches() {
     if (filterGrp) params.set("group_name", filterGrp);
     api.get(`/stats/standings?${params.toString()}`).then((r) => setStandings(r.data || []));
   }, [tab, filterTid, filterCat, filterGrp]);
+
+  // Iter53: cargar partidos adicionales (bonus) del scope filtrado.
+  const loadBonus = useCallback(() => {
+    if (!filterTid || !filterCat) { setBonusMatches([]); return; }
+    const params = new URLSearchParams({ tournament_id: filterTid, category: filterCat });
+    if (filterGrp) params.set("group_name", filterGrp);
+    api.get(`/bonus-matches?${params.toString()}`).then((r) => setBonusMatches(r.data || []));
+  }, [filterTid, filterCat, filterGrp]);
+  useEffect(() => { loadBonus(); }, [loadBonus]);
+
+  // Fixture del scope filtrado (torneo × categoría × grupo). Se usa para decidir
+  // si aplican partidos adicionales y qué equipos.
+  const scopeFixture = fixtures.find((f) =>
+    f.tournament_id === filterTid &&
+    f.category === filterCat &&
+    (!filterGrp || (f.group_name || "") === filterGrp)
+  );
+  const scopeTeamIds = (scopeFixture?.team_ids || []).filter((id) => id && id !== "__BYE__");
+  const scopeTeamCount = scopeTeamIds.length;
+  const bonusEnabled = scopeTeamCount === 3 || scopeTeamCount === 4;
+  const maxBonusPerTeam = scopeTeamCount === 3 ? 2 : (scopeTeamCount === 4 ? 1 : 0);
+  const bonusCountByTeam = bonusMatches.reduce((acc, b) => {
+    acc[b.team_id] = (acc[b.team_id] || 0) + 1;
+    return acc;
+  }, {});
 
   // Filtrar la lista de partidos visible
   const filteredMatches = matches.filter((m) => {
@@ -136,11 +164,93 @@ export default function AdminMatches() {
     }
   };
 
+  // Iter53: crear/editar/borrar partido adicional (bonus match).
+  const openNewBonus = () => {
+    if (!bonusEnabled) return;
+    setBonusEdit({
+      id: null,
+      tournament_id: filterTid,
+      category: filterCat,
+      group_name: filterGrp || (scopeFixture?.group_name || ""),
+      team_id: "",
+      result: "won",
+      goals_for: 0,
+      goals_against: 0,
+      yellow_cards: 0,
+      red_cards: 0,
+      other_cards: 0,
+      note: "",
+    });
+  };
+  const saveBonus = async (e) => {
+    e.preventDefault();
+    try {
+      const body = {
+        tournament_id: bonusEdit.tournament_id,
+        category: bonusEdit.category,
+        group_name: bonusEdit.group_name || "",
+        team_id: bonusEdit.team_id,
+        result: bonusEdit.result,
+        goals_for: Number(bonusEdit.goals_for) || 0,
+        goals_against: Number(bonusEdit.goals_against) || 0,
+        yellow_cards: Number(bonusEdit.yellow_cards) || 0,
+        red_cards: Number(bonusEdit.red_cards) || 0,
+        other_cards: Number(bonusEdit.other_cards) || 0,
+        note: bonusEdit.note || "",
+      };
+      if (!body.team_id) { toast.error("Selecciona un equipo"); return; }
+      if (bonusEdit.id) {
+        await api.put(`/bonus-matches/${bonusEdit.id}`, body);
+        toast.success("Partido adicional actualizado");
+      } else {
+        await api.post("/bonus-matches", body);
+        toast.success("Partido adicional creado");
+      }
+      setBonusEdit(null);
+      loadBonus();
+      // También recargar standings si estamos en tab clasificación/JL
+      if (tab !== "partidos") {
+        const params = new URLSearchParams({ tournament_id: filterTid, category: filterCat });
+        if (filterGrp) params.set("group_name", filterGrp);
+        const r = await api.get(`/stats/standings?${params.toString()}`);
+        setStandings(r.data || []);
+      }
+    } catch (err) {
+      toast.error(formatApiError(err.response?.data?.detail));
+    }
+  };
+  const removeBonus = async (id) => {
+    if (!window.confirm("¿Eliminar este partido adicional? Se descontará de la tabla de clasificación y juego limpio.")) return;
+    try {
+      await api.delete(`/bonus-matches/${id}`);
+      toast.success("Partido adicional eliminado");
+      loadBonus();
+      if (tab !== "partidos") {
+        const params = new URLSearchParams({ tournament_id: filterTid, category: filterCat });
+        if (filterGrp) params.set("group_name", filterGrp);
+        const r = await api.get(`/stats/standings?${params.toString()}`);
+        setStandings(r.data || []);
+      }
+    } catch (err) {
+      toast.error(formatApiError(err.response?.data?.detail));
+    }
+  };
+
   return (
     <div data-testid="admin-matches">
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <h1 className="font-display text-4xl font-black uppercase tracking-tighter">Partidos</h1>
         <div className="flex items-center gap-2 flex-wrap">
+          {bonusEnabled && (
+            <button
+              onClick={openNewBonus}
+              className="px-4 py-2 rounded-md text-sm flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-bold"
+              data-testid="add-bonus-btn"
+              title={`Partido adicional (fixture de ${scopeTeamCount} equipos · máx ${maxBonusPerTeam} por equipo)`}
+            >
+              <Plus size={16}/> Partido adicional
+            </button>
+          )}
           <button
             onClick={() => setIntergroupOpen(true)}
             className="fsc-btn-primary px-4 py-2 rounded-md text-sm flex items-center gap-2"
@@ -179,12 +289,24 @@ export default function AdminMatches() {
       </div>
 
       {tab === "partidos" && (
-        <MatchesTable
-          matches={filteredMatches}
-          onEdit={(m) => setManualEdit({ ...m, match_date: toLocalInput(m.match_date) })}
-          onScore={(m) => setScoring({ ...m, scorers: m.scorers || [] })}
-          onRemove={remove}
-        />
+        <>
+          <MatchesTable
+            matches={filteredMatches}
+            onEdit={(m) => setManualEdit({ ...m, match_date: toLocalInput(m.match_date) })}
+            onScore={(m) => setScoring({ ...m, scorers: m.scorers || [] })}
+            onRemove={remove}
+          />
+          {bonusEnabled && (
+            <BonusMatchesList
+              bonusMatches={bonusMatches}
+              scopeTeams={teams.filter((t) => scopeTeamIds.includes(t.id))}
+              maxPerTeam={maxBonusPerTeam}
+              teamCount={scopeTeamCount}
+              onEdit={(b) => setBonusEdit({ ...b })}
+              onDelete={removeBonus}
+            />
+          )}
+        </>
       )}
       {tab === "clasificacion" && (
         <StandingsTable rows={standings} mode="full" />
@@ -314,6 +436,19 @@ export default function AdminMatches() {
           tournaments={tournaments}
           onClose={() => setIntergroupOpen(false)}
           onDone={() => { setIntergroupOpen(false); load(); }}
+        />
+      )}
+
+      {bonusEdit && (
+        <BonusMatchModal
+          bonus={bonusEdit}
+          setBonus={setBonusEdit}
+          onClose={() => setBonusEdit(null)}
+          onSubmit={saveBonus}
+          scopeTeams={teams.filter((t) => scopeTeamIds.includes(t.id))}
+          maxPerTeam={maxBonusPerTeam}
+          bonusCountByTeam={bonusCountByTeam}
+          teamCount={scopeTeamCount}
         />
       )}
     </div>
@@ -917,5 +1052,162 @@ function StandingsTable({ rows, mode = "full" }) {
         </tbody>
       </table>
     </div>
+  );
+}
+
+
+
+// Iter53: Lista de partidos adicionales (bonus) debajo de la tabla de partidos.
+function BonusMatchesList({ bonusMatches, scopeTeams, maxPerTeam, teamCount, onEdit, onDelete }) {
+  const RESULT_LABEL = { won: "Ganado", drawn: "Empatado", lost: "Perdido" };
+  const RESULT_BADGE = { won: "bg-emerald-100 text-emerald-800", drawn: "bg-slate-100 text-slate-700", lost: "bg-red-100 text-red-800" };
+  const usedByTeam = bonusMatches.reduce((acc, b) => { acc[b.team_id] = (acc[b.team_id] || 0) + 1; return acc; }, {});
+  return (
+    <div className="mt-6 border border-amber-200 bg-amber-50/40 rounded-lg p-4" data-testid="bonus-matches-section">
+      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+        <div>
+          <h3 className="font-display text-lg font-black uppercase tracking-tight text-amber-800">Partidos adicionales</h3>
+          <p className="text-xs text-slate-600 mt-0.5">
+            Fixture de {teamCount} equipos · máx <b>{maxPerTeam}</b> por equipo · suman directo a Clasificación y Juego Limpio.
+          </p>
+        </div>
+        <div className="flex gap-3 text-[11px] text-slate-600">
+          {scopeTeams.map((t) => {
+            const used = usedByTeam[t.id] || 0;
+            const remaining = Math.max(0, maxPerTeam - used);
+            return (
+              <span key={t.id} className={`px-2 py-1 rounded ${remaining === 0 ? "bg-slate-200 text-slate-500" : "bg-white text-slate-700 border border-slate-200"}`} data-testid={`bonus-quota-${t.id}`}>
+                {t.name}: <b>{used}/{maxPerTeam}</b>
+              </span>
+            );
+          })}
+        </div>
+      </div>
+      {bonusMatches.length === 0 ? (
+        <p className="text-sm text-slate-500 py-4 text-center">No hay partidos adicionales registrados.</p>
+      ) : (
+        <div className="overflow-x-auto bg-white rounded-md">
+          <table className="w-full text-sm">
+            <thead className="bg-amber-100 text-xs uppercase tracking-wider">
+              <tr>
+                <th className="text-left px-3 py-2">Equipo</th>
+                <th className="text-left px-3 py-2">Resultado</th>
+                <th className="text-center px-3 py-2">GF</th>
+                <th className="text-center px-3 py-2">GC</th>
+                <th className="text-center px-3 py-2" title="Amarillas"><span className="inline-block w-3 h-4 bg-yellow-400 rounded-sm" /></th>
+                <th className="text-center px-3 py-2" title="Rojas"><span className="inline-block w-3 h-4 bg-red-600 rounded-sm" /></th>
+                <th className="text-center px-3 py-2" title="Otras"><span className="inline-block w-3 h-4 bg-slate-400 rounded-sm" /></th>
+                <th className="text-left px-3 py-2">Nota</th>
+                <th className="text-right px-3 py-2">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {bonusMatches.map((b) => (
+                <tr key={b.id} className="border-t border-slate-100" data-testid={`bonus-row-${b.id}`}>
+                  <td className="px-3 py-2 font-semibold">{b.team_name || b.team_id}</td>
+                  <td className="px-3 py-2">
+                    <span className={`px-2 py-0.5 rounded text-[11px] font-bold uppercase ${RESULT_BADGE[b.result]}`}>{RESULT_LABEL[b.result]}</span>
+                  </td>
+                  <td className="px-3 py-2 text-center tabular-nums">{b.goals_for}</td>
+                  <td className="px-3 py-2 text-center tabular-nums">{b.goals_against}</td>
+                  <td className="px-3 py-2 text-center tabular-nums">{b.yellow_cards}</td>
+                  <td className="px-3 py-2 text-center tabular-nums">{b.red_cards}</td>
+                  <td className="px-3 py-2 text-center tabular-nums">{b.other_cards}</td>
+                  <td className="px-3 py-2 text-slate-600 text-xs italic">{b.note || "—"}</td>
+                  <td className="px-3 py-2 text-right space-x-2">
+                    <button onClick={() => onEdit(b)} className="text-blue-700" title="Editar" data-testid={`bonus-edit-${b.id}`}><Edit3 size={16}/></button>
+                    <button onClick={() => onDelete(b.id)} className="text-red-600" title="Eliminar" data-testid={`bonus-delete-${b.id}`}><Trash2 size={16}/></button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+function BonusMatchModal({ bonus, setBonus, onClose, onSubmit, scopeTeams, maxPerTeam, bonusCountByTeam, teamCount }) {
+  const title = bonus.id ? "Editar partido adicional" : "Nuevo partido adicional";
+  return (
+    <Modal onClose={onClose} title={title}>
+      <form onSubmit={onSubmit} className="space-y-3" data-testid="bonus-modal">
+        <p className="text-xs text-slate-500 -mt-1">
+          Fixture de {teamCount} equipos · máximo <b>{maxPerTeam}</b> por equipo.
+        </p>
+        <label className="block">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Equipo</span>
+          <select
+            required
+            value={bonus.team_id}
+            onChange={(e) => setBonus({ ...bonus, team_id: e.target.value })}
+            className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md"
+            data-testid="bonus-team"
+          >
+            <option value="">Seleccionar equipo...</option>
+            {scopeTeams.map((t) => {
+              const used = bonusCountByTeam[t.id] || 0;
+              const disabled = !bonus.id && used >= maxPerTeam;
+              return (
+                <option key={t.id} value={t.id} disabled={disabled}>
+                  {t.name} {disabled ? `(sin cupos — ${used}/${maxPerTeam})` : `(${used}/${maxPerTeam})`}
+                </option>
+              );
+            })}
+          </select>
+        </label>
+        <label className="block">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Resultado</span>
+          <div className="mt-1 grid grid-cols-3 gap-2">
+            {[
+              { v: "won", label: "Ganado", cls: "border-emerald-500 bg-emerald-50 text-emerald-800" },
+              { v: "drawn", label: "Empatado", cls: "border-slate-400 bg-slate-50 text-slate-700" },
+              { v: "lost", label: "Perdido", cls: "border-red-500 bg-red-50 text-red-800" },
+            ].map((o) => (
+              <button
+                type="button"
+                key={o.v}
+                onClick={() => setBonus({ ...bonus, result: o.v })}
+                className={`px-3 py-2 rounded border-2 text-sm font-bold uppercase tracking-wider ${bonus.result === o.v ? o.cls : "border-slate-200 text-slate-400"}`}
+                data-testid={`bonus-result-${o.v}`}
+              >{o.label}</button>
+            ))}
+          </div>
+        </label>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="block">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Goles a favor</span>
+            <input type="number" min="0" value={bonus.goals_for} onChange={(e) => setBonus({ ...bonus, goals_for: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md tabular-nums" data-testid="bonus-gf" />
+          </label>
+          <label className="block">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Goles en contra</span>
+            <input type="number" min="0" value={bonus.goals_against} onChange={(e) => setBonus({ ...bonus, goals_against: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md tabular-nums" data-testid="bonus-ga" />
+          </label>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          <label className="block">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1"><span className="inline-block w-3 h-4 bg-yellow-400 rounded-sm" /> Amarillas</span>
+            <input type="number" min="0" value={bonus.yellow_cards} onChange={(e) => setBonus({ ...bonus, yellow_cards: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md tabular-nums" data-testid="bonus-yc" />
+          </label>
+          <label className="block">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1"><span className="inline-block w-3 h-4 bg-red-600 rounded-sm" /> Rojas</span>
+            <input type="number" min="0" value={bonus.red_cards} onChange={(e) => setBonus({ ...bonus, red_cards: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md tabular-nums" data-testid="bonus-rc" />
+          </label>
+          <label className="block">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1"><span className="inline-block w-3 h-4 bg-slate-400 rounded-sm" /> Otras</span>
+            <input type="number" min="0" value={bonus.other_cards} onChange={(e) => setBonus({ ...bonus, other_cards: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md tabular-nums" data-testid="bonus-oc" />
+          </label>
+        </div>
+        <label className="block">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Nota (opcional)</span>
+          <input type="text" value={bonus.note || ""} onChange={(e) => setBonus({ ...bonus, note: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" placeholder="Ej: Partido amistoso reglamentario" data-testid="bonus-note" />
+        </label>
+        <button className="fsc-btn-primary w-full py-2 rounded-md" data-testid="bonus-save-btn">
+          {bonus.id ? "Guardar cambios" : "Crear partido adicional"}
+        </button>
+      </form>
+    </Modal>
   );
 }

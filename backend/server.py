@@ -678,6 +678,28 @@ class MatchUpdateIn(BaseModel):
     away_team_id: Optional[str] = None
     status: Optional[Literal["programado", "en_curso", "finalizado", "cancelado"]] = None
 
+
+# Iter53: "Partido adicional" (bonus match) — usado en torneos de 3 o 4 equipos donde
+# se debe garantizar que cada equipo llegue a 4 partidos jugados. NO es un partido real
+# (no tiene oponente ni fecha/cancha); es un ajuste manual que suma directo a la tabla
+# de clasificación y a la de juego limpio del equipo indicado.
+class BonusMatchIn(BaseModel):
+    tournament_id: str
+    category: str
+    group_name: Optional[str] = ""
+    team_id: str
+    result: Literal["won", "drawn", "lost"]
+    goals_for: int = 0
+    goals_against: int = 0
+    yellow_cards: int = 0
+    red_cards: int = 0
+    other_cards: int = 0
+    note: Optional[str] = ""
+
+class BonusMatchOut(BonusMatchIn):
+    id: str
+
+
 class QuoteMealEntry(BaseModel):
     date: str            # YYYY-MM-DD
     # Nuevo: id del meal_addon creado por el admin. Si viene, prioriza sobre meal_type.
@@ -2481,6 +2503,81 @@ def _cat_config(tournament: dict, category: str) -> dict:
     return defaults
 
 
+# -------------------- Bonus Matches (Partidos adicionales) --------------------
+# Iter53: solo aplican en fixtures de 3 o 4 equipos donde se debe garantizar que cada
+# equipo llegue a 4 partidos jugados. Regla: extras_permitidos = 4 - (n - 1).
+#   n=3 → 2 bonus por equipo | n=4 → 1 bonus por equipo.
+async def _bonus_scope_fixture(tournament_id: str, category: str, group_name: str):
+    q = {"tournament_id": tournament_id, "category": category}
+    if group_name:
+        q["group_name"] = group_name
+    fx = await db.fixtures.find_one(q, {"_id": 0})
+    return fx
+
+@api.get("/bonus-matches")
+async def list_bonus_matches(tournament_id: Optional[str] = None, category: Optional[str] = None, group_name: Optional[str] = None, team_id: Optional[str] = None):
+    q = {}
+    if tournament_id: q["tournament_id"] = tournament_id
+    if category: q["category"] = category
+    if group_name: q["group_name"] = group_name
+    if team_id: q["team_id"] = team_id
+    items = await db.bonus_matches.find(q, {"_id": 0}).sort("created_at", 1).to_list(500)
+    # enrich con team_name
+    tids = list({b["team_id"] for b in items})
+    teams = await db.teams.find({"id": {"$in": tids}}, {"_id": 0}).to_list(500) if tids else []
+    tmap = {t["id"]: t for t in teams}
+    for b in items:
+        b["team_name"] = tmap.get(b["team_id"], {}).get("name", "—")
+        b["team_logo"] = tmap.get(b["team_id"], {}).get("logo_url", "")
+    return items
+
+@api.post("/bonus-matches", response_model=BonusMatchOut)
+async def create_bonus_match(payload: BonusMatchIn, _: dict = Depends(require_admin)):
+    fx = await _bonus_scope_fixture(payload.tournament_id, payload.category, payload.group_name or "")
+    if not fx:
+        raise HTTPException(status_code=404, detail="No hay fixture generado para ese torneo × categoría × grupo")
+    team_ids = list(fx.get("team_ids") or [])
+    real_team_ids = [t for t in team_ids if t != "__BYE__"]
+    n = len(real_team_ids)
+    if n not in (3, 4):
+        raise HTTPException(status_code=400, detail=f"Los partidos adicionales solo aplican en fixtures de 3 o 4 equipos (este tiene {n})")
+    if payload.team_id not in real_team_ids:
+        raise HTTPException(status_code=400, detail="El equipo no pertenece a este fixture")
+    max_per_team = 2 if n == 3 else 1
+    existing = await db.bonus_matches.count_documents({
+        "tournament_id": payload.tournament_id,
+        "category": payload.category,
+        "group_name": payload.group_name or "",
+        "team_id": payload.team_id,
+    })
+    if existing >= max_per_team:
+        raise HTTPException(status_code=400, detail=f"Este equipo ya tiene {existing} partido(s) adicional(es); el máximo permitido es {max_per_team}")
+    doc = payload.model_dump()
+    doc["group_name"] = doc.get("group_name") or ""
+    doc["id"] = str(uuid.uuid4())
+    doc["created_at"] = datetime.now(timezone.utc).isoformat()
+    await db.bonus_matches.insert_one(doc)
+    return {k: v for k, v in doc.items() if k != "_id" and k != "created_at"}
+
+@api.put("/bonus-matches/{bonus_id}", response_model=BonusMatchOut)
+async def update_bonus_match(bonus_id: str, payload: BonusMatchIn, _: dict = Depends(require_admin)):
+    existing = await db.bonus_matches.find_one({"id": bonus_id}, {"_id": 0})
+    if not existing:
+        raise HTTPException(status_code=404, detail="Partido adicional no encontrado")
+    patch = payload.model_dump()
+    patch["group_name"] = patch.get("group_name") or ""
+    await db.bonus_matches.update_one({"id": bonus_id}, {"$set": patch})
+    updated = {**existing, **patch, "id": bonus_id}
+    return {k: v for k, v in updated.items() if k not in ("_id", "created_at")}
+
+@api.delete("/bonus-matches/{bonus_id}")
+async def delete_bonus_match(bonus_id: str, _: dict = Depends(require_admin)):
+    res = await db.bonus_matches.delete_one({"id": bonus_id})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Partido adicional no encontrado")
+    return {"deleted": True}
+
+
 @api.get("/stats/standings")
 async def standings(category: Optional[str] = None, group_name: Optional[str] = None, tournament_id: Optional[str] = None):
     # Iter44: si no hay fixture creado para el torneo × categoría × grupo,
@@ -2566,6 +2663,40 @@ async def standings(category: Optional[str] = None, group_name: Optional[str] = 
         else:
             table[h]["drawn"] += 1; table[h]["points"] += cfg["points_draw"]
             table[a]["drawn"] += 1; table[a]["points"] += cfg["points_draw"]
+
+    # Iter53: sumar los partidos adicionales (bonus) del scope. Cada bonus suma directo
+    # al equipo indicado como PJ + G/E/P + goles + tarjetas + fair play — sin oponente.
+    q_bonus = {"team_id": {"$in": team_ids}}
+    if tournament_id: q_bonus["tournament_id"] = tournament_id
+    if category: q_bonus["category"] = category
+    if group_name: q_bonus["group_name"] = group_name
+    bonus_items = await db.bonus_matches.find(q_bonus, {"_id": 0}).to_list(500)
+    for b in bonus_items:
+        tid = b.get("team_id")
+        if tid not in table:
+            continue
+        table[tid]["played"] += 1
+        gf = int(b.get("goals_for") or 0)
+        ga = int(b.get("goals_against") or 0)
+        table[tid]["gf"] += gf
+        table[tid]["ga"] += ga
+        yc = int(b.get("yellow_cards") or 0)
+        rc = int(b.get("red_cards") or 0)
+        oc = int(b.get("other_cards") or 0)
+        table[tid]["yellow_cards"] += yc
+        table[tid]["red_cards"] += rc
+        table[tid]["other_cards"] += oc
+        table[tid]["fair_play"] -= (yc * cfg["fairplay_yellow"] + rc * cfg["fairplay_red"] + oc * cfg["fairplay_other"])
+        result = b.get("result")
+        if result == "won":
+            table[tid]["won"] += 1
+            table[tid]["points"] += cfg["points_win"]
+        elif result == "drawn":
+            table[tid]["drawn"] += 1
+            table[tid]["points"] += cfg["points_draw"]
+        else:
+            table[tid]["lost"] += 1
+            table[tid]["points"] += cfg["points_loss"]
 
     rows = list(table.values())
     for r in rows:
