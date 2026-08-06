@@ -1,14 +1,14 @@
 /**
  * FSC EN LA HISTORIA — Sección de timeline navegable en /nosotros.
  *
- * DOS ESTADOS:
- *  - INTRODUCCIÓN (activeIdx=0 / key="intro"): 6 fotos flotantes + texto grande "FSC EN LA HISTORIA".
- *  - Cualquier otro hito: las 6 fotos + el texto FSC desaparecen (fade). Aparece UNA
- *    sola foto grande tipo banner ocupando todo el área, con overlay inferior que muestra
- *    la pregunta en Plane Crash blanco + botón "LEE AQUÍ" (fondo blanco, texto rojo).
+ * DOS ESTADOS con TRANSICIÓN suave:
+ *  - INTRODUCCIÓN: 6 fotos del hito flotando + texto "FSC EN LA HISTORIA" SUPERPUESTO
+ *    (z-index sobre las fotos).
+ *  - Al hacer clic en un año, la FOTO 0 del hito se AGRANDA (anima inset/rotate) hasta
+ *    ocupar todo el área. Las OTRAS 5 FOTOS y el texto FSC hacen fade-out. Sobre la
+ *    foto grande aparece overlay con la pregunta + botón "LEE AQUÍ".
  *
- * La franja azul con puntos + años permanece siempre visible. Botones ← → circulares
- * navegan entre hitos.
+ * Cada hito tiene su propio set de fotos que se muestran en las 6 posiciones del INTRO.
  */
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
@@ -18,16 +18,19 @@ import { PLANE_CRASH, AGENCY_FB, planeCrashSafe } from "../lib/designSystem";
 const RED = "#e31f27";
 const BLUE = "#0640c8";
 
-// Slots para las 6 fotos flotantes del modo INTRODUCCIÓN.
-// Matchean el wireframe: 3 arriba + 3 abajo, con tamaños distintos.
+// Slots relativos para las 6 fotos flotantes en modo INTRO.
+// La posición 0 (sup-izq) es la que se expande a banner completo en modo YEAR.
 const SLOTS = [
-  { left: "3%",  top: "6%",  width: "22%", h: 170, rotate: -2 },
-  { left: "34%", top: "0%",  width: "32%", h: 260, rotate: 1.5 },
-  { left: "76%", top: "8%",  width: "21%", h: 170, rotate: 2 },
-  { left: "5%",  top: "58%", width: "22%", h: 170, rotate: -2 },
-  { left: "36%", top: "68%", width: "26%", h: 180, rotate: -1 },
-  { left: "78%", top: "60%", width: "18%", h: 140, rotate: 2.5 },
+  { left: "3%",  top: "6%",   width: "22%", height: "24%", rotate: -2 },
+  { left: "34%", top: "0%",   width: "32%", height: "38%", rotate: 1.5 },
+  { left: "76%", top: "8%",   width: "21%", height: "24%", rotate: 2 },
+  { left: "5%",  top: "58%",  width: "22%", height: "26%", rotate: -2 },
+  { left: "36%", top: "62%",  width: "26%", height: "30%", rotate: -1 },
+  { left: "78%", top: "60%",  width: "18%", height: "22%", rotate: 2.5 },
 ];
+
+// Posición cover completa (usada por la foto principal en modo YEAR).
+const COVER = { left: "0%", top: "0%", width: "100%", height: "100%", rotate: 0 };
 
 export default function FSCHistorySection({ settings }) {
   const timeline = useMemo(() => {
@@ -36,23 +39,29 @@ export default function FSCHistorySection({ settings }) {
   }, [settings]);
   const [activeIdx, setActiveIdx] = useState(0);
   const [modalOpen, setModalOpen] = useState(false);
-  const [phase, setPhase] = useState("in"); // "in" | "out" — para fade entre hitos
+  // Delay para el overlay (aparece tras la expansión de la foto).
+  const [showOverlay, setShowOverlay] = useState(false);
 
+  const active = timeline[activeIdx] || timeline[0];
+  const isIntro = !active || (active.key || "").toLowerCase() === "intro" || activeIdx === 0;
+
+  // Cada vez que cambiamos a un año, esperamos 420ms antes de mostrar el overlay
+  // pregunta + LEE AQUÍ para que la animación de expansión se aprecie.
   useEffect(() => {
-    if (phase === "out") {
-      const t = setTimeout(() => setPhase("in"), 30);
-      return () => clearTimeout(t);
+    if (isIntro) {
+      setShowOverlay(false);
+      return;
     }
-  }, [phase]);
+    const t = setTimeout(() => setShowOverlay(true), 420);
+    return () => clearTimeout(t);
+  }, [activeIdx, isIntro]);
 
   if (!timeline.length) return null;
-  const active = timeline[activeIdx] || timeline[0];
-  const isIntro = (active.key || "").toLowerCase() === "intro" || activeIdx === 0;
 
   const goTo = (newIdx) => {
     if (newIdx === activeIdx) return;
-    setPhase("out");
-    setTimeout(() => setActiveIdx(newIdx), 180);
+    setShowOverlay(false); // oculta overlay durante la transición
+    setActiveIdx(newIdx);
   };
   const goPrev = () => goTo(activeIdx > 0 ? activeIdx - 1 : timeline.length - 1);
   const goNext = () => goTo(activeIdx < timeline.length - 1 ? activeIdx + 1 : 0);
@@ -62,127 +71,182 @@ export default function FSCHistorySection({ settings }) {
   const bottomWords = rest.join(" ");
 
   const photos = active.photos || [];
-  const bannerPhoto = photos[0]; // Foto principal del hito (modo "year")
   const hasBody = !!(active.body && active.body.trim());
   const question = (active.question || "").trim();
 
   return (
     <section className="relative bg-white" data-testid="history-section">
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" style={{ minHeight: "min(88vh, 780px)" }}>
-        {/* Área central */}
-        <div className="relative w-full" style={{ minHeight: "min(76vh, 680px)" }}>
+        {/* Área central con posición relativa */}
+        <div className="relative w-full overflow-hidden" style={{ minHeight: "min(76vh, 680px)" }}>
 
-          {/* MODO INTRODUCCIÓN: 6 fotos flotantes + texto FSC EN LA HISTORIA */}
-          <div
-            className={`transition-opacity duration-300 ${isIntro && phase === "in" ? "opacity-100" : "opacity-0 pointer-events-none"}`}
-            aria-hidden={!isIntro}
-            data-testid="history-intro-layer"
-          >
-            {/* Fotos flotantes (solo desktop) */}
-            <div className="hidden md:block absolute inset-0">
-              {SLOTS.map((slot, i) => {
-                const p = (isIntro ? photos[i] : null);
-                if (!p) return null;
-                return (
+          {/* Desktop: 6 fotos absolutamente posicionadas — animan hacia cover en modo YEAR */}
+          <div className="hidden md:block absolute inset-0" data-testid="history-photos-wrapper">
+            {SLOTS.map((slot, i) => {
+              const p = photos[i];
+              if (!p) return null;
+              const isMain = i === 0;
+              // Si estamos en modo YEAR y esta es la foto principal, la llevamos a cover.
+              const target = !isIntro && isMain ? COVER : slot;
+              // Otras fotos (no la principal) hacen fade-out en modo YEAR.
+              const opacity = !isIntro && !isMain ? 0 : 1;
+              // La foto principal en modo YEAR sube z-index y quita border/shadow.
+              const zIndex = !isIntro && isMain ? 6 : 3;
+              const isCovering = !isIntro && isMain;
+              return (
+                <div
+                  key={`slot-${i}`}
+                  className="absolute"
+                  style={{
+                    left: target.left,
+                    top: target.top,
+                    width: target.width,
+                    height: target.height,
+                    transform: `rotate(${target.rotate}deg)`,
+                    opacity,
+                    zIndex,
+                    transition: "left 0.55s cubic-bezier(0.22,1,0.36,1), top 0.55s cubic-bezier(0.22,1,0.36,1), width 0.55s cubic-bezier(0.22,1,0.36,1), height 0.55s cubic-bezier(0.22,1,0.36,1), transform 0.55s cubic-bezier(0.22,1,0.36,1), opacity 0.35s ease",
+                  }}
+                  data-testid={`history-photo-${i}`}
+                >
                   <div
-                    key={`intro-${i}`}
-                    className="absolute"
-                    style={{ left: slot.left, top: slot.top, width: slot.width, transform: `rotate(${slot.rotate}deg)`, zIndex: 3 }}
-                    data-testid={`history-photo-${i}`}
+                    className="relative w-full h-full overflow-hidden"
+                    style={{
+                      border: isCovering ? "none" : "3px solid #ffffff",
+                      boxShadow: isCovering ? "none" : "0 12px 28px rgba(0,0,0,0.18)",
+                      transition: "border 0.35s ease, box-shadow 0.35s ease",
+                    }}
                   >
-                    <div className="relative overflow-hidden" style={{ border: "3px solid #ffffff", boxShadow: "0 12px 28px rgba(0,0,0,0.18)" }}>
-                      <img src={imgSrc(p)} alt="" className="w-full object-cover block" style={{ height: slot.h }} loading="lazy" />
-                    </div>
+                    <img src={imgSrc(p)} alt="" className="w-full h-full object-cover block" loading="lazy" />
                   </div>
-                );
-              })}
-            </div>
-
-            {/* Texto central FSC · EN LA HISTORIA */}
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none select-none" style={{ zIndex: 1 }}>
-              <div className="leading-[0.85]" style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(5rem, 15vw, 13rem)" }} data-testid="history-title-top">
-                {planeCrashSafe(topWord || "fsc")}
-              </div>
-              {bottomWords && (
-                <div className="leading-none mt-1" style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(1.2rem, 3vw, 2.8rem)", letterSpacing: "0.03em" }} data-testid="history-title-bottom">
-                  {planeCrashSafe(bottomWords)}
                 </div>
-              )}
-            </div>
-
-            {/* Mobile: grid de 6 fotos apiladas */}
-            <div className="md:hidden relative pt-4 pb-6">
-              {isIntro && photos.length > 0 && (
-                <>
-                  <div className="text-center mb-4 py-8">
-                    <div className="leading-[0.85]" style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(4rem, 20vw, 6rem)" }}>
-                      {planeCrashSafe(topWord || "fsc")}
-                    </div>
-                    {bottomWords && (
-                      <div className="leading-none mt-1" style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(1rem, 5vw, 1.6rem)" }}>
-                        {planeCrashSafe(bottomWords)}
-                      </div>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    {photos.slice(0, 6).map((p, i) => (
-                      <div key={`m-${i}`} className="overflow-hidden" style={{ border: "2px solid #ffffff", boxShadow: "0 4px 12px rgba(0,0,0,0.18)" }}>
-                        <img src={imgSrc(p)} alt="" className="w-full h-32 object-cover" loading="lazy" />
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
+              );
+            })}
           </div>
 
-          {/* MODO YEAR: 1 foto banner + overlay pregunta + LEE AQUÍ */}
+          {/* Texto central FSC · EN LA HISTORIA — SUPERPUESTO (z-index sobre las fotos) */}
           <div
-            className={`absolute inset-0 transition-opacity duration-300 ${!isIntro && phase === "in" ? "opacity-100" : "opacity-0 pointer-events-none"}`}
-            aria-hidden={isIntro}
-            data-testid="history-year-layer"
+            className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none select-none"
+            style={{
+              zIndex: 5,
+              opacity: isIntro ? 1 : 0,
+              transition: "opacity 0.35s ease",
+            }}
+            aria-hidden={!isIntro}
           >
-            {!isIntro && (
-              <div className="w-full h-full relative" data-testid="history-banner">
-                {bannerPhoto ? (
-                  <img src={imgSrc(bannerPhoto)} alt="" className="w-full h-full object-cover" style={{ minHeight: "min(76vh, 680px)" }} />
+            <div
+              className="leading-[0.85]"
+              style={{
+                ...PLANE_CRASH,
+                color: RED,
+                fontSize: "clamp(5rem, 15vw, 13rem)",
+                textShadow: "0 6px 18px rgba(255,255,255,0.4)",
+              }}
+              data-testid="history-title-top"
+            >
+              {planeCrashSafe(topWord || "fsc")}
+            </div>
+            {bottomWords && (
+              <div
+                className="leading-none mt-1"
+                style={{
+                  ...PLANE_CRASH,
+                  color: RED,
+                  fontSize: "clamp(1.2rem, 3vw, 2.8rem)",
+                  letterSpacing: "0.03em",
+                }}
+                data-testid="history-title-bottom"
+              >
+                {planeCrashSafe(bottomWords)}
+              </div>
+            )}
+          </div>
+
+          {/* Overlay YEAR: pregunta + LEE AQUÍ (aparece con delay tras la expansión) */}
+          {!isIntro && (question || hasBody) && (
+            <div
+              className="hidden md:flex absolute inset-x-0 bottom-0 flex-col items-center justify-end px-6 pb-16 pt-40 text-center"
+              style={{
+                zIndex: 8,
+                background: "linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.5) 45%, rgba(0,0,0,0) 100%)",
+                opacity: showOverlay ? 1 : 0,
+                transition: "opacity 0.4s ease",
+                pointerEvents: showOverlay ? "auto" : "none",
+              }}
+              data-testid="history-year-overlay"
+            >
+              {question && (
+                <div
+                  className="text-white leading-tight mb-5 max-w-4xl"
+                  style={{
+                    ...PLANE_CRASH,
+                    fontSize: "clamp(2.4rem, 6vw, 5rem)",
+                    textShadow: "3px 3px 0 rgba(0,0,0,0.5)",
+                  }}
+                  data-testid="history-question"
+                >
+                  {planeCrashSafe(question)}
+                </div>
+              )}
+              {hasBody && (
+                <button
+                  type="button"
+                  onClick={() => setModalOpen(true)}
+                  className="px-8 py-3 bg-white rounded-sm shadow-lg transition-transform hover:scale-105"
+                  style={{
+                    ...PLANE_CRASH,
+                    color: RED,
+                    fontSize: "clamp(1.2rem, 2vw, 1.9rem)",
+                    letterSpacing: "0.06em",
+                  }}
+                  data-testid="history-read-btn"
+                >
+                  {planeCrashSafe("lee aquí")}
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Mobile: sin animaciones complejas — INTRO muestra grid, YEAR muestra banner */}
+          <div className="md:hidden relative pt-4 pb-6">
+            {isIntro ? (
+              <>
+                <div className="text-center mb-4 py-6">
+                  <div className="leading-[0.85]" style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(4rem, 20vw, 6rem)" }}>
+                    {planeCrashSafe(topWord || "fsc")}
+                  </div>
+                  {bottomWords && (
+                    <div className="leading-none mt-1" style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(1rem, 5vw, 1.6rem)" }}>
+                      {planeCrashSafe(bottomWords)}
+                    </div>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {photos.slice(0, 6).map((p, i) => (
+                    <div key={`m-${i}`} className="overflow-hidden" style={{ border: "2px solid #ffffff", boxShadow: "0 4px 12px rgba(0,0,0,0.18)" }}>
+                      <img src={imgSrc(p)} alt="" className="w-full h-32 object-cover" loading="lazy" />
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="relative w-full h-72 overflow-hidden" style={{ border: "2px solid #ffffff" }}>
+                {photos[0] ? (
+                  <img src={imgSrc(photos[0])} alt="" className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center" style={{ background: BLUE, minHeight: "min(76vh, 680px)" }}>
-                    <span className="text-white/60" style={{ ...PLANE_CRASH, fontSize: "3rem" }}>{planeCrashSafe(active.label || "")}</span>
+                  <div className="w-full h-full flex items-center justify-center" style={{ background: BLUE }}>
+                    <span className="text-white/60" style={{ ...PLANE_CRASH, fontSize: "2.4rem" }}>{planeCrashSafe(active.label || "")}</span>
                   </div>
                 )}
-                {/* Overlay inferior */}
                 {(question || hasBody) && (
-                  <div
-                    className="absolute inset-x-0 bottom-0 flex flex-col items-center justify-end px-6 pb-16 pt-40 text-center"
-                    style={{ background: "linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.5) 45%, rgba(0,0,0,0) 100%)" }}
-                  >
+                  <div className="absolute inset-x-0 bottom-0 flex flex-col items-center justify-end px-3 pb-3 pt-14 text-center" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 60%, transparent 100%)" }}>
                     {question && (
-                      <div
-                        className="text-white leading-tight mb-5 max-w-4xl"
-                        style={{
-                          ...PLANE_CRASH,
-                          fontSize: "clamp(2.4rem, 6vw, 5rem)",
-                          textShadow: "3px 3px 0 rgba(0,0,0,0.5)",
-                        }}
-                        data-testid="history-question"
-                      >
+                      <div className="text-white leading-tight mb-2 text-xl" style={{ ...PLANE_CRASH, textShadow: "1px 1px 0 rgba(0,0,0,0.6)" }}>
                         {planeCrashSafe(question)}
                       </div>
                     )}
                     {hasBody && (
-                      <button
-                        type="button"
-                        onClick={() => setModalOpen(true)}
-                        className="px-8 py-3 bg-white rounded-sm shadow-lg transition-transform hover:scale-105"
-                        style={{
-                          ...PLANE_CRASH,
-                          color: RED,
-                          fontSize: "clamp(1.2rem, 2vw, 1.9rem)",
-                          letterSpacing: "0.06em",
-                        }}
-                        data-testid="history-read-btn"
-                      >
+                      <button type="button" onClick={() => setModalOpen(true)} className="px-4 py-1.5 bg-white rounded-sm shadow" style={{ ...PLANE_CRASH, color: RED, fontSize: "0.95rem" }} data-testid="history-read-btn-mobile">
                         {planeCrashSafe("lee aquí")}
                       </button>
                     )}
@@ -194,7 +258,7 @@ export default function FSCHistorySection({ settings }) {
         </div>
 
         {/* Botones ← → circulares */}
-        <div className="flex justify-end gap-3 pr-2 md:pr-8 pt-6 pb-8 md:absolute md:bottom-4 md:right-8 md:pt-0 md:pb-0" style={{ zIndex: 10 }}>
+        <div className="flex justify-end gap-3 pr-2 md:pr-8 pt-6 pb-8 md:absolute md:bottom-4 md:right-8 md:pt-0 md:pb-0" style={{ zIndex: 20 }}>
           <button
             type="button"
             onClick={goPrev}

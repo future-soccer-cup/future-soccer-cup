@@ -16,6 +16,19 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-02-27 — Iter58: Timeline Nosotros — texto FSC superpuesto + animación de expansión de la foto
+- **Cambios pedidos por el usuario**:
+  1. "FSC EN LA HISTORIA" debe estar **superpuesto** (encima de las imágenes), no detrás.
+  2. Al pasar a un año, la **primera foto del hito** se agranda con transición hasta ocupar todo el área; las otras 5 fotos y el texto FSC hacen fade-out.
+- **Refactor `FSCHistorySection.jsx`**:
+  - Un único wrapper de fotos con 6 elementos `<div>` absolutos. Cada uno tiene `left/top/width/height/rotate` según `SLOTS[i]`.
+  - En modo YEAR: el elemento `i=0` cambia sus valores a `COVER` (`0/0/100%/100%/0deg`) — CSS transition anima el `left/top/width/height/transform` en 550ms con curva `cubic-bezier(0.22,1,0.36,1)` (ease-out expresivo). Los demás elementos hacen `opacity: 0` en 350ms.
+  - Foto principal en modo YEAR quita border+shadow para que se vea como banner limpio.
+  - **z-index del texto FSC subido a 5** (por encima de las fotos que están en z-3), con `pointer-events: none` para que no bloquee clics. Se oculta con opacity 0 en modo YEAR.
+  - Overlay pregunta + LEE AQUÍ tiene `z-index: 8` y aparece con delay 420ms (`showOverlay` state) para que primero se aprecie la expansión.
+- **Verificado con screenshots**: 4/4 estados pasan — INTRO con texto superpuesto sobre fotos, mid-animation con foto expandiéndose, YEAR completo con overlay, back to INTRO con reset.
+
+
 ### 2026-02-27 — Iter57: Timeline Nosotros — modo INTRO vs modo YEAR (banner completo)
 - **Cambio funcional pedido por el usuario**: al hacer clic en cualquier año (2019, 2021, 2022, 2023, 2025, 2026) las 6 fotos flotantes y el texto grande "FSC EN LA HISTORIA" **desaparecen con fade-out**, y una sola foto del hito seleccionado ocupa TODO el área (banner completo lado-a-lado y arriba-abajo). Sobre esa foto: overlay inferior con la pregunta en Plane Crash blanco + botón "LEE AQUÍ" (fondo blanco / texto rojo). Al hacer clic en INTRODUCCIÓN: el banner desaparece y regresan las 6 fotos + texto FSC.
 - **Refactor `FSCHistorySection.jsx`**: dos layers superpuestos con opacidad controlada por `isIntro` + `phase`:
