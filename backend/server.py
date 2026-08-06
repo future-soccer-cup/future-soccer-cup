@@ -5977,6 +5977,10 @@ class HomeSettings(BaseModel):
     # Estructura anidada para agrupar por sección; ver DEFAULT_EVENTOS_CONFIG.
     eventos: Optional[Dict[str, Any]] = None
 
+    # === Iter61: Página Estadísticas — rediseño completo editable. ===
+    # Ver DEFAULT_ESTADISTICAS_CONFIG.
+    estadisticas: Optional[Dict[str, Any]] = None
+
     eventos_hero_kicker: Optional[str] = "temporada"
     eventos_hero_title: Optional[str] = "EVENTOS"
     eventos_hero_body: Optional[str] = "Conoce todos los torneos del calendario FSC y revive las ediciones pasadas."
@@ -6073,6 +6077,69 @@ DEFAULT_EVENTOS_CONFIG: Dict[str, Any] = {
 }
 
 
+DEFAULT_ESTADISTICAS_CONFIG: Dict[str, Any] = {
+    "hero_url": "",
+    "hero_watermark_text": "MARCADOR",
+    "hero_title_top": "MARCADOR",
+    "hero_title_bottom": "OFICIAL",
+    "intro_top": "ASÍ VA LA",
+    "intro_bottom": "competencia!",
+    "active_event_key": "festival",
+    "events": [
+        {
+            "key": "festival",
+            "label": "Festival",
+            "title_month": "OCTUBRE",
+            "title_word": "FESTIVAL",
+            "title_style": "multicolor",  # "multicolor" | "cursive_gold"
+            "logo_url": "",
+            "categories": [
+                {"label": "CAT: 2010", "tournament_id": "", "category": "2010", "group_name": ""},
+                {"label": "CAT: 2012", "tournament_id": "", "category": "2012", "group_name": ""},
+                {"label": "CAT: 2014", "tournament_id": "", "category": "2014", "group_name": ""},
+                {"label": "CAT: 2016", "tournament_id": "", "category": "2016", "group_name": ""},
+                {"label": "CAT: 2018", "tournament_id": "", "category": "2018", "group_name": ""},
+            ],
+        },
+        {
+            "key": "premier-pares",
+            "label": "Premier Pares",
+            "title_month": "DICIEMBRE",
+            "title_word": "PREMIER",
+            "title_style": "cursive_gold",
+            "logo_url": "",
+            "categories": [
+                {"label": "CAT: 2010", "tournament_id": "", "category": "2010", "group_name": ""},
+                {"label": "CAT: 2012", "tournament_id": "", "category": "2012", "group_name": ""},
+                {"label": "CAT: 2014", "tournament_id": "", "category": "2014", "group_name": ""},
+                {"label": "CAT: 2016", "tournament_id": "", "category": "2016", "group_name": ""},
+                {"label": "CAT: 2018", "tournament_id": "", "category": "2018", "group_name": ""},
+            ],
+        },
+        {
+            "key": "premier-impares",
+            "label": "Premier Impares",
+            "title_month": "DICIEMBRE",
+            "title_word": "PREMIER",
+            "title_style": "cursive_gold",
+            "logo_url": "",
+            "categories": [
+                {"label": "CAT: 2009", "tournament_id": "", "category": "2009", "group_name": ""},
+                {"label": "CAT: 2011", "tournament_id": "", "category": "2011", "group_name": ""},
+                {"label": "CAT: 2013", "tournament_id": "", "category": "2013", "group_name": ""},
+                {"label": "CAT: 2015", "tournament_id": "", "category": "2015", "group_name": ""},
+                {"label": "CAT: 2017", "tournament_id": "", "category": "2017", "group_name": ""},
+            ],
+        },
+    ],
+    "cta_text": "SÍGUENOS Y NO TE PIERDAS NI UN SOLO MOMENTO!",
+    "instagram_url": "",
+    "facebook_url": "",
+    "tiktok_url": "",
+    "closing_phrase": "Somos mas que un Torneo",
+}
+
+
 @api.get("/home-settings", response_model=HomeSettings)
 async def get_home_settings():
     doc = await db.home_settings.find_one({"id": HOME_SETTINGS_ID}, {"_id": 0})
@@ -6080,6 +6147,7 @@ async def get_home_settings():
         base = HomeSettings().model_dump()
         base["nosotros_history_timeline"] = DEFAULT_HISTORY_TIMELINE
         base["eventos"] = DEFAULT_EVENTOS_CONFIG
+        base["estadisticas"] = DEFAULT_ESTADISTICAS_CONFIG
         return base
     # Backfill del timeline si el documento existe pero aún no tiene el campo (docs antiguos).
     if not doc.get("nosotros_history_timeline"):
@@ -6093,6 +6161,9 @@ async def get_home_settings():
     # Backfill de la configuración de Eventos (Iter58).
     if not doc.get("eventos"):
         doc["eventos"] = DEFAULT_EVENTOS_CONFIG
+    # Backfill de la configuración de Estadísticas (Iter61).
+    if not doc.get("estadisticas"):
+        doc["estadisticas"] = DEFAULT_ESTADISTICAS_CONFIG
     return doc
 
 

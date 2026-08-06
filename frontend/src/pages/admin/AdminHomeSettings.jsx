@@ -291,19 +291,8 @@ export default function AdminHomeSettings() {
         <EventosEditor value={s.eventos || {}} onChange={(v) => upd("eventos", v)} />
       </Section>
 
-      <Section title="Estadísticas (página)" icon={<Hash size={18}/>}>
-        <div className="grid md:grid-cols-2 gap-4">
-          <Field label="Hero — kicker" v={s.estadisticas_hero_kicker} onChange={(v) => upd("estadisticas_hero_kicker", v)} placeholder="torneo en vivo" />
-          <Field label="Hero — título grande" v={s.estadisticas_hero_title} onChange={(v) => upd("estadisticas_hero_title", v)} placeholder="ESTADÍSTICAS" />
-          <label className="md:col-span-2 block">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Hero — descripción</span>
-            <textarea rows={2} value={s.estadisticas_hero_body || ""} onChange={(e) => upd("estadisticas_hero_body", e.target.value)} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" />
-          </label>
-          <div className="md:col-span-2">
-            <ImageUpload value={s.estadisticas_hero_bg_url} onChange={(v) => upd("estadisticas_hero_bg_url", v)} label="Hero — imagen de fondo (ancho completo)" hint="Recomendado: JPG/WEBP horizontal 1920×800 px (12:5), alta calidad. Peso ideal < 1 MB. Se recorta tipo cover y recibe el overlay translúcido." testId="estadisticas-hero-bg-upload" />
-          </div>
-          <OverlaySelect v={s.estadisticas_hero_overlay} onChange={(v) => upd("estadisticas_hero_overlay", v)} testId="estadisticas-hero-overlay" />
-        </div>
+      <Section title="Estadísticas (página) — Nueva estructura" icon={<Hash size={18}/>}>
+        <EstadisticasEditor value={s.estadisticas || {}} onChange={(v) => upd("estadisticas", v)} />
       </Section>
 
       <Section title="Noticias (página)" icon={<Info size={18}/>}>
@@ -715,6 +704,108 @@ function ArrayItemsEditor({ items, onChange, newItem, renderItem, testId, addLab
       <button type="button" onClick={add} className="w-full py-2 border border-dashed border-slate-400 rounded-md text-sm text-slate-600 hover:bg-slate-50" data-testid={`${testId}-add`}>
         {addLabel || "+ Agregar"}
       </button>
+    </div>
+  );
+}
+
+
+
+// Iter61: Editor de la página Estadísticas — objeto anidado con hero, intro, eventos
+// (Festival / Premier Pares / Impares) y cada evento con sus categorías (label +
+// tournament_id + category + group_name para conectar con /api/stats/standings).
+function EstadisticasEditor({ value, onChange }) {
+  const v = value || {};
+  const patch = (p) => onChange({ ...v, ...p });
+  const events = v.events || [];
+  const updateEvent = (idx, evPatch) => onChange({ ...v, events: events.map((e, i) => i === idx ? { ...e, ...evPatch } : e) });
+  const removeEvent = (idx) => onChange({ ...v, events: events.filter((_, i) => i !== idx) });
+  const addEvent = () => onChange({ ...v, events: [...events, { key: `evento-${Date.now()}`, label: "Nuevo evento", title_month: "", title_word: "", title_style: "cursive_gold", logo_url: "", categories: [] }] });
+
+  return (
+    <div className="space-y-6" data-testid="estadisticas-editor">
+      <SubSection title="1. Hero — imagen + textos">
+        <ImageUpload value={v.hero_url} onChange={(u) => patch({ hero_url: u })} label="Imagen del Hero (recibe overlay rojo)" hint="JPG horizontal con foto de partido de fútbol infantil. 1920×600 px recomendado." testId="stats-hero" />
+        <div className="grid md:grid-cols-3 gap-3 mt-3">
+          <Field label="Watermark (texto fantasma detrás)" v={v.hero_watermark_text} onChange={(x) => patch({ hero_watermark_text: x })} placeholder="MARCADOR" />
+          <Field label="Título línea 1" v={v.hero_title_top} onChange={(x) => patch({ hero_title_top: x })} placeholder="MARCADOR" />
+          <Field label="Título línea 2" v={v.hero_title_bottom} onChange={(x) => patch({ hero_title_bottom: x })} placeholder="OFICIAL" />
+        </div>
+      </SubSection>
+
+      <SubSection title="2. Intro — 'ASÍ VA LA competencia!' + selector de evento">
+        <div className="grid md:grid-cols-2 gap-3">
+          <Field label="Texto grande (Plane Crash rojo)" v={v.intro_top} onChange={(x) => patch({ intro_top: x })} placeholder="ASÍ VA LA" />
+          <Field label="Texto cursivo debajo" v={v.intro_bottom} onChange={(x) => patch({ intro_bottom: x })} placeholder="competencia!" />
+        </div>
+        <label className="block mt-3">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Evento activo por defecto (clave)</span>
+          <select value={v.active_event_key || ""} onChange={(e) => patch({ active_event_key: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="stats-active-event">
+            <option value="">— Ninguno —</option>
+            {events.map((ev) => <option key={ev.key} value={ev.key}>{ev.label} ({ev.key})</option>)}
+          </select>
+        </label>
+      </SubSection>
+
+      <SubSection title="3. Eventos + categorías (Festival, Premier Pares, Premier Impares...)">
+        {events.map((ev, idx) => (
+          <div key={`ev-${idx}`} className="border border-slate-200 rounded-md p-3 bg-slate-50" data-testid={`stats-event-block-${idx}`}>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] font-black bg-blue-100 text-blue-800 px-2 py-1 rounded uppercase tracking-widest">Evento {idx + 1}</span>
+              <button type="button" onClick={() => removeEvent(idx)} className="text-xs text-red-600 font-bold" data-testid={`stats-event-delete-${idx}`}>Eliminar evento</button>
+            </div>
+            <div className="grid md:grid-cols-2 gap-3">
+              <Field label="Clave (única, sin espacios)" v={ev.key} onChange={(x) => updateEvent(idx, { key: x })} placeholder="festival, premier-pares..." />
+              <Field label="Etiqueta del botón" v={ev.label} onChange={(x) => updateEvent(idx, { label: x })} placeholder="Festival" />
+              <Field label="Mes del título derecho" v={ev.title_month} onChange={(x) => updateEvent(idx, { title_month: x })} placeholder="OCTUBRE" />
+              <Field label="Palabra del título" v={ev.title_word} onChange={(x) => updateEvent(idx, { title_word: x })} placeholder="FESTIVAL" />
+            </div>
+            <label className="block mt-3">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Estilo del título</span>
+              <select value={ev.title_style || "cursive_gold"} onChange={(e) => updateEvent(idx, { title_style: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid={`stats-event-style-${idx}`}>
+                <option value="cursive_gold">Cursivo dorado (Premier)</option>
+                <option value="multicolor">Multicolor grunge (Festival)</option>
+              </select>
+            </label>
+            <div className="mt-3">
+              <ImageUpload value={ev.logo_url} onChange={(u) => updateEvent(idx, { logo_url: u })} label="Logo del evento (opcional)" hint="PNG con transparencia" testId={`stats-event-logo-${idx}`} />
+            </div>
+            <div className="mt-4">
+              <div className="text-[10px] font-bold uppercase tracking-widest text-blue-700 mb-2">Categorías (pastillas azules)</div>
+              <ArrayItemsEditor
+                items={ev.categories || []}
+                onChange={(cats) => updateEvent(idx, { categories: cats })}
+                newItem={() => ({ label: "CAT: ", tournament_id: "", category: "", group_name: "" })}
+                renderItem={(it, ci, upd) => (
+                  <div className="grid md:grid-cols-4 gap-2">
+                    <Field label="Etiqueta visible" v={it.label} onChange={(x) => upd({ label: x })} placeholder="CAT: 2010" />
+                    <Field label="Torneo ID (tournament_id)" v={it.tournament_id} onChange={(x) => upd({ tournament_id: x })} placeholder="uuid del torneo" />
+                    <Field label="Categoría (nombre en BD)" v={it.category} onChange={(x) => upd({ category: x })} placeholder="Sub-10" />
+                    <Field label="Grupo (opcional)" v={it.group_name} onChange={(x) => upd({ group_name: x })} placeholder="A" />
+                  </div>
+                )}
+                testId={`stats-cats-${idx}`}
+                addLabel="+ Agregar categoría"
+              />
+            </div>
+          </div>
+        ))}
+        <button type="button" onClick={addEvent} className="w-full py-2 border border-dashed border-slate-400 rounded-md text-sm text-slate-600 hover:bg-slate-50" data-testid="stats-add-event">
+          + Agregar evento
+        </button>
+      </SubSection>
+
+      <SubSection title="4. CTA — Redes sociales">
+        <Field label="Texto grande" v={v.cta_text} onChange={(x) => patch({ cta_text: x })} placeholder="SÍGUENOS Y NO TE PIERDAS NI UN SOLO MOMENTO!" />
+        <div className="grid md:grid-cols-3 gap-3 mt-3">
+          <Field label="Instagram URL" v={v.instagram_url} onChange={(x) => patch({ instagram_url: x })} placeholder="https://instagram.com/..." />
+          <Field label="Facebook URL" v={v.facebook_url} onChange={(x) => patch({ facebook_url: x })} placeholder="https://facebook.com/..." />
+          <Field label="TikTok URL" v={v.tiktok_url} onChange={(x) => patch({ tiktok_url: x })} placeholder="https://tiktok.com/@..." />
+        </div>
+      </SubSection>
+
+      <SubSection title="5. Frase de cierre">
+        <Field label="Texto cursivo azul centrado" v={v.closing_phrase} onChange={(x) => patch({ closing_phrase: x })} placeholder="Somos mas que un Torneo" />
+      </SubSection>
     </div>
   );
 }

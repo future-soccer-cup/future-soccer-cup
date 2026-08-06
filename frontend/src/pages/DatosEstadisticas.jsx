@@ -1,313 +1,435 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import api from "../lib/api";
-import { Trophy, Archive, Calendar, BarChart3, Goal } from "lucide-react";
-import { formatDateTime } from "../lib/dateFormat";
-import { AGENCY_FB } from "../lib/designSystem";
-import SecondaryHero from "../components/SecondaryHero";
+/**
+ * Página Estadísticas — "Marcador Oficial" (Iter61).
+ * 5 secciones editables via CMS (home_settings.estadisticas):
+ *  1. Hero rojo con "MARCADOR OFICIAL" + watermark ghost detrás.
+ *  2. "ASÍ VA LA competencia!" + selector de evento (Festival / Premier Pares / Impares).
+ *  3. Grid de categorías (pills azules) + logo/etiqueta del evento a la derecha.
+ *  4. Franja roja CTA de redes sociales.
+ *  5. Frase de cierre cursiva.
+ * Al hacer clic en una categoría → muestra tabla de posiciones + goleadores conectados
+ * al backend existente (`/api/stats/standings`, `/api/stats/top-scorers`).
+ */
+import { useEffect, useMemo, useState } from "react";
+import { Instagram, Facebook, X } from "lucide-react";
+import api, { imgSrc } from "../lib/api";
+import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe } from "../lib/designSystem";
 
-/** Pestaña pública con histórico de torneos: fixture, posiciones (live o histórico) y goleadores. */
+const RED = "#e31f27";
+const BLUE = "#0640c8";
+const GOLD = "#f5c542";
+
+const FESTIVAL_LETTER_COLORS = [
+  "#14b8a6", "#e31f27", "#0640c8", "#e31f27",
+  "#facc15", "#a855f7", "#22c55e", "#a855f7",
+];
+
+// Icono TikTok simple (lucide no lo trae) — SVG minimalista blanco.
+function TikTokIcon({ size = 28 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+      <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64c.298-.001.595.042.88.128V9.4a6.33 6.33 0 0 0-1-.05A6.34 6.34 0 0 0 5.8 20.1a6.34 6.34 0 0 0 10.86-4.43V7.7a8.16 8.16 0 0 0 4.77 1.52V5.77a4.85 4.85 0 0 1-1.84-.08z" />
+    </svg>
+  );
+}
+
 export default function DatosEstadisticas() {
-  const [tournaments, setTournaments] = useState([]);
-  const [selectedId, setSelectedId] = useState("");
-  const [tab, setTab] = useState("posiciones");
-  const [loading, setLoading] = useState(true);
-  const [s, setS] = useState({});
-  // datos por torneo
-  const [liveStandings, setLiveStandings] = useState([]);
-  const [historical, setHistorical] = useState([]);
-  const [matches, setMatches] = useState([]);
-  const [scorers, setScorers] = useState([]);
+  const [cfg, setCfg] = useState({});
+  const [activeKey, setActiveKey] = useState("");
+  const [selectedCat, setSelectedCat] = useState(null); // categoría abierta
 
   useEffect(() => {
-    let alive = true;
-    api.get("/home-settings").then((r) => alive && setS(r.data || {})).catch(() => {});
-    api.get("/tournaments").then((r) => {
-      if (!alive) return;
-      setTournaments(r.data);
-      if (r.data.length > 0) setSelectedId(r.data[0].id);
-      setLoading(false);
-    }).catch(() => setLoading(false));
-    return () => { alive = false; };
+    api.get("/home-settings").then((r) => {
+      const d = r.data?.estadisticas || {};
+      setCfg(d);
+      setActiveKey(d.active_event_key || (d.events?.[0]?.key || ""));
+    }).catch(() => {});
   }, []);
 
-  const selected = useMemo(() => tournaments.find((t) => t.id === selectedId), [tournaments, selectedId]);
-
-  const loadData = useCallback(async () => {
-    if (!selectedId) return;
-    setLoading(true);
-    try {
-      const [m, s, h, sc] = await Promise.all([
-        api.get("/matches", { params: { tournament_id: selectedId } }),
-        api.get("/stats/standings", { params: { tournament_id: selectedId } }),
-        api.get("/historical/standings", { params: { tournament_id: selectedId } }),
-        api.get("/stats/top-scorers"),
-      ]);
-      setMatches(m.data || []);
-      setLiveStandings(s.data || []);
-      setHistorical(h.data || []);
-      setScorers(sc.data || []);
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedId]);
-  useEffect(() => { loadData(); }, [loadData]);
-
-  const groupedHistorical = useMemo(() => {
-    const map = {};
-    for (const row of historical) {
-      const key = `${row.category}__${row.group_name}`;
-      if (!map[key]) map[key] = { category: row.category, group_name: row.group_name, rows: [] };
-      map[key].rows.push(row);
-    }
-    return Object.values(map).sort((a, b) => a.category.localeCompare(b.category) || a.group_name.localeCompare(b.group_name));
-  }, [historical]);
-
-  const isArchived = !!selected?.archived;
+  const events = useMemo(() => cfg.events || [], [cfg]);
+  const activeEvent = events.find((e) => e.key === activeKey) || events[0] || {};
 
   return (
-    <div data-testid="datos-estadisticas-page" style={AGENCY_FB}>
-      <SecondaryHero
-        kicker={s.estadisticas_hero_kicker || "torneo en vivo"}
-        title={s.estadisticas_hero_title || "ESTADÍSTICAS"}
-        body={s.estadisticas_hero_body || "Fixture, tabla de posiciones y goleadores actualizados en tiempo real."}
-        bgUrl={s.estadisticas_hero_bg_url}
-        overlay={s.estadisticas_hero_overlay || "blue"}
-        testIdPrefix="estadisticas-hero"
+    <div data-testid="estadisticas-page" className="bg-white" style={AGENCY_FB}>
+      <HeroSection
+        heroUrl={cfg.hero_url}
+        watermark={cfg.hero_watermark_text || "MARCADOR"}
+        titleTop={cfg.hero_title_top || "MARCADOR"}
+        titleBottom={cfg.hero_title_bottom || "OFICIAL"}
       />
 
-      {/* Selector + tabs */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid lg:grid-cols-3 gap-6 mb-8">
-          <label className="lg:col-span-2 block">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Torneo</span>
-            <select
-              value={selectedId}
-              onChange={(e) => setSelectedId(e.target.value)}
-              className="mt-1 w-full px-4 py-3 border border-slate-200 rounded-md font-bold text-lg"
-              data-testid="tournament-selector"
-            >
-              {tournaments.length === 0 && <option value="">Sin torneos disponibles</option>}
-              {tournaments.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {`${t.archived ? "[Hist] " : ""}${t.name} · ${t.season} · ${t.category}`}
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-            <div className="flex items-center gap-2 text-blue-700">
-              {isArchived ? <Archive size={18}/> : <Trophy size={18}/>}
-              <span className="text-xs font-bold uppercase tracking-wider">
-                {isArchived ? "Torneo histórico" : "Torneo activo"}
-              </span>
-            </div>
-            <div className="mt-2 text-sm text-slate-700">
-              {selected ? `${selected.start_date} → ${selected.end_date}` : "—"}
-            </div>
-            {selected?.fmt === "cuadrangular_x2" && (
-              <div className="mt-2 text-[11px] text-blue-700 font-semibold uppercase tracking-wider">
-                Formato Cuadrangulares + Intergrupos
+      <IntroAndSelector
+        top={cfg.intro_top || "ASÍ VA LA"}
+        bottom={cfg.intro_bottom || "competencia!"}
+        events={events}
+        activeKey={activeEvent.key || activeKey}
+        onSelect={(k) => { setActiveKey(k); setSelectedCat(null); }}
+      />
+
+      <CategoriesGrid
+        event={activeEvent}
+        onSelectCat={(cat) => setSelectedCat(cat)}
+      />
+
+      {selectedCat && (
+        <CategoryDataPanel
+          category={selectedCat}
+          eventLabel={activeEvent.label || ""}
+          onClose={() => setSelectedCat(null)}
+        />
+      )}
+
+      <SocialCTA
+        text={cfg.cta_text || "SÍGUENOS Y NO TE PIERDAS NI UN SOLO MOMENTO!"}
+        instagram={cfg.instagram_url}
+        facebook={cfg.facebook_url}
+        tiktok={cfg.tiktok_url}
+      />
+
+      <ClosingPhrase text={cfg.closing_phrase || "Somos mas que un Torneo"} />
+    </div>
+  );
+}
+
+
+function HeroSection({ heroUrl, watermark, titleTop, titleBottom }) {
+  return (
+    <section className="relative w-full h-72 md:h-[420px] lg:h-[500px] overflow-hidden bg-slate-800" data-testid="stats-hero">
+      {heroUrl ? (
+        <img src={imgSrc(heroUrl)} alt="" className="absolute inset-0 w-full h-full object-cover" />
+      ) : null}
+      {/* Overlay rojo semitransparente */}
+      <div className="absolute inset-0" style={{ background: `${RED}CC` }} />
+      {/* Watermark ghost */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden">
+        <div
+          className="leading-none whitespace-nowrap"
+          style={{
+            ...PLANE_CRASH,
+            color: "rgba(255,255,255,0.18)",
+            fontSize: "clamp(4rem, 15vw, 14rem)",
+            letterSpacing: "0.08em",
+          }}
+          data-testid="stats-hero-watermark"
+        >
+          {planeCrashSafe(watermark)}
+        </div>
+      </div>
+      {/* Título principal */}
+      <div className="relative z-10 h-full flex flex-col items-center justify-center px-4 text-center">
+        <div
+          className="leading-[0.9]"
+          style={{
+            ...PLANE_CRASH,
+            color: "#ffffff",
+            fontSize: "clamp(3.5rem, 10vw, 9rem)",
+            textShadow: "3px 5px 0 rgba(0,0,0,0.25)",
+          }}
+          data-testid="stats-hero-title-top"
+        >
+          {planeCrashSafe(titleTop)}
+        </div>
+        <div
+          className="leading-[0.9] mt-1 md:mt-3"
+          style={{
+            ...PLANE_CRASH,
+            color: "#ffffff",
+            fontSize: "clamp(2.6rem, 7vw, 6.5rem)",
+            textShadow: "3px 5px 0 rgba(0,0,0,0.25)",
+          }}
+          data-testid="stats-hero-title-bottom"
+        >
+          {planeCrashSafe(titleBottom)}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+
+function IntroAndSelector({ top, bottom, events, activeKey, onSelect }) {
+  return (
+    <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 md:pt-14 text-center" data-testid="stats-intro">
+      <div
+        className="leading-[0.9]"
+        style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(2.4rem, 5.5vw, 4.5rem)" }}
+        data-testid="stats-intro-top"
+      >
+        {planeCrashSafe(top)}
+      </div>
+      <div
+        className="italic mt-2"
+        style={{ ...CURSIVE, color: RED, fontSize: "clamp(1.8rem, 3.6vw, 3rem)" }}
+        data-testid="stats-intro-bottom"
+      >
+        {bottom}
+      </div>
+
+      {events.length > 1 && (
+        <div className="mt-6 md:mt-8 flex items-center justify-center gap-2 md:gap-3 flex-wrap" data-testid="stats-event-selector">
+          {events.map((ev) => {
+            const isActive = ev.key === activeKey;
+            return (
+              <button
+                key={ev.key}
+                type="button"
+                onClick={() => onSelect(ev.key)}
+                className="px-4 md:px-6 py-2 md:py-2.5 rounded-full transition-all text-sm md:text-base"
+                style={{
+                  ...PLANE_CRASH,
+                  background: isActive ? RED : "transparent",
+                  color: isActive ? "#ffffff" : RED,
+                  border: `2px solid ${RED}`,
+                  letterSpacing: "0.05em",
+                }}
+                data-testid={`stats-event-${ev.key}`}
+              >
+                {planeCrashSafe(ev.label || ev.key)}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
+
+
+function CategoriesGrid({ event, onSelectCat }) {
+  const cats = event.categories || [];
+  const isMulti = event.title_style === "multicolor";
+  return (
+    <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10" data-testid="stats-cats-section">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 items-center">
+        <div className="md:col-span-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-4">
+            {cats.map((c, i) => (
+              <button
+                key={`${event.key}-cat-${i}`}
+                type="button"
+                onClick={() => onSelectCat({ ...c, index: i })}
+                className="rounded-full px-4 py-3 md:py-4 text-white text-center transition-transform hover:scale-105 shadow-md"
+                style={{ background: BLUE, ...PLANE_CRASH, fontSize: "clamp(0.9rem, 1.8vw, 1.5rem)", letterSpacing: "0.05em" }}
+                data-testid={`stats-cat-${event.key}-${i}`}
+              >
+                {planeCrashSafe(c.label || `CAT: ${c.category}`)}
+              </button>
+            ))}
+            {cats.length === 0 && (
+              <div className="col-span-full text-slate-400 italic py-6" style={AGENCY_FB}>
+                Aún no hay categorías configuradas para este evento.
               </div>
             )}
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2 mb-6 border-b border-slate-200">
-          {[
-            { v: "posiciones", l: "Posiciones", I: BarChart3 },
-            { v: "fixture", l: "Fixture", I: Calendar },
-            { v: "goleadores", l: "Goleadores", I: Goal },
-          ].map((t) => (
-            <button
-              key={t.v}
-              onClick={() => setTab(t.v)}
-              className={`flex items-center gap-2 px-4 py-2.5 text-xs font-bold uppercase tracking-wider border-b-2 -mb-px transition-colors ${
-                tab === t.v ? "border-blue-700 text-blue-700" : "border-transparent text-slate-500 hover:text-slate-900"
-              }`}
-              data-testid={`datos-tab-${t.v}`}
-            >
-              <t.I size={14}/> {t.l}
-            </button>
-          ))}
+        <div className="flex flex-col items-center gap-3">
+          {event.logo_url ? (
+            <img src={imgSrc(event.logo_url)} alt="" className="max-h-24 md:max-h-32 object-contain" data-testid="stats-event-logo" />
+          ) : null}
+          <div className="text-center">
+            <div className="leading-none" style={{ ...PLANE_CRASH, color: BLUE, fontSize: "clamp(1.4rem, 2.4vw, 2.2rem)" }}>
+              {planeCrashSafe(event.title_month || "")}
+            </div>
+            {isMulti ? (
+              <div className="leading-none mt-1" style={{ ...PLANE_CRASH, fontSize: "clamp(1.8rem, 3vw, 2.8rem)" }} data-testid="stats-event-title-word">
+                {Array.from(planeCrashSafe(event.title_word || "")).map((ch, i) => {
+                  const color = ch === " " ? "transparent" : FESTIVAL_LETTER_COLORS[i % FESTIVAL_LETTER_COLORS.length];
+                  return <span key={i} style={{ color, WebkitTextFillColor: color }}>{ch}</span>;
+                })}
+              </div>
+            ) : (
+              <div className="italic mt-1" style={{ ...CURSIVE, color: GOLD, fontSize: "clamp(1.8rem, 3.2vw, 2.8rem)" }} data-testid="stats-event-title-word">
+                {event.title_word || ""}
+              </div>
+            )}
+          </div>
         </div>
-
-        {loading && <div className="text-center py-16 text-slate-400">Cargando...</div>}
-
-        {!loading && tab === "posiciones" && (
-          <PosicionesView
-            isArchived={isArchived}
-            liveStandings={liveStandings}
-            groupedHistorical={groupedHistorical}
-          />
-        )}
-
-        {!loading && tab === "fixture" && (
-          <FixtureView matches={matches} />
-        )}
-
-        {!loading && tab === "goleadores" && (
-          <GoleadoresView scorers={scorers} />
-        )}
-      </section>
-    </div>
+      </div>
+    </section>
   );
 }
 
-function PosicionesView({ isArchived, liveStandings, groupedHistorical }) {
-  if (isArchived) {
-    if (groupedHistorical.length === 0) {
-      return <div className="text-center py-16 text-slate-400" data-testid="historical-empty">Este torneo histórico aún no tiene posiciones cargadas.</div>;
+
+function CategoryDataPanel({ category, eventLabel, onClose }) {
+  const [standings, setStandings] = useState(null);
+  const [scorers, setScorers] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const hasIds = category.tournament_id && category.category;
+    if (!hasIds) {
+      setLoading(false);
+      return;
     }
-    return (
-      <div className="space-y-8" data-testid="historical-standings">
-        <p className="text-xs text-slate-500 bg-amber-50 border border-amber-200 rounded p-3">
-          📦 <strong>Snapshot histórico:</strong> posiciones finales registradas al cierre del torneo. Desempate: Puntos → Juego Limpio → Diferencia de gol → Goles a favor.
-        </p>
-        {groupedHistorical.map((g) => (
-          <div key={`${g.category}-${g.group_name}`} className="bg-white border border-slate-200 rounded-lg overflow-hidden">
-            <div className="bg-slate-900 text-white px-4 py-3 flex items-center justify-between">
-              <div className="font-display text-lg font-black uppercase tracking-tight">{g.category} · {g.group_name}</div>
-              <span className="text-[10px] uppercase tracking-widest text-slate-400">{g.rows.length} equipos</span>
-            </div>
-            <StandingsTable rows={g.rows} historical />
-          </div>
-        ))}
-      </div>
-    );
-  }
-  if (liveStandings.length === 0) {
-    return <div className="text-center py-16 text-slate-400">Sin partidos finalizados aún en este torneo.</div>;
-  }
+    const params = new URLSearchParams({ tournament_id: category.tournament_id, category: category.category });
+    if (category.group_name) params.set("group_name", category.group_name);
+    setLoading(true);
+    Promise.all([
+      api.get(`/stats/standings?${params.toString()}`).then((r) => r.data || []).catch(() => []),
+      api.get(`/stats/top-scorers?category=${encodeURIComponent(category.category)}&limit=10`).then((r) => r.data || []).catch(() => []),
+    ]).then(([st, sc]) => {
+      setStandings(st);
+      setScorers(sc);
+      setLoading(false);
+    });
+  }, [category]);
+
+  const noConfig = !category.tournament_id || !category.category;
+  const empty = !loading && (standings || []).length === 0 && (scorers || []).length === 0;
+
   return (
-    <div data-testid="live-standings">
-      <p className="text-xs text-slate-500 mb-3">
-        Desempate: Puntos → <strong className="text-emerald-700">Juego Limpio</strong> → Diferencia de gol → Goles a favor.
-      </p>
-      <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
-        <StandingsTable rows={liveStandings} />
+    <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-10" data-testid="stats-category-panel">
+      <div className="bg-white border-2 rounded-lg shadow-lg" style={{ borderColor: BLUE }}>
+        <div className="px-5 py-3 flex items-center justify-between" style={{ background: BLUE }}>
+          <div className="text-white">
+            <div className="text-[10px] uppercase tracking-widest opacity-80" style={AGENCY_FB}>{eventLabel}</div>
+            <div className="leading-none mt-0.5" style={{ ...PLANE_CRASH, fontSize: "clamp(1.3rem, 2.5vw, 2rem)" }}>
+              {planeCrashSafe(category.label || `CAT ${category.category}`)}
+            </div>
+          </div>
+          <button type="button" onClick={onClose} className="text-white/90 hover:text-white p-2 rounded-full hover:bg-white/10" aria-label="Cerrar" data-testid="stats-panel-close">
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="p-4 md:p-6">
+          {loading ? (
+            <div className="text-center py-6 text-slate-500" style={AGENCY_FB}>Cargando...</div>
+          ) : noConfig || empty ? (
+            <div className="text-center py-10">
+              <div className="text-slate-500 italic" style={AGENCY_FB}>Próximamente</div>
+              {noConfig && (
+                <div className="text-xs text-slate-400 mt-1">
+                  Esta categoría aún no está vinculada a un torneo desde el CMS.
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 gap-6">
+              <div>
+                <h3 className="text-sm font-black uppercase tracking-widest mb-3" style={{ color: BLUE }}>
+                  Tabla de posiciones
+                </h3>
+                {standings?.length ? <StandingsTable rows={standings} /> : <p className="text-slate-400 italic text-sm">Sin datos aún.</p>}
+              </div>
+              <div>
+                <h3 className="text-sm font-black uppercase tracking-widest mb-3" style={{ color: BLUE }}>
+                  Goleadores
+                </h3>
+                {scorers?.length ? <ScorersTable rows={scorers} /> : <p className="text-slate-400 italic text-sm">Sin goles registrados.</p>}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </section>
   );
 }
 
-function StandingsTable({ rows, historical }) {
+
+function StandingsTable({ rows }) {
   return (
-    <table className="w-full text-sm">
-      <thead className="bg-blue-50 text-xs uppercase tracking-wider">
-        <tr>
-          <th className="text-left px-3 py-2 w-8">#</th>
-          <th className="text-left px-3 py-2">Equipo</th>
-          <th className="px-2 py-2">PJ</th>
-          <th className="px-2 py-2">G</th>
-          <th className="px-2 py-2">E</th>
-          <th className="px-2 py-2">P</th>
-          <th className="px-2 py-2">GF</th>
-          <th className="px-2 py-2">GC</th>
-          <th className="px-2 py-2">DG</th>
-          <th className="px-2 py-2 text-emerald-700">J.L</th>
-          <th className="px-2 py-2 text-blue-700">Pts</th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((r, i) => (
-          <tr key={historical ? `${r.team_name}-${i}` : r.team_id} className="border-t border-slate-100 hover:bg-slate-50">
-            <td className="px-3 py-2 font-display font-black text-slate-400">{historical ? r.rank : i + 1}</td>
-            <td className="px-3 py-2 font-semibold">{historical ? r.team_name : r.team_name}</td>
-            <td className="text-center tabular-nums">{r.played}</td>
-            <td className="text-center tabular-nums">{r.won}</td>
-            <td className="text-center tabular-nums">{r.drawn}</td>
-            <td className="text-center tabular-nums">{r.lost}</td>
-            <td className="text-center tabular-nums">{r.gf}</td>
-            <td className="text-center tabular-nums">{r.ga}</td>
-            <td className="text-center tabular-nums">{r.gd > 0 ? `+${r.gd}` : r.gd}</td>
-            <td className="text-center tabular-nums text-emerald-700 font-semibold">{r.fair_play || 0}</td>
-            <td className="text-center tabular-nums font-display text-lg font-black text-blue-700">{r.points}</td>
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead className="bg-slate-100 text-slate-700">
+          <tr>
+            <th className="text-left px-2 py-1.5">#</th>
+            <th className="text-left px-2 py-1.5">Equipo</th>
+            <th className="text-center px-2 py-1.5">PJ</th>
+            <th className="text-center px-2 py-1.5">G</th>
+            <th className="text-center px-2 py-1.5">E</th>
+            <th className="text-center px-2 py-1.5">P</th>
+            <th className="text-center px-2 py-1.5">DG</th>
+            <th className="text-center px-2 py-1.5">Pts</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-}
-
-function FixtureView({ matches }) {
-  if (matches.length === 0) {
-    return <div className="text-center py-16 text-slate-400">Sin partidos programados aún.</div>;
-  }
-  // Agrupar por jornada
-  const byMd = {};
-  for (const m of matches) {
-    const k = m.matchday ?? 99;
-    if (!byMd[k]) byMd[k] = [];
-    byMd[k].push(m);
-  }
-  const keys = Object.keys(byMd).sort((a, b) => Number(a) - Number(b));
-  return (
-    <div className="space-y-6" data-testid="tournament-fixture">
-      {keys.map((k) => (
-        <div key={k} className="bg-white border border-slate-200 rounded-lg overflow-hidden">
-          <div className="bg-slate-900 text-white px-4 py-2 flex items-center justify-between">
-            <div className="font-display text-sm font-black uppercase tracking-tight">
-              {k === "99" ? "Sin jornada" : `Jornada ${k}`}
-            </div>
-            <span className="text-[10px] uppercase tracking-widest text-slate-400">{byMd[k].length} partidos</span>
-          </div>
-          <table className="w-full text-sm">
-            <thead className="bg-blue-50 text-xs uppercase tracking-wider">
-              <tr>
-                <th className="text-left px-3 py-1.5">Fecha</th>
-                <th className="text-right px-3 py-1.5">Local</th>
-                <th className="text-center px-2 py-1.5">Score</th>
-                <th className="text-left px-3 py-1.5">Visitante</th>
-                <th className="text-left px-3 py-1.5">Grupo</th>
-                <th className="text-left px-3 py-1.5">Cancha</th>
-              </tr>
-            </thead>
-            <tbody>
-              {byMd[k].map((m) => (
-                <tr key={m.id} className="border-t border-slate-100">
-                  <td className="px-3 py-1.5 text-slate-600 text-xs whitespace-nowrap">
-                    {m.match_date ? formatDateTime(m.match_date) : "—"}
-                  </td>
-                  <td className="px-3 py-1.5 text-right font-semibold">{m.home_team_name || "—"}</td>
-                  <td className="px-2 py-1.5 text-center font-display font-black tabular-nums">
-                    {m.status === "finalizado" ? `${m.home_score} - ${m.away_score}` : "vs"}
-                  </td>
-                  <td className="px-3 py-1.5 font-semibold">{m.away_team_name || "—"}</td>
-                  <td className="px-3 py-1.5 text-xs text-slate-500">
-                    {m.group_name || "—"}
-                    {m.match_type === "intergrupo" && <span className="ml-1 inline-block px-1.5 py-0.5 text-[9px] font-bold uppercase bg-red-100 text-red-700 rounded">Intergrupo</span>}
-                  </td>
-                  <td className="px-3 py-1.5 text-xs text-slate-500">{m.venue || "—"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ))}
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={r.team_id} className="border-t border-slate-100" data-testid={`stats-row-${i}`}>
+              <td className="px-2 py-1.5 font-bold">{i + 1}</td>
+              <td className="px-2 py-1.5">{r.team_name}</td>
+              <td className="text-center tabular-nums">{r.played}</td>
+              <td className="text-center tabular-nums">{r.won}</td>
+              <td className="text-center tabular-nums">{r.drawn}</td>
+              <td className="text-center tabular-nums">{r.lost}</td>
+              <td className="text-center tabular-nums">{r.gd}</td>
+              <td className="text-center font-black" style={{ color: BLUE }}>{r.points}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
 
-function GoleadoresView({ scorers }) {
-  if (scorers.length === 0) {
-    return <div className="text-center py-16 text-slate-400">Sin goles registrados aún.</div>;
-  }
+
+function ScorersTable({ rows }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-lg divide-y divide-slate-100" data-testid="tournament-scorers">
-      {scorers.map((s, i) => (
-        <div key={s.player_id} className="px-4 py-3 flex items-center gap-3">
-          <span className="font-display font-black text-slate-400 w-6">{i + 1}</span>
-          {s.photo_url
-            ? <img src={s.photo_url} alt="" className="h-9 w-9 rounded-full object-cover" />
-            : <div className="h-9 w-9 rounded-full bg-red-100 text-red-700 flex items-center justify-center text-xs font-bold">{(s.name || "?")[0]}</div>
-          }
-          <div className="flex-1 min-w-0">
-            <div className="font-semibold truncate">{s.name}</div>
-            <div className="text-xs text-slate-500 truncate">{s.team_name}</div>
-          </div>
-          <div className="font-display text-2xl font-black text-red-600 tabular-nums">{s.goals}</div>
-        </div>
-      ))}
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead className="bg-slate-100 text-slate-700">
+          <tr>
+            <th className="text-left px-2 py-1.5">#</th>
+            <th className="text-left px-2 py-1.5">Jugador</th>
+            <th className="text-left px-2 py-1.5">Equipo</th>
+            <th className="text-center px-2 py-1.5">Goles</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={`sc-${i}`} className="border-t border-slate-100">
+              <td className="px-2 py-1.5 font-bold">{i + 1}</td>
+              <td className="px-2 py-1.5">{r.player_name || "—"}</td>
+              <td className="px-2 py-1.5 text-slate-500">{r.team_name || ""}</td>
+              <td className="text-center font-black" style={{ color: RED }}>{r.goals}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
+  );
+}
+
+
+function SocialCTA({ text, instagram, facebook, tiktok }) {
+  return (
+    <section className="w-full py-8 md:py-10" style={{ background: RED }} data-testid="stats-cta">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
+        <div
+          className="leading-tight text-white max-w-xl"
+          style={{ ...PLANE_CRASH, fontSize: "clamp(1.4rem, 3.4vw, 2.6rem)" }}
+        >
+          {planeCrashSafe(text)}
+        </div>
+        <div className="flex items-center gap-4 md:gap-6">
+          {instagram && (
+            <a href={instagram} target="_blank" rel="noopener noreferrer" className="text-white bg-white/10 hover:bg-white/20 rounded-full p-3 transition" data-testid="stats-social-ig" aria-label="Instagram">
+              <Instagram size={32} />
+            </a>
+          )}
+          {facebook && (
+            <a href={facebook} target="_blank" rel="noopener noreferrer" className="text-white bg-white/10 hover:bg-white/20 rounded-full p-3 transition" data-testid="stats-social-fb" aria-label="Facebook">
+              <Facebook size={32} />
+            </a>
+          )}
+          {tiktok && (
+            <a href={tiktok} target="_blank" rel="noopener noreferrer" className="text-white bg-white/10 hover:bg-white/20 rounded-full p-3 transition" data-testid="stats-social-tk" aria-label="TikTok">
+              <TikTokIcon size={32} />
+            </a>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+
+function ClosingPhrase({ text }) {
+  return (
+    <section className="py-10 md:py-14 text-center bg-white" data-testid="stats-closing">
+      <div className="italic" style={{ ...CURSIVE, color: BLUE, fontSize: "clamp(1.8rem, 4vw, 3rem)" }}>
+        {text}
+      </div>
+    </section>
   );
 }

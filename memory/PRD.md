@@ -16,6 +16,28 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-02-27 — Iter61: Página Estadísticas — rediseño completo "Marcador Oficial"
+- **Scope**: reemplazo total de `DatosEstadisticas.jsx`. Nueva página con 5 secciones editables desde CMS.
+- **Backend** (`server.py`):
+  - `HomeSettings.estadisticas: Optional[Dict[str, Any]]` + `DEFAULT_ESTADISTICAS_CONFIG` (hero + intro + 3 eventos default: Festival multicolor / Premier Pares y Impares cursive_gold, cada uno con 5 categorías + CTA social + closing).
+  - Backfill automático en `GET /home-settings`.
+- **Frontend público** (`DatosEstadisticas.jsx`, 5 secciones):
+  - **Sec 1** Hero: imagen + overlay rojo semi + watermark "MARCADOR" ghost detrás + "MARCADOR" y "OFICIAL" en Plane Crash blanco grunge con textShadow.
+  - **Sec 2** "ASÍ VA LA" (Plane Crash rojo) + "competencia!" (cursivo rojo) + selector pill buttons de eventos.
+  - **Sec 3** Grid de categorías (pills azules Plane Crash) + logo + label del evento a la derecha (multicolor para Festival, cursivo dorado para Premier).
+  - **Al clickear categoría**: `CategoryDataPanel` consume `/api/stats/standings` + `/api/stats/top-scorers`. Si tournament_id o category están vacíos → muestra "Próximamente" con hint al admin.
+  - **Sec 4** Franja roja CTA con Instagram/Facebook/TikTok (URLs del CMS; iconos lucide + SVG custom para TikTok).
+  - **Sec 5** Frase cierre cursiva azul.
+- **Admin CMS** (`AdminHomeSettings.jsx`):
+  - Reemplazo del editor legacy (`estadisticas_hero_*`) por nuevo `EstadisticasEditor` con SubSections:
+    1. Hero (imagen + watermark + títulos)
+    2. Intro (textos + dropdown active_event_key)
+    3. Eventos: add/remove; por cada uno key/label/mes/palabra/estilo (multicolor|cursive_gold)/logo/lista de categorías (label + tournament_id + category + group_name)
+    4. CTA (texto + 3 URLs sociales)
+    5. Frase cierre
+- **Verificado con screenshots**: hero grunge OK, selector cambia eventos sin reload, título derecho respeta `title_style` (Festival multicolor vs Premier cursivo dorado), pastillas azules clickables, panel muestra "Próximamente" cuando falta config.
+
+
 ### 2026-02-27 — Iter60: Festival multicolor + Premier restaurado
 - **Petición del usuario**: dejar Premier tal cual estaba antes (Natura Script cursivo dorado). Para Festival: usar la fuente grunge Plane Crash (como "EDICIÓN 2026" del hero de INICIO) pero **pintando cada letra en un color distinto**.
 - **Implementación** (`Eventos.jsx`):
