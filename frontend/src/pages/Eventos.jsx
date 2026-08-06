@@ -13,8 +13,9 @@
  */
 import { useEffect, useState } from "react";
 import api, { imgSrc } from "../lib/api";
-import { ChevronsLeft, ChevronsRight, ChevronLeft, ChevronRight, Trophy, Medal } from "lucide-react";
+import { ChevronLeft, ChevronRight, Trophy, Medal } from "lucide-react";
 import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe } from "../lib/designSystem";
+import ChevronStack from "../components/ChevronStack";
 
 const RED = "#e31f27";
 const BLUE = "#0640c8";
@@ -204,23 +205,32 @@ function TabsBar({ tab, onTab, festival, premier, center }) {
 function EventTitleSection({ month, word }) {
   return (
     <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8" data-testid="eventos-title-section">
-      <div className="flex items-center justify-center gap-6 md:gap-10">
-        <div className="flex flex-col leading-[0.4] text-red-500 opacity-80" aria-hidden>
-          <ChevronsLeft size={44} strokeWidth={3} />
-          <ChevronsLeft size={44} strokeWidth={3} />
-        </div>
+      <div className="flex items-center justify-center gap-8 md:gap-16">
+        <button type="button" aria-hidden className="fsc-bounce cursor-default bg-transparent border-0" data-testid="event-chevron-left">
+          <ChevronStack color={RED} size={56} direction="up" count={5} />
+        </button>
         <div className="text-center">
           <div className="leading-[0.9]" style={{ ...PLANE_CRASH, color: BLUE, fontSize: "clamp(2.2rem, 5vw, 4rem)" }} data-testid="event-title-month">
             {planeCrashSafe(month || "")}
           </div>
-          <div className="italic mt-1" style={{ ...CURSIVE, color: GOLD, fontSize: "clamp(2.4rem, 6vw, 4.5rem)", textShadow: "0 2px 0 rgba(0,0,0,0.05)" }} data-testid="event-title-word">
+          <div
+            className="italic mt-1"
+            style={{
+              fontFamily: "'Dancing Script', 'Allura', cursive",
+              color: RED,
+              WebkitTextFillColor: RED,
+              fontSize: "clamp(2.4rem, 6vw, 4.5rem)",
+              fontWeight: 700,
+              lineHeight: 1,
+            }}
+            data-testid="event-title-word"
+          >
             {word || ""}
           </div>
         </div>
-        <div className="flex flex-col leading-[0.4] text-red-500 opacity-80" aria-hidden>
-          <ChevronsRight size={44} strokeWidth={3} />
-          <ChevronsRight size={44} strokeWidth={3} />
-        </div>
+        <button type="button" aria-hidden className="fsc-bounce cursor-default bg-transparent border-0" data-testid="event-chevron-right">
+          <ChevronStack color={RED} size={56} direction="up" count={5} />
+        </button>
       </div>
     </section>
   );

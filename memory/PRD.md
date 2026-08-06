@@ -16,6 +16,13 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-02-27 — Iter59: Ajustes visuales Eventos — título mes + flechas apiladas
+- **Bug reportado**: la palabra "Festival" se veía con letras multicolor mientras "Premier" se veía correctamente. Además el usuario pidió que las flechas fueran como las de INICIO (apiladas apuntando hacia arriba, rojas, centradas, con rebote).
+- **Root cause del multicolor**: la fuente `Natura Script` es una fuente COLOR (COLRv1/SVG-in-OT) que aplica colores propios por glifo — para "Festival" activaba glifos con paleta arcoíris; para "Premier" no. Solución: forzar `fontFamily: "'Dancing Script', 'Allura', cursive"` + `WebkitTextFillColor: RED` + color `RED` sólido con `fontWeight: 700`. Eliminado el `textShadow` que sumaba ruido.
+- **Flechas**: reemplacé los `<ChevronsLeft/Right>` de lucide por dos instancias del componente existente `ChevronStack` con `color={RED}, size=56, direction="up", count=5`, envueltos en `<button className="fsc-bounce">` para heredar la misma animación de rebote suave usada en el hero de INICIO.
+- **Verificado con screenshots**: Festival ahora en rojo cursivo sólido idéntico a Premier; ambos con 5 chevrones apilados rojos rebotando a cada lado.
+
+
 ### 2026-02-27 — Iter58: Página Eventos — rediseño completo (9 secciones + CMS)
 - **Scope**: reemplazo total de `Eventos.jsx` (era una landing con SecondaryHero + agenda). Nuevo diseño con 9 secciones editables desde CMS.
 - **Backend** (`server.py`):
