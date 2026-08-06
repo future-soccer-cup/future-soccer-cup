@@ -16,6 +16,17 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-02-27 — Iter57: Timeline Nosotros — modo INTRO vs modo YEAR (banner completo)
+- **Cambio funcional pedido por el usuario**: al hacer clic en cualquier año (2019, 2021, 2022, 2023, 2025, 2026) las 6 fotos flotantes y el texto grande "FSC EN LA HISTORIA" **desaparecen con fade-out**, y una sola foto del hito seleccionado ocupa TODO el área (banner completo lado-a-lado y arriba-abajo). Sobre esa foto: overlay inferior con la pregunta en Plane Crash blanco + botón "LEE AQUÍ" (fondo blanco / texto rojo). Al hacer clic en INTRODUCCIÓN: el banner desaparece y regresan las 6 fotos + texto FSC.
+- **Refactor `FSCHistorySection.jsx`**: dos layers superpuestos con opacidad controlada por `isIntro` + `phase`:
+  - `history-intro-layer`: renderiza los 6 slots absolutos + texto FSC/EN LA HISTORIA.
+  - `history-year-layer`: renderiza un `<img>` full-cover con `photos[0]` + overlay inferior (gradiente + pregunta + LEE AQUÍ).
+- **Transición**: fade 300ms al cambiar de hito (opacity 0 → 1).
+- **Barra azul**: permanece siempre visible; solo cambia el punto/label activo (blanco engrosado).
+- **Modal**: sin cambios; sigue funcionando con Escape/click fuera/X.
+- **Mobile**: en INTRO muestra texto FSC + grid 2 col de las 6 fotos; en modo YEAR el banner ocupa la altura completa.
+
+
 ### 2026-02-27 — Iter56: Página Nosotros — ajustes funcionales (posiciones foto principal + modal LEE AQUÍ)
 - **Cambio de scope**: eliminadas las secciones `SecondaryHero` ("conócenos → NOSOTROS") y "SOMOS MÁS QUE UN TORNEO" de `Nosotros.jsx` — ahora la página es EXCLUSIVAMENTE la sección "FSC EN LA HISTORIA".
 - **Layout matcheado al wireframe** (6 slots absolutos con tamaños distintos):
