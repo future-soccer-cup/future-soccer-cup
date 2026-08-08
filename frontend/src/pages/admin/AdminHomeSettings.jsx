@@ -794,17 +794,10 @@ function EstadisticasEditor({ value, onChange }) {
         </button>
       </SubSection>
 
-      <SubSection title="4. CTA — Redes sociales">
-        <Field label="Texto grande" v={v.cta_text} onChange={(x) => patch({ cta_text: x })} placeholder="SÍGUENOS Y NO TE PIERDAS NI UN SOLO MOMENTO!" />
-        <div className="grid md:grid-cols-3 gap-3 mt-3">
-          <Field label="Instagram URL" v={v.instagram_url} onChange={(x) => patch({ instagram_url: x })} placeholder="https://instagram.com/..." />
-          <Field label="Facebook URL" v={v.facebook_url} onChange={(x) => patch({ facebook_url: x })} placeholder="https://facebook.com/..." />
-          <Field label="TikTok URL" v={v.tiktok_url} onChange={(x) => patch({ tiktok_url: x })} placeholder="https://tiktok.com/@..." />
-        </div>
-      </SubSection>
-
-      <SubSection title="5. Frase de cierre">
-        <Field label="Texto cursivo azul centrado" v={v.closing_phrase} onChange={(x) => patch({ closing_phrase: x })} placeholder="Somos mas que un Torneo" />
+      <SubSection title="4. Frase de cierre (opcional, ya no se muestra — se preserva por compatibilidad)">
+        <p className="text-xs text-slate-500 italic">
+          Nota: las secciones SÍGUENOS Y NO TE PIERDAS y Somos mas que un Torneo fueron eliminadas de la página pública (el footer ya las incluye globalmente). Estos campos permanecen guardados por si se necesitan reactivar.
+        </p>
       </SubSection>
     </div>
   );

@@ -10,7 +10,7 @@
  * al backend existente (`/api/stats/standings`, `/api/stats/top-scorers`).
  */
 import { useEffect, useMemo, useState } from "react";
-import { Instagram, Facebook, X } from "lucide-react";
+import { X } from "lucide-react";
 import api, { imgSrc } from "../lib/api";
 import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe } from "../lib/designSystem";
 
@@ -22,15 +22,6 @@ const FESTIVAL_LETTER_COLORS = [
   "#14b8a6", "#e31f27", "#0640c8", "#e31f27",
   "#facc15", "#a855f7", "#22c55e", "#a855f7",
 ];
-
-// Icono TikTok simple (lucide no lo trae) — SVG minimalista blanco.
-function TikTokIcon({ size = 28 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-      <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64c.298-.001.595.042.88.128V9.4a6.33 6.33 0 0 0-1-.05A6.34 6.34 0 0 0 5.8 20.1a6.34 6.34 0 0 0 10.86-4.43V7.7a8.16 8.16 0 0 0 4.77 1.52V5.77a4.85 4.85 0 0 1-1.84-.08z" />
-    </svg>
-  );
-}
 
 export default function DatosEstadisticas() {
   const [cfg, setCfg] = useState({});
@@ -77,15 +68,6 @@ export default function DatosEstadisticas() {
           onClose={() => setSelectedCat(null)}
         />
       )}
-
-      <SocialCTA
-        text={cfg.cta_text || "SÍGUENOS Y NO TE PIERDAS NI UN SOLO MOMENTO!"}
-        instagram={cfg.instagram_url}
-        facebook={cfg.facebook_url}
-        tiktok={cfg.tiktok_url}
-      />
-
-      <ClosingPhrase text={cfg.closing_phrase || "Somos mas que un Torneo"} />
     </div>
   );
 }
@@ -387,49 +369,5 @@ function ScorersTable({ rows }) {
         </tbody>
       </table>
     </div>
-  );
-}
-
-
-function SocialCTA({ text, instagram, facebook, tiktok }) {
-  return (
-    <section className="w-full py-8 md:py-10" style={{ background: RED }} data-testid="stats-cta">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
-        <div
-          className="leading-tight text-white max-w-xl"
-          style={{ ...PLANE_CRASH, fontSize: "clamp(1.4rem, 3.4vw, 2.6rem)" }}
-        >
-          {planeCrashSafe(text)}
-        </div>
-        <div className="flex items-center gap-4 md:gap-6">
-          {instagram && (
-            <a href={instagram} target="_blank" rel="noopener noreferrer" className="text-white bg-white/10 hover:bg-white/20 rounded-full p-3 transition" data-testid="stats-social-ig" aria-label="Instagram">
-              <Instagram size={32} />
-            </a>
-          )}
-          {facebook && (
-            <a href={facebook} target="_blank" rel="noopener noreferrer" className="text-white bg-white/10 hover:bg-white/20 rounded-full p-3 transition" data-testid="stats-social-fb" aria-label="Facebook">
-              <Facebook size={32} />
-            </a>
-          )}
-          {tiktok && (
-            <a href={tiktok} target="_blank" rel="noopener noreferrer" className="text-white bg-white/10 hover:bg-white/20 rounded-full p-3 transition" data-testid="stats-social-tk" aria-label="TikTok">
-              <TikTokIcon size={32} />
-            </a>
-          )}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-
-function ClosingPhrase({ text }) {
-  return (
-    <section className="py-10 md:py-14 text-center bg-white" data-testid="stats-closing">
-      <div className="italic" style={{ ...CURSIVE, color: BLUE, fontSize: "clamp(1.8rem, 4vw, 3rem)" }}>
-        {text}
-      </div>
-    </section>
   );
 }

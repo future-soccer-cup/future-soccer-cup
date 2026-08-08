@@ -16,6 +16,13 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-02-27 — Iter62: Estadísticas — quitar secciones duplicadas del footer
+- El usuario reportó que la página `/datos-estadisticas` mostraba dos franjas duplicadas de lo que ya está en el footer global: "SÍGUENOS Y NO TE PIERDAS NI UN SOLO MOMENTO!" y "Somos mas que un Torneo" cursivo azul.
+- **Solución**: eliminados `<SocialCTA/>` y `<ClosingPhrase/>` del render de `DatosEstadisticas.jsx`, junto con los componentes internos y el `TikTokIcon` custom (ya no usados). Removidos imports de `Instagram, Facebook`.
+- **Admin CMS**: la SubSection 4 (CTA + URLs sociales) y SubSection 5 (frase cierre) fueron reemplazadas por una nota informativa. Los campos permanecen en el modelo backend por compatibilidad y por si el usuario quiere reactivarlos en el futuro.
+- **Verificado con screenshot**: la página ahora termina en las categorías y luego pasa directo al footer global "Y SI NOS TOMAMOS UN CAFECITO JUNTOS?" con contactos e iconos sociales.
+
+
 ### 2026-02-27 — Iter61: Página Estadísticas — rediseño completo "Marcador Oficial"
 - **Scope**: reemplazo total de `DatosEstadisticas.jsx`. Nueva página con 5 secciones editables desde CMS.
 - **Backend** (`server.py`):
