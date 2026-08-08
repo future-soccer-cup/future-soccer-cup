@@ -16,6 +16,12 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-02-27 — Iter64: Noticias — cambio de fuente en "Fútbolera"
+- **Bug reportado**: "Fútbolera" tenía la misma fuente que "Torneo Internacional" del navbar (Natura Script fino).
+- **Fix**: cambio a Dancing Script bold cursive con `fontFamily: "'Dancing Script', 'Allura', cursive"`, `fontWeight: 700`, `WebkitTextFillColor: #ffffff` y removí `CURSIVE` (Natura Script) que compartía con el nav.
+- **Verificado con screenshot**: font-family ahora es `"Dancing Script", Allura, cursive`; se ve claramente diferente del "Torneo Internacional" del navbar.
+
+
 ### 2026-02-27 — Iter63: Página Noticias — rediseño "Mentalidad Fútbolera"
 - **Scope**: reemplazo total de `Noticias.jsx`. Nueva página con 2 secciones editables desde CMS.
 - **Backend** (`server.py`):

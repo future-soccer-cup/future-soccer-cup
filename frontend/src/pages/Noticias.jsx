@@ -9,7 +9,7 @@
 import { useEffect, useState } from "react";
 import { X, ChevronLeft } from "lucide-react";
 import api, { imgSrc } from "../lib/api";
-import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe } from "../lib/designSystem";
+import { PLANE_CRASH, AGENCY_FB, planeCrashSafe } from "../lib/designSystem";
 
 const RED = "#e31f27";
 const BLUE = "#0640c8";
@@ -77,12 +77,15 @@ function HeroSection({ heroUrl, watermark, title, subtitle }) {
           {planeCrashSafe(title)}
         </div>
         <div
-          className="mt-1 md:mt-3"
+          className="mt-1 md:mt-3 italic"
           style={{
-            ...CURSIVE,
+            fontFamily: "'Dancing Script', 'Allura', cursive",
+            fontWeight: 700,
             color: "#ffffff",
-            fontSize: "clamp(2rem, 5vw, 4.4rem)",
+            WebkitTextFillColor: "#ffffff",
+            fontSize: "clamp(2.2rem, 5.5vw, 5rem)",
             textShadow: "2px 3px 0 rgba(0,0,0,0.4)",
+            lineHeight: 1,
           }}
           data-testid="noticias-hero-subtitle"
         >
