@@ -16,6 +16,24 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-02-27 — Iter63: Página Noticias — rediseño "Mentalidad Fútbolera"
+- **Scope**: reemplazo total de `Noticias.jsx`. Nueva página con 2 secciones editables desde CMS.
+- **Backend** (`server.py`):
+  - `HomeSettings.noticias: Optional[Dict[str, Any]]` + `DEFAULT_NOTICIAS_CONFIG` con 6 categorías default (AVALADOS POR LA LIGA DEL QUINDIO, TESTIMONIOS PROFES/FAMILIAS/MVP, PREMIACIÓNES, HOTELES DE ELITE), todas con `news: []` vacío.
+  - Backfill automático en `GET /home-settings`.
+- **Frontend público** (`Noticias.jsx`):
+  - **Sec 1** Hero azul con overlay `${BLUE}CC`, watermark "MENTALIDAD" ghost + título grunge Plane Crash + subtítulo "Fútbolera" cursivo.
+  - **Sec 2** Grid 2 columnas de `CategoryCard`: tarjeta con imagen de fondo + overlay rojo semi + sombra azul apilada (efecto stacked-card via `<div>` absoluto en +10px, +10px) + título Plane Crash blanco.
+  - **Modal categoría**: header azul con nombre + X. Cuerpo scrollable con grid 2 col de noticias publicadas (portada + título + preview 3 líneas). Al clickear una noticia se expande a `NewsDetail` (galería con imagen principal + thumbs + título + body con `whitespace-pre-line`). Botón ← vuelve al listado.
+  - `published !== false` filtra noticias no publicadas.
+  - Escape cierra el modal actual (noticia expandida → listado; listado → modal cerrado).
+- **Admin CMS** (`AdminHomeSettings.jsx`):
+  - Sección "Noticias (página) — Nueva estructura" reemplaza el editor legacy.
+  - `NoticiasEditor`: sub-secciones Hero (imagen + textos) + Categorías (agregar/reordenar/borrar; cada una con título + id + imagen).
+  - `NewsListEditor` anidado por categoría: agregar/reordenar/borrar noticias, checkbox "Publicada", título + body + galería (ImageListUpload).
+- **Verificado con screenshots**: 6 categorías render OK, click abre modal con nombre correcto, estado vacío "Aún no hay noticias publicadas", X cierra correctamente.
+
+
 ### 2026-02-27 — Iter62: Estadísticas — quitar secciones duplicadas del footer
 - El usuario reportó que la página `/datos-estadisticas` mostraba dos franjas duplicadas de lo que ya está en el footer global: "SÍGUENOS Y NO TE PIERDAS NI UN SOLO MOMENTO!" y "Somos mas que un Torneo" cursivo azul.
 - **Solución**: eliminados `<SocialCTA/>` y `<ClosingPhrase/>` del render de `DatosEstadisticas.jsx`, junto con los componentes internos y el `TikTokIcon` custom (ya no usados). Removidos imports de `Instagram, Facebook`.

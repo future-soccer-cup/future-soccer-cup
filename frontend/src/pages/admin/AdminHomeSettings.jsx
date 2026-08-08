@@ -295,15 +295,8 @@ export default function AdminHomeSettings() {
         <EstadisticasEditor value={s.estadisticas || {}} onChange={(v) => upd("estadisticas", v)} />
       </Section>
 
-      <Section title="Noticias (página)" icon={<Info size={18}/>}>
-        <div className="grid md:grid-cols-2 gap-4">
-          <Field label="Hero — kicker" v={s.noticias_hero_kicker} onChange={(v) => upd("noticias_hero_kicker", v)} placeholder="novedades" />
-          <Field label="Hero — título grande" v={s.noticias_hero_title} onChange={(v) => upd("noticias_hero_title", v)} placeholder="NOTICIAS" />
-          <label className="md:col-span-2 block">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Hero — descripción</span>
-            <textarea rows={2} value={s.noticias_hero_body || ""} onChange={(e) => upd("noticias_hero_body", e.target.value)} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" />
-          </label>
-        </div>
+      <Section title="Noticias (página) — Nueva estructura" icon={<Info size={18}/>}>
+        <NoticiasEditor value={s.noticias || {}} onChange={(v) => upd("noticias", v)} />
       </Section>
 
       <Section title="Contacto (página)" icon={<Phone size={18}/>}>
@@ -799,6 +792,130 @@ function EstadisticasEditor({ value, onChange }) {
           Nota: las secciones SÍGUENOS Y NO TE PIERDAS y Somos mas que un Torneo fueron eliminadas de la página pública (el footer ya las incluye globalmente). Estos campos permanecen guardados por si se necesitan reactivar.
         </p>
       </SubSection>
+    </div>
+  );
+}
+
+
+
+// Iter62: Editor de la página Noticias. Configuración anidada:
+// {hero_url, hero_watermark, hero_title, hero_subtitle, categories: [{id, title, image_url, news: [{id, title, body, images, published}]}]}
+function NoticiasEditor({ value, onChange }) {
+  const v = value || {};
+  const patch = (p) => onChange({ ...v, ...p });
+  const cats = v.categories || [];
+  const updateCat = (idx, catPatch) => onChange({ ...v, categories: cats.map((c, i) => i === idx ? { ...c, ...catPatch } : c) });
+  const removeCat = (idx) => {
+    if (!window.confirm("¿Eliminar esta categoría? Se perderán todas sus noticias.")) return;
+    onChange({ ...v, categories: cats.filter((_, i) => i !== idx) });
+  };
+  const moveCat = (idx, dir) => {
+    const t = idx + dir;
+    if (t < 0 || t >= cats.length) return;
+    const copy = [...cats];
+    [copy[idx], copy[t]] = [copy[t], copy[idx]];
+    onChange({ ...v, categories: copy });
+  };
+  const addCat = () => onChange({ ...v, categories: [...cats, { id: `cat-${Date.now()}`, title: "Nueva categoría", image_url: "", news: [] }] });
+
+  return (
+    <div className="space-y-6" data-testid="noticias-editor">
+      <SubSection title="1. Hero — imagen + textos">
+        <ImageUpload value={v.hero_url} onChange={(u) => patch({ hero_url: u })} label="Imagen del Hero (recibe overlay azul)" hint="JPG horizontal con foto de partido de fútbol infantil. 1920×600 px." testId="noticias-hero" />
+        <div className="grid md:grid-cols-3 gap-3 mt-3">
+          <Field label="Watermark (fantasma detrás)" v={v.hero_watermark} onChange={(x) => patch({ hero_watermark: x })} placeholder="MENTALIDAD" />
+          <Field label="Título grande" v={v.hero_title} onChange={(x) => patch({ hero_title: x })} placeholder="MENTALIDAD" />
+          <Field label="Subtítulo cursivo" v={v.hero_subtitle} onChange={(x) => patch({ hero_subtitle: x })} placeholder="Fútbolera" />
+        </div>
+      </SubSection>
+
+      <SubSection title="2. Categorías de noticias (agregar/reordenar/borrar)">
+        {cats.map((cat, ci) => (
+          <div key={cat.id || ci} className="border border-slate-200 rounded-md p-3 bg-slate-50" data-testid={`noticias-cat-block-${ci}`}>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1">
+                <span className="text-[10px] font-black bg-red-100 text-red-800 px-2 py-1 rounded uppercase tracking-widest">Cat {ci + 1}</span>
+                <button type="button" onClick={() => moveCat(ci, -1)} disabled={ci === 0} className="text-xs px-2 py-1 rounded border border-slate-200 disabled:opacity-30">↑</button>
+                <button type="button" onClick={() => moveCat(ci, +1)} disabled={ci === cats.length - 1} className="text-xs px-2 py-1 rounded border border-slate-200 disabled:opacity-30">↓</button>
+              </div>
+              <button type="button" onClick={() => removeCat(ci)} className="text-xs text-red-600 font-bold" data-testid={`noticias-cat-delete-${ci}`}>Eliminar categoría</button>
+            </div>
+            <div className="grid md:grid-cols-2 gap-3">
+              <Field label="Título de la categoría" v={cat.title} onChange={(x) => updateCat(ci, { title: x })} placeholder="AVALADOS POR LA LIGA DEL QUINDIO" />
+              <Field label="ID interno (único)" v={cat.id} onChange={(x) => updateCat(ci, { id: x })} placeholder="cat-liga" />
+            </div>
+            <div className="mt-3">
+              <ImageUpload value={cat.image_url} onChange={(u) => updateCat(ci, { image_url: u })} label="Imagen de fondo (con overlay rojo semitransparente)" hint="JPG 800×600 px. Se le aplica overlay rojo automáticamente." testId={`noticias-cat-img-${ci}`} />
+            </div>
+            <div className="mt-4">
+              <div className="text-[10px] font-bold uppercase tracking-widest text-blue-700 mb-2">Noticias de esta categoría</div>
+              <NewsListEditor
+                items={cat.news || []}
+                onChange={(arr) => updateCat(ci, { news: arr })}
+                testId={`news-${ci}`}
+              />
+            </div>
+          </div>
+        ))}
+        <button type="button" onClick={addCat} className="w-full py-2 border border-dashed border-slate-400 rounded-md text-sm text-slate-600 hover:bg-slate-50" data-testid="noticias-add-cat">
+          + Agregar categoría
+        </button>
+      </SubSection>
+    </div>
+  );
+}
+
+
+function NewsListEditor({ items, onChange, testId }) {
+  const update = (idx, patch) => onChange(items.map((it, i) => i === idx ? { ...it, ...patch } : it));
+  const remove = (idx) => {
+    if (!window.confirm("¿Eliminar esta noticia?")) return;
+    onChange(items.filter((_, i) => i !== idx));
+  };
+  const move = (idx, dir) => {
+    const t = idx + dir;
+    if (t < 0 || t >= items.length) return;
+    const copy = [...items];
+    [copy[idx], copy[t]] = [copy[t], copy[idx]];
+    onChange(copy);
+  };
+  const add = () => onChange([...items, { id: `news-${Date.now()}`, title: "Nueva noticia", body: "", images: [], published: true }]);
+
+  return (
+    <div className="space-y-2" data-testid={`${testId}-list`}>
+      {items.map((n, i) => (
+        <div key={n.id || i} className="border border-slate-200 rounded p-3 bg-white" data-testid={`${testId}-item-${i}`}>
+          <div className="flex items-center justify-between mb-2 gap-2">
+            <div className="flex items-center gap-1">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">#{i + 1}</span>
+              <button type="button" onClick={() => move(i, -1)} disabled={i === 0} className="text-xs px-2 py-1 rounded border border-slate-200 disabled:opacity-30">↑</button>
+              <button type="button" onClick={() => move(i, +1)} disabled={i === items.length - 1} className="text-xs px-2 py-1 rounded border border-slate-200 disabled:opacity-30">↓</button>
+              <label className="ml-2 text-xs flex items-center gap-1">
+                <input type="checkbox" checked={n.published !== false} onChange={(e) => update(i, { published: e.target.checked })} data-testid={`${testId}-pub-${i}`} />
+                Publicada
+              </label>
+            </div>
+            <button type="button" onClick={() => remove(i)} className="text-xs text-red-600 font-bold" data-testid={`${testId}-delete-${i}`}>Eliminar</button>
+          </div>
+          <Field label="Título de la noticia" v={n.title} onChange={(x) => update(i, { title: x })} placeholder="Título..." />
+          <label className="block mt-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Texto completo</span>
+            <textarea rows={4} value={n.body || ""} onChange={(e) => update(i, { body: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" placeholder="Contenido de la noticia..." data-testid={`${testId}-body-${i}`} />
+          </label>
+          <div className="mt-2">
+            <ImageListUpload
+              label="Imágenes / galería (la primera se usa como portada)"
+              hint="JPG horizontales, máx 6 imágenes recomendado."
+              values={n.images || []}
+              onChange={(arr) => update(i, { images: arr })}
+              testId={`${testId}-imgs-${i}`}
+            />
+          </div>
+        </div>
+      ))}
+      <button type="button" onClick={add} className="w-full py-1.5 border border-dashed border-slate-300 rounded text-xs text-slate-600 hover:bg-slate-50" data-testid={`${testId}-add`}>
+        + Agregar noticia
+      </button>
     </div>
   );
 }

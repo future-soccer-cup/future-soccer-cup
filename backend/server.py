@@ -5981,6 +5981,10 @@ class HomeSettings(BaseModel):
     # Ver DEFAULT_ESTADISTICAS_CONFIG.
     estadisticas: Optional[Dict[str, Any]] = None
 
+    # === Iter62: Página Noticias — rediseño "Mentalidad Fútbolera". ===
+    # Ver DEFAULT_NOTICIAS_CONFIG.
+    noticias: Optional[Dict[str, Any]] = None
+
     eventos_hero_kicker: Optional[str] = "temporada"
     eventos_hero_title: Optional[str] = "EVENTOS"
     eventos_hero_body: Optional[str] = "Conoce todos los torneos del calendario FSC y revive las ediciones pasadas."
@@ -6140,6 +6144,22 @@ DEFAULT_ESTADISTICAS_CONFIG: Dict[str, Any] = {
 }
 
 
+DEFAULT_NOTICIAS_CONFIG: Dict[str, Any] = {
+    "hero_url": "",
+    "hero_watermark": "MENTALIDAD",
+    "hero_title": "MENTALIDAD",
+    "hero_subtitle": "Fútbolera",
+    "categories": [
+        {"id": "cat-liga", "title": "AVALADOS POR LA LIGA DEL QUINDIO", "image_url": "", "news": []},
+        {"id": "cat-profes", "title": "TESTIMONIOS PROFES", "image_url": "", "news": []},
+        {"id": "cat-familias", "title": "TESTIMONIOS FAMILIAS", "image_url": "", "news": []},
+        {"id": "cat-mvp", "title": "TESTIMONIOS MVP", "image_url": "", "news": []},
+        {"id": "cat-premiaciones", "title": "PREMIACIÓNES", "image_url": "", "news": []},
+        {"id": "cat-hoteles", "title": "HOTELES DE ELITE", "image_url": "", "news": []},
+    ],
+}
+
+
 @api.get("/home-settings", response_model=HomeSettings)
 async def get_home_settings():
     doc = await db.home_settings.find_one({"id": HOME_SETTINGS_ID}, {"_id": 0})
@@ -6148,6 +6168,7 @@ async def get_home_settings():
         base["nosotros_history_timeline"] = DEFAULT_HISTORY_TIMELINE
         base["eventos"] = DEFAULT_EVENTOS_CONFIG
         base["estadisticas"] = DEFAULT_ESTADISTICAS_CONFIG
+        base["noticias"] = DEFAULT_NOTICIAS_CONFIG
         return base
     # Backfill del timeline si el documento existe pero aún no tiene el campo (docs antiguos).
     if not doc.get("nosotros_history_timeline"):
@@ -6164,6 +6185,9 @@ async def get_home_settings():
     # Backfill de la configuración de Estadísticas (Iter61).
     if not doc.get("estadisticas"):
         doc["estadisticas"] = DEFAULT_ESTADISTICAS_CONFIG
+    # Backfill de la configuración de Noticias (Iter62).
+    if not doc.get("noticias"):
+        doc["noticias"] = DEFAULT_NOTICIAS_CONFIG
     return doc
 
 

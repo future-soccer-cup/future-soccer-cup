@@ -1,100 +1,275 @@
+/**
+ * Página Noticias — "Mentalidad Fútbolera" (Iter62).
+ * 2 secciones editables via CMS (home_settings.noticias):
+ *  1. Hero azul con "MENTALIDAD" grunge + "Fútbolera" cursivo + watermark ghost.
+ *  2. Grid 2 columnas de categorías (tarjeta roja con overlay + sombra azul apilada).
+ * Al hacer clic en una categoría → modal con listado de sus noticias publicadas.
+ * Al hacer clic en una noticia dentro del modal → expande con galería + texto completo.
+ */
 import { useEffect, useState } from "react";
+import { X, ChevronLeft } from "lucide-react";
 import api, { imgSrc } from "../lib/api";
-import { Instagram, ExternalLink } from "lucide-react";
-import { formatDate } from "../lib/dateFormat";
-import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe, BLUE, RED } from "../lib/designSystem";
-import AnimateIn from "../components/AnimateIn";
-import { motion } from "framer-motion";
+import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe } from "../lib/designSystem";
+
+const RED = "#e31f27";
+const BLUE = "#0640c8";
 
 export default function Noticias() {
-  const [posts, setPosts] = useState([]);
-  const [ig, setIg] = useState(null);
-  const [s, setS] = useState({});
-  const [loading, setLoading] = useState(true);
+  const [cfg, setCfg] = useState({});
+  const [openCat, setOpenCat] = useState(null); // categoría abierta
 
   useEffect(() => {
-    Promise.all([api.get("/posts"), api.get("/social/instagram"), api.get("/home-settings")])
-      .then(([p, i, hs]) => { setPosts(p.data); setIg(i.data); setS(hs.data || {}); })
-      .finally(() => setLoading(false));
+    api.get("/home-settings").then((r) => setCfg(r.data?.noticias || {})).catch(() => {});
   }, []);
 
+  const cats = cfg.categories || [];
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12" data-testid="noticias-page" style={AGENCY_FB}>
-      <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-6">
-        <div>
-          <motion.span
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="italic text-2xl block"
-            style={{ ...CURSIVE, color: BLUE }}
-          >{s.noticias_hero_kicker || "novedades"}</motion.span>
-          <motion.h1
-            initial={{ opacity: 0, x: -60 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-            className="text-5xl md:text-6xl font-black leading-[0.9] mt-1"
-            style={{ ...PLANE_CRASH, color: RED, willChange: "transform, opacity" }}
-            data-testid="noticias-hero-title"
-          >
-            {planeCrashSafe(s.noticias_hero_title || "NOTICIAS")}
-          </motion.h1>
-          {s.noticias_hero_body && (
-            <motion.p
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.55 }}
-              className="text-slate-600 mt-3 max-w-2xl"
-              style={AGENCY_FB}
-              data-testid="noticias-hero-body"
-            >{s.noticias_hero_body}</motion.p>
-          )}
+    <div data-testid="noticias-page" className="bg-white" style={AGENCY_FB}>
+      <HeroSection
+        heroUrl={cfg.hero_url}
+        watermark={cfg.hero_watermark || "MENTALIDAD"}
+        title={cfg.hero_title || "MENTALIDAD"}
+        subtitle={cfg.hero_subtitle || "Fútbolera"}
+      />
+      <CategoriesGrid cats={cats} onOpen={setOpenCat} />
+      {openCat && <CategoryModal category={openCat} onClose={() => setOpenCat(null)} />}
+    </div>
+  );
+}
+
+
+function HeroSection({ heroUrl, watermark, title, subtitle }) {
+  return (
+    <section className="relative w-full h-72 md:h-[420px] lg:h-[500px] overflow-hidden bg-slate-800" data-testid="noticias-hero">
+      {heroUrl ? (
+        <img src={imgSrc(heroUrl)} alt="" className="absolute inset-0 w-full h-full object-cover" />
+      ) : null}
+      {/* Overlay azul semitransparente */}
+      <div className="absolute inset-0" style={{ background: `${BLUE}CC` }} />
+      {/* Watermark ghost */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden">
+        <div
+          className="leading-none whitespace-nowrap"
+          style={{
+            ...PLANE_CRASH,
+            color: "rgba(255,255,255,0.15)",
+            fontSize: "clamp(4rem, 15vw, 14rem)",
+            letterSpacing: "0.06em",
+          }}
+          data-testid="noticias-hero-watermark"
+        >
+          {planeCrashSafe(watermark)}
         </div>
-        {ig && (
-          <a href={ig.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 fsc-btn-red px-5 py-3 rounded-md text-sm" data-testid="instagram-cta">
-            <Instagram size={18}/> Síguenos en @{ig.handle}
-          </a>
-        )}
       </div>
-
-      {loading && <p className="text-slate-500">Cargando...</p>}
-      {!loading && posts.length === 0 && (
-        <div className="text-center py-20 border-2 border-dashed border-slate-200 rounded-xl">
-          <p className="font-display text-2xl uppercase tracking-tight text-slate-500">Aún no hay publicaciones</p>
-          {ig && <a href={ig.url} target="_blank" rel="noopener noreferrer" className="inline-block mt-4 text-blue-700 font-bold uppercase tracking-wide text-xs">Mientras tanto, síguenos en Instagram →</a>}
+      {/* Título principal */}
+      <div className="relative z-10 h-full flex flex-col items-center justify-center px-4 text-center">
+        <div
+          className="leading-[0.9]"
+          style={{
+            ...PLANE_CRASH,
+            color: "#ffffff",
+            fontSize: "clamp(3.4rem, 10vw, 9rem)",
+            textShadow: "3px 5px 0 rgba(0,0,0,0.28)",
+          }}
+          data-testid="noticias-hero-title"
+        >
+          {planeCrashSafe(title)}
         </div>
-      )}
+        <div
+          className="mt-1 md:mt-3"
+          style={{
+            ...CURSIVE,
+            color: "#ffffff",
+            fontSize: "clamp(2rem, 5vw, 4.4rem)",
+            textShadow: "2px 3px 0 rgba(0,0,0,0.4)",
+          }}
+          data-testid="noticias-hero-subtitle"
+        >
+          {subtitle}
+        </div>
+      </div>
+    </section>
+  );
+}
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {posts.map((p, i) => (
-          <AnimateIn key={p.id} variant="slide-up" delay={i * 0.1}>
-            <article className="bg-white border border-slate-200 rounded-xl overflow-hidden hover:shadow-lg transition-shadow" data-testid={`post-${p.id}`}>
-              {p.image_url ? (
-                <div className="aspect-square bg-slate-100">
-                  <img src={imgSrc(p.image_url)} alt={p.title} loading="lazy" className="w-full h-full object-cover" />
-                </div>
-              ) : (
-                <div className="aspect-square bg-gradient-to-br from-blue-700 to-slate-900 text-white flex items-center justify-center font-display text-4xl font-black uppercase tracking-tight p-6 text-center">
-                  {p.title?.[0] || "FSC"}
-                </div>
-              )}
-              <div className="p-5">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] uppercase tracking-[0.25em] font-bold text-red-600">{p.category || "evento"}</span>
-                  <span className="text-[10px] text-slate-400">{formatDate(p.published_at)}</span>
-                </div>
-                <h3 className="font-display text-xl font-black uppercase tracking-tight">{p.title}</h3>
-                <p className="mt-2 text-sm text-slate-600 line-clamp-3">{p.content}</p>
-                {p.instagram_url && (
-                  <a href={p.instagram_url} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-blue-700 hover:text-blue-900">
-                    Ver en Instagram <ExternalLink size={12} />
-                  </a>
-                )}
-              </div>
-            </article>
-          </AnimateIn>
+
+function CategoriesGrid({ cats, onOpen }) {
+  if (!cats.length) {
+    return (
+      <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center text-slate-400 italic" style={AGENCY_FB}>
+        Aún no hay categorías de noticias configuradas.
+      </section>
+    );
+  }
+  return (
+    <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-14" data-testid="noticias-grid">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-10">
+        {cats.map((c) => (
+          <CategoryCard key={c.id} cat={c} onClick={() => onOpen(c)} />
         ))}
       </div>
+    </section>
+  );
+}
+
+
+function CategoryCard({ cat, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="relative group text-left"
+      data-testid={`noticias-cat-${cat.id}`}
+    >
+      {/* Sombra azul apilada detrás */}
+      <div
+        className="absolute rounded-sm"
+        style={{
+          background: BLUE,
+          left: "10px",
+          top: "10px",
+          right: "-10px",
+          bottom: "-10px",
+          zIndex: 0,
+        }}
+      />
+      {/* Tarjeta principal */}
+      <div className="relative aspect-[4/3] overflow-hidden rounded-sm shadow-lg" style={{ zIndex: 1 }}>
+        {cat.image_url ? (
+          <img src={imgSrc(cat.image_url)} alt="" className="absolute inset-0 w-full h-full object-cover" />
+        ) : (
+          <div className="absolute inset-0 bg-slate-700" />
+        )}
+        <div className="absolute inset-0" style={{ background: `${RED}CC` }} />
+        <div className="absolute inset-0 flex items-end justify-center pb-6 md:pb-10 px-4 text-center">
+          <div
+            className="leading-tight text-white transition-transform group-hover:scale-105"
+            style={{ ...PLANE_CRASH, fontSize: "clamp(1.4rem, 3vw, 2.4rem)", textShadow: "2px 2px 0 rgba(0,0,0,0.4)" }}
+          >
+            {planeCrashSafe(cat.title || "")}
+          </div>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+
+function CategoryModal({ category, onClose }) {
+  const [openNews, setOpenNews] = useState(null); // noticia expandida
+  const news = (category.news || []).filter((n) => n.published !== false);
+
+  useEffect(() => {
+    const onEsc = (e) => e.key === "Escape" && (openNews ? setOpenNews(null) : onClose());
+    document.addEventListener("keydown", onEsc);
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onEsc);
+      document.body.style.overflow = "";
+    };
+  }, [openNews, onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.72)" }}
+      onClick={onClose}
+      data-testid="noticias-modal"
+    >
+      <div
+        className="bg-white rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-5 py-3 gap-3" style={{ background: BLUE }}>
+          <div className="flex items-center gap-3 min-w-0">
+            {openNews && (
+              <button type="button" onClick={() => setOpenNews(null)} className="text-white/90 hover:text-white p-1 rounded-full hover:bg-white/10 transition flex-shrink-0" aria-label="Volver" data-testid="noticias-modal-back">
+                <ChevronLeft size={20} />
+              </button>
+            )}
+            <span
+              className="text-white leading-none truncate"
+              style={{ ...PLANE_CRASH, fontSize: "clamp(1.2rem, 2vw, 1.9rem)" }}
+              data-testid="noticias-modal-title"
+            >
+              {planeCrashSafe((openNews ? openNews.title : category.title) || "")}
+            </span>
+          </div>
+          <button type="button" onClick={onClose} className="text-white/90 hover:text-white p-1 rounded-full hover:bg-white/10 transition flex-shrink-0" aria-label="Cerrar" data-testid="noticias-modal-close">
+            <X size={22} />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto" style={AGENCY_FB}>
+          {openNews ? (
+            <NewsDetail news={openNews} />
+          ) : news.length ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 md:p-6">
+              {news.map((n, i) => (
+                <button
+                  key={n.id || i}
+                  type="button"
+                  onClick={() => setOpenNews(n)}
+                  className="text-left border border-slate-200 rounded-md overflow-hidden hover:shadow-lg transition"
+                  data-testid={`noticia-item-${i}`}
+                >
+                  <div className="aspect-video bg-slate-100 relative">
+                    {n.images?.[0] ? (
+                      <img src={imgSrc(n.images[0])} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs">Sin imagen</div>
+                    )}
+                  </div>
+                  <div className="p-4">
+                    <h3 className="font-black text-slate-800 line-clamp-2" style={{ color: BLUE }}>{n.title}</h3>
+                    {n.body && (
+                      <p className="text-sm text-slate-600 mt-1.5 line-clamp-3">{n.body}</p>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-16 px-6 text-slate-400 italic">
+              Aún no hay noticias publicadas en esta categoría.
+            </div>
+          )}
+        </div>
+      </div>
     </div>
+  );
+}
+
+
+function NewsDetail({ news }) {
+  const images = news.images || [];
+  return (
+    <article className="p-4 md:p-6" data-testid="noticia-detail">
+      {images.length > 0 && (
+        <div className="mb-5">
+          <div className="aspect-video bg-slate-100 rounded-md overflow-hidden mb-2">
+            <img src={imgSrc(images[0])} alt="" className="w-full h-full object-cover" />
+          </div>
+          {images.length > 1 && (
+            <div className="grid grid-cols-4 gap-2">
+              {images.slice(1).map((im, i) => (
+                <div key={i} className="aspect-square bg-slate-100 rounded overflow-hidden">
+                  <img src={imgSrc(im)} alt="" className="w-full h-full object-cover" />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      <h2 className="font-black leading-tight mb-3" style={{ color: BLUE, fontSize: "clamp(1.4rem, 2.4vw, 2rem)" }}>
+        {news.title}
+      </h2>
+      {news.body && (
+        <div className="text-slate-800 leading-relaxed whitespace-pre-line" data-testid="noticia-body">
+          {news.body}
+        </div>
+      )}
+    </article>
   );
 }
