@@ -148,25 +148,25 @@ export default function TeamRegister() {
         )}
         <Toaster richColors position="top-right" />
 
-        <div className="relative max-w-2xl mx-auto px-6 sm:px-10 py-8 md:py-12 text-white">
+        <div className="relative max-w-4xl mx-auto px-8 sm:px-14 py-10 md:py-14 text-white">
           <Link to="/login" className="text-xs uppercase tracking-widest font-bold text-white/80 hover:text-white flex items-center gap-1" data-testid="tr-back-login">
             <ArrowLeft size={14}/> Volver
           </Link>
 
           {/* Título */}
-          <div className="mt-6" style={{ ...PLANE_CRASH, color: "#ffffff", fontSize: "clamp(2rem, 4.5vw, 3.4rem)", lineHeight: 0.95 }}>
+          <div className="mt-8" style={{ ...PLANE_CRASH, color: "#ffffff", fontSize: "clamp(2.6rem, 5.8vw, 4.6rem)", lineHeight: 0.95 }}>
             {planeCrashSafe("se parte del")}
           </div>
-          <div className="italic -mt-1" style={{ fontFamily: "'Dancing Script', 'Allura', cursive", color: "#ffffff", fontWeight: 700, fontSize: "clamp(2.2rem, 4.5vw, 3.4rem)", lineHeight: 1 }} data-testid="tr-title">
+          <div className="italic -mt-1" style={{ fontFamily: "'Dancing Script', 'Allura', cursive", color: "#ffffff", fontWeight: 700, fontSize: "clamp(2.8rem, 5.8vw, 4.4rem)", lineHeight: 1 }} data-testid="tr-title">
             team fsc
           </div>
-          <div className="h-1 w-16 bg-fsc-rojo mt-3"/>
+          <div className="h-1 w-20 bg-fsc-rojo mt-4"/>
 
           {/* Stepper */}
           <Stepper current={step} total={totalSteps} />
 
           {/* Contenido del paso */}
-          <form onSubmit={submit} className="mt-6 space-y-5">
+          <form onSubmit={submit} className="mt-8 space-y-7">
             {step === 1 && (
               <StepPersonal
                 form={form}
@@ -192,27 +192,27 @@ export default function TeamRegister() {
             )}
 
             {/* Navegación */}
-            <div className="pt-4 flex items-center justify-between gap-3 flex-wrap">
+            <div className="pt-6 flex items-center justify-between gap-3 flex-wrap">
               {step > 1 ? (
-                <button type="button" onClick={prev} className="px-5 py-2.5 rounded-md border border-white/40 text-white hover:bg-white/10 transition flex items-center gap-2" data-testid="tr-prev">
-                  <ArrowLeft size={16}/> Anterior
+                <button type="button" onClick={prev} className="px-6 py-3 rounded-md border border-white/40 text-white hover:bg-white/10 transition flex items-center gap-2 text-sm" data-testid="tr-prev">
+                  <ArrowLeft size={18}/> Anterior
                 </button>
               ) : <span/>}
 
               {step < totalSteps ? (
-                <button type="button" onClick={next} className="px-6 py-2.5 rounded-md bg-white transition-transform hover:scale-105 flex items-center gap-2" style={{ ...PLANE_CRASH, color: RED, letterSpacing: "0.05em", fontSize: "0.95rem" }} data-testid="tr-next">
-                  {planeCrashSafe("siguiente")} <ArrowRight size={16}/>
+                <button type="button" onClick={next} className="px-8 py-3 rounded-md bg-white transition-transform hover:scale-105 flex items-center gap-2" style={{ ...PLANE_CRASH, color: RED, letterSpacing: "0.05em", fontSize: "1.05rem" }} data-testid="tr-next">
+                  {planeCrashSafe("siguiente")} <ArrowRight size={18}/>
                 </button>
               ) : (
-                <button type="submit" disabled={loading || !form.data_consent} className="px-6 py-2.5 rounded-md bg-white transition-transform hover:scale-105 disabled:opacity-50 flex items-center gap-2" style={{ ...PLANE_CRASH, color: RED, letterSpacing: "0.05em", fontSize: "0.95rem" }} data-testid="tr-submit">
-                  {planeCrashSafe(loading ? "registrando..." : "registrarme")} <ArrowRight size={16}/>
+                <button type="submit" disabled={loading || !form.data_consent} className="px-8 py-3 rounded-md bg-white transition-transform hover:scale-105 disabled:opacity-50 flex items-center gap-2" style={{ ...PLANE_CRASH, color: RED, letterSpacing: "0.05em", fontSize: "1.05rem" }} data-testid="tr-submit">
+                  {planeCrashSafe(loading ? "registrando..." : "registrarme")} <ArrowRight size={18}/>
                 </button>
               )}
             </div>
           </form>
 
           {/* Enlace secundario */}
-          <div className="mt-8 text-white/80 text-sm">
+          <div className="mt-10 text-white/80 text-sm">
             ¿Ya tienes cuenta?{" "}
             <Link to="/login" className="font-black underline hover:text-white" data-testid="tr-to-login">
               INICIA SESIÓN
@@ -240,26 +240,26 @@ export default function TeamRegister() {
 function Stepper({ current, total }) {
   const items = Array.from({ length: total }, (_, i) => i + 1);
   return (
-    <div className="mt-8 flex items-center gap-2" data-testid="tr-stepper">
+    <div className="mt-10 mb-4 flex items-center gap-3" data-testid="tr-stepper">
       {items.map((n, idx) => {
         const isActive = n === current;
         const isDone = n < current;
         return (
-          <div key={n} className="flex items-center gap-2 flex-1">
+          <div key={n} className="flex items-center gap-3 flex-1">
             <div
-              className={`w-10 h-10 rounded-full flex items-center justify-center font-black transition-all ${isActive ? "scale-110" : ""}`}
+              className={`w-14 h-14 rounded-full flex items-center justify-center font-black transition-all ${isActive ? "scale-110 shadow-lg" : ""}`}
               style={{
                 background: isActive ? "#ffffff" : isDone ? RED : "rgba(255,255,255,0.15)",
                 color: isActive ? RED : "#ffffff",
-                border: isActive ? "2px solid #ffffff" : "2px solid rgba(255,255,255,0.3)",
-                fontSize: isActive ? "1.15rem" : "0.95rem",
+                border: isActive ? "3px solid #ffffff" : "2px solid rgba(255,255,255,0.3)",
+                fontSize: isActive ? "1.5rem" : "1.15rem",
               }}
               data-testid={`tr-step-dot-${n}`}
             >
-              {isDone ? <Check size={18} /> : n}
+              {isDone ? <Check size={22} /> : n}
             </div>
             {idx < items.length - 1 && (
-              <div className="flex-1 h-0.5" style={{ background: n < current ? RED : "rgba(255,255,255,0.3)" }} />
+              <div className="flex-1 h-1 rounded" style={{ background: n < current ? RED : "rgba(255,255,255,0.3)" }} />
             )}
           </div>
         );
@@ -270,15 +270,15 @@ function Stepper({ current, total }) {
 
 function StepPersonal({ form, upd, showPw, setShowPw, isCuerpoTecnico, clubs }) {
   return (
-    <div data-testid="section-personal" className="space-y-4">
-      <div className="grid sm:grid-cols-2 gap-4">
+    <div data-testid="section-personal" className="space-y-5">
+      <div className="grid sm:grid-cols-2 gap-5">
         <FieldDark label="Nombre completo" required value={form.manager_name} onChange={(v) => upd("manager_name", v)} testId="tr-manager" />
         <label className="block">
           <LabelDark text="Rol" required />
           <select
             value={form.manager_role}
             onChange={(e) => upd("manager_role", e.target.value)}
-            className="mt-1 w-full px-3 py-2.5 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-white"
+            className="mt-2 w-full px-4 py-3.5 rounded-md text-white text-base focus:outline-none focus:ring-2 focus:ring-white"
             style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.35)" }}
             data-testid="tr-manager-role"
           >
@@ -289,18 +289,18 @@ function StepPersonal({ form, upd, showPw, setShowPw, isCuerpoTecnico, clubs }) 
         <FieldDark label="Correo electrónico" required type="email" value={form.email} onChange={(v) => upd("email", v)} testId="tr-email" />
         <label className="block">
           <LabelDark text="Contraseña (mín. 6)" required />
-          <div className="relative mt-1">
+          <div className="relative mt-2">
             <input
               type={showPw ? "text" : "password"}
               required
               value={form.password || ""}
               onChange={(e) => upd("password", e.target.value)}
-              className="w-full px-3 py-2.5 pr-10 rounded-md text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white"
+              className="w-full px-4 py-3.5 pr-12 rounded-md text-white text-base placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white"
               style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.35)" }}
               data-testid="tr-password"
             />
-            <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/80 p-1" aria-label="Mostrar contraseña">
-              {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
+            <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/80 p-1" aria-label="Mostrar contraseña">
+              {showPw ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
           </div>
         </label>
@@ -309,15 +309,15 @@ function StepPersonal({ form, upd, showPw, setShowPw, isCuerpoTecnico, clubs }) 
       </div>
 
       {isCuerpoTecnico && (
-        <div className="mt-2 p-4 rounded-md" style={{ background: "rgba(255,255,255,0.1)", borderLeft: `4px solid ${RED}` }}>
-          <p className="text-xs text-white/90 mb-2">Como <strong>Cuerpo Técnico</strong> debes pertenecer a un club ya registrado. Selecciónalo:</p>
+        <div className="mt-3 p-5 rounded-md" style={{ background: "rgba(255,255,255,0.1)", borderLeft: `4px solid ${RED}` }}>
+          <p className="text-sm text-white/90 mb-3">Como <strong>Cuerpo Técnico</strong> debes pertenecer a un club ya registrado. Selecciónalo:</p>
           <label className="block">
             <LabelDark text="Club al que perteneces" required />
             <select
               required
               value={form.existing_club_id}
               onChange={(e) => upd("existing_club_id", e.target.value)}
-              className="mt-1 w-full px-3 py-2.5 rounded-md text-white font-semibold focus:outline-none focus:ring-2 focus:ring-white"
+              className="mt-2 w-full px-4 py-3.5 rounded-md text-white text-base font-semibold focus:outline-none focus:ring-2 focus:ring-white"
               style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.35)" }}
               data-testid="tr-existing-club"
             >
@@ -327,7 +327,7 @@ function StepPersonal({ form, upd, showPw, setShowPw, isCuerpoTecnico, clubs }) 
                 <option key={c.id} value={c.id} style={{ color: "#000" }}>{c.name} {c.city ? `· ${c.city}` : ""}</option>
               ))}
             </select>
-            <span className="text-[10px] text-white/60 mt-1 block">Solo se muestran clubes ya aprobados por el administrador.</span>
+            <span className="text-xs text-white/60 mt-2 block">Solo se muestran clubes ya aprobados por el administrador.</span>
           </label>
         </div>
       )}
@@ -337,8 +337,8 @@ function StepPersonal({ form, upd, showPw, setShowPw, isCuerpoTecnico, clubs }) 
 
 function StepClub({ form, upd }) {
   return (
-    <div data-testid="section-club" className="space-y-4">
-      <div className="grid sm:grid-cols-2 gap-4">
+    <div data-testid="section-club" className="space-y-5">
+      <div className="grid sm:grid-cols-2 gap-5">
         <FieldDark label="Nombre del club" required value={form.club_name} onChange={(v) => upd("club_name", v)} testId="tr-club-name" />
         <FieldDark label="Teléfono club" value={form.club_phone} onChange={(v) => upd("club_phone", v)} testId="tr-club-phone" />
         <label className="block">
@@ -347,7 +347,7 @@ function StepClub({ form, upd }) {
             required
             value={form.club_country}
             onChange={(e) => upd("club_country", e.target.value)}
-            className="mt-1 w-full px-3 py-2.5 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-white"
+            className="mt-2 w-full px-4 py-3.5 rounded-md text-white text-base focus:outline-none focus:ring-2 focus:ring-white"
             style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.35)" }}
             data-testid="tr-club-country"
           >
@@ -362,21 +362,21 @@ function StepClub({ form, upd }) {
 
 function StepIdentity({ form, upd, logoFile, setLogoFile, fileRef, isDirectivo }) {
   return (
-    <div data-testid="section-identity" className="space-y-5">
+    <div data-testid="section-identity" className="space-y-6">
       {isDirectivo && (
         <>
           <label className="block">
             <LabelDark text="Color principal" />
-            <div className="mt-1 flex items-center gap-3">
+            <div className="mt-2 flex items-center gap-3">
               <input
                 type="color"
                 value={form.color}
                 onChange={(e) => upd("color", e.target.value)}
-                className="w-16 h-11 rounded-md cursor-pointer bg-transparent border border-white/35"
+                className="w-20 h-14 rounded-md cursor-pointer bg-transparent border border-white/35"
                 data-testid="tr-color"
               />
               <div
-                className="flex-1 h-11 rounded-md flex items-center px-4 text-white/90 text-sm font-semibold"
+                className="flex-1 h-14 rounded-md flex items-center px-5 text-white text-base font-semibold"
                 style={{ background: form.color, border: "1px solid rgba(255,255,255,0.35)" }}
               >
                 {form.color?.toUpperCase()}
@@ -389,11 +389,11 @@ function StepIdentity({ form, upd, logoFile, setLogoFile, fileRef, isDirectivo }
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
-              className="mt-1 w-full border-2 border-dashed border-white/40 hover:border-white rounded-md px-4 py-4 flex items-center gap-3 text-sm text-white/90 transition"
+              className="mt-2 w-full border-2 border-dashed border-white/40 hover:border-white rounded-md px-5 py-6 flex items-center gap-3 text-base text-white/90 transition"
               style={{ background: "rgba(255,255,255,0.08)" }}
               data-testid="tr-logo-btn"
             >
-              <Upload size={16}/>
+              <Upload size={20}/>
               {logoFile ? <span className="truncate">{logoFile.name}</span> : <span>Seleccionar imagen (PNG/JPG)</span>}
             </button>
             <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => setLogoFile(e.target.files?.[0] || null)} data-testid="tr-logo" />
@@ -401,8 +401,8 @@ function StepIdentity({ form, upd, logoFile, setLogoFile, fileRef, isDirectivo }
         </>
       )}
 
-      {/* Consentimiento — reutilizamos ConsentBlock existente con estilo oscuro. */}
-      <div className="rounded-md p-4" style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)" }}>
+      {/* Consentimiento */}
+      <div className="rounded-md p-5" style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)" }}>
         <ConsentBlockDark checked={form.data_consent} onChange={(v) => upd("data_consent", v)} />
       </div>
     </div>
@@ -417,10 +417,10 @@ function ConsentBlockDark({ checked, onChange }) {
         type="checkbox"
         checked={!!checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="mt-1 w-4 h-4 accent-white flex-shrink-0"
+        className="mt-1 w-5 h-5 accent-white flex-shrink-0"
       />
-      <span className="text-xs text-white/90 leading-relaxed">
-        <span className="font-black uppercase tracking-wider block mb-1" style={PLANE_CRASH}>
+      <span className="text-sm text-white/90 leading-relaxed">
+        <span className="font-black uppercase tracking-wider block mb-1 text-base" style={PLANE_CRASH}>
           {planeCrashSafe("tratamiento de datos y uso de imagen")} *
         </span>
         Acepto el tratamiento de mis datos personales y el uso de imagen (fotografías y video)
@@ -433,7 +433,7 @@ function ConsentBlockDark({ checked, onChange }) {
 
 function LabelDark({ text, required }) {
   return (
-    <span className="text-white text-xs tracking-widest flex items-center gap-1" style={PLANE_CRASH}>
+    <span className="text-white text-sm tracking-widest flex items-center gap-1" style={PLANE_CRASH}>
       {planeCrashSafe(text)} {required && <span style={{ color: RED }}>*</span>}
     </span>
   );
@@ -449,7 +449,7 @@ function FieldDark({ label, value, onChange, required, type = "text", placeholde
         placeholder={placeholder}
         value={value || ""}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-1 w-full px-3 py-2.5 rounded-md text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white"
+        className="mt-2 w-full px-4 py-3.5 rounded-md text-white text-base placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white"
         style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.35)" }}
         data-testid={testId}
       />
