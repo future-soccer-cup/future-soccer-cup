@@ -1,6 +1,8 @@
 import "@/index.css";
 import { BrowserRouter, Routes, Route, Outlet, useLocation } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
+import { LoginModalProvider } from "./context/LoginModalContext";
+import LoginModal from "./components/LoginModal";
 import { Toaster } from "sonner";
 
 import Navbar from "./components/Navbar";
@@ -15,7 +17,7 @@ import ClubDetail from "./pages/ClubDetail";
 import TeamDetail from "./pages/TeamDetail";
 import Players from "./pages/Players";
 import PlayerDetail from "./pages/PlayerDetail";
-import Login from "./pages/Login";
+import LoginRedirect from "./pages/LoginRedirect";
 import Register from "./pages/Register";
 import TeamRegister from "./pages/TeamRegister";
 import MyTeam from "./pages/MyTeam";
@@ -74,6 +76,8 @@ function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <LoginModalProvider>
+          <LoginModal />
         <Routes>
           <Route element={<PublicLayout />}>
             <Route path="/" element={<Home />} />
@@ -91,7 +95,7 @@ function App() {
             <Route path="/eventos" element={<Eventos />} />
             <Route path="/contacto" element={<Contacto />} />
             <Route path="/cotizar" element={<Cotizar />} />
-            <Route path="/login" element={<Login />} />
+            <Route path="/login" element={<LoginRedirect />} />
             <Route path="/registro" element={<Register />} />
             <Route path="/registro-equipo" element={<TeamRegister />} />
             <Route path="/recuperar-clave" element={<ForgotPassword />} />
@@ -134,6 +138,7 @@ function App() {
             <Route path="carnets" element={<AdminCarnets />} />
           </Route>
         </Routes>
+        </LoginModalProvider>
       </BrowserRouter>
     </AuthProvider>
   );

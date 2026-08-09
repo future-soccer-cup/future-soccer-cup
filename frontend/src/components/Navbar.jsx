@@ -2,6 +2,7 @@ import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Menu, X, LogOut, UserCircle2, Shield } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { useLoginModal } from "../context/LoginModalContext";
 import api from "../lib/api";
 import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe, RED, BLUE } from "../lib/designSystem";
 
@@ -16,6 +17,7 @@ const NAV = [
 
 export default function Navbar() {
   const { user, logout } = useAuth();
+  const { openLogin } = useLoginModal();
   const [open, setOpen] = useState(false);
   const [s, setS] = useState({});
   const navigate = useNavigate();
@@ -91,9 +93,15 @@ export default function Navbar() {
               </>
             ) : (
               <>
-                <NavLink to="/login" onClick={() => setOpen(false)} className="px-4 md:px-5 py-3 font-black uppercase tracking-wider text-lg md:text-xl hover:opacity-80" style={{ ...AGENCY_FB, color: RED }} data-testid="nav-link-ingreso">
+                <button
+                  type="button"
+                  onClick={() => { setOpen(false); openLogin(); }}
+                  className="px-4 md:px-5 py-3 font-black uppercase tracking-wider text-lg md:text-xl hover:opacity-80 text-left"
+                  style={{ ...AGENCY_FB, color: RED }}
+                  data-testid="nav-link-ingreso"
+                >
                   INGRESO
-                </NavLink>
+                </button>
                 <NavLink to="/registro-equipo" onClick={() => setOpen(false)} className="px-4 md:px-5 py-3 font-black uppercase tracking-wider text-lg md:text-xl hover:opacity-80" style={{ ...AGENCY_FB, color: RED }} data-testid="nav-link-registro">
                   REGISTRO
                 </NavLink>

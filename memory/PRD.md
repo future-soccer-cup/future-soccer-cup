@@ -16,6 +16,21 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-02-27 — Iter68: Ingreso convertido a modal global
+- **Scope**: reemplazo total del flujo `/login`. Ahora es un modal que aparece encima de la página actual, no una ruta con URL propia.
+- **Frontend nuevo**:
+  - `context/LoginModalContext.jsx`: provider global con `openLogin()` / `closeLogin()` / `open`.
+  - `components/LoginModal.jsx`: modal con overlay `bg-black/60 backdrop-blur-sm`, card roja 2-col (formulario izquierda + imagen KOW derecha), botón X esquina, cierra al click fuera / Escape / X. Bloquea scroll del body mientras está abierto. Click en "REGÍSTRATE" cierra modal y navega a `/registro-equipo`. Click en "¿OLVIDASTE TU CONTRASEÑA?" cierra modal y navega a `/recuperar-clave`.
+  - `pages/LoginRedirect.jsx`: componente diminuto que dispara `openLogin()` y redirige a `/`. Se usa como target de la ruta `/login` para compat con links internos existentes (Register, TeamRegister, ForgotPassword, ResetPassword, ProtectedRoute, Cotizar).
+- **`App.js`**: `LoginModalProvider` envuelve las rutas dentro de `BrowserRouter`; `<LoginModal />` global montado a nivel App. Ruta `/login` ahora usa `LoginRedirect`. Import de `Login` eliminado.
+- **`components/Navbar.jsx`**: botón INGRESO cambiado de `<NavLink to="/login">` a `<button onClick={openLogin}>` (mantiene styling y `data-testid="nav-link-ingreso"`).
+- **`pages/Home.jsx`**: mismo tratamiento en el nav propio del hero home.
+- **`pages/Login.jsx` eliminado** (ya no se referencia).
+- **Diseño del modal** (según wireframe): columna izquierda roja `#e31f27` con título Dancing Script "Ingresa a / tu cuenta", labels Plane Crash blancas, inputs semi-transparentes, botón "INICIAR SESION" blanco/rojo, "¿OLVIDASTE TU CONTRASEÑA?" en blanco small, divisor, "¿ERES NUEVO? REGÍSTRATE" en azul `#0640c8`. Columna derecha: imagen `auth_login_image_url` (CMS) fullbleed sobre `bg-slate-900` fallback.
+- **Lógica de autenticación intacta**: mismo `login(email, password)`, mismo redirect por rol (admin → `/admin`, team → `/mi-equipo`, otros → `/mis-cotizaciones`).
+- Verificado con screenshots + Playwright: modal se dispara desde Home y desde /contacto, click fuera cierra, REGÍSTRATE navega a `/registro-equipo`.
+
+
 ### 2026-02-27 — Iter67: Registro — Wizard de 3 pasos
 - **Scope**: rediseño total de `TeamRegister.jsx` como stepper multi-paso conforme mockups del cliente.
 - **Layout**: grid 2 col (3fr azul `#0640c8` + 2fr imagen KOW). Sin card blanca — inputs directamente sobre azul con fondo `rgba(255,255,255,0.15)` y borde `rgba(255,255,255,0.35)`.
