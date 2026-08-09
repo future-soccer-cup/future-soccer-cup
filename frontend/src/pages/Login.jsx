@@ -1,17 +1,36 @@
-import { useState } from "react";
+/**
+ * Página Ingreso — rediseño Iter66. Card roja con formulario a la izquierda +
+ * imagen de mascota KOW (editable via CMS auth_login_image_url) a la derecha.
+ * Toda la lógica de autenticación se mantiene sin cambios.
+ */
+import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { formatApiError, FSC_LOGO } from "../lib/api";
+import api, { formatApiError, imgSrc } from "../lib/api";
 import { toast, Toaster } from "sonner";
-import { ArrowLeft, Mail, Lock } from "lucide-react";
-import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe, RED } from "../lib/designSystem";
+import { Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { PLANE_CRASH, AGENCY_FB, planeCrashSafe } from "../lib/designSystem";
+
+const RED = "#e31f27";
+const BLUE = "#0640c8";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPw, setShowPw] = useState(false);
+  const [imageUrl, setImageUrl] = useState("");
+  const [heroBgUrl, setHeroBgUrl] = useState("");
   const { login } = useAuth();
   const nav = useNavigate();
+
+  useEffect(() => {
+    api.get("/home-settings").then((r) => {
+      const d = r.data || {};
+      setImageUrl(d.auth_login_image_url || "");
+      setHeroBgUrl(d.home_hero_bg_url || "");
+    }).catch(() => {});
+  }, []);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -30,105 +49,113 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] flex flex-col lg:flex-row bg-white" data-testid="login-page" style={AGENCY_FB}>
-      <Toaster position="top-right" />
-      {/* Form (izquierda) */}
-      <main className="flex-1 lg:flex-[3] flex items-center justify-center p-6 sm:p-10 lg:p-16 min-w-0">
-        <div className="w-full max-w-md">
-          <Link to="/" className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-slate-500 hover:text-fsc-azul-oscuro mb-6">
-            <ArrowLeft size={14}/> Volver al inicio
-          </Link>
+    <div className="relative min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 py-10 overflow-hidden" data-testid="login-page" style={AGENCY_FB}>
+      {/* Fondo con el hero del inicio */}
+      <div className="absolute inset-0">
+        {heroBgUrl && <img src={imgSrc(heroBgUrl)} alt="" className="w-full h-full object-cover" />}
+        <div className="absolute inset-0" style={{ background: `${BLUE}CC` }} />
+        {/* Watermark EDICIÓN */}
+        <div
+          className="absolute top-6 left-4 md:left-10 leading-none pointer-events-none select-none"
+          style={{
+            ...PLANE_CRASH,
+            color: "rgba(255,255,255,0.18)",
+            fontSize: "clamp(3rem, 8vw, 7rem)",
+            letterSpacing: "0.05em",
+          }}
+        >
+          {planeCrashSafe("edicion")}
+        </div>
+      </div>
 
-          <div className="italic text-2xl" style={{ ...CURSIVE, color: "#04299e" }}>bienvenido</div>
-          <h1 className="text-5xl md:text-6xl font-black leading-[0.9]" style={{ ...PLANE_CRASH, color: "#000000" }} data-testid="login-title">{planeCrashSafe("INGRESAR")}</h1>
-          <div className="h-1 w-16 mt-3 mb-7" style={{ background: RED }}/>
+      {/* Card roja */}
+      <div
+        className="relative z-10 grid grid-cols-1 md:grid-cols-2 max-w-4xl w-full rounded-2xl overflow-hidden shadow-2xl"
+        style={{ background: RED }}
+        data-testid="login-card"
+      >
+        <div className="p-8 md:p-10">
+          <div className="text-white mb-6">
+            <div style={{ fontFamily: "'Dancing Script', 'Allura', cursive", fontWeight: 700, fontSize: "clamp(2rem, 3.6vw, 3rem)", lineHeight: 1 }}>Ingresa a</div>
+            <div className="italic mt-1" style={{ fontFamily: "'Dancing Script', 'Allura', cursive", fontWeight: 500, fontSize: "clamp(1.6rem, 2.8vw, 2.4rem)", lineHeight: 1 }}>tu cuenta</div>
+          </div>
 
-          <p className="text-sm text-slate-600 mb-6">
-            Accede a tu cuenta para gestionar tu club, inscripciones y cotizaciones.
-          </p>
-
-          <form onSubmit={submit} className="space-y-5">
+          <form onSubmit={submit} className="space-y-4" data-testid="login-form">
             <label className="block">
-              <span className="text-xs font-bold uppercase tracking-[0.15em] text-slate-500">Correo electrónico</span>
-              <div className="relative mt-1">
-                <Mail size={16} className="absolute left-3 top-3.5 text-slate-400 pointer-events-none"/>
-                <input
-                  required
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="tu@correo.com"
-                  className="w-full pl-10 pr-3 py-3 border-2 border-slate-200 rounded-md focus:outline-none focus:border-fsc-azul transition-colors"
-                  data-testid="login-email-input"
-                />
-              </div>
+              <span className="text-white text-xs tracking-widest flex items-center gap-1.5" style={PLANE_CRASH}>
+                <Mail size={14} /> {planeCrashSafe("ingresa tu correo")} <span>*</span>
+              </span>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="CORREO ELECTRONICO"
+                className="mt-1 w-full px-3 py-2.5 rounded-md text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white"
+                style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.3)" }}
+                data-testid="login-email"
+              />
             </label>
             <label className="block">
-              <span className="text-xs font-bold uppercase tracking-[0.15em] text-slate-500">Contraseña</span>
+              <span className="text-white text-xs tracking-widest flex items-center gap-1.5" style={PLANE_CRASH}>
+                <Lock size={14} /> {planeCrashSafe("ingresa tu contraseña")} <span>*</span>
+              </span>
               <div className="relative mt-1">
-                <Lock size={16} className="absolute left-3 top-3.5 text-slate-400 pointer-events-none"/>
                 <input
+                  type={showPw ? "text" : "password"}
                   required
-                  type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full pl-10 pr-3 py-3 border-2 border-slate-200 rounded-md focus:outline-none focus:border-fsc-azul transition-colors"
-                  data-testid="login-password-input"
+                  placeholder="CONTRASEÑA"
+                  className="w-full px-3 py-2.5 pr-10 rounded-md text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white"
+                  style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.3)" }}
+                  data-testid="login-password"
                 />
-              </div>
-              <div className="text-right mt-2">
-                <Link to="/recuperar-clave" className="text-xs font-bold tracking-wider text-fsc-azul-oscuro hover:text-fsc-rojo transition-colors uppercase" data-testid="forgot-password-link">
-                  ¿Olvidaste tu contraseña?
-                </Link>
+                <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/80 p-1" aria-label="Mostrar contraseña">
+                  {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
             </label>
-            <button
-              type="submit"
-              disabled={loading}
-              className="fsc-btn-primary w-full py-3.5 rounded-md disabled:opacity-50"
-              data-testid="login-submit-btn"
-            >
-              {loading ? "Ingresando..." : "Ingresar"}
-            </button>
+
+            <div className="flex items-center gap-3 pt-2 flex-wrap">
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-6 py-2.5 rounded-md bg-white transition-transform hover:scale-105 disabled:opacity-60"
+                style={{ ...PLANE_CRASH, color: RED, letterSpacing: "0.05em", fontSize: "0.95rem" }}
+                data-testid="login-submit"
+              >
+                {planeCrashSafe(loading ? "ingresando..." : "iniciar sesion")}
+              </button>
+              <Link to="/recuperar" className="text-white/90 text-xs underline hover:text-white" data-testid="login-forgot">
+                ¿OLVIDASTE TU CONTRASEÑA?
+              </Link>
+            </div>
           </form>
 
-          <div className="my-6 flex items-center gap-3">
-            <div className="flex-1 h-px bg-slate-200" />
-            <span className="text-[10px] uppercase tracking-[0.3em] text-slate-400 font-bold">o</span>
-            <div className="flex-1 h-px bg-slate-200" />
-          </div>
+          <div className="my-6 border-t border-white/30" />
 
-          <Link
-            to="/registro-equipo"
-            className="fsc-btn-dark w-full py-3 rounded-md flex items-center justify-center"
-            data-testid="login-to-register-btn"
-          >
-            Registrar mi club
-          </Link>
-          <p className="mt-3 text-xs text-slate-400 text-center">
-            Reservado para directores y directores técnicos de club.
-          </p>
-        </div>
-      </main>
-
-      {/* Panel decorativo (derecha) */}
-      <aside className="hidden lg:flex lg:flex-[2] relative overflow-hidden bg-fsc-negro items-center justify-center min-h-[600px] min-w-0">
-        <div className="absolute inset-0 bg-cover bg-center opacity-25" style={{ backgroundImage: `url(https://images.pexels.com/photos/32694240/pexels-photo-32694240.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=1100&w=900)` }} />
-        <div className="absolute inset-0 bg-gradient-to-bl from-fsc-negro via-fsc-negro/85 to-fsc-azul-noche/70" />
-        <div className="absolute inset-0 fsc-grain pointer-events-none opacity-50" />
-        <div className="relative text-center px-10 fsc-fade-up">
-          <div className="bg-fsc-negro border-2 border-fsc-azul rounded-2xl p-8 inline-block">
-            <img src={FSC_LOGO} alt="FSC" className="h-28 w-28" />
+          <div className="text-white text-sm">
+            <span>¿ERES NUEVO? </span>
+            <Link to="/registro" className="font-black hover:underline" style={{ color: BLUE }} data-testid="login-to-register">
+              REGÍSTRATE
+            </Link>
           </div>
-          <h2 className="mt-8 font-display text-5xl tracking-wider text-white">FUTURE SOCCER CUP</h2>
-          <div className="font-cursive text-2xl text-fsc-azul mt-1">Somos más que un torneo</div>
-          <p className="mt-5 text-fsc-gris/90 max-w-sm mx-auto leading-relaxed">
-            La plataforma oficial para directores de club y directores técnicos.
-          </p>
         </div>
-        <div className="absolute bottom-0 left-0 right-0 bg-fsc-azul h-2" />
-      </aside>
+
+        {/* Imagen KOW derecha */}
+        <div className="relative min-h-[300px] md:min-h-full bg-slate-900" data-testid="login-image-side">
+          {imageUrl ? (
+            <img src={imgSrc(imageUrl)} alt="" className="absolute inset-0 w-full h-full object-cover" />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center text-white/40 text-sm" style={AGENCY_FB}>
+              Imagen no configurada
+            </div>
+          )}
+        </div>
+      </div>
+
+      <Toaster richColors position="top-center" />
     </div>
   );
 }

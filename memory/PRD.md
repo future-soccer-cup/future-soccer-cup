@@ -16,6 +16,20 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-02-27 — Iter66: Rediseño páginas Ingreso y Registro
+- **Scope**: `Login.jsx` reescrito completo; `TeamRegister.jsx` envuelto con nuevo layout 2 columnas (azul + imagen). Lógica de auth conservada intacta.
+- **Backend**: `HomeSettings` gana `auth_login_image_url` y `auth_register_image_url` (dos imágenes editables).
+- **Ingreso** (`Login.jsx`):
+  - Fondo con hero de INICIO + overlay azul + watermark "EDICION" grunge blanco top-left.
+  - Card roja centrada con grid 2 col: izquierda formulario (título "Ingresa a / tu cuenta" en Dancing Script blanco, inputs con fondo `rgba(255,255,255,0.15)`, botón "INICIAR SESION" blanco/rojo, ojo para toggle password, link "¿Olvidaste tu contraseña?", divisor, "¿ERES NUEVO? REGÍSTRATE" en azul); derecha imagen KOW cover.
+- **Registro** (`TeamRegister.jsx`):
+  - Nuevo componente `TeamRegisterLayout` envuelve el contenido con grid 2 col (3fr azul + 2fr imagen). La columna izquierda tiene `overflow-y-auto` para no romper con formularios largos.
+  - Header rediseñado: "SE PARTE DEL" en Plane Crash blanco + "team fsc" cursive Dancing Script bold blanco.
+  - Formulario ahora se muestra dentro de una card blanca sobre fondo azul (contraste). Los `Row` del summary se movieron al final del card blanco.
+- **Admin CMS**: nueva Section "Ingreso / Registro — Imágenes" en `AdminHomeSettings` con 2 uploads.
+- Verificado con screenshots: ambas páginas coinciden con el wireframe.
+
+
 ### 2026-02-27 — Iter65: Página Contacto — rediseño formulario + cancha con palmeras
 - **Scope**: reemplazo total de `Contacto.jsx`. Fondo blanco, sin hero — solo formulario centrado con decoración inferior.
 - **Backend** (`server.py`):

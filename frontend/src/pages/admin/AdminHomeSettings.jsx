@@ -161,6 +161,13 @@ export default function AdminHomeSettings() {
         </div>
       </Section>
 
+      <Section title="Ingreso / Registro — Imágenes" icon={<ImageIcon size={18}/>}>
+        <div className="grid md:grid-cols-2 gap-4">
+          <ImageUpload value={s.auth_login_image_url} onChange={(v) => upd("auth_login_image_url", v)} label="Imagen de la página INGRESO (lado derecho de la card roja)" hint="Recomendado: JPG vertical con KOW en el estadio, 800×1000 px. Se recorta cover." testId="auth-login-upload" />
+          <ImageUpload value={s.auth_register_image_url} onChange={(v) => upd("auth_register_image_url", v)} label="Imagen de la página REGISTRO (columna derecha, fondo fijo)" hint="Recomendado: JPG vertical con KOW + jugador, 800×1200 px. Se recorta cover." testId="auth-register-upload" />
+        </div>
+      </Section>
+
       <Section title="Hero — Edición & fechas" icon={<HomeIcon size={18}/>}>
         <div className="grid md:grid-cols-2 gap-4">
           <Field label="Etiqueta de edición (ej: EDICIÓN)" v={s.hero_edition_label} onChange={(v) => upd("hero_edition_label", v)} />

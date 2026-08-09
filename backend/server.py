@@ -5989,6 +5989,10 @@ class HomeSettings(BaseModel):
     # Ver DEFAULT_CONTACTO_CONFIG.
     contacto: Optional[Dict[str, Any]] = None
 
+    # === Iter66: Imágenes editables para páginas Login / Registro. ===
+    auth_login_image_url: Optional[str] = ""
+    auth_register_image_url: Optional[str] = ""
+
     eventos_hero_kicker: Optional[str] = "temporada"
     eventos_hero_title: Optional[str] = "EVENTOS"
     eventos_hero_body: Optional[str] = "Conoce todos los torneos del calendario FSC y revive las ediciones pasadas."
