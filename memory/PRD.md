@@ -16,6 +16,18 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-02-27 — Iter67: Registro — Wizard de 3 pasos
+- **Scope**: rediseño total de `TeamRegister.jsx` como stepper multi-paso conforme mockups del cliente.
+- **Layout**: grid 2 col (3fr azul `#0640c8` + 2fr imagen KOW). Sin card blanca — inputs directamente sobre azul con fondo `rgba(255,255,255,0.15)` y borde `rgba(255,255,255,0.35)`.
+- **Stepper** (`Stepper` component): 3 círculos numerados con línea conectora. Estado activo = círculo blanco con número rojo Plane Crash; completado = círculo rojo con check blanco; pendiente = círculo semitransparente. Para Cuerpo Técnico solo 2 pasos.
+- **Paso 1** (`StepPersonal`): NOMBRE COMPLETO*, ROL* (select Directivo/Cuerpo Técnico), CORREO*, CONTRASEÑA* (con toggle Eye/EyeOff), TELÉFONO, DOCUMENTO. Si CT: aparece caja destacada para seleccionar club aprobado.
+- **Paso 2** (`StepClub`, solo Directivo): NOMBRE DEL CLUB*, TELÉFONO CLUB, PAÍS*, CIUDAD*.
+- **Paso 3** (`StepIdentity`): COLOR PRINCIPAL (color picker + swatch amplio del color seleccionado), LOGO/ESCUDO CLUB (dashed dropzone), TRATAMIENTO DE DATOS (checkbox + copy legal en versión dark).
+- **Navegación**: botones "ANTERIOR" (outline blanco) + "SIGUIENTE" / "REGISTRARME" (bg blanco Plane Crash rojo). Validación por paso antes de avanzar (usa `toast.error`).
+- **Lógica preservada**: `POST /api/auth/register-team`, upload de logo post-registro vía `/upload` + `PUT /teams/{id}`, flujo CT vs Directivo, toasts de éxito/error, redirect a `/mi-equipo` o `/`.
+- Verificado con screenshots — Paso 1, 2 y 3 renderizan correctamente y stepper progresa con checks rojos.
+
+
 ### 2026-02-27 — Iter66: Rediseño páginas Ingreso y Registro
 - **Scope**: `Login.jsx` reescrito completo; `TeamRegister.jsx` envuelto con nuevo layout 2 columnas (azul + imagen). Lógica de auth conservada intacta.
 - **Backend**: `HomeSettings` gana `auth_login_image_url` y `auth_register_image_url` (dos imágenes editables).

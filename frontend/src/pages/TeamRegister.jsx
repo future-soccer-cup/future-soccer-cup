@@ -1,17 +1,33 @@
+/**
+ * Registro de Equipos — Wizard de 3 pasos (Iter67).
+ * Diseño según mockups del cliente:
+ *   Paso 1 — Datos personales (nombre, rol, email, contraseña, teléfono, documento)
+ *   Paso 2 — Datos del club (nombre, teléfono, país, ciudad)
+ *   Paso 3 — Identidad + Consentimiento (color, logo, tratamiento de datos)
+ *
+ * Layout: dos columnas. Izquierda formulario sobre fondo azul (#0640c8) sin card blanca,
+ * inputs con fondo semi-transparente + borde blanco. Derecha imagen KOW (CMS
+ * home_settings.auth_register_image_url) con fallback placeholder.
+ *
+ * La lógica de submit y llamada a /api/auth/register-team se mantiene intacta.
+ */
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import api, { formatApiError, FSC_LOGO, imgSrc } from "../lib/api";
+import api, { formatApiError, imgSrc } from "../lib/api";
 import { toast, Toaster } from "sonner";
-import { Upload, ArrowRight } from "lucide-react";
+import { Upload, ArrowRight, ArrowLeft, Eye, EyeOff, Check } from "lucide-react";
 import { ConsentBlock } from "./Register";
-import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe } from "../lib/designSystem";
+import { PLANE_CRASH, AGENCY_FB, planeCrashSafe } from "../lib/designSystem";
+
+const RED = "#e31f27";
+const BLUE = "#0640c8";
 
 const EMPTY = {
   email: "", password: "", manager_name: "", manager_phone: "", manager_role: "Directivo", manager_document: "",
   club_name: "", club_country: "Colombia", club_city: "", club_phone: "",
   existing_club_id: "",
-  color: "#0640c8", data_consent: false,
+  color: "#e31f27", data_consent: false,
 };
 
 const COUNTRIES = [
@@ -26,40 +42,73 @@ export default function TeamRegister() {
   const [loading, setLoading] = useState(false);
   const [logoFile, setLogoFile] = useState(null);
   const [clubs, setClubs] = useState([]);
+  const [step, setStep] = useState(1);
+  const [showPw, setShowPw] = useState(false);
+  const [imgUrl, setImgUrl] = useState("");
+  const [heroBgUrl, setHeroBgUrl] = useState("");
   const fileRef = useRef(null);
   const { setUser } = useAuth();
   const nav = useNavigate();
 
-  // Cargar clubes aprobados (para selector de Cuerpo Técnico).
+  // Cargar clubes aprobados + imágenes CMS.
   useEffect(() => {
     api.get("/clubs").then((r) => {
       const list = (r.data || []).filter((c) => (c.status || "pendiente") === "aprobado");
       setClubs(list);
     }).catch(() => {});
+    api.get("/home-settings").then((r) => {
+      const d = r.data || {};
+      setImgUrl(d.auth_register_image_url || "");
+      setHeroBgUrl(d.home_hero_bg_url || "");
+    }).catch(() => {});
   }, []);
 
   const isDirectivo = form.manager_role === "Directivo";
   const isCuerpoTecnico = form.manager_role === "Cuerpo Técnico";
+  const totalSteps = isCuerpoTecnico ? 2 : 3;
 
   const upd = (k, v) => setForm({ ...form, [k]: v });
 
+  // Validación por paso (sin submit).
+  const validateStep = () => {
+    if (step === 1) {
+      if (!form.manager_name.trim()) return "Ingresa tu nombre completo";
+      if (!form.email.trim()) return "Ingresa tu correo electrónico";
+      if ((form.password || "").length < 6) return "La contraseña debe tener mínimo 6 caracteres";
+      if (isCuerpoTecnico && !form.existing_club_id) return "Selecciona el club al que perteneces";
+      return null;
+    }
+    if (step === 2 && isDirectivo) {
+      if (!form.club_name.trim()) return "Indica el nombre del club";
+      if (!form.club_city.trim()) return "Indica la ciudad del club";
+      return null;
+    }
+    return null;
+  };
+
+  const next = () => {
+    const err = validateStep();
+    if (err) return toast.error(err);
+    setStep((s) => Math.min(totalSteps, s + 1));
+  };
+
+  const prev = () => setStep((s) => Math.max(1, s - 1));
+
   const submit = async (e) => {
-    e.preventDefault();
+    e?.preventDefault?.();
     if (!form.data_consent) return toast.error("Debes aceptar la política de datos");
     if (isCuerpoTecnico && !form.existing_club_id) return toast.error("Selecciona el club al que perteneces");
     if (isDirectivo && !(form.club_name || "").trim()) return toast.error("Indica el nombre del club");
     setLoading(true);
     try {
-      // Si es Cuerpo Técnico: envío existing_club_id (no club_name). Si Directivo: envío club_name.
       const payload = { ...form };
       if (isCuerpoTecnico) {
-        // Adjuntar el nombre del club seleccionado para mostrar en confirmación, pero el backend usa existing_club_id.
         const sel = clubs.find((c) => c.id === form.existing_club_id);
         payload.club_name = sel?.name || "";
         payload.club_city = sel?.city || payload.club_city || "";
         payload.club_country = sel?.country || payload.club_country || "Colombia";
       } else {
-        payload.existing_club_id = ""; // limpiar por si el usuario cambió de rol
+        payload.existing_club_id = "";
       }
       const reg = await api.post("/auth/register-team", payload);
       setUser(reg.data);
@@ -88,163 +137,322 @@ export default function TeamRegister() {
   };
 
   return (
-    <TeamRegisterLayout>
-      <Toaster position="top-right" />
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12 text-white">
-        <Link to="/login" className="text-xs uppercase tracking-widest font-bold text-white/80 hover:text-white">← Volver</Link>
-        <div className="mt-4" style={{ ...PLANE_CRASH, color: "#ffffff", fontSize: "clamp(2rem, 4.5vw, 3.4rem)", lineHeight: 0.95 }}>
-          {planeCrashSafe("se parte del")}
-        </div>
-        <div className="italic mt-1" style={{ fontFamily: "'Dancing Script', 'Allura', cursive", color: "#ffffff", fontWeight: 700, fontSize: "clamp(2.2rem, 4.5vw, 3.4rem)", lineHeight: 1 }} data-testid="tr-title">
-          team fsc
-        </div>
-        <div className="h-1 w-16 bg-fsc-rojo mt-3 mb-4"/>
-        <p className="text-sm text-white/85 mt-2 max-w-xl">
-          {isCuerpoTecnico
-            ? "Crea tu cuenta y vincúlate al club al que perteneces. El Directivo del club debe estar ya registrado y aprobado."
-            : "Crea tu cuenta como Directivo, registra tu club. Después podrás inscribir tus equipos a los eventos desde el panel."}
-        </p>
+    <div className="min-h-[calc(100vh-4rem)] grid grid-cols-1 md:grid-cols-[3fr_2fr]" data-testid="team-register-page" style={AGENCY_FB}>
+      {/* Columna izquierda — Formulario */}
+      <div className="relative overflow-y-auto" style={{ background: BLUE, maxHeight: "calc(100vh - 4rem)" }}>
+        {/* Watermark hero opcional */}
+        {heroBgUrl && (
+          <div className="absolute inset-0 pointer-events-none opacity-20">
+            <img src={imgSrc(heroBgUrl)} alt="" className="w-full h-full object-cover" />
+          </div>
+        )}
+        <Toaster richColors position="top-right" />
 
-        <form onSubmit={submit} className="mt-8 space-y-6 bg-white rounded-lg p-5 md:p-6 shadow-xl text-slate-900">
-          <div className="space-y-6">
-            {/* Datos personales */}
-            <Section title="Datos personales" testId="section-personal">
-              <div className="grid sm:grid-cols-2 gap-3">
-                <Field label="Nombre completo" required value={form.manager_name} onChange={(v) => upd("manager_name", v)} testId="tr-manager" />
-                <label className="block">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Rol</span>
-                  <select value={form.manager_role} onChange={(e) => upd("manager_role", e.target.value)} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="tr-manager-role">
-                    <option value="Directivo">Directivo</option>
-                    <option value="Cuerpo Técnico">Cuerpo Técnico</option>
-                  </select>
-                </label>
-                <Field label="Correo electrónico" required type="email" value={form.email} onChange={(v) => upd("email", v)} testId="tr-email" />
-                <Field label="Contraseña (mín. 6)" required type="password" value={form.password} onChange={(v) => upd("password", v)} testId="tr-password" />
-                <Field label="Teléfono" value={form.manager_phone} onChange={(v) => upd("manager_phone", v)} testId="tr-manager-phone" />
-                <Field label="Documento" value={form.manager_document} onChange={(v) => upd("manager_document", v)} testId="tr-manager-doc" />
-              </div>
-              {isCuerpoTecnico && (
-                <div className="mt-4 p-3 bg-fsc-azul/10 border-l-4 border-fsc-azul rounded">
-                  <p className="text-xs text-slate-700 mb-2">Como <strong>Cuerpo Técnico</strong> debes pertenecer a un club ya registrado. Selecciónalo a continuación.</p>
-                  <label className="block">
-                    <span className="text-xs font-bold uppercase tracking-wider text-fsc-azul">Club al que perteneces <span className="text-fsc-rojo">*</span></span>
-                    <select required value={form.existing_club_id} onChange={(e) => upd("existing_club_id", e.target.value)} className="mt-1 w-full px-3 py-2 border-2 border-fsc-azul rounded-md font-semibold" data-testid="tr-existing-club">
-                      <option value="">— Selecciona tu club —</option>
-                      {clubs.length === 0 && <option disabled>No hay clubes aprobados todavía</option>}
-                      {clubs.map((c) => (
-                        <option key={c.id} value={c.id}>{c.name} {c.city ? `· ${c.city}` : ""}</option>
-                      ))}
-                    </select>
-                    <span className="text-[10px] text-slate-500 mt-1 block">Solo se muestran clubes ya aprobados por el administrador.</span>
-                  </label>
-                </div>
-              )}
-            </Section>
+        <div className="relative max-w-2xl mx-auto px-6 sm:px-10 py-8 md:py-12 text-white">
+          <Link to="/login" className="text-xs uppercase tracking-widest font-bold text-white/80 hover:text-white flex items-center gap-1" data-testid="tr-back-login">
+            <ArrowLeft size={14}/> Volver
+          </Link>
 
-            {/* Datos del club — SOLO si rol = Directivo */}
-            {isDirectivo && (
-            <Section title="Datos del club" testId="section-club">
-              <div className="grid sm:grid-cols-2 gap-3">
-                <Field label="Nombre del club" required value={form.club_name} onChange={(v) => upd("club_name", v)} testId="tr-club-name" />
-                <Field label="Teléfono del club" value={form.club_phone} onChange={(v) => upd("club_phone", v)} testId="tr-club-phone" />
-                <label className="block">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500">País <span className="text-fsc-rojo">*</span></span>
-                  <select required value={form.club_country} onChange={(e) => upd("club_country", e.target.value)} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="tr-club-country">
-                    {COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </label>
-                <Field label="Ciudad" required value={form.club_city} onChange={(v) => upd("club_city", v)} testId="tr-club-city" />
-                <label className="block sm:col-span-2">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Color principal</span>
-                  <input type="color" value={form.color} onChange={(e) => upd("color", e.target.value)} className="mt-1 w-full h-10 px-1 border border-slate-200 rounded-md" />
-                </label>
-              </div>
-              <div className="mt-3">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Logo / escudo del club</span>
-                <button type="button" onClick={() => fileRef.current?.click()} className="mt-1 w-full border-2 border-dashed border-slate-300 hover:border-fsc-azul rounded-md px-4 py-3 flex items-center gap-3 text-sm text-slate-600">
-                  <Upload size={16}/>
-                  {logoFile ? <span className="truncate">{logoFile.name}</span> : <span>Seleccionar imagen (PNG/JPG)</span>}
-                </button>
-                <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => setLogoFile(e.target.files?.[0] || null)} data-testid="tr-logo" />
-              </div>
-            </Section>
+          {/* Título */}
+          <div className="mt-6" style={{ ...PLANE_CRASH, color: "#ffffff", fontSize: "clamp(2rem, 4.5vw, 3.4rem)", lineHeight: 0.95 }}>
+            {planeCrashSafe("se parte del")}
+          </div>
+          <div className="italic -mt-1" style={{ fontFamily: "'Dancing Script', 'Allura', cursive", color: "#ffffff", fontWeight: 700, fontSize: "clamp(2.2rem, 4.5vw, 3.4rem)", lineHeight: 1 }} data-testid="tr-title">
+            team fsc
+          </div>
+          <div className="h-1 w-16 bg-fsc-rojo mt-3"/>
+
+          {/* Stepper */}
+          <Stepper current={step} total={totalSteps} />
+
+          {/* Contenido del paso */}
+          <form onSubmit={submit} className="mt-6 space-y-5">
+            {step === 1 && (
+              <StepPersonal
+                form={form}
+                upd={upd}
+                showPw={showPw}
+                setShowPw={setShowPw}
+                isCuerpoTecnico={isCuerpoTecnico}
+                clubs={clubs}
+              />
+            )}
+            {step === 2 && isDirectivo && (
+              <StepClub form={form} upd={upd} />
+            )}
+            {step === totalSteps && (
+              <StepIdentity
+                form={form}
+                upd={upd}
+                logoFile={logoFile}
+                setLogoFile={setLogoFile}
+                fileRef={fileRef}
+                isDirectivo={isDirectivo}
+              />
             )}
 
-            {/* Sección Evento eliminada — el club se registra sin asociar a un evento específico.
-                 Después de la aprobación, el admin/DT podrá inscribir equipos a eventos desde el panel. */}
+            {/* Navegación */}
+            <div className="pt-4 flex items-center justify-between gap-3 flex-wrap">
+              {step > 1 ? (
+                <button type="button" onClick={prev} className="px-5 py-2.5 rounded-md border border-white/40 text-white hover:bg-white/10 transition flex items-center gap-2" data-testid="tr-prev">
+                  <ArrowLeft size={16}/> Anterior
+                </button>
+              ) : <span/>}
 
-            <ConsentBlock checked={form.data_consent} onChange={(v) => upd("data_consent", v)} testId="tr-consent" />
+              {step < totalSteps ? (
+                <button type="button" onClick={next} className="px-6 py-2.5 rounded-md bg-white transition-transform hover:scale-105 flex items-center gap-2" style={{ ...PLANE_CRASH, color: RED, letterSpacing: "0.05em", fontSize: "0.95rem" }} data-testid="tr-next">
+                  {planeCrashSafe("siguiente")} <ArrowRight size={16}/>
+                </button>
+              ) : (
+                <button type="submit" disabled={loading || !form.data_consent} className="px-6 py-2.5 rounded-md bg-white transition-transform hover:scale-105 disabled:opacity-50 flex items-center gap-2" style={{ ...PLANE_CRASH, color: RED, letterSpacing: "0.05em", fontSize: "0.95rem" }} data-testid="tr-submit">
+                  {planeCrashSafe(loading ? "registrando..." : "registrarme")} <ArrowRight size={16}/>
+                </button>
+              )}
+            </div>
+          </form>
 
-            <button type="submit" disabled={loading || !form.data_consent} className="fsc-btn-red w-full py-3 rounded-md flex items-center justify-center gap-2 disabled:opacity-50" data-testid="tr-submit">
-              {loading ? "Registrando..." : (<>{isCuerpoTecnico ? "Solicitar registro al club" : "Solicitar registro de club"} <ArrowRight size={16}/></>)}
-            </button>
+          {/* Enlace secundario */}
+          <div className="mt-8 text-white/80 text-sm">
+            ¿Ya tienes cuenta?{" "}
+            <Link to="/login" className="font-black underline hover:text-white" data-testid="tr-to-login">
+              INICIA SESIÓN
+            </Link>
           </div>
-
-          {/* Side summary — dentro del card blanco */}
-          <aside className="mt-6 pt-6 border-t border-slate-200">
-            <div className="text-xs uppercase tracking-[0.25em] text-fsc-azul">Resumen</div>
-            <div className="mt-2 grid sm:grid-cols-2 gap-2 text-sm">
-              <Row k="Rol" v={form.manager_role || "—"} />
-              <Row k="Club" v={isCuerpoTecnico ? (clubs.find((c) => c.id === form.existing_club_id)?.name || "—") : (form.club_name || "—")} />
-              <Row k="País" v={form.club_country || "—"} />
-              <Row k="Ciudad" v={form.club_city || "—"} />
-              <Row k="Responsable" v={form.manager_name || "—"} />
-            </div>
-            <div className="mt-4 pt-3 border-t border-slate-200 text-xs text-slate-500 leading-relaxed">
-              Después de aprobar tu cuenta, podrás inscribir tus equipos a los eventos y configurar categorías desde el panel.
-            </div>
-          </aside>
-        </form>
+        </div>
       </div>
-    </TeamRegisterLayout>
-  );
-}
 
-
-function TeamRegisterLayout({ children }) {
-  const [imgUrl, setImgUrl] = useState("");
-  useEffect(() => {
-    api.get("/home-settings").then((r) => setImgUrl(r.data?.auth_register_image_url || "")).catch(() => {});
-  }, []);
-  return (
-    <div className="min-h-[calc(100vh-4rem)] grid grid-cols-1 md:grid-cols-[3fr_2fr]" data-testid="team-register-page" style={AGENCY_FB}>
-      <div className="overflow-y-auto" style={{ background: "#0640c8", maxHeight: "calc(100vh - 4rem)" }}>
-        {children}
-      </div>
-      <div className="relative bg-slate-900 hidden md:block">
+      {/* Columna derecha — Imagen KOW */}
+      <div className="relative hidden md:block" style={{ background: "#0a1030" }} data-testid="tr-image-side">
         {imgUrl ? (
           <img src={imgSrc(imgUrl)} alt="" className="absolute inset-0 w-full h-full object-cover" />
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center text-white/30 text-sm">Imagen no configurada</div>
+          <div className="absolute inset-0 flex items-center justify-center text-white/30 text-sm" style={AGENCY_FB}>
+            Imagen no configurada
+          </div>
         )}
       </div>
     </div>
   );
 }
 
-function Section({ title, testId, children }) {
+/* ---------- Componentes ---------- */
+
+function Stepper({ current, total }) {
+  const items = Array.from({ length: total }, (_, i) => i + 1);
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-6" data-testid={testId}>
-      <h2 className="font-display text-2xl font-black uppercase tracking-tight">{title}</h2>
-      <div className="mt-4">{children}</div>
+    <div className="mt-8 flex items-center gap-2" data-testid="tr-stepper">
+      {items.map((n, idx) => {
+        const isActive = n === current;
+        const isDone = n < current;
+        return (
+          <div key={n} className="flex items-center gap-2 flex-1">
+            <div
+              className={`w-10 h-10 rounded-full flex items-center justify-center font-black transition-all ${isActive ? "scale-110" : ""}`}
+              style={{
+                background: isActive ? "#ffffff" : isDone ? RED : "rgba(255,255,255,0.15)",
+                color: isActive ? RED : "#ffffff",
+                border: isActive ? "2px solid #ffffff" : "2px solid rgba(255,255,255,0.3)",
+                fontSize: isActive ? "1.15rem" : "0.95rem",
+              }}
+              data-testid={`tr-step-dot-${n}`}
+            >
+              {isDone ? <Check size={18} /> : n}
+            </div>
+            {idx < items.length - 1 && (
+              <div className="flex-1 h-0.5" style={{ background: n < current ? RED : "rgba(255,255,255,0.3)" }} />
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
 
-function Field({ label, value, onChange, required, type = "text", placeholder, testId }) {
+function StepPersonal({ form, upd, showPw, setShowPw, isCuerpoTecnico, clubs }) {
   return (
-    <label className="block">
-      <span className="text-xs font-bold uppercase tracking-wider text-slate-500">{label}</span>
-      <input required={required} type={type} placeholder={placeholder} value={value || ""} onChange={(e) => onChange(e.target.value)} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid={testId} />
+    <div data-testid="section-personal" className="space-y-4">
+      <div className="grid sm:grid-cols-2 gap-4">
+        <FieldDark label="Nombre completo" required value={form.manager_name} onChange={(v) => upd("manager_name", v)} testId="tr-manager" />
+        <label className="block">
+          <LabelDark text="Rol" required />
+          <select
+            value={form.manager_role}
+            onChange={(e) => upd("manager_role", e.target.value)}
+            className="mt-1 w-full px-3 py-2.5 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-white"
+            style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.35)" }}
+            data-testid="tr-manager-role"
+          >
+            <option value="Directivo" style={{ color: "#000" }}>Directivo</option>
+            <option value="Cuerpo Técnico" style={{ color: "#000" }}>Cuerpo Técnico</option>
+          </select>
+        </label>
+        <FieldDark label="Correo electrónico" required type="email" value={form.email} onChange={(v) => upd("email", v)} testId="tr-email" />
+        <label className="block">
+          <LabelDark text="Contraseña (mín. 6)" required />
+          <div className="relative mt-1">
+            <input
+              type={showPw ? "text" : "password"}
+              required
+              value={form.password || ""}
+              onChange={(e) => upd("password", e.target.value)}
+              className="w-full px-3 py-2.5 pr-10 rounded-md text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white"
+              style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.35)" }}
+              data-testid="tr-password"
+            />
+            <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/80 p-1" aria-label="Mostrar contraseña">
+              {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
+        </label>
+        <FieldDark label="Teléfono" value={form.manager_phone} onChange={(v) => upd("manager_phone", v)} testId="tr-manager-phone" />
+        <FieldDark label="Documento" value={form.manager_document} onChange={(v) => upd("manager_document", v)} testId="tr-manager-doc" />
+      </div>
+
+      {isCuerpoTecnico && (
+        <div className="mt-2 p-4 rounded-md" style={{ background: "rgba(255,255,255,0.1)", borderLeft: `4px solid ${RED}` }}>
+          <p className="text-xs text-white/90 mb-2">Como <strong>Cuerpo Técnico</strong> debes pertenecer a un club ya registrado. Selecciónalo:</p>
+          <label className="block">
+            <LabelDark text="Club al que perteneces" required />
+            <select
+              required
+              value={form.existing_club_id}
+              onChange={(e) => upd("existing_club_id", e.target.value)}
+              className="mt-1 w-full px-3 py-2.5 rounded-md text-white font-semibold focus:outline-none focus:ring-2 focus:ring-white"
+              style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.35)" }}
+              data-testid="tr-existing-club"
+            >
+              <option value="" style={{ color: "#000" }}>— Selecciona tu club —</option>
+              {clubs.length === 0 && <option disabled style={{ color: "#000" }}>No hay clubes aprobados todavía</option>}
+              {clubs.map((c) => (
+                <option key={c.id} value={c.id} style={{ color: "#000" }}>{c.name} {c.city ? `· ${c.city}` : ""}</option>
+              ))}
+            </select>
+            <span className="text-[10px] text-white/60 mt-1 block">Solo se muestran clubes ya aprobados por el administrador.</span>
+          </label>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StepClub({ form, upd }) {
+  return (
+    <div data-testid="section-club" className="space-y-4">
+      <div className="grid sm:grid-cols-2 gap-4">
+        <FieldDark label="Nombre del club" required value={form.club_name} onChange={(v) => upd("club_name", v)} testId="tr-club-name" />
+        <FieldDark label="Teléfono club" value={form.club_phone} onChange={(v) => upd("club_phone", v)} testId="tr-club-phone" />
+        <label className="block">
+          <LabelDark text="País" required />
+          <select
+            required
+            value={form.club_country}
+            onChange={(e) => upd("club_country", e.target.value)}
+            className="mt-1 w-full px-3 py-2.5 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-white"
+            style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.35)" }}
+            data-testid="tr-club-country"
+          >
+            {COUNTRIES.map((c) => <option key={c} value={c} style={{ color: "#000" }}>{c}</option>)}
+          </select>
+        </label>
+        <FieldDark label="Ciudad" required value={form.club_city} onChange={(v) => upd("club_city", v)} testId="tr-club-city" />
+      </div>
+    </div>
+  );
+}
+
+function StepIdentity({ form, upd, logoFile, setLogoFile, fileRef, isDirectivo }) {
+  return (
+    <div data-testid="section-identity" className="space-y-5">
+      {isDirectivo && (
+        <>
+          <label className="block">
+            <LabelDark text="Color principal" />
+            <div className="mt-1 flex items-center gap-3">
+              <input
+                type="color"
+                value={form.color}
+                onChange={(e) => upd("color", e.target.value)}
+                className="w-16 h-11 rounded-md cursor-pointer bg-transparent border border-white/35"
+                data-testid="tr-color"
+              />
+              <div
+                className="flex-1 h-11 rounded-md flex items-center px-4 text-white/90 text-sm font-semibold"
+                style={{ background: form.color, border: "1px solid rgba(255,255,255,0.35)" }}
+              >
+                {form.color?.toUpperCase()}
+              </div>
+            </div>
+          </label>
+
+          <div>
+            <LabelDark text="Logo / escudo del club" />
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              className="mt-1 w-full border-2 border-dashed border-white/40 hover:border-white rounded-md px-4 py-4 flex items-center gap-3 text-sm text-white/90 transition"
+              style={{ background: "rgba(255,255,255,0.08)" }}
+              data-testid="tr-logo-btn"
+            >
+              <Upload size={16}/>
+              {logoFile ? <span className="truncate">{logoFile.name}</span> : <span>Seleccionar imagen (PNG/JPG)</span>}
+            </button>
+            <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => setLogoFile(e.target.files?.[0] || null)} data-testid="tr-logo" />
+          </div>
+        </>
+      )}
+
+      {/* Consentimiento — reutilizamos ConsentBlock existente con estilo oscuro. */}
+      <div className="rounded-md p-4" style={{ background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.2)" }}>
+        <ConsentBlockDark checked={form.data_consent} onChange={(v) => upd("data_consent", v)} />
+      </div>
+    </div>
+  );
+}
+
+/* Consent block versión dark (aprovecha el mismo copy de ConsentBlock) */
+function ConsentBlockDark({ checked, onChange }) {
+  return (
+    <label className="flex items-start gap-3 cursor-pointer" data-testid="tr-consent">
+      <input
+        type="checkbox"
+        checked={!!checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="mt-1 w-4 h-4 accent-white flex-shrink-0"
+      />
+      <span className="text-xs text-white/90 leading-relaxed">
+        <span className="font-black uppercase tracking-wider block mb-1" style={PLANE_CRASH}>
+          {planeCrashSafe("tratamiento de datos y uso de imagen")} *
+        </span>
+        Acepto el tratamiento de mis datos personales y el uso de imagen (fotografías y video)
+        durante los eventos organizados por FUTURE SOCCER CUP, conforme a la política de privacidad.
+        Los datos serán utilizados para gestión deportiva, comunicación institucional y difusión oficial.
+      </span>
     </label>
   );
 }
 
-function Row({ k, v }) {
+function LabelDark({ text, required }) {
   return (
-    <div className="flex justify-between gap-3">
-      <span className="text-slate-400">{k}</span>
-      <span className="font-semibold text-right truncate">{v}</span>
-    </div>
+    <span className="text-white text-xs tracking-widest flex items-center gap-1" style={PLANE_CRASH}>
+      {planeCrashSafe(text)} {required && <span style={{ color: RED }}>*</span>}
+    </span>
+  );
+}
+
+function FieldDark({ label, value, onChange, required, type = "text", placeholder, testId }) {
+  return (
+    <label className="block">
+      <LabelDark text={label} required={required} />
+      <input
+        required={required}
+        type={type}
+        placeholder={placeholder}
+        value={value || ""}
+        onChange={(e) => onChange(e.target.value)}
+        className="mt-1 w-full px-3 py-2.5 rounded-md text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white"
+        style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.35)" }}
+        data-testid={testId}
+      />
+    </label>
   );
 }
