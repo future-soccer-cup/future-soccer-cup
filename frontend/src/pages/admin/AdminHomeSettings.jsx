@@ -299,21 +299,8 @@ export default function AdminHomeSettings() {
         <NoticiasEditor value={s.noticias || {}} onChange={(v) => upd("noticias", v)} />
       </Section>
 
-      <Section title="Contacto (página)" icon={<Phone size={18}/>}>
-        <div className="grid md:grid-cols-2 gap-4">
-          <Field label="Hero — kicker" v={s.contacto_hero_kicker} onChange={(v) => upd("contacto_hero_kicker", v)} placeholder="estamos aquí" />
-          <Field label="Hero — título grande" v={s.contacto_hero_title} onChange={(v) => upd("contacto_hero_title", v)} placeholder="CONTACTO" />
-          <label className="md:col-span-2 block">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Hero — descripción</span>
-            <textarea rows={2} value={s.contacto_hero_body || ""} onChange={(e) => upd("contacto_hero_body", e.target.value)} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" />
-          </label>
-          <div className="md:col-span-2">
-            <ImageUpload value={s.contacto_hero_bg_url} onChange={(v) => upd("contacto_hero_bg_url", v)} label="Hero — imagen de fondo (ancho completo)" hint="Recomendado: JPG/WEBP horizontal 1920×800 px (12:5), alta calidad. Peso ideal < 1 MB. Se recorta tipo cover y recibe el overlay translúcido." testId="contacto-hero-bg-upload" />
-          </div>
-          <OverlaySelect v={s.contacto_hero_overlay} onChange={(v) => upd("contacto_hero_overlay", v)} testId="contacto-hero-overlay" />
-          <Field label="Formulario — kicker" v={s.contacto_form_kicker} onChange={(v) => upd("contacto_form_kicker", v)} placeholder="déjanos un mensaje" />
-          <Field label="Formulario — título" v={s.contacto_form_title} onChange={(v) => upd("contacto_form_title", v)} placeholder="ENVÍANOS TU CONSULTA" />
-        </div>
+      <Section title="Contacto (página) — Nueva estructura" icon={<Phone size={18}/>}>
+        <ContactoEditor value={s.contacto || {}} onChange={(v) => upd("contacto", v)} />
       </Section>
 
       <Section title="Nosotros — sección con imagen (misión)" icon={<Info size={18}/>}>
@@ -916,6 +903,30 @@ function NewsListEditor({ items, onChange, testId }) {
       <button type="button" onClick={add} className="w-full py-1.5 border border-dashed border-slate-300 rounded text-xs text-slate-600 hover:bg-slate-50" data-testid={`${testId}-add`}>
         + Agregar noticia
       </button>
+    </div>
+  );
+}
+
+
+
+// Iter65: Editor de la página Contacto — solo 4 campos (kicker, title, cancha, palmeras).
+function ContactoEditor({ value, onChange }) {
+  const v = value || {};
+  const patch = (p) => onChange({ ...v, ...p });
+  return (
+    <div className="space-y-4" data-testid="contacto-editor">
+      <SubSection title="1. Textos del formulario">
+        <div className="grid md:grid-cols-2 gap-3">
+          <Field label="Kicker cursivo azul" v={v.kicker} onChange={(x) => patch({ kicker: x })} placeholder="déjanos un mensaje" />
+          <Field label="Título grande (Plane Crash)" v={v.title} onChange={(x) => patch({ title: x })} placeholder="ENVÍANOS TU CONSULTA" />
+        </div>
+      </SubSection>
+      <SubSection title="2. Decoración inferior — cancha + palmeras">
+        <ImageUpload value={v.field_url} onChange={(u) => patch({ field_url: u })} label="Imagen de la cancha (fondo inferior)" hint="JPG horizontal con vista de cancha desde arriba. Se muestra en la parte inferior de la página." testId="contacto-field" />
+        <div className="mt-3">
+          <ImageUpload value={v.palms_url} onChange={(u) => patch({ palms_url: u })} label="Imagen de las palmeras (PNG con transparencia)" hint="PNG con dos palmeras a los lados y fondo transparente. Se superpone sobre la cancha." testId="contacto-palms" />
+        </div>
+      </SubSection>
     </div>
   );
 }

@@ -16,6 +16,24 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-02-27 — Iter65: Página Contacto — rediseño formulario + cancha con palmeras
+- **Scope**: reemplazo total de `Contacto.jsx`. Fondo blanco, sin hero — solo formulario centrado con decoración inferior.
+- **Backend** (`server.py`):
+  - `HomeSettings.contacto: Optional[Dict[str, Any]]` + `DEFAULT_CONTACTO_CONFIG` con `kicker`, `title`, `field_url` (cancha), `palms_url` (palmeras PNG).
+  - Backfill automático en `GET /home-settings`.
+- **Frontend público** (`Contacto.jsx`):
+  - Tarjeta centrada con sombra `shadow-2xl` y bordes redondeados.
+  - Kicker cursivo Dancing Script azul.
+  - Título Plane Crash azul con `paddingTop: 0.3em` (necesario porque la fuente grunge tiene glifos altos).
+  - Línea roja corta decorativa debajo.
+  - 4 campos con iconos lucide (User/Mail/Phone/MessageSquare): NOMBRE + EMAIL en fila 50%/50%, TELÉFONO 100%, MENSAJE 100% con textarea.
+  - Botón "✈ ENVIAR" rojo ancho completo con icono `Send`.
+  - `POST /api/contact-messages` conserva la lógica existente + toast success/error via sonner.
+  - `<FieldWithPalms>`: componente decorativo inferior con `<img>` de cancha (object-cover, bottom) + `<img>` de palmeras (object-contain, superpuestas). Solo se renderizan si el CMS tiene URLs.
+- **Admin CMS**: nueva sección `ContactoEditor` con 4 campos (kicker + title + upload cancha + upload palmeras).
+- **Verificado con screenshots**: form renderiza limpio, submit envía el mensaje con éxito (toast "¡Mensaje enviado!"), backend recibe el POST correctamente.
+
+
 ### 2026-02-27 — Iter64: Noticias — cambio de fuente en "Fútbolera"
 - **Bug reportado**: "Fútbolera" tenía la misma fuente que "Torneo Internacional" del navbar (Natura Script fino).
 - **Fix**: cambio a Dancing Script bold cursive con `fontFamily: "'Dancing Script', 'Allura', cursive"`, `fontWeight: 700`, `WebkitTextFillColor: #ffffff` y removí `CURSIVE` (Natura Script) que compartía con el nav.

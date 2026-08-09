@@ -5985,6 +5985,10 @@ class HomeSettings(BaseModel):
     # Ver DEFAULT_NOTICIAS_CONFIG.
     noticias: Optional[Dict[str, Any]] = None
 
+    # === Iter65: Página Contacto — formulario con cancha + palmeras. ===
+    # Ver DEFAULT_CONTACTO_CONFIG.
+    contacto: Optional[Dict[str, Any]] = None
+
     eventos_hero_kicker: Optional[str] = "temporada"
     eventos_hero_title: Optional[str] = "EVENTOS"
     eventos_hero_body: Optional[str] = "Conoce todos los torneos del calendario FSC y revive las ediciones pasadas."
@@ -6160,6 +6164,14 @@ DEFAULT_NOTICIAS_CONFIG: Dict[str, Any] = {
 }
 
 
+DEFAULT_CONTACTO_CONFIG: Dict[str, Any] = {
+    "kicker": "déjanos un mensaje",
+    "title": "ENVÍANOS TU CONSULTA",
+    "field_url": "",  # imagen de la cancha (footer)
+    "palms_url": "",  # imagen PNG de palmeras (transparente)
+}
+
+
 @api.get("/home-settings", response_model=HomeSettings)
 async def get_home_settings():
     doc = await db.home_settings.find_one({"id": HOME_SETTINGS_ID}, {"_id": 0})
@@ -6169,6 +6181,7 @@ async def get_home_settings():
         base["eventos"] = DEFAULT_EVENTOS_CONFIG
         base["estadisticas"] = DEFAULT_ESTADISTICAS_CONFIG
         base["noticias"] = DEFAULT_NOTICIAS_CONFIG
+        base["contacto"] = DEFAULT_CONTACTO_CONFIG
         return base
     # Backfill del timeline si el documento existe pero aún no tiene el campo (docs antiguos).
     if not doc.get("nosotros_history_timeline"):
@@ -6188,6 +6201,9 @@ async def get_home_settings():
     # Backfill de la configuración de Noticias (Iter62).
     if not doc.get("noticias"):
         doc["noticias"] = DEFAULT_NOTICIAS_CONFIG
+    # Backfill de la configuración de Contacto (Iter65).
+    if not doc.get("contacto"):
+        doc["contacto"] = DEFAULT_CONTACTO_CONFIG
     return doc
 
 

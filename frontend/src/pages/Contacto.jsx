@@ -1,135 +1,196 @@
+/**
+ * Página Contacto — formulario centrado + cancha con palmeras (Iter65).
+ * Fondo blanco. Tarjeta con formulario + decoración inferior con cancha (fondo) y
+ * palmeras PNG superpuestas a los lados. Todo editable desde CMS.
+ * El backend endpoint (POST /api/contact-messages) se mantiene sin cambios.
+ */
 import { useEffect, useState } from "react";
-import api, { formatApiError } from "../lib/api";
-import { toast, Toaster } from "sonner";
-import { Send, Mail, Phone, User, MessageSquare } from "lucide-react";
-import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe, RED } from "../lib/designSystem";
-import SecondaryHero from "../components/SecondaryHero";
+import { toast } from "sonner";
+import { User, Mail, Phone, MessageSquare, Send } from "lucide-react";
+import api, { imgSrc } from "../lib/api";
+import { PLANE_CRASH, AGENCY_FB, planeCrashSafe } from "../lib/designSystem";
 
-const EMPTY = { name: "", email: "", phone: "", message: "" };
+const RED = "#e31f27";
+const BLUE = "#0640c8";
 
 export default function Contacto() {
-  const [s, setS] = useState({});
-  const [form, setForm] = useState(EMPTY);
+  const [cfg, setCfg] = useState({});
+  const [form, setForm] = useState({ name: "", email: "", phone: "", message: "" });
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => { api.get("/home-settings").then((r) => setS(r.data || {})).catch(() => {}); }, []);
+  useEffect(() => {
+    api.get("/home-settings").then((r) => setCfg(r.data?.contacto || {})).catch(() => {});
+  }, []);
 
   const submit = async (e) => {
     e.preventDefault();
-    if (!form.name || !form.email || !form.message) {
-      toast.error("Completa nombre, email y mensaje");
+    if (!form.name.trim() || !form.email.trim() || !form.message.trim()) {
+      toast.error("Completa los campos requeridos");
       return;
     }
     setLoading(true);
     try {
-      await api.post("/contact-messages", form);
+      await api.post("/contact-messages", {
+        name: form.name.trim(),
+        email: form.email.trim(),
+        phone: form.phone.trim(),
+        message: form.message.trim(),
+      });
       toast.success("¡Mensaje enviado! Te contactaremos pronto.");
-      setForm(EMPTY);
+      setForm({ name: "", email: "", phone: "", message: "" });
     } catch (err) {
-      toast.error(formatApiError(err.response?.data?.detail) || "Error al enviar el mensaje");
+      toast.error(err.response?.data?.detail?.[0]?.msg || err.response?.data?.detail || "No se pudo enviar el mensaje");
     } finally {
       setLoading(false);
     }
   };
 
+  const kicker = cfg.kicker || "déjanos un mensaje";
+  const title = cfg.title || "ENVÍANOS TU CONSULTA";
+
   return (
-    <div data-testid="contacto-page" style={AGENCY_FB}>
-      <Toaster position="top-right" />
-
-      <SecondaryHero
-        kicker={s.contacto_hero_kicker || "estamos aquí"}
-        title={s.contacto_hero_title || "CONTACTO"}
-        body={s.contacto_hero_body || "Escríbenos. Te responderemos en menos de 24 horas hábiles."}
-        bgUrl={s.contacto_hero_bg_url}
-        overlay={s.contacto_hero_overlay || "blue"}
-        testIdPrefix="contacto-hero"
-      />
-
-      {/* Form */}
-      <section className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20" data-testid="contact-form-section">
-        <form onSubmit={submit} className="bg-white rounded-2xl p-8 lg:p-10 fsc-card-shadow space-y-5" style={{ border: "2px solid #000000" }} data-testid="contact-form">
-          <div className="text-center mb-3">
-            <div className="italic text-2xl" style={{ ...CURSIVE, color: "#04299e" }}>{s.contacto_form_kicker || "déjanos un mensaje"}</div>
-            <h2 className="text-3xl font-black tracking-wide" style={{ ...PLANE_CRASH, color: "#000000" }}>
-              {planeCrashSafe(s.contacto_form_title || "ENVIANOS TU CONSULTA")}
-            </h2>
-            <div className="h-1 w-16 mx-auto mt-2" style={{ background: RED }}/>
+    <div data-testid="contacto-page" className="relative bg-white min-h-[70vh] pb-0" style={AGENCY_FB}>
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 md:pt-16 relative z-10">
+        <form
+          onSubmit={submit}
+          className="bg-white rounded-xl shadow-2xl p-6 md:p-10 border border-slate-100"
+          data-testid="contacto-form"
+        >
+          <div className="text-center mb-6">
+            <div
+              className="italic mb-2"
+              style={{
+                fontFamily: "'Dancing Script', 'Allura', cursive",
+                color: BLUE,
+                fontWeight: 600,
+                fontSize: "clamp(1.1rem, 1.8vw, 1.4rem)",
+                lineHeight: 1.1,
+              }}
+              data-testid="contacto-kicker"
+            >
+              {kicker}
+            </div>
+            <h1
+              className="leading-none"
+              style={{
+                ...PLANE_CRASH,
+                color: BLUE,
+                fontSize: "clamp(1.5rem, 3vw, 2.4rem)",
+                letterSpacing: "0.02em",
+                paddingTop: "0.3em",
+              }}
+              data-testid="contacto-title"
+            >
+              {planeCrashSafe(title)}
+            </h1>
+            <div className="w-16 h-[3px] mx-auto mt-4 rounded-full" style={{ background: RED }} />
           </div>
 
-          <div className="grid sm:grid-cols-2 gap-5">
-            <Field
-              label="Nombre"
-              icon={<User size={16}/>}
-              value={form.name}
-              onChange={(v) => setForm({ ...form, name: v })}
-              required
-              placeholder="Tu nombre completo"
-              testId="contact-name"
-            />
-            <Field
-              label="Email"
-              icon={<Mail size={16}/>}
-              type="email"
-              value={form.email}
-              onChange={(v) => setForm({ ...form, email: v })}
-              required
-              placeholder="tu@correo.com"
-              testId="contact-email"
-            />
+          <div className="grid md:grid-cols-2 gap-4">
+            <Field icon={<User size={14} />} label="NOMBRE" required>
+              <input
+                type="text"
+                required
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                placeholder="Tu nombre completo"
+                className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md focus:border-blue-500 focus:outline-none"
+                data-testid="contacto-name"
+              />
+            </Field>
+            <Field icon={<Mail size={14} />} label="EMAIL" required>
+              <input
+                type="email"
+                required
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                placeholder="tu@correo.com"
+                className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md focus:border-blue-500 focus:outline-none"
+                data-testid="contacto-email"
+              />
+            </Field>
           </div>
-          <Field
-            label="Teléfono"
-            icon={<Phone size={16}/>}
-            value={form.phone}
-            onChange={(v) => setForm({ ...form, phone: v })}
-            placeholder="+57 ..."
-            testId="contact-phone"
-          />
 
-          <label className="block">
-            <span className="text-xs font-bold uppercase tracking-[0.15em] text-slate-500 flex items-center gap-1">
-              <MessageSquare size={14}/> Mensaje <span className="text-fsc-rojo">*</span>
-            </span>
+          <Field icon={<Phone size={14} />} label="TELÉFONO" className="mt-4">
+            <input
+              type="tel"
+              value={form.phone}
+              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              placeholder="+57 ..."
+              className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md focus:border-blue-500 focus:outline-none"
+              data-testid="contacto-phone"
+            />
+          </Field>
+
+          <Field icon={<MessageSquare size={14} />} label="MENSAJE" required className="mt-4">
             <textarea
               required
-              rows={6}
+              rows={5}
               value={form.message}
               onChange={(e) => setForm({ ...form, message: e.target.value })}
               placeholder="Cuéntanos en qué podemos ayudarte..."
-              className="mt-1 w-full px-3 py-3 border-2 border-slate-200 rounded-md focus:outline-none focus:border-fsc-azul transition-colors resize-y"
-              data-testid="contact-message"
+              className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md focus:border-blue-500 focus:outline-none resize-none"
+              data-testid="contacto-message"
             />
-          </label>
+          </Field>
 
           <button
             type="submit"
             disabled={loading}
-            className="fsc-btn-red w-full py-3.5 rounded-md flex items-center justify-center gap-2 disabled:opacity-50"
-            data-testid="contact-submit"
+            className="w-full mt-6 py-3 rounded-md text-white flex items-center justify-center gap-3 transition-transform hover:scale-[1.01] disabled:opacity-60"
+            style={{ background: RED, ...PLANE_CRASH, fontSize: "clamp(1.1rem, 1.8vw, 1.4rem)", letterSpacing: "0.08em" }}
+            data-testid="contacto-submit"
           >
-            {loading ? "Enviando..." : (<><Send size={16}/> ENVIAR</>)}
+            <Send size={20} />
+            {loading ? planeCrashSafe("enviando...") : planeCrashSafe("enviar")}
           </button>
         </form>
-      </section>
+      </div>
+
+      {/* Decoración inferior: cancha + palmeras */}
+      <FieldWithPalms fieldUrl={cfg.field_url} palmsUrl={cfg.palms_url} />
     </div>
   );
 }
 
-function Field({ label, icon, type = "text", value, onChange, required, placeholder, testId }) {
+
+function Field({ icon, label, required, className = "", children }) {
   return (
-    <label className="block">
-      <span className="text-xs font-bold uppercase tracking-[0.15em] text-slate-500 flex items-center gap-1">
-        {icon} {label} {required && <span className="text-fsc-rojo">*</span>}
+    <label className={`block ${className}`}>
+      <span className="text-xs font-bold uppercase tracking-widest text-slate-700 flex items-center gap-1.5">
+        {icon}
+        {label}
+        {required && <span style={{ color: RED }}>*</span>}
       </span>
-      <input
-        type={type}
-        required={required}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="mt-1 w-full px-3 py-3 border-2 border-slate-200 rounded-md focus:outline-none focus:border-fsc-azul transition-colors"
-        data-testid={testId}
-      />
+      {children}
     </label>
+  );
+}
+
+
+function FieldWithPalms({ fieldUrl, palmsUrl }) {
+  return (
+    <div className="relative w-full mt-10 md:mt-16" data-testid="contacto-decor" style={{ minHeight: "clamp(180px, 30vh, 340px)" }}>
+      {/* Cancha (fondo) */}
+      {fieldUrl && (
+        <img
+          src={imgSrc(fieldUrl)}
+          alt=""
+          className="absolute inset-x-0 bottom-0 w-full object-cover"
+          style={{ maxHeight: 340, objectPosition: "center bottom" }}
+          data-testid="contacto-field"
+        />
+      )}
+      {/* Palmeras (encima) */}
+      {palmsUrl && (
+        <img
+          src={imgSrc(palmsUrl)}
+          alt=""
+          className="absolute inset-x-0 bottom-0 w-full pointer-events-none"
+          style={{ maxHeight: 380, objectFit: "contain", objectPosition: "center bottom" }}
+          data-testid="contacto-palms"
+        />
+      )}
+    </div>
   );
 }
