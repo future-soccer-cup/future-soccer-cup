@@ -45,8 +45,8 @@ function HeroSection({ heroUrl, watermark, title, subtitle }) {
       {heroUrl ? (
         <img src={imgSrc(heroUrl)} alt="" className="absolute inset-0 w-full h-full object-cover" />
       ) : null}
-      {/* Overlay azul semitransparente */}
-      <div className="absolute inset-0" style={{ background: `${BLUE}CC` }} />
+      {/* Overlay azul semitransparente (deja ver la foto de fondo, como en la referencia) */}
+      <div className="absolute inset-0" style={{ background: `${BLUE}A6` }} />
       {/* Watermark ghost */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden">
         <div

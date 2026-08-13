@@ -79,8 +79,8 @@ function HeroSection({ heroUrl, watermark, titleTop, titleBottom }) {
       {heroUrl ? (
         <img src={imgSrc(heroUrl)} alt="" className="absolute inset-0 w-full h-full object-cover" />
       ) : null}
-      {/* Overlay rojo semitransparente */}
-      <div className="absolute inset-0" style={{ background: `${RED}CC` }} />
+      {/* Overlay rojo semitransparente (deja ver la foto de fondo, como en la referencia) */}
+      <div className="absolute inset-0" style={{ background: `${RED}A6` }} />
       {/* Watermark ghost */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden">
         <div
@@ -113,14 +113,15 @@ function HeroSection({ heroUrl, watermark, titleTop, titleBottom }) {
         <div
           className="leading-[0.9] mt-1 md:mt-3"
           style={{
-            ...PLANE_CRASH,
+            ...AGENCY_FB,
+            fontWeight: 800,
             color: "#ffffff",
             fontSize: "clamp(2.6rem, 7vw, 6.5rem)",
             textShadow: "3px 5px 0 rgba(0,0,0,0.25)",
           }}
           data-testid="stats-hero-title-bottom"
         >
-          {planeCrashSafe(titleBottom)}
+          {titleBottom}
         </div>
       </div>
     </section>
