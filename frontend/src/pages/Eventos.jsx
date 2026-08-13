@@ -177,7 +177,7 @@ function TabsBar({ tab, onTab, festival, premier, center }) {
           <div className="leading-none" style={{ ...PLANE_CRASH, color: "#ffffff", fontSize: "clamp(1.5rem, 3.6vw, 3rem)" }}>
             {planeCrashSafe(festival.tab_label || "FESTIVAL")}
           </div>
-          <div className="text-white text-center mt-2 text-base md:text-lg lg:text-xl" style={AGENCY_FB}>
+          <div className="text-white text-center mt-2 text-lg md:text-xl lg:text-2xl" style={AGENCY_FB}>
             {festival.tab_dates || ""}
           </div>
         </button>
@@ -201,7 +201,7 @@ function TabsBar({ tab, onTab, festival, premier, center }) {
           <div className="leading-none" style={{ ...PLANE_CRASH, color: "#ffffff", fontSize: "clamp(1.5rem, 3.6vw, 3rem)" }}>
             {planeCrashSafe(premier.tab_label || "PREMIER")}
           </div>
-          <div className="text-white text-center mt-2 text-sm md:text-base lg:text-lg space-y-0.5" style={AGENCY_FB}>
+          <div className="text-white text-center mt-2 text-base md:text-lg lg:text-xl space-y-0.5" style={AGENCY_FB}>
             <div>{premier.tab_dates_even || ""}</div>
             <div>{premier.tab_dates_odd || ""}</div>
           </div>
