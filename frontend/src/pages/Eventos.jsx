@@ -493,11 +493,11 @@ function PremiacionSection({ title, subtitle, cups, individual }) {
           {cups.map((c, i) => (
             <div
               key={`cup-${i}`}
-              className="text-center px-4 py-2 rounded-sm text-white uppercase tracking-wider"
-              style={{ background: RED, ...AGENCY_FB, fontWeight: 800, fontSize: "clamp(1rem, 1.6vw, 1.3rem)" }}
+              className="text-center px-4 py-3 rounded-sm text-white tracking-wider"
+              style={{ background: RED, ...PLANE_CRASH, fontSize: "clamp(1.4rem, 2.4vw, 1.9rem)" }}
               data-testid={`cup-${i}`}
             >
-              {c}
+              {planeCrashSafe(c)}
             </div>
           ))}
         </div>
