@@ -8,6 +8,49 @@ const api = axios.create({
   withCredentials: true,
 });
 
+// Si el access_token (dura 60 min) expira durante una sesión larga de admin,
+// el backend responde 401. Antes de mostrar error, intentamos refrescar la sesión
+// una vez via /auth/refresh (usa el refresh_token de 7 días) y reintentamos la
+// petición original. Si el refresh también falla, se propaga el error normalmente.
+let isRefreshing = false;
+let pendingQueue = [];
+
+function resolvePendingQueue() {
+  pendingQueue.forEach((cb) => cb());
+  pendingQueue = [];
+}
+
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const { config, response } = error;
+    const isAuthEndpoint = config?.url?.includes("/auth/");
+    if (response?.status === 401 && config && !config._retriedAfterRefresh && !isAuthEndpoint) {
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          pendingQueue.push(() => {
+            config._retriedAfterRefresh = true;
+            api(config).then(resolve).catch(reject);
+          });
+        });
+      }
+      config._retriedAfterRefresh = true;
+      isRefreshing = true;
+      try {
+        await axios.post(`${API_BASE}/auth/refresh`, {}, { withCredentials: true });
+        isRefreshing = false;
+        resolvePendingQueue();
+        return api(config);
+      } catch (refreshError) {
+        isRefreshing = false;
+        pendingQueue = [];
+        return Promise.reject(error);
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default api;
 
 export const FSC_LOGO =

@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { User, Mail, Phone, MessageSquare, Send } from "lucide-react";
 import api, { imgSrc } from "../lib/api";
-import { PLANE_CRASH, AGENCY_FB, planeCrashSafe } from "../lib/designSystem";
+import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe } from "../lib/designSystem";
 
 const RED = "#e31f27";
 const BLUE = "#0640c8";
@@ -60,7 +60,7 @@ export default function Contacto() {
             <div
               className="italic mb-2"
               style={{
-                fontFamily: "'Dancing Script', 'Allura', cursive",
+                ...CURSIVE,
                 color: BLUE,
                 fontWeight: 600,
                 fontSize: "clamp(1.1rem, 1.8vw, 1.4rem)",
@@ -74,7 +74,7 @@ export default function Contacto() {
               className="leading-none"
               style={{
                 ...PLANE_CRASH,
-                color: BLUE,
+                color: "#000000",
                 fontSize: "clamp(1.5rem, 3vw, 2.4rem)",
                 letterSpacing: "0.02em",
                 paddingTop: "0.3em",
