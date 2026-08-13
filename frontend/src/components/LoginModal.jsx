@@ -10,7 +10,7 @@ import { useLoginModal } from "../context/LoginModalContext";
 import api, { formatApiError, imgSrc } from "../lib/api";
 import { toast } from "sonner";
 import { Mail, Lock, Eye, EyeOff, X } from "lucide-react";
-import { PLANE_CRASH, AGENCY_FB, planeCrashSafe } from "../lib/designSystem";
+import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe } from "../lib/designSystem";
 
 const RED = "#e31f27";
 const BLUE = "#0640c8";
@@ -88,7 +88,7 @@ export default function LoginModal() {
 
       {/* Card */}
       <div
-        className="relative z-10 grid grid-cols-1 md:grid-cols-2 max-w-4xl w-full rounded-2xl overflow-hidden shadow-2xl"
+        className="relative z-10 grid grid-cols-1 md:grid-cols-2 max-w-5xl w-full rounded-3xl overflow-hidden shadow-2xl"
         style={{ background: RED }}
         onClick={(e) => e.stopPropagation()}
         data-testid="login-modal-card"
@@ -105,13 +105,13 @@ export default function LoginModal() {
         </button>
 
         {/* Columna izquierda — formulario */}
-        <div className="p-8 md:p-10">
-          <div className="text-white mb-6">
-            <div style={{ fontFamily: "'Dancing Script', 'Allura', cursive", fontWeight: 700, fontSize: "clamp(2rem, 3.6vw, 3rem)", lineHeight: 1 }}>Ingresa a</div>
-            <div className="italic mt-1" style={{ fontFamily: "'Dancing Script', 'Allura', cursive", fontWeight: 500, fontSize: "clamp(1.6rem, 2.8vw, 2.4rem)", lineHeight: 1 }}>tu cuenta</div>
+        <div className="p-10 md:p-12">
+          <div className="text-white mb-7">
+            <div style={{ ...AGENCY_FB, fontWeight: 800, fontSize: "clamp(2.2rem, 4vw, 3.2rem)", lineHeight: 1 }}>Ingresa a</div>
+            <div className="italic mt-1" style={{ ...CURSIVE, fontWeight: 500, fontSize: "clamp(1.8rem, 3.2vw, 2.7rem)", lineHeight: 1 }}>tu cuenta</div>
           </div>
 
-          <form onSubmit={submit} className="space-y-4" data-testid="login-modal-form">
+          <form onSubmit={submit} className="space-y-5" data-testid="login-modal-form">
             <label className="block">
               <span className="text-white text-xs tracking-widest flex items-center gap-1.5" style={PLANE_CRASH}>
                 <Mail size={14} /> {planeCrashSafe("ingresa tu correo")} <span>*</span>
@@ -122,8 +122,8 @@ export default function LoginModal() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="CORREO ELECTRONICO"
-                className="mt-1 w-full px-3 py-2.5 rounded-md text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white"
-                style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.3)" }}
+                className="mt-1.5 w-full px-4 py-3.5 text-base rounded-md text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-white"
+                style={{ background: "#ffffff", border: "1px solid rgba(255,255,255,0.4)" }}
                 data-testid="login-modal-email"
               />
             </label>
@@ -131,18 +131,18 @@ export default function LoginModal() {
               <span className="text-white text-xs tracking-widest flex items-center gap-1.5" style={PLANE_CRASH}>
                 <Lock size={14} /> {planeCrashSafe("ingresa tu contraseña")} <span>*</span>
               </span>
-              <div className="relative mt-1">
+              <div className="relative mt-1.5">
                 <input
                   type={showPw ? "text" : "password"}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="CONTRASEÑA"
-                  className="w-full px-3 py-2.5 pr-10 rounded-md text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white"
-                  style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.3)" }}
+                  className="w-full px-4 py-3.5 pr-11 text-base rounded-md text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-white"
+                  style={{ background: "#ffffff", border: "1px solid rgba(255,255,255,0.4)" }}
                   data-testid="login-modal-password"
                 />
-                <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-2 top-1/2 -translate-y-1/2 text-white/80 p-1" aria-label="Mostrar contraseña">
+                <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 p-1" aria-label="Mostrar contraseña">
                   {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
@@ -171,7 +171,7 @@ export default function LoginModal() {
 
           <div className="my-6 border-t border-white/30" />
 
-          <div className="text-white text-sm">
+          <div className="text-white text-base md:text-lg">
             <span>¿ERES NUEVO? </span>
             <button
               type="button"
