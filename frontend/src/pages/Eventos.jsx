@@ -484,7 +484,7 @@ function PremiacionSection({ title, subtitle, cups, individual }) {
         <h2 className="leading-none" style={{ ...PLANE_CRASH, color: BLUE, fontSize: "clamp(2.5rem, 6vw, 4.5rem)" }} data-testid="premiacion-title">
           {planeCrashSafe(title || "PREMIACIÓN")}
         </h2>
-        <p className="mt-3 max-w-2xl mx-auto text-slate-800 text-sm md:text-base" style={AGENCY_FB}>
+        <p className="mt-3 max-w-2xl mx-auto text-sm md:text-base" style={{ ...AGENCY_FB, color: RED, fontWeight: 700, fontSize: "clamp(1.1rem, 2.2vw, 1.6rem)" }}>
           {subtitle || ""}
         </p>
       </div>
@@ -494,10 +494,10 @@ function PremiacionSection({ title, subtitle, cups, individual }) {
             <div
               key={`cup-${i}`}
               className="text-center px-4 py-2 rounded-sm text-white uppercase tracking-wider"
-              style={{ background: RED, ...PLANE_CRASH, fontSize: "clamp(1rem, 1.4vw, 1.2rem)" }}
+              style={{ background: RED, ...AGENCY_FB, fontWeight: 800, fontSize: "clamp(1rem, 1.6vw, 1.3rem)" }}
               data-testid={`cup-${i}`}
             >
-              {planeCrashSafe(c)}
+              {c}
             </div>
           ))}
         </div>
