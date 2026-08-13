@@ -358,19 +358,19 @@ function StadiumSection({ stadium }) {
         <div className="w-full h-full flex items-center justify-center text-white/40" style={AGENCY_FB}>Imagen no configurada</div>
       )}
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
-        <div className="italic" style={{ ...CURSIVE, color: "#ffffff", fontSize: "clamp(2rem, 4.5vw, 3.6rem)", textShadow: "0 4px 12px rgba(0,0,0,0.6)" }}>
+        <div className="italic" style={{ ...CURSIVE, color: "#000000", fontSize: "clamp(2.8rem, 6vw, 4.8rem)", textShadow: "0 2px 10px rgba(255,255,255,0.55)" }}>
           {stadium.cursive || "Estadio"}
         </div>
-        <div className="leading-none mt-1" style={{ ...PLANE_CRASH, color: "#ffffff", fontSize: "clamp(2.4rem, 5.5vw, 4.4rem)", textShadow: "0 4px 12px rgba(0,0,0,0.6)" }}>
-          {planeCrashSafe(stadium.title_top || "CENTENARIO")}
+        <div className="leading-none mt-1 uppercase" style={{ ...AGENCY_FB, fontWeight: 800, color: "#ffffff", fontSize: "clamp(2.6rem, 6vw, 4.8rem)", textShadow: "0 4px 12px rgba(0,0,0,0.6)" }}>
+          {stadium.title_top || "CENTENARIO"}
         </div>
-        <div className="leading-none mt-1" style={{ ...PLANE_CRASH, color: "#ffffff", fontSize: "clamp(2rem, 4.5vw, 3.4rem)", textShadow: "0 4px 12px rgba(0,0,0,0.6)" }}>
-          {planeCrashSafe(stadium.title_bottom || "ARMENIA")}
+        <div className="leading-none mt-1 uppercase" style={{ ...AGENCY_FB, fontWeight: 800, color: "#ffffff", fontSize: "clamp(2.2rem, 5vw, 3.8rem)", textShadow: "0 4px 12px rgba(0,0,0,0.6)" }}>
+          {stadium.title_bottom || "ARMENIA"}
         </div>
         {showBadge && (
           <div
-            className="mt-4 px-4 py-1.5 rounded-sm text-white uppercase tracking-widest text-xs md:text-sm"
-            style={{ background: RED, ...AGENCY_FB, fontWeight: 900 }}
+            className="mt-4 px-4 py-1.5 rounded-sm text-black uppercase tracking-widest text-xs md:text-sm"
+            style={{ background: GOLD, ...AGENCY_FB, fontWeight: 900 }}
             data-testid="stadium-badge"
           >
             {stadium.badge_text || "POR CONFIRMAR"}
@@ -385,7 +385,7 @@ function StadiumSection({ stadium }) {
 function AdventureSection({ title, blocks }) {
   return (
     <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-14" data-testid="adventure-section">
-      <h2 className="text-center italic mb-6 md:mb-8" style={{ ...CURSIVE, color: BLUE, fontSize: "clamp(1.6rem, 3vw, 2.4rem)" }}>
+      <h2 className="text-center mb-6 md:mb-8" style={{ ...AGENCY_FB, fontWeight: 700, color: BLUE, fontSize: "clamp(2rem, 3.8vw, 3rem)" }}>
         {title || "Día de Aventura"}
       </h2>
       <div className={`grid gap-4 md:gap-6 ${blocks.length === 1 ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2"} ${blocks.length > 2 ? "lg:grid-cols-3" : ""}`}>
