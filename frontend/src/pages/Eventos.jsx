@@ -263,7 +263,7 @@ function EventTitleSection({ month, word, isFestival }) {
             // Premier: cursivo dorado (estilo original).
             <div
               className="italic mt-1"
-              style={{ ...CURSIVE, color: GOLD, fontSize: "clamp(2.8rem, 7vw, 5.2rem)", textShadow: "0 2px 0 rgba(0,0,0,0.05)" }}
+              style={{ ...CURSIVE, color: GOLD, fontSize: "clamp(3.4rem, 8.5vw, 6.4rem)", textShadow: "0 2px 0 rgba(0,0,0,0.05)" }}
               data-testid="event-title-word"
             >
               {word || ""}
