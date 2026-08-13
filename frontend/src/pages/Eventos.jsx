@@ -426,13 +426,13 @@ function ScenariosSection({ title, cursive, subTop, subBottom, photos }) {
         >
           {planeCrashSafe(title || "ESCENARIOS")}
         </div>
-        <div className="flex flex-wrap items-baseline justify-center gap-x-3 gap-y-1 mt-1">
-          <div className="italic leading-none" style={{ ...CURSIVE, color: RED, fontSize: "clamp(2rem, 4.5vw, 3.6rem)" }}>
+        <div className="flex flex-wrap items-baseline justify-center gap-x-4 gap-y-1 mt-1">
+          <div className="leading-[0.85]" style={{ ...AGENCY_FB, color: RED, fontWeight: 800, fontSize: "clamp(2.6rem, 9.5vw, 6.4rem)" }}>
             {cursive || "Deportivos!"}
           </div>
-          <div className="leading-tight" style={{ ...AGENCY_FB, color: "#0a0a0a", fontWeight: 700 }}>
-            <div className="text-sm md:text-base">{subTop || "COMFENALCO"}</div>
-            <div className="text-sm md:text-base">{subBottom || "ESTADIO DE ARMENIA"}</div>
+          <div className="leading-[1.05]" style={{ ...AGENCY_FB, color: RED, fontWeight: 800 }}>
+            <div style={{ fontSize: "clamp(1.5rem, 4.6vw, 3rem)" }}>{subTop || "COMFENALCO"}</div>
+            <div style={{ fontSize: "clamp(1.5rem, 4.6vw, 3rem)" }}>{subBottom || "ESTADIO DE ARMENIA"}</div>
           </div>
         </div>
       </div>
