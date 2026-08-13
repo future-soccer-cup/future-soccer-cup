@@ -426,8 +426,8 @@ function ScenariosSection({ title, cursive, subTop, subBottom, photos }) {
         >
           {planeCrashSafe(title || "ESCENARIOS")}
         </div>
-        <div className="flex flex-wrap items-baseline justify-center gap-x-4 gap-y-1 mt-1">
-          <div className="leading-[0.85]" style={{ ...AGENCY_FB, color: RED, fontWeight: 800, fontSize: "clamp(2.6rem, 9.5vw, 6.4rem)" }}>
+        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 mt-1">
+          <div className="leading-[0.85]" style={{ ...AGENCY_FB, color: RED, fontWeight: 800, fontSize: "clamp(2.8rem, 10.5vw, 7.2rem)" }}>
             {cursive || "Deportivos!"}
           </div>
           <div className="leading-[1.05]" style={{ ...AGENCY_FB, color: RED, fontWeight: 800 }}>
