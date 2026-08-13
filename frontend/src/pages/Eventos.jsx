@@ -13,7 +13,7 @@
  */
 import { useEffect, useState } from "react";
 import api, { imgSrc } from "../lib/api";
-import { ChevronLeft, ChevronRight, Trophy, Medal } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe } from "../lib/designSystem";
 import ChevronStack from "../components/ChevronStack";
 
@@ -504,9 +504,9 @@ function PremiacionSection({ title, subtitle, cups, individual }) {
         <div className="flex flex-col items-center gap-2 order-first md:order-none" aria-hidden>
           {cups.slice(0, Math.max(cups.length, 1)).map((_, i) => (
             <div key={`icon-${i}`} className="flex items-center gap-3">
-              <Trophy size={28} color={GOLD} fill={GOLD} />
+              <img src="/award_icons/trophy_gold.jpg" alt="" className="w-8 h-8 rounded-full object-cover" />
               <span className="text-slate-700 font-black">V</span>
-              <Medal size={28} color={GOLD} fill={GOLD} />
+              <img src="/award_icons/medal_gold.jpg" alt="" className="w-8 h-8 rounded-full object-cover" />
             </div>
           ))}
         </div>
@@ -531,7 +531,7 @@ function PremiacionSection({ title, subtitle, cups, individual }) {
 function ClubsSection({ title, logos }) {
   return (
     <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-14 text-center" data-testid="clubs-section">
-      <h2 className="italic mb-6 md:mb-8" style={{ ...CURSIVE, color: BLUE, fontSize: "clamp(1.6rem, 3vw, 2.4rem)" }}>
+      <h2 className="italic mb-6 md:mb-8" style={{ ...CURSIVE, color: BLUE, fontSize: "clamp(2.4rem, 7vw, 4.6rem)" }}>
         {title || "Clubes que han Participado"}
       </h2>
       <div className="flex flex-wrap items-center justify-center gap-5 md:gap-8">
