@@ -97,7 +97,7 @@ export default function Eventos() {
 
 function HeroSection({ heroVideoUrl, heroUrl, logoUrl }) {
   return (
-    <section className="relative w-full h-64 md:h-96 lg:h-[500px] bg-slate-100 overflow-hidden" data-testid="eventos-hero">
+    <section className="relative w-full h-80 md:h-[460px] lg:h-[620px] bg-slate-100 overflow-hidden" data-testid="eventos-hero">
       {heroVideoUrl ? (
         <video
           src={imgSrc(heroVideoUrl)}
