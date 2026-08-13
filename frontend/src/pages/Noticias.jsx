@@ -77,13 +77,13 @@ function HeroSection({ heroUrl, watermark, title, subtitle }) {
           {planeCrashSafe(title)}
         </div>
         <div
-          className="mt-1 md:mt-3 italic"
+          className="mt-1 md:mt-3"
           style={{
-            fontFamily: "'Dancing Script', 'Allura', cursive",
-            fontWeight: 700,
+            ...AGENCY_FB,
+            fontWeight: 800,
             color: "#ffffff",
             WebkitTextFillColor: "#ffffff",
-            fontSize: "clamp(2.2rem, 5.5vw, 5rem)",
+            fontSize: "clamp(2.8rem, 7.5vw, 6.6rem)",
             textShadow: "2px 3px 0 rgba(0,0,0,0.4)",
             lineHeight: 1,
           }}

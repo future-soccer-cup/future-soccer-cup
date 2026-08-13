@@ -139,8 +139,8 @@ function IntroAndSelector({ top, bottom, events, activeKey, onSelect }) {
         {planeCrashSafe(top)}
       </div>
       <div
-        className="italic mt-2"
-        style={{ ...CURSIVE, color: RED, fontSize: "clamp(1.8rem, 3.6vw, 3rem)" }}
+        className="mt-2"
+        style={{ ...AGENCY_FB, fontWeight: 700, color: RED, fontSize: "clamp(1.8rem, 3.6vw, 3rem)" }}
         data-testid="stats-intro-bottom"
       >
         {bottom}
