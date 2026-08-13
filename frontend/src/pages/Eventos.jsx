@@ -161,6 +161,30 @@ function CountriesBar({ title, countries }) {
 }
 
 
+// Divide un texto de fecha tipo "Dic 07 al 12 pares" en la parte principal (fecha) y
+// el sufijo de categoría (pares/impares), que se muestra en tamaño menor, en línea,
+// tal como en la referencia visual del usuario.
+function TabDateLine({ text, testId }) {
+  const t = (text || "").trim();
+  const m = t.match(/^(.*?)(\s+)(pares|impares)$/i);
+  if (!m) {
+    return (
+      <div className="leading-tight" style={{ fontSize: "clamp(1rem, 2.4vw, 1.7rem)" }} data-testid={testId}>
+        {t}
+      </div>
+    );
+  }
+  return (
+    <div className="leading-tight" data-testid={testId}>
+      <span style={{ fontSize: "clamp(1rem, 2.4vw, 1.7rem)" }}>{m[1]}</span>
+      <span className="uppercase tracking-wide ml-1.5" style={{ fontSize: "clamp(0.55rem, 1.3vw, 0.85rem)" }}>
+        {m[3]}
+      </span>
+    </div>
+  );
+}
+
+
 function TabsBar({ tab, onTab, festival, premier, center }) {
   const isFest = tab === "festival";
   const isPrem = tab === "premier";
@@ -177,8 +201,8 @@ function TabsBar({ tab, onTab, festival, premier, center }) {
           <div className="leading-none" style={{ ...PLANE_CRASH, color: "#ffffff", fontSize: "clamp(1.5rem, 3.6vw, 3rem)" }}>
             {planeCrashSafe(festival.tab_label || "FESTIVAL")}
           </div>
-          <div className="text-white text-center mt-2 text-sm md:text-base lg:text-lg" style={AGENCY_FB}>
-            {festival.tab_dates || ""}
+          <div className="text-white text-center mt-2" style={AGENCY_FB}>
+            <TabDateLine text={festival.tab_dates} testId="tab-festival-dates" />
           </div>
         </button>
 
@@ -201,9 +225,9 @@ function TabsBar({ tab, onTab, festival, premier, center }) {
           <div className="leading-none" style={{ ...PLANE_CRASH, color: "#ffffff", fontSize: "clamp(1.5rem, 3.6vw, 3rem)" }}>
             {planeCrashSafe(premier.tab_label || "PREMIER")}
           </div>
-          <div className="text-white text-center mt-2 text-xs md:text-sm lg:text-base space-y-0.5" style={AGENCY_FB}>
-            <div>{premier.tab_dates_even || ""}</div>
-            <div>{premier.tab_dates_odd || ""}</div>
+          <div className="text-white text-center mt-2 space-y-0.5" style={AGENCY_FB}>
+            <TabDateLine text={premier.tab_dates_even} testId="tab-premier-dates-even" />
+            <TabDateLine text={premier.tab_dates_odd} testId="tab-premier-dates-odd" />
           </div>
         </button>
       </div>
