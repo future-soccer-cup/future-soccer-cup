@@ -49,8 +49,8 @@ export default function Contacto() {
   const title = cfg.title || "ENVÍANOS TU CONSULTA";
 
   return (
-    <div data-testid="contacto-page" className="relative bg-white min-h-[70vh] pb-0" style={AGENCY_FB}>
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 md:pt-16 relative z-10">
+    <div data-testid="contacto-page" className="relative bg-white min-h-[70vh] pb-40 md:pb-56 overflow-hidden" style={AGENCY_FB}>
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 md:pt-16 relative z-0">
         <form
           onSubmit={submit}
           className="bg-white rounded-xl shadow-2xl p-6 md:p-10 border border-slate-100"
@@ -147,8 +147,8 @@ export default function Contacto() {
         </form>
       </div>
 
-      {/* Decoración inferior: cancha + palmeras */}
-      <FieldWithPalms fieldUrl={cfg.field_url} palmsUrl={cfg.palms_url} />
+      {/* Decoración inferior: cancha + palmeras (una sola imagen, superpuesta detrás del formulario) */}
+      <FieldWithPalms decorUrl={cfg.field_url} />
     </div>
   );
 }
@@ -168,29 +168,16 @@ function Field({ icon, label, required, className = "", children }) {
 }
 
 
-function FieldWithPalms({ fieldUrl, palmsUrl }) {
+function FieldWithPalms({ decorUrl }) {
+  if (!decorUrl) return null;
   return (
-    <div className="relative w-full mt-10 md:mt-16" data-testid="contacto-decor" style={{ minHeight: "clamp(180px, 30vh, 340px)" }}>
-      {/* Cancha (fondo) */}
-      {fieldUrl && (
-        <img
-          src={imgSrc(fieldUrl)}
-          alt=""
-          className="absolute inset-x-0 bottom-0 w-full object-cover"
-          style={{ maxHeight: 340, objectPosition: "center bottom" }}
-          data-testid="contacto-field"
-        />
-      )}
-      {/* Palmeras (encima) */}
-      {palmsUrl && (
-        <img
-          src={imgSrc(palmsUrl)}
-          alt=""
-          className="absolute inset-x-0 bottom-0 w-full pointer-events-none"
-          style={{ maxHeight: 380, objectFit: "contain", objectPosition: "center bottom" }}
-          data-testid="contacto-palms"
-        />
-      )}
+    <div className="absolute inset-x-0 bottom-0 flex justify-center z-10 pointer-events-none" data-testid="contacto-decor">
+      <img
+        src={imgSrc(decorUrl)}
+        alt=""
+        className="w-full max-w-5xl h-auto"
+        data-testid="contacto-field"
+      />
     </div>
   );
 }

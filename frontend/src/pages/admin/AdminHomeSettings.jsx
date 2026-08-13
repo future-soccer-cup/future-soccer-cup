@@ -953,11 +953,14 @@ function ContactoEditor({ value, onChange }) {
           <Field label="Título grande (Plane Crash)" v={v.title} onChange={(x) => patch({ title: x })} placeholder="ENVÍANOS TU CONSULTA" />
         </div>
       </SubSection>
-      <SubSection title="2. Decoración inferior — cancha + palmeras">
-        <ImageUpload value={v.field_url} onChange={(u) => patch({ field_url: u })} label="Imagen de la cancha (fondo inferior)" hint="JPG horizontal con vista de cancha desde arriba. Se muestra en la parte inferior de la página." testId="contacto-field" />
-        <div className="mt-3">
-          <ImageUpload value={v.palms_url} onChange={(u) => patch({ palms_url: u })} label="Imagen de las palmeras (PNG con transparencia)" hint="PNG con dos palmeras a los lados y fondo transparente. Se superpone sobre la cancha." testId="contacto-palms" />
-        </div>
+      <SubSection title="2. Decoración inferior — cancha + palmeras (una sola imagen)">
+        <ImageUpload
+          value={v.field_url}
+          onChange={(u) => patch({ field_url: u })}
+          label="Imagen decorativa (cancha + palmeras combinada)"
+          hint="PNG con fondo transparente, cancha con palmeras a los lados. Se superpone sobre el borde inferior del formulario (las palmeras quedan a los costados, la cancha debajo)."
+          testId="contacto-field"
+        />
       </SubSection>
     </div>
   );
