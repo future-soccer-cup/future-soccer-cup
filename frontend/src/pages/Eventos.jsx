@@ -361,10 +361,10 @@ function StadiumSection({ stadium }) {
         <div className="italic" style={{ ...CURSIVE, color: "#000000", fontSize: "clamp(2.8rem, 6vw, 4.8rem)", textShadow: "0 2px 10px rgba(255,255,255,0.55)" }}>
           {stadium.cursive || "Estadio"}
         </div>
-        <div className="leading-none mt-1 uppercase" style={{ ...AGENCY_FB, fontWeight: 800, color: "#ffffff", fontSize: "clamp(2.6rem, 6vw, 4.8rem)", textShadow: "0 4px 12px rgba(0,0,0,0.6)" }}>
+        <div className="leading-none mt-1 uppercase" style={{ ...AGENCY_FB, fontWeight: 800, color: "#000000", fontSize: "clamp(2.6rem, 6vw, 4.8rem)", textShadow: "0 2px 10px rgba(255,255,255,0.4)" }}>
           {stadium.title_top || "CENTENARIO"}
         </div>
-        <div className="leading-none mt-1 uppercase" style={{ ...AGENCY_FB, fontWeight: 800, color: "#ffffff", fontSize: "clamp(2.2rem, 5vw, 3.8rem)", textShadow: "0 4px 12px rgba(0,0,0,0.6)" }}>
+        <div className="leading-none mt-1 uppercase" style={{ ...AGENCY_FB, fontWeight: 800, color: "#000000", fontSize: "clamp(2.2rem, 5vw, 3.8rem)", textShadow: "0 2px 10px rgba(255,255,255,0.4)" }}>
           {stadium.title_bottom || "ARMENIA"}
         </div>
         {showBadge && (
