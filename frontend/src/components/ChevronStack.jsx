@@ -25,18 +25,15 @@ export default function ChevronStack({ color = "#ffffff", size = 56, direction =
       {items.map((_, i) => {
         const opacity = Math.max(0.4, 1 - i * 0.13);
         // Cada chevron ocupa size de ancho y ~0.45*size de alto.
-        // Strokes ligeramente más delgados hacia abajo, y el ancho también se reduce
-        // levemente hacia abajo para lograr el efecto de "embudo" del ejemplo del usuario
-        // (el chevron de arriba es el más grande/marcado, el de abajo el más chico/tenue).
+        // Strokes ligeramente más delgados hacia abajo para imitar el ejemplo del usuario.
         const stroke = Math.max(2, 5 - i * 0.5);
-        const scale = Math.max(0.62, 1 - i * 0.09);
         return (
           <svg
             key={i}
-            width={size * scale}
-            height={size * scale * 0.42}
+            width={size}
+            height={size * 0.42}
             viewBox="0 0 100 42"
-            style={{ opacity, marginTop: i === 0 ? 0 : -size * scale * 0.18 }}
+            style={{ opacity, marginTop: i === 0 ? 0 : -size * 0.18 }}
           >
             <polyline
               points="6,36 50,8 94,36"
