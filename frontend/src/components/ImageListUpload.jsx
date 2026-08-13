@@ -12,7 +12,7 @@ import { toast } from "sonner";
  *  - onChange: (newArr: string[]) => void
  *  - label, hint, testId
  */
-export default function ImageListUpload({ values = [], onChange, label = "Imágenes", hint = "", testId = "image-list-upload" }) {
+export default function ImageListUpload({ values = [], onChange, label = "Imágenes", hint = "", testId = "image-list-upload", max = null }) {
   const inputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
 
@@ -44,7 +44,8 @@ export default function ImageListUpload({ values = [], onChange, label = "Imáge
     setUploading(false);
     if (inputRef.current) inputRef.current.value = "";
     if (uploaded.length > 0) {
-      onChange([...values, ...uploaded]);
+      const merged = [...values, ...uploaded];
+      onChange(max ? merged.slice(-max) : merged);
       toast.success(`${uploaded.length} imagen(es) cargada(s)`);
     }
   };
@@ -110,12 +111,12 @@ export default function ImageListUpload({ values = [], onChange, label = "Imáge
         data-testid={`${testId}-btn`}
       >
         {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
-        {uploading ? "Cargando..." : values.length === 0 ? "Subir imágenes" : "Agregar más"}
+        {uploading ? "Cargando..." : values.length === 0 ? "Subir imágenes" : max && values.length >= max ? "Reemplazar foto" : "Agregar más"}
       </button>
       <input
         ref={inputRef}
         type="file"
-        multiple
+        multiple={!max || max > 1}
         accept="image/*,.jpg,.jpeg,.jfif,.jif,.jpe,.pjpeg,.pjp,.png,.apng,.gif,.bmp,.dib,.tif,.tiff,.webp,.heic,.heif,.avif,.svg,.ico,.raw,.cr2,.cr3,.nef,.arw,.dng,.orf,.rw2,.raf,.pef,.srw"
         hidden
         onChange={handleFiles}

@@ -2,13 +2,14 @@
  * FSC EN LA HISTORIA — Sección de timeline navegable en /nosotros.
  *
  * DOS ESTADOS con TRANSICIÓN suave:
- *  - INTRODUCCIÓN: 6 fotos del hito flotando + texto "FSC EN LA HISTORIA" SUPERPUESTO
- *    (z-index sobre las fotos).
- *  - Al hacer clic en un año, la FOTO 0 del hito se AGRANDA (anima inset/rotate) hasta
- *    ocupar todo el área. Las OTRAS 5 FOTOS y el texto FSC hacen fade-out. Sobre la
- *    foto grande aparece overlay con la pregunta + botón "LEE AQUÍ".
+ *  - INTRODUCCIÓN: 6 fotos flotando (1 foto por cada hito, hasta 6 hitos) + texto
+ *    "FSC EN LA HISTORIA" SUPERPUESTO (z-index sobre las fotos).
+ *  - Al hacer clic en un año, la FOTO principal del hito seleccionado se AGRANDA
+ *    (anima inset/rotate) hasta ocupar todo el área. Las OTRAS 5 FOTOS y el texto FSC
+ *    hacen fade-out. Sobre la foto grande aparece overlay con la pregunta + botón "LEE AQUÍ".
  *
- * Cada hito tiene su propio set de fotos que se muestran en las 6 posiciones del INTRO.
+ * Cada hito tiene 1 sola foto: se usa como principal al seleccionarlo y compone el
+ * collage de la introducción junto a las fotos de los demás hitos.
  */
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
@@ -44,6 +45,16 @@ export default function FSCHistorySection({ settings }) {
 
   const active = timeline[activeIdx] || timeline[0];
   const isIntro = !active || (active.key || "").toLowerCase() === "intro" || activeIdx === 0;
+
+  // Collage de INTRO: 1 foto por cada hito (no-intro), hasta 6. Cada foto flotante
+  // representa un hito distinto en lugar de exigir 6 fotos en un único hito.
+  const introPhotos = useMemo(() => {
+    return timeline
+      .filter((m) => (m.key || "").toLowerCase() !== "intro")
+      .map((m) => (m.photos || [])[0])
+      .filter(Boolean)
+      .slice(0, 6);
+  }, [timeline]);
 
   // Cada vez que cambiamos a un año, esperamos 420ms antes de mostrar el overlay
   // pregunta + LEE AQUÍ para que la animación de expansión se aprecie.
@@ -83,9 +94,12 @@ export default function FSCHistorySection({ settings }) {
           {/* Desktop: 6 fotos absolutamente posicionadas — animan hacia cover en modo YEAR */}
           <div className="hidden md:block absolute inset-0" data-testid="history-photos-wrapper">
             {SLOTS.map((slot, i) => {
-              const p = photos[i];
-              if (!p) return null;
               const isMain = i === 0;
+              // Slot principal: en INTRO muestra la 1ª foto del collage; en YEAR, la foto del hito activo.
+              // Slots 1-5: siempre muestran su foto del collage (una por hito) para que la
+              // transición no cambie de imagen, solo se desvanecen en modo YEAR.
+              const p = isMain ? (isIntro ? introPhotos[0] : (active.photos || [])[0]) : introPhotos[i];
+              if (!p) return null;
               // Si estamos en modo YEAR y esta es la foto principal, la llevamos a cover.
               const target = !isIntro && isMain ? COVER : slot;
               // Otras fotos (no la principal) hacen fade-out en modo YEAR.
@@ -165,7 +179,7 @@ export default function FSCHistorySection({ settings }) {
           {/* Overlay YEAR: pregunta + LEE AQUÍ (aparece con delay tras la expansión) */}
           {!isIntro && (question || hasBody) && (
             <div
-              className="hidden md:flex absolute inset-x-0 bottom-0 flex-col items-center justify-end px-6 pb-16 pt-40 text-center"
+              className="hidden md:flex absolute inset-x-0 bottom-0 flex-col items-center justify-end px-6 pb-16 pt-24 text-center"
               style={{
                 zIndex: 8,
                 background: "linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.5) 45%, rgba(0,0,0,0) 100%)",
@@ -177,11 +191,11 @@ export default function FSCHistorySection({ settings }) {
             >
               {question && (
                 <div
-                  className="text-white leading-tight mb-5 max-w-4xl"
+                  className="text-white leading-tight mb-4 max-w-xl mx-auto"
                   style={{
                     ...PLANE_CRASH,
-                    fontSize: "clamp(2.4rem, 6vw, 5rem)",
-                    textShadow: "3px 3px 0 rgba(0,0,0,0.5)",
+                    fontSize: "clamp(1.4rem, 2.6vw, 2.4rem)",
+                    textShadow: "2px 2px 0 rgba(0,0,0,0.5)",
                   }}
                   data-testid="history-question"
                 >
@@ -222,7 +236,7 @@ export default function FSCHistorySection({ settings }) {
                   )}
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  {photos.slice(0, 6).map((p, i) => (
+                  {introPhotos.map((p, i) => (
                     <div key={`m-${i}`} className="overflow-hidden" style={{ border: "2px solid #ffffff", boxShadow: "0 4px 12px rgba(0,0,0,0.18)" }}>
                       <img src={imgSrc(p)} alt="" className="w-full h-32 object-cover" loading="lazy" />
                     </div>

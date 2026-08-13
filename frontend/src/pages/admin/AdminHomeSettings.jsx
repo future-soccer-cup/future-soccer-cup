@@ -388,8 +388,10 @@ function OverlaySelect({ v, onChange, testId }) {
 }
 
 
-// Editor del timeline de "FSC en la Historia". Cada hito tiene key, label, body y hasta 6 fotos.
-// El admin puede agregar/borrar hitos y reordenar sus fotos con ImageListUpload (max 6).
+// Editor del timeline de "FSC en la Historia". Cada hito tiene key, label, body y 1 foto.
+// El admin puede agregar/borrar hitos. La foto de cada hito se usa como imagen principal
+// al seleccionarlo, y también compone el collage de 6 fotos flotantes de la introducción
+// (una foto por hito, hasta 6 hitos).
 function HistoryTimelineEditor({ value, onChange }) {
   const items = Array.isArray(value) ? value : [];
   const update = (idx, patch) => {
@@ -449,11 +451,12 @@ function HistoryTimelineEditor({ value, onChange }) {
           </label>
           <div className="mt-3">
             <ImageListUpload
-              label="Fotos del hito (máximo 6, se muestran alrededor del texto FSC)"
-              hint="Se muestran flotando en 6 posiciones fijas alrededor del texto central. Recomendado: JPG horizontal, 800×450 px, < 300 KB."
+              label="Foto del hito (1 sola)"
+              hint="Esta foto se usa como imagen principal del hito y también aparece en el collage de la introducción (cada foto flotante representa un hito distinto)."
               values={it.photos || []}
-              onChange={(v) => update(idx, { photos: (v || []).slice(0, 6) })}
+              onChange={(v) => update(idx, { photos: v || [] })}
               testId={`timeline-photos-${idx}`}
+              max={1}
             />
           </div>
         </div>
