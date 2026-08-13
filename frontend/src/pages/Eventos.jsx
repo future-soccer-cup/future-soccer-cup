@@ -161,30 +161,6 @@ function CountriesBar({ title, countries }) {
 }
 
 
-// Divide un texto de fecha tipo "Dic 07 al 12 pares" en la parte principal (fecha) y
-// el sufijo de categoría (pares/impares), que se muestra en tamaño menor, en línea,
-// tal como en la referencia visual del usuario.
-function TabDateLine({ text, testId }) {
-  const t = (text || "").trim();
-  const m = t.match(/^(.*?)(\s+)(pares|impares)$/i);
-  if (!m) {
-    return (
-      <div className="leading-tight" style={{ fontSize: "clamp(1rem, 2.4vw, 1.7rem)" }} data-testid={testId}>
-        {t}
-      </div>
-    );
-  }
-  return (
-    <div className="leading-tight" data-testid={testId}>
-      <span style={{ fontSize: "clamp(1rem, 2.4vw, 1.7rem)" }}>{m[1]}</span>
-      <span className="uppercase tracking-wide ml-1.5" style={{ fontSize: "clamp(0.55rem, 1.3vw, 0.85rem)" }}>
-        {m[3]}
-      </span>
-    </div>
-  );
-}
-
-
 function TabsBar({ tab, onTab, festival, premier, center }) {
   const isFest = tab === "festival";
   const isPrem = tab === "premier";
@@ -201,8 +177,8 @@ function TabsBar({ tab, onTab, festival, premier, center }) {
           <div className="leading-none" style={{ ...PLANE_CRASH, color: "#ffffff", fontSize: "clamp(1.5rem, 3.6vw, 3rem)" }}>
             {planeCrashSafe(festival.tab_label || "FESTIVAL")}
           </div>
-          <div className="text-white text-center mt-2" style={AGENCY_FB}>
-            <TabDateLine text={festival.tab_dates} testId="tab-festival-dates" />
+          <div className="text-white text-center mt-2 text-sm md:text-base lg:text-lg" style={AGENCY_FB}>
+            {festival.tab_dates || ""}
           </div>
         </button>
 
@@ -225,9 +201,9 @@ function TabsBar({ tab, onTab, festival, premier, center }) {
           <div className="leading-none" style={{ ...PLANE_CRASH, color: "#ffffff", fontSize: "clamp(1.5rem, 3.6vw, 3rem)" }}>
             {planeCrashSafe(premier.tab_label || "PREMIER")}
           </div>
-          <div className="text-white text-center mt-2 space-y-0.5" style={AGENCY_FB}>
-            <TabDateLine text={premier.tab_dates_even} testId="tab-premier-dates-even" />
-            <TabDateLine text={premier.tab_dates_odd} testId="tab-premier-dates-odd" />
+          <div className="text-white text-center mt-2 text-xs md:text-sm lg:text-base space-y-0.5" style={AGENCY_FB}>
+            <div>{premier.tab_dates_even || ""}</div>
+            <div>{premier.tab_dates_odd || ""}</div>
           </div>
         </button>
       </div>
@@ -252,10 +228,14 @@ const FESTIVAL_LETTER_COLORS = [
 function EventTitleSection({ month, word, isFestival }) {
   return (
     <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 md:pt-8 pb-8" data-testid="eventos-title-section">
-      <div className="flex items-center justify-center gap-8 md:gap-16">
-        <button type="button" aria-hidden className="fsc-bounce cursor-default bg-transparent border-0" data-testid="event-chevron-left">
-          <ChevronStack color={RED} size={56} direction="up" count={5} />
-        </button>
+      {/* Mismo grid-cols-3 + gap que TabsBar arriba, para que cada flecha quede centrada
+          exactamente respecto al ancho del botón FESTIVAL (col 1) o PREMIER (col 3). */}
+      <div className="grid grid-cols-3 gap-3 md:gap-5 items-center">
+        <div className="flex justify-center">
+          <button type="button" aria-hidden className="fsc-bounce cursor-default bg-transparent border-0" data-testid="event-chevron-left">
+            <ChevronStack color={RED} size={56} direction="up" count={5} />
+          </button>
+        </div>
         <div className="text-center">
           <div className="leading-[0.9]" style={{ ...PLANE_CRASH, color: BLUE, fontSize: "clamp(2.2rem, 5vw, 4rem)" }} data-testid="event-title-month">
             {planeCrashSafe(month || "")}
@@ -290,9 +270,11 @@ function EventTitleSection({ month, word, isFestival }) {
             </div>
           )}
         </div>
-        <button type="button" aria-hidden className="fsc-bounce cursor-default bg-transparent border-0" data-testid="event-chevron-right">
-          <ChevronStack color={RED} size={56} direction="up" count={5} />
-        </button>
+        <div className="flex justify-center">
+          <button type="button" aria-hidden className="fsc-bounce cursor-default bg-transparent border-0" data-testid="event-chevron-right">
+            <ChevronStack color={RED} size={56} direction="up" count={5} />
+          </button>
+        </div>
       </div>
     </section>
   );
