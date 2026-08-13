@@ -418,18 +418,22 @@ function ScenariosSection({ title, cursive, subTop, subBottom, photos }) {
 
   return (
     <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-14" data-testid="scenarios-section">
-      <div className="flex flex-col md:flex-row md:items-end md:justify-between mb-6 gap-3">
-        <div>
-          <div className="leading-[0.9]" style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(3rem, 7vw, 5.6rem)" }} data-testid="scenarios-title">
-            {planeCrashSafe(title || "ESCENARIOS")}
-          </div>
-          <div className="italic leading-none mt-1" style={{ ...CURSIVE, color: RED, fontSize: "clamp(2rem, 4.5vw, 3.6rem)" }}>
+      <div className="mb-6">
+        <div
+          className="leading-[0.85] w-full text-center"
+          style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(3rem, 11vw, 8rem)", letterSpacing: "clamp(0rem, 0.8vw, 0.2rem)" }}
+          data-testid="scenarios-title"
+        >
+          {planeCrashSafe(title || "ESCENARIOS")}
+        </div>
+        <div className="flex flex-wrap items-baseline justify-center gap-x-3 gap-y-1 mt-1">
+          <div className="italic leading-none" style={{ ...CURSIVE, color: RED, fontSize: "clamp(2rem, 4.5vw, 3.6rem)" }}>
             {cursive || "Deportivos!"}
           </div>
-        </div>
-        <div className="text-right md:text-left leading-tight" style={{ ...AGENCY_FB, color: "#0a0a0a", fontWeight: 700 }}>
-          <div className="text-sm md:text-base">{subTop || "COMFENALCO"}</div>
-          <div className="text-sm md:text-base">{subBottom || "ESTADIO DE ARMENIA"}</div>
+          <div className="leading-tight" style={{ ...AGENCY_FB, color: "#0a0a0a", fontWeight: 700 }}>
+            <div className="text-sm md:text-base">{subTop || "COMFENALCO"}</div>
+            <div className="text-sm md:text-base">{subBottom || "ESTADIO DE ARMENIA"}</div>
+          </div>
         </div>
       </div>
 
