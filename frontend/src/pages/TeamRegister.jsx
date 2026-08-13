@@ -18,7 +18,7 @@ import api, { formatApiError, imgSrc } from "../lib/api";
 import { toast, Toaster } from "sonner";
 import { Upload, ArrowRight, ArrowLeft, Eye, EyeOff, Check } from "lucide-react";
 import { ConsentBlock } from "./Register";
-import { PLANE_CRASH, AGENCY_FB, planeCrashSafe } from "../lib/designSystem";
+import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe } from "../lib/designSystem";
 
 const RED = "#e31f27";
 const BLUE = "#0640c8";
@@ -154,10 +154,10 @@ export default function TeamRegister() {
           </Link>
 
           {/* Título */}
-          <div className="mt-8" style={{ ...PLANE_CRASH, color: "#ffffff", fontSize: "clamp(2.6rem, 5.8vw, 4.6rem)", lineHeight: 0.95 }}>
-            {planeCrashSafe("se parte del")}
+          <div className="mt-8" style={{ ...AGENCY_FB, fontWeight: 700, color: "#ffffff", fontSize: "clamp(1.6rem, 3.2vw, 2.4rem)", lineHeight: 1 }}>
+            Sé parte del
           </div>
-          <div className="italic -mt-1" style={{ fontFamily: "'Dancing Script', 'Allura', cursive", color: "#ffffff", fontWeight: 700, fontSize: "clamp(2.8rem, 5.8vw, 4.4rem)", lineHeight: 1 }} data-testid="tr-title">
+          <div className="italic -mt-1" style={{ ...CURSIVE, color: "#ffffff", fontWeight: 700, fontSize: "clamp(2.8rem, 5.8vw, 4.4rem)", lineHeight: 1 }} data-testid="tr-title">
             team fsc
           </div>
           <div className="h-1 w-20 bg-fsc-rojo mt-4"/>
@@ -420,7 +420,7 @@ function ConsentBlockDark({ checked, onChange }) {
         className="mt-1 w-5 h-5 accent-white flex-shrink-0"
       />
       <span className="text-sm text-white/90 leading-relaxed">
-        <span className="font-black uppercase tracking-wider block mb-1 text-base" style={PLANE_CRASH}>
+        <span className="font-black tracking-wider block mb-1 text-base" style={PLANE_CRASH}>
           {planeCrashSafe("tratamiento de datos y uso de imagen")} *
         </span>
         Acepto el tratamiento de mis datos personales y el uso de imagen (fotografías y video)
