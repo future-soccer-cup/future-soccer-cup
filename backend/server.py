@@ -227,7 +227,11 @@ MIME = {
     "pef": "image/x-pentax-pef", "srw": "image/x-samsung-srw",
     # Document
     "pdf": "application/pdf",
+    # Video
+    "mp4": "video/mp4", "webm": "video/webm", "mov": "video/quicktime", "ogv": "video/ogg",
 }
+
+VIDEO_EXTS = {"mp4", "webm", "mov", "ogv"}
 
 # Logo en caché global para evitar descargar el archivo remoto en CADA generación de PDF (era el principal cuello de botella).
 FSC_LOGO_URL = "https://customer-assets.emergentagent.com/job_dd2523b3-e20b-4cc5-9d6d-534c6d02a185/artifacts/y4ulg6l9_FUTRE%20SOCCER%20CUP%202025_Mesa%20de%20trabajo%201.png"
@@ -5175,10 +5179,11 @@ def _maybe_convert_to_webp(data: bytes, ext: str) -> Optional[bytes]:
 async def upload_file(file: UploadFile = File(...), user: dict = Depends(get_current_user)):
     ext = (file.filename.rsplit(".", 1)[-1] if "." in (file.filename or "") else "bin").lower()
     if ext not in MIME:
-        raise HTTPException(status_code=400, detail="Formato no soportado. Acepta: JPG/JPEG/JFIF/JIF/PJPEG, PNG/APNG, GIF, BMP/DIB, TIFF, WebP, HEIC/HEIF/AVIF, SVG, ICO, RAW (CR2/CR3/NEF/ARW/DNG/ORF/RW2/RAF/PEF/SRW) o PDF.")
+        raise HTTPException(status_code=400, detail="Formato no soportado. Acepta: JPG/JPEG/JFIF/JIF/PJPEG, PNG/APNG, GIF, BMP/DIB, TIFF, WebP, HEIC/HEIF/AVIF, SVG, ICO, RAW (CR2/CR3/NEF/ARW/DNG/ORF/RW2/RAF/PEF/SRW), PDF o video (MP4/WebM/MOV/OGV).")
     data = await file.read()
-    if len(data) > 5 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="Archivo mayor a 5MB")
+    max_size = 30 * 1024 * 1024 if ext in VIDEO_EXTS else 5 * 1024 * 1024
+    if len(data) > max_size:
+        raise HTTPException(status_code=400, detail=f"Archivo mayor a {max_size // (1024 * 1024)}MB")
 
     # === Optimización: convertir imágenes raster a WebP ===
     # Reduce drásticamente el peso (típicamente 25-50% vs JPG, 70%+ vs PNG) manteniendo calidad visual.

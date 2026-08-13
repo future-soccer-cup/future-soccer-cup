@@ -42,7 +42,7 @@ export default function Eventos() {
   return (
     <div data-testid="eventos-page" style={AGENCY_FB} className="bg-white">
       {/* SECCIÓN 1 — Hero */}
-      <HeroSection heroUrl={ev.hero_url} logoUrl={navLogo} />
+      <HeroSection heroVideoUrl={ev.hero_video_url} heroUrl={ev.hero_url} logoUrl={navLogo} />
 
       {/* SECCIÓN 2 — Países */}
       <CountriesBar title={ev.countries_title} countries={ev.countries || []} />
@@ -95,10 +95,20 @@ export default function Eventos() {
 }
 
 
-function HeroSection({ heroUrl, logoUrl }) {
+function HeroSection({ heroVideoUrl, heroUrl, logoUrl }) {
   return (
     <section className="relative w-full h-64 md:h-96 lg:h-[500px] bg-slate-100 overflow-hidden" data-testid="eventos-hero">
-      {heroUrl ? (
+      {heroVideoUrl ? (
+        <video
+          src={imgSrc(heroVideoUrl)}
+          className="w-full h-full object-cover"
+          autoPlay
+          loop
+          muted
+          playsInline
+          data-testid="eventos-hero-video"
+        />
+      ) : heroUrl ? (
         <img src={imgSrc(heroUrl)} alt="" className="w-full h-full object-cover" />
       ) : (
         <div className="w-full h-full flex items-center justify-center text-slate-300" style={AGENCY_FB}>Imagen no configurada</div>
@@ -118,8 +128,8 @@ function CountriesBar({ title, countries }) {
     <section className="w-full py-4 md:py-5" style={{ background: BLUE }} data-testid="eventos-countries">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4">
         <h2
-          className="text-white text-lg md:text-xl lg:text-2xl italic"
-          style={{ ...CURSIVE, fontWeight: 400 }}
+          className="text-white text-lg md:text-xl lg:text-2xl"
+          style={{ ...AGENCY_FB, fontWeight: 700 }}
           data-testid="countries-title"
         >
           {title || "Países que han Participado"}
@@ -167,7 +177,7 @@ function TabsBar({ tab, onTab, festival, premier, center }) {
           <div className="leading-none" style={{ ...PLANE_CRASH, color: "#ffffff", fontSize: "clamp(1.5rem, 3.6vw, 3rem)" }}>
             {planeCrashSafe(festival.tab_label || "FESTIVAL")}
           </div>
-          <div className="text-white mt-2 text-xs md:text-sm lg:text-base" style={AGENCY_FB}>
+          <div className="text-white text-center mt-2 text-sm md:text-base lg:text-lg" style={AGENCY_FB}>
             {festival.tab_dates || ""}
           </div>
         </button>
@@ -176,7 +186,7 @@ function TabsBar({ tab, onTab, festival, premier, center }) {
           <div className="leading-none" style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(1.5rem, 3.6vw, 3rem)" }}>
             {planeCrashSafe(center?.top || "EVENTOS")}
           </div>
-          <div className="italic mt-1" style={{ ...CURSIVE, color: RED, fontSize: "clamp(1rem, 1.6vw, 1.4rem)" }}>
+          <div className="mt-1" style={{ ...AGENCY_FB, color: RED, fontWeight: 700, fontSize: "clamp(1.1rem, 2vw, 1.7rem)" }}>
             {center?.bottom || "Diseñados para ti"}
           </div>
         </div>
@@ -191,7 +201,7 @@ function TabsBar({ tab, onTab, festival, premier, center }) {
           <div className="leading-none" style={{ ...PLANE_CRASH, color: "#ffffff", fontSize: "clamp(1.5rem, 3.6vw, 3rem)" }}>
             {planeCrashSafe(premier.tab_label || "PREMIER")}
           </div>
-          <div className="text-white mt-2 text-[10px] md:text-xs lg:text-sm space-y-0.5" style={AGENCY_FB}>
+          <div className="text-white text-center mt-2 text-xs md:text-sm lg:text-base space-y-0.5" style={AGENCY_FB}>
             <div>{premier.tab_dates_even || ""}</div>
             <div>{premier.tab_dates_odd || ""}</div>
           </div>
@@ -217,7 +227,7 @@ const FESTIVAL_LETTER_COLORS = [
 
 function EventTitleSection({ month, word, isFestival }) {
   return (
-    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8" data-testid="eventos-title-section">
+    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 md:pt-8 pb-8" data-testid="eventos-title-section">
       <div className="flex items-center justify-center gap-8 md:gap-16">
         <button type="button" aria-hidden className="fsc-bounce cursor-default bg-transparent border-0" data-testid="event-chevron-left">
           <ChevronStack color={RED} size={56} direction="up" count={5} />
@@ -249,7 +259,7 @@ function EventTitleSection({ month, word, isFestival }) {
             // Premier: cursivo dorado (estilo original).
             <div
               className="italic mt-1"
-              style={{ ...CURSIVE, color: GOLD, fontSize: "clamp(2.4rem, 6vw, 4.5rem)", textShadow: "0 2px 0 rgba(0,0,0,0.05)" }}
+              style={{ ...CURSIVE, color: GOLD, fontSize: "clamp(2.8rem, 7vw, 5.2rem)", textShadow: "0 2px 0 rgba(0,0,0,0.05)" }}
               data-testid="event-title-word"
             >
               {word || ""}

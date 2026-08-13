@@ -1,0 +1,38 @@
+{
+  "summary": "Tested Eventos hero video upload feature (admin -> save -> public /eventos) plus visual/UI adjustments (AgencyFB fonts, tab date centering, title spacing, cursive Premier size) and backend /api/upload video support. Backend upload endpoint tests all pass (6/6). Admin video upload flow works and persists correctly on save. Found and mitigated a CRITICAL race-condition bug in AdminHomeSettings that caused real data loss on the shared home_settings singleton during testing; restored data via API. Video playback itself could not be 100% confirmed in the headless test browser due to a codec/demuxer error with the test sample video, but element wiring (autoplay/loop/muted/playsinline) and file serving (200 OK, correct bytes) are correct.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "AdminHomeSettings save() race condition",
+        "issue": "CRITICAL: AdminHomeSettings.jsx initializes state with `EMPTY` and renders all editors (EventosEditor, EstadisticasEditor, etc.) immediately, while the real data is fetched asynchronously via load()->GET /api/home-settings. If a user interacts with ANY sub-editor field (e.g. uploads the Eventos hero video) and clicks 'Guardar cambios' BEFORE the initial GET completes, the PUT /api/home-settings payload only contains the just-touched field merged into the still-EMPTY nested object, wiping out ALL other previously-saved fields in that nested section (and potentially other sections too, since the whole `s` state object is saved). Reproduced exactly: after logging in, navigating to /admin/home, uploading a video, and clicking Save within ~10s (before load() resolved), the `eventos` object in MongoDB was reduced from 20 keys (festival, premier, countries, stadium, etc.) down to just {hero_video_url}. All festival/premier/countries/stadium/adventure/scenarios/premiacion/clubs config for the public /eventos page was lost until I manually restored it via a direct API call using the DEFAULT_EVENTOS_CONFIG constants from server.py.",
+        "affected_selectors": ["home-settings-save", "eventos-editor"]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_upload_eventos.py", "/app/test_reports/pytest/pytest_results_upload.xml"],
+  "action_items": [
+    "FIX RACE CONDITION (high priority): In AdminHomeSettings.jsx, add a `loaded` boolean set to true only after load() resolves successfully. Disable/hide the 'Guardar cambios' button (and ideally all editors) until `loaded` is true, so users can never save stale/incomplete state on top of real data. This is a general-purpose admin CMS page and this bug can silently wipe any section, not just Eventos.",
+    "Verify manually (real browser, not headless sandbox) that an actual short mp4 uploaded via the admin plays correctly in loop/muted/autoplay on /eventos — my automated headless browser reported 'DEMUXER_ERROR_NO_SUPPORTED_STREAMS' for the sample video used, which looks like a codec-support limitation of the sandboxed test browser rather than an app bug (file served correctly with HTTP 200 and correct byte count from backend), but should be double-checked on a normal Chrome instance.",
+    "Consider adding a debounce/lock so Save button is disabled while `!loaded` as noted above."
+  ],
+  "critical_code_review_comments": [
+    "AdminHomeSettings.jsx: no `loaded` state gate before allowing save — root cause of the data-loss bug above.",
+    "POST /api/upload and VideoUpload.jsx/ImageUpload.jsx implementations look correct and are consistent (multipart form, 30MB video / 5MB image limits enforced server-side and matched client-side hints).",
+    "Eventos.jsx HeroSection correctly implements video->image->placeholder fallback chain with data-testid='eventos-hero-video' as requested.",
+    "Font/size/spacing changes (AgencyFB for countries-title and tabs 'Diseñados para ti', centered+larger tab dates, larger cursive 'Premier', extra pt-4/pt-8 spacing on eventos-title-section) all verified visually via screenshots and match the requested spec."
+  ],
+  "updated_files": ["/app/backend/tests/test_upload_eventos.py"],
+  "success_rate": {"backend": "100% (6/6 upload tests)", "frontend": "verified visually; 1 critical integration bug found (data-loss race condition), otherwise all requested visual changes confirmed correct"},
+  "test_credentials": "Admin: admin@futuresoccercup.com / FSCAdmin2025! (from /app/memory/test_credentials.md)",
+  "seed_data_creation": "None created; however I performed a DATA RECOVERY action: restored home_settings.eventos in the live/shared DB to DEFAULT_EVENTOS_CONFIG values (festival, premier, countries, stadium, adventure, scenarios, premiacion, clubs) while preserving the hero_video_url uploaded during testing, after my test run triggered the race-condition bug and wiped that nested object down to just {hero_video_url}. Verified via GET /api/home-settings and a follow-up Playwright screenshot of /eventos that all sections (dates, month/word titles, countries flags) render correctly again.",
+  "retest_needed": true,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Eventos video-upload feature and all 6 requested visual/style tweaks (AgencyFB countries title, AgencyFB+larger 'Diseñados para ti', centered+larger tab dates, extra spacing above eventos-title-section, larger cursive gold 'Premier') are implemented correctly and verified visually via screenshots at /eventos (both Festival and Premier tabs). Backend POST /api/upload correctly accepts video (mp4/webm/mov/ogv up to 30MB) and rejects oversized/unsupported files, with images still capped at 5MB — 6/6 pytest cases pass (see /app/backend/tests/test_upload_eventos.py). THE MAIN FINDING: a critical race-condition bug in AdminHomeSettings.jsx where saving before the initial GET /api/home-settings resolves wipes nested config sections. I fixed the resulting data loss manually via API restore, but the underlying bug in the React code is NOT fixed and should be addressed by main agent (add a `loaded` gate before allowing Save). Video's actual pixel-level playback could not be 100% confirmed in the sandboxed headless browser (codec demuxer error on my test sample mp4 despite correct file serving/attributes) — recommend a quick manual check on a real Chrome browser.",
+  "rca_of_the_issue": "AdminHomeSettings uses `const [s, setS] = useState(EMPTY)` then fetches real data asynchronously in a useEffect->load(). All child editors (EventosEditor etc.) render immediately against EMPTY defaults. There is no `loaded`/`isReady` flag gating the Save button or blocking interaction. When a user (or in my case, an automated test performing actions quickly) triggers a field update (e.g., VideoUpload's onChange -> patch({hero_video_url:url}) -> onChange({...v,...p}) where v was still `{}` from EMPTY) and then clicks 'Guardar cambios' before the GET response has updated `s`, the resulting PUT payload contains only the just-changed field for that nested section, permanently overwriting the previously saved full config in MongoDB (home_settings singleton, single document, no versioning/history)."
+}

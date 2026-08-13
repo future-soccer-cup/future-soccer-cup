@@ -4,6 +4,7 @@ import { Save, Home as HomeIcon, Trophy, Info, Phone, Image as ImageIcon, Hash, 
 import { toast } from "sonner";
 import ImageUpload from "../../components/ImageUpload";
 import ImageListUpload from "../../components/ImageListUpload";
+import VideoUpload from "../../components/VideoUpload";
 
 const EMPTY = {
   // Navbar
@@ -104,6 +105,7 @@ const csvToArr = (v) => String(v || "").split(",").map(x => x.trim()).filter(Boo
 export default function AdminHomeSettings() {
   const [s, setS] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -116,6 +118,7 @@ export default function AdminHomeSettings() {
         premier_categories_par: arrToCsv(d.premier_categories_par),
         premier_categories_imp: arrToCsv(d.premier_categories_imp),
       });
+      setLoaded(true);
     } catch {
       toast.error("Error al cargar configuración");
     }
@@ -123,6 +126,10 @@ export default function AdminHomeSettings() {
   useEffect(() => { load(); }, [load]);
 
   const save = async () => {
+    if (!loaded) {
+      toast.error("Espera a que termine de cargar la configuración actual antes de guardar");
+      return;
+    }
     setSaving(true);
     try {
       const payload = {
@@ -141,6 +148,14 @@ export default function AdminHomeSettings() {
   };
 
   const upd = (k, v) => setS(prev => ({ ...prev, [k]: v }));
+
+  if (!loaded) {
+    return (
+      <div className="flex items-center justify-center py-24 text-slate-400" data-testid="admin-home-settings-loading">
+        Cargando configuración actual...
+      </div>
+    );
+  }
 
   return (
     <div data-testid="admin-home-settings">
@@ -481,11 +496,18 @@ function EventosEditor({ value, onChange }) {
   return (
     <div className="space-y-6" data-testid="eventos-editor">
       {/* Sección 1 — Hero */}
-      <SubSection title="1. Hero — imagen de fondo (logo FSC se muestra centrado sobre ella)">
+      <SubSection title="1. Hero — video de fondo en loop (logo FSC se muestra centrado sobre él)">
+        <VideoUpload
+          value={v.hero_video_url}
+          onChange={(url) => patch({ hero_video_url: url })}
+          label="Video del Hero (se reproduce en loop automático, sin sonido)"
+          hint="Recomendado: MP4 horizontal, corta duración (5-15s), peso < 30 MB. Si no se sube video, se usa la imagen de respaldo abajo."
+          testId="eventos-hero-video-upload"
+        />
         <ImageUpload
           value={v.hero_url}
           onChange={(url) => patch({ hero_url: url })}
-          label="Imagen del Hero"
+          label="Imagen de respaldo (se usa solo si no hay video)"
           hint="Recomendado: JPG horizontal 1920×800 px con foto de partido de fútbol infantil. Peso < 1 MB."
           testId="eventos-hero-upload"
         />
