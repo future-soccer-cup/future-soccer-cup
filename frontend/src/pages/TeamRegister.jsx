@@ -278,7 +278,7 @@ function StepPersonal({ form, upd, showPw, setShowPw, isCuerpoTecnico, clubs }) 
           <select
             value={form.manager_role}
             onChange={(e) => upd("manager_role", e.target.value)}
-            className="mt-2 w-full px-4 py-3.5 rounded-md text-white text-base focus:outline-none focus:ring-2 focus:ring-white"
+            className="mt-2 w-full px-4 py-4 rounded-md text-white text-2xl focus:outline-none focus:ring-2 focus:ring-white"
             style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.35)" }}
             data-testid="tr-manager-role"
           >
@@ -295,12 +295,12 @@ function StepPersonal({ form, upd, showPw, setShowPw, isCuerpoTecnico, clubs }) 
               required
               value={form.password || ""}
               onChange={(e) => upd("password", e.target.value)}
-              className="w-full px-4 py-3.5 pr-12 rounded-md text-white text-base placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white"
+              className="w-full px-4 py-4 pr-12 rounded-md text-white text-2xl placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white"
               style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.35)" }}
               data-testid="tr-password"
             />
             <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/80 p-1" aria-label="Mostrar contraseña">
-              {showPw ? <EyeOff size={20} /> : <Eye size={20} />}
+              {showPw ? <EyeOff size={22} /> : <Eye size={22} />}
             </button>
           </div>
         </label>
@@ -317,7 +317,7 @@ function StepPersonal({ form, upd, showPw, setShowPw, isCuerpoTecnico, clubs }) 
               required
               value={form.existing_club_id}
               onChange={(e) => upd("existing_club_id", e.target.value)}
-              className="mt-2 w-full px-4 py-3.5 rounded-md text-white text-base font-semibold focus:outline-none focus:ring-2 focus:ring-white"
+              className="mt-2 w-full px-4 py-4 rounded-md text-white text-2xl font-semibold focus:outline-none focus:ring-2 focus:ring-white"
               style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.35)" }}
               data-testid="tr-existing-club"
             >
@@ -347,7 +347,7 @@ function StepClub({ form, upd }) {
             required
             value={form.club_country}
             onChange={(e) => upd("club_country", e.target.value)}
-            className="mt-2 w-full px-4 py-3.5 rounded-md text-white text-base focus:outline-none focus:ring-2 focus:ring-white"
+            className="mt-2 w-full px-4 py-4 rounded-md text-white text-2xl focus:outline-none focus:ring-2 focus:ring-white"
             style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.35)" }}
             data-testid="tr-club-country"
           >
@@ -433,7 +433,7 @@ function ConsentBlockDark({ checked, onChange }) {
 
 function LabelDark({ text, required }) {
   return (
-    <span className="text-white text-sm tracking-widest flex items-center gap-1" style={PLANE_CRASH}>
+    <span className="text-white text-sm sm:text-lg md:text-xl tracking-wide sm:tracking-widest flex items-center gap-1 flex-wrap" style={PLANE_CRASH}>
       {planeCrashSafe(text)} {required && <span style={{ color: RED }}>*</span>}
     </span>
   );
@@ -449,7 +449,7 @@ function FieldDark({ label, value, onChange, required, type = "text", placeholde
         placeholder={placeholder}
         value={value || ""}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-2 w-full px-4 py-3.5 rounded-md text-white text-base placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white"
+        className="mt-2 w-full px-4 py-4 rounded-md text-white text-2xl placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white"
         style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.35)" }}
         data-testid={testId}
       />

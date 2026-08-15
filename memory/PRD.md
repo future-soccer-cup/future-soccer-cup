@@ -16,6 +16,9 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-08-15 — Iter72: Registro — letra de campos igualada al modal de Ingreso
+- `TeamRegister.jsx`: `LabelDark` y `FieldDark` (usados en los 3 pasos: personal, club, identidad) actualizados a `text-sm sm:text-lg md:text-xl` para labels e inputs `text-2xl` (mismo tamaño que `LoginModal.jsx` iter71). También actualizados: select Rol, input contraseña + ícono ojo, select club existente (Cuerpo Técnico), select País. Verificado en desktop y mobile sin overflow.
+
 ### 2026-08-15 — Iter71: Modal de Ingreso — letra más grande
 - `LoginModal.jsx`: labels ("INGRESA TU CORREO", "INGRESA TU CONTRASEÑA") y campos de correo/contraseña aumentados en 3 pasos a pedido del usuario. Final: labels `text-sm sm:text-lg md:text-xl` (con `flex-wrap` para no cortarse en mobile), inputs `text-2xl`, iconos Mail/Lock 22px, ícono mostrar/ocultar contraseña 22px. Verificado en desktop y mobile (320-400px) sin overflow ni wrap raro.
 
