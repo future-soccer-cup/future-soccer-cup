@@ -16,6 +16,9 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-08-15 — Iter71: Modal de Ingreso — letra más grande
+- `LoginModal.jsx`: labels ("INGRESA TU CORREO", "INGRESA TU CONTRASEÑA") y campos de correo/contraseña aumentados en 3 pasos a pedido del usuario. Final: labels `text-sm sm:text-lg md:text-xl` (con `flex-wrap` para no cortarse en mobile), inputs `text-2xl`, iconos Mail/Lock 22px, ícono mostrar/ocultar contraseña 22px. Verificado en desktop y mobile (320-400px) sin overflow ni wrap raro.
+
 ### 2026-08-15 — Iter70: Nosotros — texto de hitos del timeline agrandado
 - `FSCHistorySection.jsx`: labels de hitos (INTRODUCCIÓN, 2019...2026) en la franja azul del timeline aumentados de `text-[10px] sm:text-xs md:text-sm` a `text-base sm:text-lg md:text-xl lg:text-2xl` (3 iteraciones a pedido del usuario). Verificado en desktop y mobile sin overlap/desborde.
 

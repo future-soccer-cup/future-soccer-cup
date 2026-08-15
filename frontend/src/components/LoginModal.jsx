@@ -113,8 +113,8 @@ export default function LoginModal() {
 
           <form onSubmit={submit} className="space-y-5" data-testid="login-modal-form">
             <label className="block">
-              <span className="text-white text-xs tracking-widest flex items-center gap-1.5" style={PLANE_CRASH}>
-                <Mail size={14} /> {planeCrashSafe("ingresa tu correo")} <span>*</span>
+              <span className="text-white text-sm sm:text-lg md:text-xl tracking-wide sm:tracking-widest flex items-center gap-2 flex-wrap" style={PLANE_CRASH}>
+                <Mail size={22} className="shrink-0" /> {planeCrashSafe("ingresa tu correo")} <span>*</span>
               </span>
               <input
                 type="email"
@@ -122,28 +122,28 @@ export default function LoginModal() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="CORREO ELECTRONICO"
-                className="mt-1.5 w-full px-4 py-3.5 text-base rounded-md text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-white"
+                className="mt-2 w-full px-4 py-4 text-2xl rounded-md text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-white"
                 style={{ background: "#ffffff", border: "1px solid rgba(255,255,255,0.4)" }}
                 data-testid="login-modal-email"
               />
             </label>
             <label className="block">
-              <span className="text-white text-xs tracking-widest flex items-center gap-1.5" style={PLANE_CRASH}>
-                <Lock size={14} /> {planeCrashSafe("ingresa tu contraseña")} <span>*</span>
+              <span className="text-white text-sm sm:text-lg md:text-xl tracking-wide sm:tracking-widest flex items-center gap-2 flex-wrap" style={PLANE_CRASH}>
+                <Lock size={22} className="shrink-0" /> {planeCrashSafe("ingresa tu contraseña")} <span>*</span>
               </span>
-              <div className="relative mt-1.5">
+              <div className="relative mt-2">
                 <input
                   type={showPw ? "text" : "password"}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="CONTRASEÑA"
-                  className="w-full px-4 py-3.5 pr-11 text-base rounded-md text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-white"
+                  className="w-full px-4 py-4 pr-12 text-2xl rounded-md text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-white"
                   style={{ background: "#ffffff", border: "1px solid rgba(255,255,255,0.4)" }}
                   data-testid="login-modal-password"
                 />
                 <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 p-1" aria-label="Mostrar contraseña">
-                  {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
+                  {showPw ? <EyeOff size={22} /> : <Eye size={22} />}
                 </button>
               </div>
             </label>
