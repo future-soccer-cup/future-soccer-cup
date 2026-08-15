@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import api, { formatApiError } from "../lib/api";
+import api, { formatApiError, imgSrc } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import { toast, Toaster } from "sonner";
-import { Trophy, Hotel, Utensils, Bus, Map, BadgeCheck, ArrowRight, Lock, Clock, Plus, X, Trash2 } from "lucide-react";
+import { Trophy, Hotel, Utensils, Bus, Map, BadgeCheck, ArrowUp, Lock, Clock, Plus, X, Trash2 } from "lucide-react";
 import CurrencyInput from "../components/CurrencyInput";
+import HeroVideoBanner from "../components/HeroVideoBanner";
 
 const fmtCOP = (n) => `$${Number(n || 0).toLocaleString("es-CO")}`;
 const fmtUSD = (n) => `US$${Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -19,6 +20,11 @@ export default function Cotizar() {
   const [config, setConfig] = useState(null);
   const [myTeam, setMyTeam] = useState(null);
   const [tournaments, setTournaments] = useState([]); // eventos activos del Admin
+  const [heroCfg, setHeroCfg] = useState(null);
+
+  useEffect(() => {
+    api.get("/home-settings").then((r) => setHeroCfg(r.data || {})).catch(() => {});
+  }, []);
   const [form, setForm] = useState({
     // === Nuevo modelo: arrays ===
     events: [],   // [{tournament_id, tournament_name, event_type, categories: [{name, fee}]}]
@@ -211,8 +217,10 @@ export default function Cotizar() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12" data-testid="cotizar-page">
-      <Toaster position="top-right" />
+    <>
+      <HeroVideoBanner videoUrl={heroCfg?.cotizar_hero_video_url} imageUrl={heroCfg?.cotizar_hero_url} testId="cotizar-hero" />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12" data-testid="cotizar-page">
+        <Toaster position="top-right" />
       <div className="mb-8 flex items-start justify-between flex-wrap gap-4">
         <div>
           <span className="text-xs tracking-[0.25em] uppercase font-bold text-red-600">Armar cotización</span>
@@ -411,7 +419,15 @@ export default function Cotizar() {
 
         {/* Sticky summary */}
         <aside className="lg:col-span-1">
-          <div className="sticky top-24 bg-fsc-negro text-white rounded-2xl p-6 border-2 border-fsc-azul">
+          <div
+            className="sticky top-24 relative overflow-hidden text-white rounded-2xl p-6 border-2 border-fsc-azul bg-fsc-negro"
+            style={heroCfg?.cotizar_summary_bg_url ? {
+              backgroundImage: `linear-gradient(180deg, rgba(9,18,54,0.55), rgba(9,18,54,0.9)), url(${imgSrc(heroCfg.cotizar_summary_bg_url)})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+            } : undefined}
+            data-testid="cotizar-summary-card"
+          >
             <div className="text-xs uppercase tracking-[0.25em] text-white" data-testid="resumen-en-vivo-label">Resumen en vivo</div>
             <div className="font-display text-2xl tracking-wider text-white">Tu cotización</div>
             {(form.lodgings.length === 0 && form.events.length === 0) && (
@@ -471,13 +487,14 @@ export default function Cotizar() {
                 </div>
               </div>
             </div>
-            <button onClick={submit} disabled={submitting || !estimate || (estimate?.total_amount || 0) === 0} className="mt-5 fsc-btn-red w-full py-3 rounded-md flex items-center justify-center gap-2 disabled:opacity-50" data-testid="cotizar-submit">
-              {submitting ? "Enviando..." : (<>Enviar cotización <ArrowRight size={16}/></>)}
-            </button>
-          </div>
-        </aside>
-      </div>
+            <button onClick={submit} disabled={submitting || !estimate || (estimate?.total_amount || 0) === 0} className="mt-5 fsc-btn-red w-full py-3 rounded-md flex items-center justify-center gap-2 uppercase tracking-wide font-black disabled:opacity-50" data-testid="cotizar-submit">
+            {submitting ? "Enviando..." : (<><ArrowUp size={16}/> Enviar cotización</>)}
+          </button>
+        </div>
+      </aside>
     </div>
+      </div>
+    </>
   );
 }
 

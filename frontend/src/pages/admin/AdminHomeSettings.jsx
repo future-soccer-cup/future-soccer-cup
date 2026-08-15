@@ -13,6 +13,10 @@ const EMPTY = {
   // Dashboard del club (Directivo / Cuerpo Técnico) — hero video
   dashboard_hero_video_url: "",
   dashboard_hero_url: "",
+  // Cotiza tu evento — hero video
+  cotizar_hero_video_url: "",
+  cotizar_hero_url: "",
+  cotizar_summary_bg_url: "",
   // Hero (wireframe FSC v2)
   hero_edition_label: "EDICIÓN",
   hero_edition_year: "2026",
@@ -201,6 +205,34 @@ export default function AdminHomeSettings() {
             label="Imagen de respaldo (se usa solo si no hay video)"
             hint="Recomendado: JPG horizontal 1920×600 px."
             testId="dashboard-hero-upload"
+          />
+        </div>
+      </Section>
+
+      <Section title="Cotiza tu Evento — Hero video" icon={<ImageIcon size={18}/>}>
+        <div className="grid md:grid-cols-2 gap-4">
+          <VideoUpload
+            value={s.cotizar_hero_video_url}
+            onChange={(url) => upd("cotizar_hero_video_url", url)}
+            label="Video de fondo (se reproduce en loop automático, sin sonido)"
+            hint="Se muestra arriba de todo en /cotizar. Recomendado: MP4 horizontal, 5-15s, < 30 MB. Si no hay video, se usa la imagen de respaldo."
+            testId="cotizar-hero-video-upload"
+          />
+          <ImageUpload
+            value={s.cotizar_hero_url}
+            onChange={(v) => upd("cotizar_hero_url", v)}
+            label="Imagen de respaldo (se usa solo si no hay video)"
+            hint="Recomendado: JPG horizontal 1920×600 px."
+            testId="cotizar-hero-upload"
+          />
+        </div>
+        <div className="mt-4">
+          <ImageUpload
+            value={s.cotizar_summary_bg_url}
+            onChange={(v) => upd("cotizar_summary_bg_url", v)}
+            label="Imagen de fondo del cuadro 'Resumen en vivo' (mascota u otra imagen con velo azul)"
+            hint="Recomendado: JPG/PNG vertical, 800×1200 px. Se muestra con un velo azul oscuro detrás del resumen de la cotización."
+            testId="cotizar-summary-bg-upload"
           />
         </div>
       </Section>

@@ -14,6 +14,8 @@ import requests
 import re
 import csv
 import io
+import subprocess
+import tempfile
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional, Literal, Dict, Any
 
@@ -5175,6 +5177,36 @@ def _maybe_convert_to_webp(data: bytes, ext: str) -> Optional[bytes]:
         return None
     return webp_bytes
 
+def _maybe_faststart_video(data: bytes, ext: str) -> Optional[bytes]:
+    """Remux MP4/MOV (sin re-codificar) moviendo el átomo 'moov' al inicio del archivo.
+    Sin esto, videos grabados en móviles quedan con moov al final y los navegadores
+    (Chromium) fallan al reproducirlos (DEMUXER_ERROR_NO_SUPPORTED_STREAMS)."""
+    if ext not in {"mp4", "mov", "m4v"}:
+        return None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=f".{ext}", delete=False) as fin:
+            fin.write(data)
+            in_path = fin.name
+        out_path = in_path + f".fixed.{ext}"
+        try:
+            result = subprocess.run(
+                ["ffmpeg", "-y", "-i", in_path, "-c", "copy", "-movflags", "+faststart", out_path],
+                capture_output=True, timeout=60,
+            )
+            if result.returncode != 0 or not os.path.exists(out_path):
+                logging.warning(f"[upload] ffmpeg faststart falló: {result.stderr[:500]}")
+                return None
+            with open(out_path, "rb") as f:
+                fixed = f.read()
+            return fixed if len(fixed) > 0 else None
+        finally:
+            for p in (in_path, out_path):
+                if os.path.exists(p):
+                    os.remove(p)
+    except Exception as e:
+        logging.warning(f"[upload] fallo remux faststart: {e}")
+        return None
+
 @api.post("/upload")
 async def upload_file(file: UploadFile = File(...), user: dict = Depends(get_current_user)):
     ext = (file.filename.rsplit(".", 1)[-1] if "." in (file.filename or "") else "bin").lower()
@@ -5194,6 +5226,12 @@ async def upload_file(file: UploadFile = File(...), user: dict = Depends(get_cur
             data = converted
             ext = "webp"
 
+    # === Videos: remux con moov al inicio para que reproduzcan en el navegador ===
+    if ext in VIDEO_EXTS:
+        fixed = _maybe_faststart_video(data, ext)
+        if fixed is not None:
+            data = fixed
+
     storage_path = f"{APP_NAME}/uploads/{user['id']}/{uuid.uuid4()}.{ext}"
     content_type = MIME[ext] if ext == "webp" else (file.content_type or MIME[ext])
     result = put_object(storage_path, data, content_type)
@@ -5212,12 +5250,39 @@ async def upload_file(file: UploadFile = File(...), user: dict = Depends(get_cur
     return {"id": file_id, "url": f"/api/files/{result['path']}", "path": result["path"]}
 
 @api.get("/files/{path:path}")
-async def serve_file(path: str):
+async def serve_file(path: str, request: Request):
     record = await db.files.find_one({"storage_path": path, "is_deleted": False}, {"_id": 0})
     if not record:
         raise HTTPException(status_code=404, detail="Archivo no encontrado")
     data, ct = get_object(path)
-    return FastAPIResponse(content=data, media_type=record.get("content_type", ct))
+    content_type = record.get("content_type", ct)
+    total_len = len(data)
+    range_header = request.headers.get("range")
+    # Soporte de HTTP Range: necesario para que los navegadores puedan reproducir video (<video>)
+    # de forma progresiva; sin esto, videos grandes no cargan/reproducen (pantalla en negro).
+    if range_header:
+        try:
+            range_val = range_header.strip().split("=", 1)[1]
+            start_str, end_str = range_val.split("-", 1)
+            if start_str == "":
+                # Suffix range: "bytes=-500" => últimos 500 bytes
+                suffix_len = int(end_str)
+                start = max(0, total_len - suffix_len)
+                end = total_len - 1
+            else:
+                start = int(start_str)
+                end = int(end_str) if end_str else total_len - 1
+                end = min(end, total_len - 1)
+        except Exception:
+            start, end = 0, total_len - 1
+        chunk = data[start:end + 1]
+        headers = {
+            "Content-Range": f"bytes {start}-{end}/{total_len}",
+            "Accept-Ranges": "bytes",
+            "Content-Length": str(len(chunk)),
+        }
+        return FastAPIResponse(content=chunk, status_code=206, media_type=content_type, headers=headers)
+    return FastAPIResponse(content=data, media_type=content_type, headers={"Accept-Ranges": "bytes"})
 
 # -------------------- Bulk Import (XLSX) --------------------
 TEAM_TEMPLATE_HEADERS = ["club_name", "name", "event_type", "category", "birth_year", "designation", "group_name", "coach", "city", "country", "president", "delegate_phone", "color"]
@@ -6001,6 +6066,11 @@ class HomeSettings(BaseModel):
     # === Panel del Club (Directivo/CT) — hero video en /mi-equipo. ===
     dashboard_hero_video_url: Optional[str] = ""
     dashboard_hero_url: Optional[str] = ""
+
+    # === Cotiza tu evento — hero video en /cotizar. ===
+    cotizar_hero_video_url: Optional[str] = ""
+    cotizar_hero_url: Optional[str] = ""
+    cotizar_summary_bg_url: Optional[str] = ""
 
     eventos_hero_kicker: Optional[str] = "temporada"
     eventos_hero_title: Optional[str] = "EVENTOS"

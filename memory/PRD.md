@@ -16,6 +16,21 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-08-15 — Iter69: Hero Video full-width en /mi-equipo y /cotizar + fix reproducción de video
+- **Bug real encontrado y corregido**: el video hero se veía en negro porque (a) el archivo original subido en la sesión anterior estaba corrupto (1KB), y luego (b) los videos reales subidos por el usuario (H.264/AAC, 10-13MB) tenían el átomo `moov` al final del archivo (típico de video grabado en celular sin "fast start"), lo que Chromium no podía reproducir de forma progresiva, y el endpoint `GET /api/files/{path}` no soportaba HTTP Range.
+- **Backend `server.py`**:
+  - `POST /api/upload`: para extensiones de video (mp4/mov/m4v) ahora hace remux con `ffmpeg -c copy -movflags +faststart` (sin recodificar) para mover `moov` al inicio. Requiere `ffmpeg` instalado en el sistema (agregado via apt).
+  - `GET /api/files/{path:path}`: ahora soporta `Range` header (incluye rangos sufijo `bytes=-N`) y responde `206 Partial Content` con `Content-Range`/`Accept-Ranges: bytes`. Esto es necesario para que los navegadores reproduzcan video progresivamente.
+  - Nuevo campo `HomeSettings.cotizar_summary_bg_url` (imagen de fondo del cuadro "Resumen en vivo" en /cotizar).
+- **Frontend**:
+  - `HeroVideoBanner.jsx`: altura aumentada a `h-[50vh] md:h-[60vh] lg:h-[68vh]` (antes h-48/64/80, luego h-64/80/28rem — el usuario pidió más alto dos veces), agregado `preload="auto"` para reducir latencia de carga percibida.
+  - `Cotizar.jsx`: sticky summary card ("Resumen en vivo / Tu cotización") ahora usa `cotizar_summary_bg_url` con overlay `linear-gradient(rgba(9,18,54,.55), rgba(9,18,54,.9))` en vez de fondo negro sólido. Botón submit ahora dice "ENVIAR COTIZACIÓN" (uppercase) con ícono `ArrowUp` antes del texto.
+  - `AdminHomeSettings.jsx`: agregado `ImageUpload` para `cotizar_summary_bg_url` en la sección "Cotiza tu Evento — Hero video".
+- **Placeholder temporal**: se generó con IA una imagen de un león mascota con trofeo (fondo azul) para `cotizar_summary_bg_url` — el usuario reemplazará con su foto real de mascota vía Admin > Configuración de Inicio.
+- **Nota importante para futuros agentes**: el navegador Chromium embebido de la herramienta de screenshot de este entorno (Playwright bundled, sin códecs propietarios) NO reproduce H.264/AAC (error `DEMUXER_ERROR_NO_SUPPORTED_STREAMS`) — verificado que el mismo pipeline SÍ funciona con WebM/VP8 en ese mismo navegador. Esto es una limitación del entorno de testing, no un bug real; los navegadores de usuarios reales (Chrome/Firefox/Safari/Edge) soportan H.264 nativamente. NO reportar pantalla negra de video como bug solo por este motivo.
+- **Testing**: testing_agent iter45 — 8/8 backend, 100% frontend. Verificado: banners full-width y altos en ambas páginas, Range/206 funcionando, faststart remux confirmado (moov en los primeros bytes), summary card con imagen+overlay, botón "ENVIAR COTIZACIÓN", flujo de cotización end-to-end (POST /api/quotes exitoso), sin regresiones en /mi-equipo.
+- **Deuda técnica pendiente (no relacionada, detectada por testing_agent iter44)**: race condition en `AdminHomeSettings.jsx` — no se tocó en esta iteración.
+
 ### 2026-02-27 — Iter68: Ingreso convertido a modal global
 - **Scope**: reemplazo total del flujo `/login`. Ahora es un modal que aparece encima de la página actual, no una ruta con URL propia.
 - **Frontend nuevo**:

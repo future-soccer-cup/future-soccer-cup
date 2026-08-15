@@ -10,6 +10,7 @@ import ImageUpload from "../components/ImageUpload";
 import CategorySelect from "../components/CategorySelect";
 import PaymentForm from "../components/PaymentForm";
 import PaymentsList from "../components/PaymentsList";
+import HeroVideoBanner from "../components/HeroVideoBanner";
 
 const EMPTY_PLAYER = { name: "", team_id: "", jersey_number: 1, position: "Portero", birth_date: "", photo_url: "", document_id: "", nickname: "", gender: "", eps: "", comet_number: "", guardian_name: "", guardian_relation: "", guardian_phone: "" };
 const EMPTY_STAFF = { name: "", document: "", role: "Director técnico", phone: "", team_id: "", photo_url: "" };
@@ -32,26 +33,8 @@ async function downloadTeamRoster(team) {
 }
 
 function DashboardHero({ cfg }) {
-  const videoUrl = cfg?.dashboard_hero_video_url;
-  const imageUrl = cfg?.dashboard_hero_url;
-  if (!videoUrl && !imageUrl) return null;
-  return (
-    <div className="relative w-full h-48 md:h-64 lg:h-80 -mx-4 sm:-mx-6 lg:-mx-8 mb-8 overflow-hidden bg-slate-900" data-testid="dashboard-hero">
-      {videoUrl ? (
-        <video
-          src={imgSrc(videoUrl)}
-          className="w-full h-full object-cover"
-          autoPlay
-          loop
-          muted
-          playsInline
-          data-testid="dashboard-hero-video"
-        />
-      ) : (
-        <img src={imgSrc(imageUrl)} alt="" className="w-full h-full object-cover" />
-      )}
-    </div>
-  );
+  if (!cfg) return null;
+  return <HeroVideoBanner videoUrl={cfg?.dashboard_hero_video_url} imageUrl={cfg?.dashboard_hero_url} testId="dashboard-hero" />;
 }
 
 export default function MyTeam() {
@@ -270,9 +253,10 @@ export default function MyTeam() {
     const isCT = (user.manager_role || "").trim().toLowerCase() === "cuerpo técnico";
     const roleLabel = user.manager_role || (isCT ? "Cuerpo Técnico" : "Directivo");
     return (
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12" data-testid="my-team-page">
-        <Toaster position="top-right" />
+      <>
         <DashboardHero cfg={heroCfg} />
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12" data-testid="my-team-page">
+          <Toaster position="top-right" />
         {club && (club.status || "pendiente") !== "aprobado" && (
           <div className={`mb-4 rounded-xl border-2 p-4 flex items-start gap-3 ${club.status === "rechazado" ? "bg-rose-50 border-rose-300 text-rose-900" : "bg-amber-50 border-amber-300 text-amber-900"}`} data-testid="club-status-banner">
             <AlertCircle size={28} className="shrink-0" />
@@ -527,7 +511,8 @@ export default function MyTeam() {
             onSaved={async () => { setEditingClubTeam(null); await loadTeam(); }}
           />
         )}
-      </div>
+        </div>
+      </>
     );
   }
 
@@ -653,12 +638,13 @@ export default function MyTeam() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12" data-testid="my-team-page">
-      <Toaster position="top-right" />
+    <>
       <DashboardHero cfg={heroCfg} />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12" data-testid="my-team-page">
+        <Toaster position="top-right" />
 
-      {/* Banner de estado del club */}
-      {club && (club.status || "pendiente") !== "aprobado" && (
+        {/* Banner de estado del club */}
+        {club && (club.status || "pendiente") !== "aprobado" && (
         <div className={`mb-4 rounded-xl border-2 p-4 flex items-start gap-3 ${club.status === "rechazado" ? "bg-rose-50 border-rose-300 text-rose-900" : "bg-amber-50 border-amber-300 text-amber-900"}`} data-testid="club-status-banner">
           <AlertCircle size={28} className="shrink-0" />
           <div>
@@ -1158,7 +1144,8 @@ export default function MyTeam() {
           </form>
         </Modal>
       )}
-    </div>
+      </div>
+    </>
   );
 }
 

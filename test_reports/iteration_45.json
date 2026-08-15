@@ -1,0 +1,25 @@
+{
+  "summary": "Iter 45: Verified full-bleed Hero Video Banner on /mi-equipo and /cotizar, HTTP Range/206 support with faststart moov-at-start on /api/files/{path} for MP4 videos, new home_settings.cotizar_summary_bg_url field with background image on sticky summary card, submit button text 'ENVIAR COTIZACIÓN' with arrow-up SVG icon, and end-to-end quote creation (POST /api/quotes -> 200). Backend 8/8 tests pass. Frontend all requested checks pass. No new bugs found.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_iter45_hero_range.py",
+    "/app/test_reports/pytest/iter45.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "HeroVideoBanner uses preload='auto' + progressive Range/206 which is correct for early playback; combined with ffmpeg +faststart remux on upload, moov atom is now at file start (verified: 'moov' bytes present in first 128KB of the dashboard hero video).",
+    "GET /api/files/{path} correctly returns 200 with Accept-Ranges: bytes for full requests and 206 with correct Content-Range for range requests (including suffix and mid-file ranges).",
+    "Cotizar sticky summary card correctly applies linear-gradient(rgba(9,18,54,0.55), rgba(9,18,54,0.9)) over cotizar_summary_bg_url image; button 'Enviar cotización' is rendered as 'ENVIAR COTIZACIÓN' via text-transform:uppercase, with ArrowUp icon before the text.",
+    "MyTeam.jsx correctly renders <DashboardHero/> inside a Fragment outside the max-w container (bbox x=0 width=1920 at 1920px viewport, height ~734px = 68vh at 1080 viewport, position above content).",
+    "Race-condition bug in AdminHomeSettings.jsx reported in iter44 is UNRELATED to this iteration but still exists in code (not tested here)."
+  ],
+  "updated_files": ["/app/backend/tests/test_iter45_hero_range.py", "/app/test_reports/iteration_45.json"],
+  "success_rate": {"backend": "100% (8/8)", "frontend": "100%"},
+  "seed_data_creation": "Created 1 test quote via POST /api/quotes as coach@test.com to verify submit flow ($1.000.000 COP, Sapphire hospedaje, 1 pax x 5 noches, pending). Not cleaned up because coach account is a regular user (no delete endpoint used); admin can archive it if desired.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": false,
+  "test_credentials": "coach@test.com / Coach2025! (Directivo, club aprobado); admin@futuresoccercup.com / FSCAdmin2025!",
+  "context_for_next_testing_agent": "All 5 requested test cases in the review passed. Video full-bleed banners on /mi-equipo and /cotizar are correctly full-width (1920px @ 1920 viewport) and tall (h-[68vh] ~734px), positioned above the max-w container. GET /api/files/{path} correctly implements HTTP Range (206) with Accept-Ranges: bytes and proper Content-Range headers. faststart remux is working - 'moov' atom present in first 128KB of dashboard_hero_video_url. Cotizar summary card has the new background image with dark-blue overlay gradient (not solid black). Submit button reads 'ENVIAR COTIZACIÓN' with SVG icon and successfully creates a quote (POST /api/quotes 200 -> redirect to /mis-cotizaciones -> toast 'Cotización enviada'). /mi-equipo regression clean (Mi Club, Cuerpo Técnico, Jugadores sections all render, no error-classed elements). Note about test-browser video playback: as expected per agent-to-agent note, the sandboxed Playwright Chromium shows a black frame for H.264 MP4 (no proprietary codec support) - this is a known test-env limitation, NOT an app bug; real user browsers play the video (owner confirmed). Backend/frontend architecture files unchanged by this iteration.",
+  "rca_of_the_issue": "N/A - no issues found in this iteration."
+}
