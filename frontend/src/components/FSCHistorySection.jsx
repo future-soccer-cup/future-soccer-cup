@@ -334,7 +334,7 @@ export default function FSCHistorySection({ settings }) {
                 key={`lbl-${m.key}`}
                 type="button"
                 onClick={() => goTo(i)}
-                className="text-white uppercase tracking-widest text-[10px] sm:text-xs md:text-sm text-center flex-1"
+                className="text-white uppercase tracking-widest text-base sm:text-lg md:text-xl lg:text-2xl text-center flex-1"
                 style={{
                   ...AGENCY_FB,
                   fontWeight: i === activeIdx ? 900 : 500,

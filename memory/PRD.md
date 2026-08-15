@@ -16,6 +16,9 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-08-15 — Iter70: Nosotros — texto de hitos del timeline agrandado
+- `FSCHistorySection.jsx`: labels de hitos (INTRODUCCIÓN, 2019...2026) en la franja azul del timeline aumentados de `text-[10px] sm:text-xs md:text-sm` a `text-base sm:text-lg md:text-xl lg:text-2xl` (3 iteraciones a pedido del usuario). Verificado en desktop y mobile sin overlap/desborde.
+
 ### 2026-08-15 — Iter69: Hero Video full-width en /mi-equipo y /cotizar + fix reproducción de video
 - **Bug real encontrado y corregido**: el video hero se veía en negro porque (a) el archivo original subido en la sesión anterior estaba corrupto (1KB), y luego (b) los videos reales subidos por el usuario (H.264/AAC, 10-13MB) tenían el átomo `moov` al final del archivo (típico de video grabado en celular sin "fast start"), lo que Chromium no podía reproducir de forma progresiva, y el endpoint `GET /api/files/{path}` no soportaba HTTP Range.
 - **Backend `server.py`**:
