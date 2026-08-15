@@ -5998,6 +5998,10 @@ class HomeSettings(BaseModel):
     auth_login_image_url: Optional[str] = ""
     auth_register_image_url: Optional[str] = ""
 
+    # === Panel del Club (Directivo/CT) — hero video en /mi-equipo. ===
+    dashboard_hero_video_url: Optional[str] = ""
+    dashboard_hero_url: Optional[str] = ""
+
     eventos_hero_kicker: Optional[str] = "temporada"
     eventos_hero_title: Optional[str] = "EVENTOS"
     eventos_hero_body: Optional[str] = "Conoce todos los torneos del calendario FSC y revive las ediciones pasadas."

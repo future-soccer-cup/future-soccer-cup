@@ -10,6 +10,9 @@ const EMPTY = {
   // Navbar
   nav_logo_url: "",
   nav_shield_url: "",
+  // Dashboard del club (Directivo / Cuerpo Técnico) — hero video
+  dashboard_hero_video_url: "",
+  dashboard_hero_url: "",
   // Hero (wireframe FSC v2)
   hero_edition_label: "EDICIÓN",
   hero_edition_year: "2026",
@@ -180,6 +183,25 @@ export default function AdminHomeSettings() {
         <div className="grid md:grid-cols-2 gap-4">
           <ImageUpload value={s.auth_login_image_url} onChange={(v) => upd("auth_login_image_url", v)} label="Imagen de la página INGRESO (lado derecho de la card roja)" hint="Recomendado: JPG vertical con KOW en el estadio, 800×1000 px. Se recorta cover." testId="auth-login-upload" />
           <ImageUpload value={s.auth_register_image_url} onChange={(v) => upd("auth_register_image_url", v)} label="Imagen de la página REGISTRO (columna derecha, fondo fijo)" hint="Recomendado: JPG vertical con KOW + jugador, 800×1200 px. Se recorta cover." testId="auth-register-upload" />
+        </div>
+      </Section>
+
+      <Section title="Panel del Club (Directivo / Cuerpo Técnico) — Hero video" icon={<ImageIcon size={18}/>}>
+        <div className="grid md:grid-cols-2 gap-4">
+          <VideoUpload
+            value={s.dashboard_hero_video_url}
+            onChange={(url) => upd("dashboard_hero_video_url", url)}
+            label="Video de fondo (se reproduce en loop automático, sin sonido)"
+            hint="Se muestra arriba de todo cuando un Directivo o Cuerpo Técnico entra a Mi Club. Recomendado: MP4 horizontal, 5-15s, < 30 MB. Si no hay video, se usa la imagen de respaldo."
+            testId="dashboard-hero-video-upload"
+          />
+          <ImageUpload
+            value={s.dashboard_hero_url}
+            onChange={(v) => upd("dashboard_hero_url", v)}
+            label="Imagen de respaldo (se usa solo si no hay video)"
+            hint="Recomendado: JPG horizontal 1920×600 px."
+            testId="dashboard-hero-upload"
+          />
         </div>
       </Section>
 

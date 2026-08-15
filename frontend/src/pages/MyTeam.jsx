@@ -31,6 +31,29 @@ async function downloadTeamRoster(team) {
   }
 }
 
+function DashboardHero({ cfg }) {
+  const videoUrl = cfg?.dashboard_hero_video_url;
+  const imageUrl = cfg?.dashboard_hero_url;
+  if (!videoUrl && !imageUrl) return null;
+  return (
+    <div className="relative w-full h-48 md:h-64 lg:h-80 -mx-4 sm:-mx-6 lg:-mx-8 mb-8 overflow-hidden bg-slate-900" data-testid="dashboard-hero">
+      {videoUrl ? (
+        <video
+          src={imgSrc(videoUrl)}
+          className="w-full h-full object-cover"
+          autoPlay
+          loop
+          muted
+          playsInline
+          data-testid="dashboard-hero-video"
+        />
+      ) : (
+        <img src={imgSrc(imageUrl)} alt="" className="w-full h-full object-cover" />
+      )}
+    </div>
+  );
+}
+
 export default function MyTeam() {
   const { user } = useAuth();
   const [team, setTeam] = useState(null);
@@ -53,6 +76,11 @@ export default function MyTeam() {
   const [quoteTournaments, setQuoteTournaments] = useState([]); // tournaments asociados a cotizaciones aprobadas (con sus categorías cotizadas)
   const [showAddTeam, setShowAddTeam] = useState(false);
   const [newTeam, setNewTeam] = useState({ tournament_id: "", category_name: "", team_name: "" });
+  const [heroCfg, setHeroCfg] = useState(null);
+
+  useEffect(() => {
+    api.get("/home-settings").then((r) => setHeroCfg(r.data || {})).catch(() => {});
+  }, []);
   const [club, setClub] = useState(null);
 
   const teamId = user?.team_id;
@@ -244,6 +272,7 @@ export default function MyTeam() {
     return (
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12" data-testid="my-team-page">
         <Toaster position="top-right" />
+        <DashboardHero cfg={heroCfg} />
         {club && (club.status || "pendiente") !== "aprobado" && (
           <div className={`mb-4 rounded-xl border-2 p-4 flex items-start gap-3 ${club.status === "rechazado" ? "bg-rose-50 border-rose-300 text-rose-900" : "bg-amber-50 border-amber-300 text-amber-900"}`} data-testid="club-status-banner">
             <AlertCircle size={28} className="shrink-0" />
@@ -626,6 +655,7 @@ export default function MyTeam() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12" data-testid="my-team-page">
       <Toaster position="top-right" />
+      <DashboardHero cfg={heroCfg} />
 
       {/* Banner de estado del club */}
       {club && (club.status || "pendiente") !== "aprobado" && (
