@@ -16,6 +16,19 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-08-28 — Iter75: Recuperar contraseña dentro del mismo modal de Ingreso (sin navegar a otra página)
+- **Pedido del usuario**: al hacer clic en "¿Olvidaste tu contraseña?" dentro del modal de Ingreso, antes se cerraba el modal y navegaba a `/recuperar-clave` (página aparte). El usuario pidió que se quede en el mismo formulario, que "se limpie" y muestre ahí mismo el formulario de recuperación.
+- **`LoginModal.jsx` reescrito con máquina de estados interna** `view: 'login' | 'forgot' | 'forgot-sent' | 'reset'`, todo dentro de la misma card roja/imagen sin cerrar el modal ni cambiar de URL:
+  - `login` (default): formulario de correo/contraseña de siempre.
+  - `forgot`: al hacer clic en "¿OLVIDASTE TU CONTRASEÑA?" se limpia la contraseña y se muestra el formulario "¿Olvidaste tu contraseña?" (correo → `POST /api/auth/forgot-password`), con el correo ya escrito en el login precargado.
+  - `forgot-sent`: mensaje "Solicitud enviada" + botón "Ingresar mi código" → pasa a `reset`.
+  - `reset`: formulario correo + código de 8 dígitos + nueva contraseña + confirmar (`POST /api/auth/reset-password`); al completarse vuelve automáticamente a `login` con el correo precargado y toast de éxito.
+  - Botón "← Volver a Ingresar" en `forgot`/`reset` regresa a `login` sin cerrar el modal.
+  - Al cerrar el modal (X, click fuera, Escape) el estado se resetea a `login` para la próxima apertura.
+  - Los endpoints backend `/auth/forgot-password` y `/auth/reset-password` NO se modificaron — solo se reorganizó la UI que los consume. Las páginas standalone `/recuperar-clave` y `/restablecer-clave` siguen existiendo intactas para acceso directo por link.
+  - Fix menor en el camino: el botón "Restablecer contraseña" usaba la fuente Plane Crash con el string crudo (bug conocido de la ñ) — corregido con `renderPlaneCrash()`.
+- **Testing**: testing_agent iter49 — 11/11 checks frontend, 100%. Verificado con Playwright: navegación login→forgot→forgot-sent→reset→login sin salir del modal ni cambiar la URL, código real generado y leído de Mongo (`password_resets`), reset de contraseña end-to-end con cuenta de prueba `coach@test.com` (restaurada a su contraseña original al finalizar), regresión de login normal de admin sin cambios.
+
 ### 2026-08-28 — Iter74: Fix Estadísticas públicas + Goleadores con cascada Equipo→Jugador + hardening
 - **Bug 1 (Tarjetas Jugador↔Cuerpo Técnico "se borra el equipo")**: reproducido en vivo con Playwright usando datos reales (equipo AMERICA con jugador + cuerpo técnico). **NO se reprodujo** — el código de `updateCard()` en `CardsEditor` (AdminMatches.jsx) ya preserva correctamente `team_id` al alternar target_kind; verificado en ambas direcciones y confirmado también por testing_agent. Se deja documentado como regresión ya resuelta por el fix parcial de la sesión anterior.
 - **Bug 2 (Goleadores sin selector de Equipo)** — CORREGIDO: `ScorersEditor` reescrito con cascada Equipo→Jugador igual a Tarjetas (`scorer-team-{i}` habilita `scorer-player-{i}`, filtrado por equipo). Backward-compat: goleadores guardados antes de este cambio (solo `player_id`, sin `team_id`) se autocompletan al abrir el modal buscando el equipo del jugador en la lista de roster cargada.

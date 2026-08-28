@@ -1,0 +1,26 @@
+{
+  "summary": "Frontend-only testing of Iter75 in-modal forgot/reset password flow (LoginModal.jsx). Verified full state machine login -> forgot -> forgot-sent -> reset -> login stays inside the SAME modal with no navigation, plus real end-to-end password reset with a live 8-digit code from Mongo, login with the new password, state reset on modal close/reopen, and admin login regression. All 11 requested checks passed. coach@test.com password was restored to Coach2025! and login with the original password re-verified (HTTP 200).",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Login modal (reset view button)", "issues": ["Button label renders as 'RESTABLECER CONTRASE A' - the 'Ñ' glyph is missing in the PLANE_CRASH display font (same artifact visible in 'INGRESA TU CONTRASEÑA' label). Cosmetic, pre-existing font issue, not introduced by this change."]},
+      {"screen": "Login modal right column", "issues": ["Shows placeholder 'Imagen no configurada' because home-settings.auth_login_image_url is empty in this environment (CMS data, not a code bug)."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": ["Optional: fix missing 'Ñ' glyph in PLANE_CRASH font usage (or fallback font) for labels/buttons containing Ñ.", "Optional: configure auth_login_image_url in CMS so the modal's right image column is not a placeholder."],
+  "critical_code_review_comments": [
+    "LoginModal.jsx resets forgot/reset state on close but keeps `email`/`password` (email intentionally, password cleared on goForgot) - behavior is correct and verified.",
+    "All views expose data-testid attributes; no missing testids found."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (not in scope; forgot/reset endpoints returned 200 during flow)", "frontend": "100%"},
+  "seed_data_creation": "One password_resets code generated+used for coach@test.com; a second generated+used to restore the original password. No pending codes left, no other data created.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": false,
+  "test_credentials": "admin@futuresoccercup.com / FSCAdmin2025! (unchanged); coach@test.com / Coach2025! (restored and verified)",
+  "context_for_next_testing_agent": "Iter75 in-modal forgot/reset flow fully verified via Playwright: nav-link-ingreso -> login-modal-form -> login-modal-forgot (URL unchanged, modal stays open, email carried) -> forgot-back-to-login -> login-modal-forgot-submit -> login-modal-forgot-sent -> login-modal-go-reset / login-modal-have-code -> login-modal-reset-form -> reset submit -> back to login-modal-form with email prefilled + success toast. Escape closes modal and state resets to login view. Admin login redirects to /admin. Reset codes are readable via motor query on db.password_resets (MONGO_URL/DB_NAME in backend/.env).",
+  "rca_of_the_issue": "N/A - no functional defects found."
+}
