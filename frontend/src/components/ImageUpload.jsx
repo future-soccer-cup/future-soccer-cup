@@ -20,8 +20,8 @@ export default function ImageUpload({ value, onChange, label = "Imagen", hint = 
   const handleFile = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("La imagen no puede superar 5MB");
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error("La imagen no puede superar 15MB");
       return;
     }
     setUploading(true);

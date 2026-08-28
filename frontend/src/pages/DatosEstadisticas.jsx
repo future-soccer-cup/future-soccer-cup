@@ -12,7 +12,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
 import api, { imgSrc } from "../lib/api";
-import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe } from "../lib/designSystem";
+import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe, renderPlaneCrash } from "../lib/designSystem";
 
 const RED = "#e31f27";
 const BLUE = "#0640c8";
@@ -93,7 +93,7 @@ function HeroSection({ heroUrl, watermark, titleTop, titleBottom }) {
           }}
           data-testid="stats-hero-watermark"
         >
-          {planeCrashSafe(watermark)}
+          {renderPlaneCrash(watermark)}
         </div>
       </div>
       {/* Título principal */}
@@ -108,7 +108,7 @@ function HeroSection({ heroUrl, watermark, titleTop, titleBottom }) {
           }}
           data-testid="stats-hero-title-top"
         >
-          {planeCrashSafe(titleTop)}
+          {renderPlaneCrash(titleTop)}
         </div>
         <div
           className="leading-[0.9] mt-1 md:mt-3"
@@ -137,7 +137,7 @@ function IntroAndSelector({ top, bottom, events, activeKey, onSelect }) {
         style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(2.4rem, 5.5vw, 4.5rem)" }}
         data-testid="stats-intro-top"
       >
-        {planeCrashSafe(top)}
+        {renderPlaneCrash(top)}
       </div>
       <div
         className="mt-2"
@@ -166,7 +166,7 @@ function IntroAndSelector({ top, bottom, events, activeKey, onSelect }) {
                 }}
                 data-testid={`stats-event-${ev.key}`}
               >
-                {planeCrashSafe(ev.label || ev.key)}
+                {renderPlaneCrash(ev.label || ev.key)}
               </button>
             );
           })}
@@ -194,7 +194,7 @@ function CategoriesGrid({ event, onSelectCat }) {
                 style={{ background: BLUE, ...PLANE_CRASH, fontSize: "clamp(0.9rem, 1.8vw, 1.5rem)", letterSpacing: "0.05em" }}
                 data-testid={`stats-cat-${event.key}-${i}`}
               >
-                {planeCrashSafe(c.label || `CAT: ${c.category}`)}
+                {renderPlaneCrash(c.label || `CAT: ${c.category}`)}
               </button>
             ))}
             {cats.length === 0 && (
@@ -211,7 +211,7 @@ function CategoriesGrid({ event, onSelectCat }) {
           ) : null}
           <div className="text-center">
             <div className="leading-none" style={{ ...PLANE_CRASH, color: BLUE, fontSize: "clamp(1.4rem, 2.4vw, 2.2rem)" }}>
-              {planeCrashSafe(event.title_month || "")}
+              {renderPlaneCrash(event.title_month || "")}
             </div>
             {isMulti ? (
               <div className="leading-none mt-1" style={{ ...PLANE_CRASH, fontSize: "clamp(1.8rem, 3vw, 2.8rem)" }} data-testid="stats-event-title-word">
@@ -267,7 +267,7 @@ function CategoryDataPanel({ category, eventLabel, onClose }) {
           <div className="text-white">
             <div className="text-[10px] uppercase tracking-widest opacity-80" style={AGENCY_FB}>{eventLabel}</div>
             <div className="leading-none mt-0.5" style={{ ...PLANE_CRASH, fontSize: "clamp(1.3rem, 2.5vw, 2rem)" }}>
-              {planeCrashSafe(category.label || `CAT ${category.category}`)}
+              {renderPlaneCrash(category.label || `CAT ${category.category}`)}
             </div>
           </div>
           <button type="button" onClick={onClose} className="text-white/90 hover:text-white p-2 rounded-full hover:bg-white/10" aria-label="Cerrar" data-testid="stats-panel-close">

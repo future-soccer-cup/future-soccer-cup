@@ -18,7 +18,7 @@ import api, { formatApiError, imgSrc } from "../lib/api";
 import { toast, Toaster } from "sonner";
 import { Upload, ArrowRight, ArrowLeft, Eye, EyeOff, Check } from "lucide-react";
 import { ConsentBlock } from "./Register";
-import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe } from "../lib/designSystem";
+import { PLANE_CRASH, AGENCY_FB, CURSIVE, renderPlaneCrash } from "../lib/designSystem";
 
 const RED = "#e31f27";
 const BLUE = "#0640c8";
@@ -201,11 +201,11 @@ export default function TeamRegister() {
 
               {step < totalSteps ? (
                 <button type="button" onClick={next} className="px-8 py-3 rounded-md bg-white transition-transform hover:scale-105 flex items-center gap-2" style={{ ...PLANE_CRASH, color: RED, letterSpacing: "0.05em", fontSize: "1.05rem" }} data-testid="tr-next">
-                  {planeCrashSafe("siguiente")} <ArrowRight size={18}/>
+                  {renderPlaneCrash("siguiente")} <ArrowRight size={18}/>
                 </button>
               ) : (
                 <button type="submit" disabled={loading || !form.data_consent} className="px-8 py-3 rounded-md bg-white transition-transform hover:scale-105 disabled:opacity-50 flex items-center gap-2" style={{ ...PLANE_CRASH, color: RED, letterSpacing: "0.05em", fontSize: "1.05rem" }} data-testid="tr-submit">
-                  {planeCrashSafe(loading ? "registrando..." : "registrarme")} <ArrowRight size={18}/>
+                  {renderPlaneCrash(loading ? "registrando..." : "registrarme")} <ArrowRight size={18}/>
                 </button>
               )}
             </div>
@@ -421,7 +421,7 @@ function ConsentBlockDark({ checked, onChange }) {
       />
       <span className="text-sm text-white/90 leading-relaxed">
         <span className="font-black tracking-wider block mb-1 text-base" style={PLANE_CRASH}>
-          {planeCrashSafe("tratamiento de datos y uso de imagen")} *
+          {renderPlaneCrash("tratamiento de datos y uso de imagen")} *
         </span>
         Acepto el tratamiento de mis datos personales y el uso de imagen (fotografías y video)
         durante los eventos organizados por FUTURE SOCCER CUP, conforme a la política de privacidad.
@@ -434,7 +434,7 @@ function ConsentBlockDark({ checked, onChange }) {
 function LabelDark({ text, required }) {
   return (
     <span className="text-white text-sm sm:text-lg md:text-xl tracking-wide sm:tracking-widest flex items-center gap-1 flex-wrap" style={PLANE_CRASH}>
-      {planeCrashSafe(text)} {required && <span style={{ color: RED }}>*</span>}
+      {renderPlaneCrash(text)} {required && <span style={{ color: RED }}>*</span>}
     </span>
   );
 }

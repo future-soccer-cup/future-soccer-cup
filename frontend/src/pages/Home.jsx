@@ -3,7 +3,7 @@ import { Link, NavLink } from "react-router-dom";
 import api from "../lib/api";
 import { useLoginModal } from "../context/LoginModalContext";
 import { ChevronLeft, ChevronRight, Calendar, MessageCircle, Mail, Instagram, Facebook } from "lucide-react";
-import { PLANE_CRASH, AGENCY_FB, NEO_SANS, STENCIL, CURSIVE, planeCrashSafe, RED, BLUE, GRAY } from "../lib/designSystem";
+import { PLANE_CRASH, AGENCY_FB, NEO_SANS, STENCIL, CURSIVE, renderPlaneCrash, RED, BLUE, GRAY } from "../lib/designSystem";
 import ChevronStack from "../components/ChevronStack";
 import AnimateIn from "../components/AnimateIn";
 import Counter from "../components/Counter";
@@ -146,7 +146,7 @@ export default function Home() {
                   />
                 )}
                 <span className="hidden sm:inline-block font-black leading-[0.85] text-white drop-shadow-md" style={{ ...PLANE_CRASH, fontSize: "clamp(20px, 2.2vw, 32px)" }}>
-                  {planeCrashSafe("FUTUR")}<br/>{planeCrashSafe("SOCCER")}<br/>{planeCrashSafe("CUP")}
+                  {renderPlaneCrash("FUTUR")}<br/>{renderPlaneCrash("SOCCER")}<br/>{renderPlaneCrash("CUP")}
                 </span>
               </Link>
               <span className="hidden md:inline-block text-white italic text-3xl lg:text-5xl drop-shadow-md" style={CURSIVE} data-testid="hero-cursive-tagline">
@@ -188,14 +188,14 @@ export default function Home() {
                 style={{ ...PLANE_CRASH, fontSize: "clamp(56px, 8.5vw, 140px)", textShadow: "3px 3px 0 rgba(0,0,0,0.25)" }}
                 data-testid="hero-edition"
               >
-                {planeCrashSafe(s.hero_edition_label || "EDICION")}
+                {renderPlaneCrash(s.hero_edition_label || "EDICION")}
               </h1>
               <div
                 className="fsc-needs-plane-crash fsc-anim-hero-year text-white font-black leading-[0.85]"
                 style={{ ...PLANE_CRASH, fontSize: "clamp(80px, 12vw, 180px)", textShadow: "3px 3px 0 rgba(0,0,0,0.25)" }}
                 data-testid="hero-year"
               >
-                {planeCrashSafe(s.hero_edition_year || "2026")}
+                {renderPlaneCrash(s.hero_edition_year || "2026")}
               </div>
               <div
                 className="fsc-anim-hero-badges mt-6 inline-flex flex-col items-center gap-5"
@@ -239,7 +239,7 @@ export default function Home() {
       <section className="py-16 lg:py-24 bg-white" data-testid="home-stats">
         <div className="max-w-7xl mx-auto px-6 text-center">
           <AnimateIn as="h2" variant="slide-up" className="font-black leading-[0.95]" style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(48px, 7vw, 96px)" }}>
-            {planeCrashSafe("SOMOS MAS")}<br/>{planeCrashSafe("QUE UN TORNEO")}
+            {renderPlaneCrash("SOMOS MAS")}<br/>{renderPlaneCrash("QUE UN TORNEO")}
           </AnimateIn>
           <div className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-10 lg:gap-6">
             {[
@@ -252,7 +252,7 @@ export default function Home() {
                 <Counter
                   value={it.n || it.dn}
                   duration={1800}
-                  transform={planeCrashSafe}
+                  transform={renderPlaneCrash}
                   className="font-black leading-none whitespace-nowrap"
                   style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(40px, 5vw, 80px)" }}
                 />
@@ -320,7 +320,7 @@ export default function Home() {
             ><ChevronRight size={32} strokeWidth={3} /></button>
           </div>
           <div className="mt-8 text-center">
-            <AnimateIn as="h2" variant="slide-up" className="font-black leading-none" style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(56px, 9vw, 128px)" }}>{planeCrashSafe("FINALES")}</AnimateIn>
+            <AnimateIn as="h2" variant="slide-up" className="font-black leading-none" style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(56px, 9vw, 128px)" }}>{renderPlaneCrash("FINALES")}</AnimateIn>
             <AnimateIn as="p" variant="slide-up" delay={0.15} className="mt-1 text-3xl md:text-4xl font-bold" style={{ ...AGENCY_FB, color: BLUE }} data-testid="finales-subtitle">
               {s.finales_subtitle || "Estadio Centenario de Armenia"}
             </AnimateIn>
@@ -351,7 +351,7 @@ export default function Home() {
       <section className="pt-12 pb-20 bg-white" data-testid="home-region">
         <div className="max-w-7xl mx-auto px-6 text-center">
           <AnimateIn as="h2" variant="zoom-in" className="font-black leading-tight" style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(40px, 6vw, 80px)" }} data-testid="region-title">
-            {planeCrashSafe(s.region_title || "EL EJE CAFETERO LOS ESPERA")}
+            {renderPlaneCrash(s.region_title || "EL EJE CAFETERO LOS ESPERA")}
           </AnimateIn>
           <AnimateIn as="p" variant="fade" delay={0.3} className="text-4xl md:text-5xl font-bold mb-6" style={{ ...AGENCY_FB, color: BLUE }} data-testid="region-subtitle">
             {s.region_subtitle || "Comfenalco Soleden"}
@@ -402,10 +402,10 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
           {/* Izquierda: heading en 4 líneas (grunge stencil blanco) */}
           <h2 className="font-black text-white leading-[0.95]" style={{ ...PLANE_CRASH, fontSize: "clamp(36px, 5vw, 72px)" }} data-testid="footer-heading">
-            <span className="block">{planeCrashSafe("Y SI NOS")}</span>
-            <span className="block">{planeCrashSafe("TOMAMOS")}</span>
-            <span className="block">{planeCrashSafe("UN CAFECITO")}</span>
-            <span className="block">{planeCrashSafe("JUNTOS?")}</span>
+            <span className="block">{renderPlaneCrash("Y SI NOS")}</span>
+            <span className="block">{renderPlaneCrash("TOMAMOS")}</span>
+            <span className="block">{renderPlaneCrash("UN CAFECITO")}</span>
+            <span className="block">{renderPlaneCrash("JUNTOS?")}</span>
           </h2>
           {/* Derecha: contactos */}
           <div className="text-white space-y-6">
@@ -502,7 +502,7 @@ function CategoryColumn({ title, dateBadge, logoUrl, ctaUrl, groups, testId }) {
         )}
         {title && (
           <h3 className="font-black tracking-tight" style={{ ...PLANE_CRASH, color: "#e31f27", fontSize: "clamp(28px, 4vw, 48px)" }} data-testid={`${testId}-title`}>
-            {planeCrashSafe(title)}
+            {renderPlaneCrash(title)}
           </h3>
         )}
       </div>

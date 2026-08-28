@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { User, Mail, Phone, MessageSquare, Send } from "lucide-react";
 import api, { imgSrc } from "../lib/api";
-import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe } from "../lib/designSystem";
+import { PLANE_CRASH, AGENCY_FB, CURSIVE, renderPlaneCrash } from "../lib/designSystem";
 
 const RED = "#e31f27";
 const BLUE = "#0640c8";
@@ -81,7 +81,7 @@ export default function Contacto() {
               }}
               data-testid="contacto-title"
             >
-              {planeCrashSafe(title)}
+              {renderPlaneCrash(title)}
             </h1>
             <div className="w-16 h-[3px] mx-auto mt-4 rounded-full" style={{ background: RED }} />
           </div>
@@ -142,7 +142,7 @@ export default function Contacto() {
             data-testid="contacto-submit"
           >
             <Send size={20} />
-            {loading ? planeCrashSafe("enviando...") : planeCrashSafe("enviar")}
+            {loading ? renderPlaneCrash("enviando...") : renderPlaneCrash("enviar")}
           </button>
         </form>
       </div>

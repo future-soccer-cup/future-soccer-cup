@@ -1,5 +1,5 @@
 import "@/index.css";
-import { BrowserRouter, Routes, Route, Outlet, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Outlet, useLocation, Navigate } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { LoginModalProvider } from "./context/LoginModalContext";
 import LoginModal from "./components/LoginModal";
@@ -30,6 +30,7 @@ import DatosEstadisticas from "./pages/DatosEstadisticas";
 import Nosotros from "./pages/Nosotros";
 import Eventos from "./pages/Eventos";
 import Contacto from "./pages/Contacto";
+import NotFound from "./pages/NotFound";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 
@@ -91,6 +92,7 @@ function App() {
             <Route path="/noticias" element={<Noticias />} />
             <Route path="/bracket" element={<Bracket />} />
             <Route path="/datos-estadisticas" element={<DatosEstadisticas />} />
+            <Route path="/estadisticas" element={<Navigate to="/datos-estadisticas" replace />} />
             <Route path="/nosotros" element={<Nosotros />} />
             <Route path="/eventos" element={<Eventos />} />
             <Route path="/contacto" element={<Contacto />} />
@@ -109,6 +111,7 @@ function App() {
               path="/mis-cotizaciones"
               element={<ProtectedRoute><MyQuotes /></ProtectedRoute>}
             />
+            <Route path="*" element={<NotFound />} />
           </Route>
 
           <Route

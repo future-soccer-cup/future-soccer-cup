@@ -58,51 +58,6 @@ const EMPTY = {
   youtube: "",
   whatsapp_url: "",
   footer_heading: "¿Y SI NOS TOMAMOS UN CAFECITO JUNTOS?",
-  // Legacy / Nosotros (mantener compat)
-  hero_title: "Future Soccer Cup",
-  hero_subtitle: "La cumbre del fútbol formativo infantil & juvenil.",
-  hero_cta_label: "Inscribe tu equipo",
-  hero_cta_url: "/registro-equipo",
-  upcoming_name: "", upcoming_city: "", upcoming_venue: "",
-  upcoming_start_date: "", upcoming_end_date: "",
-  upcoming_categories: "", upcoming_cover_url: "",
-  about_title: "Somos más que un torneo",
-  about_body: "",
-  about_image_url: "",
-  // Páginas secundarias
-  nosotros_hero_kicker: "conócenos",
-  nosotros_hero_title: "NOSOTROS",
-  nosotros_hero_body: "",
-  nosotros_hero_bg_url: "",
-  nosotros_hero_overlay: "blue",
-  nosotros_mission_kicker: "misión",
-  nosotros_mission_body: "",
-  nosotros_pill_1_title: "Reglamento claro", nosotros_pill_1_body: "Fair play como primer ítem de desempate.",
-  nosotros_pill_2_title: "4 partidos mínimo", nosotros_pill_2_body: "Cuadrangulares + intergrupos.",
-  nosotros_pill_3_title: "Datos en vivo",    nosotros_pill_3_body: "Posiciones y goleadores actualizados.",
-  nosotros_pill_4_title: "Familia FSC",      nosotros_pill_4_body: "Hospedaje, transporte, tours.",
-  eventos_hero_kicker: "temporada",
-  eventos_hero_title: "EVENTOS",
-  eventos_hero_body: "",
-  eventos_hero_bg_url: "",
-  eventos_hero_overlay: "red",
-  contacto_hero_kicker: "estamos aquí",
-  contacto_hero_title: "CONTACTO",
-  contacto_hero_body: "",
-  contacto_hero_bg_url: "",
-  contacto_hero_overlay: "blue",
-  contacto_form_kicker: "déjanos un mensaje",
-  contacto_form_title: "ENVÍANOS TU CONSULTA",
-  noticias_hero_kicker: "novedades",
-  noticias_hero_title: "NOTICIAS",
-  noticias_hero_body: "",
-  estadisticas_hero_kicker: "torneo en vivo",
-  estadisticas_hero_title: "ESTADÍSTICAS",
-  estadisticas_hero_body: "",
-  estadisticas_hero_bg_url: "",
-  estadisticas_hero_overlay: "blue",
-  hablemos_kicker: "contáctanos",
-  hablemos_title: "HABLEMOS",
 };
 
 // Helpers para convertir entre lista (CSV) y arrays
@@ -323,40 +278,10 @@ export default function AdminHomeSettings() {
         </div>
       </Section>
 
-      <Section title="Nosotros (página)" icon={<Info size={18}/>}>
+      <Section title="Nosotros (página) — Timeline de Hitos" icon={<Info size={18}/>}>
         <div className="grid md:grid-cols-2 gap-4">
-          <Field label="Hero — kicker (cursiva)" v={s.nosotros_hero_kicker} onChange={(v) => upd("nosotros_hero_kicker", v)} placeholder="conócenos" />
-          <Field label="Hero — título grande" v={s.nosotros_hero_title} onChange={(v) => upd("nosotros_hero_title", v)} placeholder="NOSOTROS" />
-          <label className="md:col-span-2 block">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Hero — descripción</span>
-            <textarea rows={3} value={s.nosotros_hero_body || ""} onChange={(e) => upd("nosotros_hero_body", e.target.value)} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" />
-          </label>
+          {/* FSC en la Historia — Timeline editor (única sección activa en /nosotros) */}
           <div className="md:col-span-2">
-            <ImageUpload value={s.nosotros_hero_bg_url} onChange={(v) => upd("nosotros_hero_bg_url", v)} label="Hero — imagen de fondo (ancho completo)" hint="Recomendado: JPG/WEBP horizontal 1920×800 px (12:5), alta calidad. Peso ideal < 1 MB. Se recorta tipo cover y recibe el overlay translúcido." testId="nosotros-hero-bg-upload" />
-          </div>
-          <OverlaySelect v={s.nosotros_hero_overlay} onChange={(v) => upd("nosotros_hero_overlay", v)} testId="nosotros-hero-overlay" />
-          <div />
-          <Field label="Misión — kicker" v={s.nosotros_mission_kicker} onChange={(v) => upd("nosotros_mission_kicker", v)} placeholder="misión" />
-          <div />
-          <label className="md:col-span-2 block">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Misión — cuerpo</span>
-            <textarea rows={3} value={s.nosotros_mission_body || ""} onChange={(e) => upd("nosotros_mission_body", e.target.value)} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" />
-          </label>
-          <div className="md:col-span-2 border-t border-slate-200 pt-3">
-            <div className="text-[10px] font-bold uppercase tracking-widest text-blue-700 mb-2">Tarjetas / Pills (4)</div>
-            <div className="grid md:grid-cols-2 gap-3">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="border border-slate-200 rounded-md p-3 space-y-2">
-                  <Field label={`Pill ${i} — título`} v={s[`nosotros_pill_${i}_title`]} onChange={(v) => upd(`nosotros_pill_${i}_title`, v)} />
-                  <Field label={`Pill ${i} — descripción`} v={s[`nosotros_pill_${i}_body`]} onChange={(v) => upd(`nosotros_pill_${i}_body`, v)} />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* FSC en la Historia — Timeline editor */}
-          <div className="md:col-span-2 border-t border-slate-200 pt-3">
-            <div className="text-[10px] font-bold uppercase tracking-widest text-red-700 mb-2">FSC en la Historia — Timeline</div>
             <Field label="Título grande (ej: FSC EN LA HISTORIA)" v={s.nosotros_history_title} onChange={(v) => upd("nosotros_history_title", v)} placeholder="FSC EN LA HISTORIA" />
             <HistoryTimelineEditor value={s.nosotros_history_timeline || []} onChange={(v) => upd("nosotros_history_timeline", v)} />
           </div>
@@ -377,35 +302,6 @@ export default function AdminHomeSettings() {
 
       <Section title="Contacto (página) — Nueva estructura" icon={<Phone size={18}/>}>
         <ContactoEditor value={s.contacto || {}} onChange={(v) => upd("contacto", v)} />
-      </Section>
-
-      <Section title="Nosotros — sección con imagen (misión)" icon={<Info size={18}/>}>
-        <div className="grid md:grid-cols-2 gap-4">
-          <Field label="Título" v={s.about_title} onChange={(v) => upd("about_title", v)} />
-          <div />
-          <label className="md:col-span-2 block">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Cuerpo (texto)</span>
-            <textarea rows={5} value={s.about_body || ""} onChange={(e) => upd("about_body", e.target.value)} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" />
-          </label>
-          <div className="md:col-span-2">
-            <ImageUpload value={s.about_image_url} onChange={(v) => upd("about_image_url", v)} label="Imagen" hint="Recomendado: JPG/WEBP horizontal 1600×900 px (16:9) o 1200×800 px (3:2). Peso ideal < 800 KB." testId="about-image" />
-          </div>
-        </div>
-      </Section>
-
-      <Section title="Próximo evento (legacy)" icon={<Trophy size={18}/>}>
-        <p className="text-xs text-slate-500 mb-3">Campos legacy. El home actual usa los campos del Hero arriba.</p>
-        <div className="grid md:grid-cols-2 gap-4">
-          <Field label="Nombre" v={s.upcoming_name} onChange={(v) => upd("upcoming_name", v)} />
-          <Field label="Categorías (lista)" v={s.upcoming_categories} onChange={(v) => upd("upcoming_categories", v)} />
-          <Field label="Ciudad" v={s.upcoming_city} onChange={(v) => upd("upcoming_city", v)} />
-          <Field label="Sede" v={s.upcoming_venue} onChange={(v) => upd("upcoming_venue", v)} />
-          <Field label="Fecha inicio" type="date" v={s.upcoming_start_date} onChange={(v) => upd("upcoming_start_date", v)} />
-          <Field label="Fecha fin" type="date" v={s.upcoming_end_date} onChange={(v) => upd("upcoming_end_date", v)} />
-          <div className="md:col-span-2">
-            <ImageUpload value={s.upcoming_cover_url} onChange={(v) => upd("upcoming_cover_url", v)} label="Imagen de portada" hint="Recomendado: JPG/WEBP horizontal 1600×900 px (16:9). Peso ideal < 800 KB." testId="upcoming-cover" />
-          </div>
-        </div>
       </Section>
     </div>
   );

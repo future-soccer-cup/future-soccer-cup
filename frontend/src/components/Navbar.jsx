@@ -4,7 +4,7 @@ import { Menu, X, LogOut, UserCircle2, Shield } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useLoginModal } from "../context/LoginModalContext";
 import api from "../lib/api";
-import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe, RED, BLUE } from "../lib/designSystem";
+import { PLANE_CRASH, AGENCY_FB, CURSIVE, renderPlaneCrash, RED, BLUE } from "../lib/designSystem";
 
 const NAV = [
   { to: "/", label: "INICIO", end: true },
@@ -43,7 +43,7 @@ export default function Navbar() {
               <img src={s.nav_logo_url} alt="Future Soccer Cup" className="h-12 md:h-16 w-auto hidden lg:block" onError={(e) => { e.currentTarget.style.display = "none"; }} data-testid="nav-logo-img" />
             )}
             <span className="hidden sm:inline-block font-black leading-[0.85]" style={{ ...PLANE_CRASH, color: BLUE, fontSize: "clamp(20px, 2.2vw, 32px)" }} data-testid="nav-wordmark">
-              {planeCrashSafe("FUTUR")}<br/>{planeCrashSafe("SOCCER")}<br/>{planeCrashSafe("CUP")}
+              {renderPlaneCrash("FUTUR")}<br/>{renderPlaneCrash("SOCCER")}<br/>{renderPlaneCrash("CUP")}
             </span>
           </Link>
           <span className="hidden md:inline-block italic text-2xl lg:text-4xl" style={{ ...CURSIVE, color: BLUE }} data-testid="nav-tagline">

@@ -10,7 +10,7 @@ import { useLoginModal } from "../context/LoginModalContext";
 import api, { formatApiError, imgSrc } from "../lib/api";
 import { toast } from "sonner";
 import { Mail, Lock, Eye, EyeOff, X } from "lucide-react";
-import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe } from "../lib/designSystem";
+import { PLANE_CRASH, AGENCY_FB, CURSIVE, renderPlaneCrash } from "../lib/designSystem";
 
 const RED = "#e31f27";
 const BLUE = "#0640c8";
@@ -78,7 +78,7 @@ export default function LoginModal() {
 
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center px-4 py-8 overflow-y-auto"
+      className="fixed inset-0 z-[9999] flex items-start sm:items-center justify-center px-4 py-8 overflow-y-auto"
       style={AGENCY_FB}
       onClick={closeLogin}
       data-testid="login-modal-overlay"
@@ -114,7 +114,7 @@ export default function LoginModal() {
           <form onSubmit={submit} className="space-y-5" data-testid="login-modal-form">
             <label className="block">
               <span className="text-white text-sm sm:text-lg md:text-xl tracking-wide sm:tracking-widest flex items-center gap-2 flex-wrap" style={PLANE_CRASH}>
-                <Mail size={22} className="shrink-0" /> {planeCrashSafe("ingresa tu correo")} <span>*</span>
+                <Mail size={22} className="shrink-0" /> {renderPlaneCrash("ingresa tu correo")} <span>*</span>
               </span>
               <input
                 type="email"
@@ -129,7 +129,7 @@ export default function LoginModal() {
             </label>
             <label className="block">
               <span className="text-white text-sm sm:text-lg md:text-xl tracking-wide sm:tracking-widest flex items-center gap-2 flex-wrap" style={PLANE_CRASH}>
-                <Lock size={22} className="shrink-0" /> {planeCrashSafe("ingresa tu contraseña")} <span>*</span>
+                <Lock size={22} className="shrink-0" /> {renderPlaneCrash("ingresa tu contraseña")} <span>*</span>
               </span>
               <div className="relative mt-2">
                 <input
@@ -156,7 +156,7 @@ export default function LoginModal() {
                 style={{ ...PLANE_CRASH, color: RED, letterSpacing: "0.05em", fontSize: "0.95rem" }}
                 data-testid="login-modal-submit"
               >
-                {planeCrashSafe(loading ? "ingresando..." : "iniciar sesion")}
+                {renderPlaneCrash(loading ? "ingresando..." : "iniciar sesion")}
               </button>
               <button
                 type="button"

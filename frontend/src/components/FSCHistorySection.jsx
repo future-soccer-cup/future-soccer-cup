@@ -14,7 +14,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { imgSrc } from "../lib/api";
-import { PLANE_CRASH, AGENCY_FB, planeCrashSafe } from "../lib/designSystem";
+import { PLANE_CRASH, AGENCY_FB, renderPlaneCrash } from "../lib/designSystem";
 
 const RED = "#e31f27";
 const BLUE = "#0640c8";
@@ -32,6 +32,15 @@ const SLOTS = [
 
 // Posición cover completa (usada por la foto principal en modo YEAR).
 const COVER = { left: "0%", top: "0%", width: "100%", height: "100%", rotate: 0 };
+
+// Convierte un HEX (#rrggbb) a "r,g,b" para poder aplicarle opacidad con rgba().
+function hexToRgbTuple(hex) {
+  const clean = (hex || "").replace("#", "");
+  const r = parseInt(clean.substring(0, 2), 16);
+  const g = parseInt(clean.substring(2, 4), 16);
+  const b = parseInt(clean.substring(4, 6), 16);
+  return `${r},${g},${b}`;
+}
 
 export default function FSCHistorySection({ settings }) {
   const timeline = useMemo(() => {
@@ -158,7 +167,7 @@ export default function FSCHistorySection({ settings }) {
               }}
               data-testid="history-title-top"
             >
-              {planeCrashSafe(topWord || "fsc")}
+              {renderPlaneCrash(topWord || "fsc")}
             </div>
             {bottomWords && (
               <div
@@ -171,7 +180,7 @@ export default function FSCHistorySection({ settings }) {
                 }}
                 data-testid="history-title-bottom"
               >
-                {planeCrashSafe(bottomWords)}
+                {renderPlaneCrash(bottomWords)}
               </div>
             )}
           </div>
@@ -199,7 +208,7 @@ export default function FSCHistorySection({ settings }) {
                   }}
                   data-testid="history-question"
                 >
-                  {planeCrashSafe(question)}
+                  {renderPlaneCrash(question)}
                 </div>
               )}
               {hasBody && (
@@ -215,7 +224,7 @@ export default function FSCHistorySection({ settings }) {
                   }}
                   data-testid="history-read-btn"
                 >
-                  {planeCrashSafe("lee aquí")}
+                  {renderPlaneCrash("lee aquí")}
                 </button>
               )}
             </div>
@@ -227,11 +236,11 @@ export default function FSCHistorySection({ settings }) {
               <>
                 <div className="text-center mb-4 py-6">
                   <div className="leading-[0.85]" style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(4rem, 20vw, 6rem)" }}>
-                    {planeCrashSafe(topWord || "fsc")}
+                    {renderPlaneCrash(topWord || "fsc")}
                   </div>
                   {bottomWords && (
                     <div className="leading-none mt-1" style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(1rem, 5vw, 1.6rem)" }}>
-                      {planeCrashSafe(bottomWords)}
+                      {renderPlaneCrash(bottomWords)}
                     </div>
                   )}
                 </div>
@@ -249,19 +258,19 @@ export default function FSCHistorySection({ settings }) {
                   <img src={imgSrc(photos[0])} alt="" className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center" style={{ background: BLUE }}>
-                    <span className="text-white/60" style={{ ...PLANE_CRASH, fontSize: "2.4rem" }}>{planeCrashSafe(active.label || "")}</span>
+                    <span className="text-white/60" style={{ ...PLANE_CRASH, fontSize: "2.4rem" }}>{renderPlaneCrash(active.label || "")}</span>
                   </div>
                 )}
                 {(question || hasBody) && (
                   <div className="absolute inset-x-0 bottom-0 flex flex-col items-center justify-end px-3 pb-3 pt-14 text-center" style={{ background: "linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 60%, transparent 100%)" }}>
                     {question && (
                       <div className="text-white leading-tight mb-2 text-xl" style={{ ...PLANE_CRASH, textShadow: "1px 1px 0 rgba(0,0,0,0.6)" }}>
-                        {planeCrashSafe(question)}
+                        {renderPlaneCrash(question)}
                       </div>
                     )}
                     {hasBody && (
                       <button type="button" onClick={() => setModalOpen(true)} className="px-4 py-1.5 bg-white rounded-sm shadow" style={{ ...PLANE_CRASH, color: RED, fontSize: "0.95rem" }} data-testid="history-read-btn-mobile">
-                        {planeCrashSafe("lee aquí")}
+                        {renderPlaneCrash("lee aquí")}
                       </button>
                     )}
                   </div>
@@ -349,12 +358,14 @@ export default function FSCHistorySection({ settings }) {
         </div>
       </div>
 
-      {/* Modal LEE AQUÍ */}
+      {/* Modal LEE AQUÍ — alterna azul/rojo según el hito para que no se vean todos iguales */}
       {modalOpen && hasBody && (
         <HistoryReadModal
           question={question}
           body={active.body}
           label={active.label}
+          photo={photos[0]}
+          overlayColor={activeIdx % 2 === 0 ? RED : BLUE}
           onClose={() => setModalOpen(false)}
         />
       )}
@@ -362,7 +373,7 @@ export default function FSCHistorySection({ settings }) {
   );
 }
 
-function HistoryReadModal({ question, body, label, onClose }) {
+function HistoryReadModal({ question, body, label, photo, overlayColor = RED, onClose }) {
   useEffect(() => {
     const onEsc = (e) => e.key === "Escape" && onClose();
     document.addEventListener("keydown", onEsc);
@@ -376,43 +387,57 @@ function HistoryReadModal({ question, body, label, onClose }) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.72)" }}
+      style={{ background: "rgba(0,0,0,0.78)" }}
       onClick={onClose}
       data-testid="history-modal"
     >
       <div
-        className="bg-white rounded-lg shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden"
+        className="relative w-full max-w-3xl max-h-[85vh] rounded-2xl overflow-hidden shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-6 py-4" style={{ background: BLUE }}>
-          <div className="flex items-baseline gap-3 min-w-0">
-            <span className="text-white/80 uppercase tracking-widest text-xs" style={AGENCY_FB}>
+        {/* Fondo: foto del hito (o azul de respaldo) */}
+        {photo ? (
+          <img src={imgSrc(photo)} alt="" className="absolute inset-0 w-full h-full object-cover" />
+        ) : (
+          <div className="absolute inset-0" style={{ background: BLUE }} />
+        )}
+        {/* Velo translúcido encima de la foto (alterna azul/rojo por hito) */}
+        <div className="absolute inset-0" style={{ background: `rgba(${hexToRgbTuple(overlayColor)},0.74)` }} />
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute top-4 right-4 z-20 text-white/90 hover:text-white bg-black/25 hover:bg-black/45 rounded-full p-2 transition"
+          aria-label="Cerrar"
+          data-testid="history-modal-close"
+        >
+          <X size={24} />
+        </button>
+
+        <div className="relative z-10 flex flex-col items-center text-center px-6 sm:px-12 py-14 sm:py-16 min-h-[340px] max-h-[85vh] overflow-hidden">
+          {label && (
+            <span className="text-white/85 uppercase tracking-[0.25em] text-xs sm:text-sm mb-5 font-bold shrink-0" style={AGENCY_FB}>
               {label}
             </span>
-            <span
-              className="text-white leading-none truncate"
-              style={{ ...PLANE_CRASH, fontSize: "clamp(1.2rem, 2vw, 1.9rem)" }}
+          )}
+          {question && (
+            <div
+              className="text-white leading-tight mb-5 max-w-2xl shrink-0"
+              style={{ ...PLANE_CRASH, fontSize: "clamp(1.6rem, 3vw, 2.6rem)", textShadow: "2px 2px 0 rgba(0,0,0,0.35)" }}
               data-testid="history-modal-title"
             >
-              {planeCrashSafe(question || "historia fsc")}
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-white/90 hover:text-white p-1 rounded-full hover:bg-white/10 transition flex-shrink-0"
-            aria-label="Cerrar"
-            data-testid="history-modal-close"
+              {renderPlaneCrash(question)}
+            </div>
+          )}
+          <div className="w-full overflow-y-auto flex-1 min-h-0" data-testid="history-modal-body-scroll">
+          <div
+            className="text-white leading-relaxed whitespace-pre-line max-w-2xl mx-auto font-semibold"
+            style={{ ...AGENCY_FB, fontSize: "clamp(1.15rem, 2.1vw, 1.6rem)", textShadow: "1px 1px 0 rgba(0,0,0,0.3)" }}
+            data-testid="history-modal-body"
           >
-            <X size={22} />
-          </button>
-        </div>
-        <div
-          className="flex-1 overflow-y-auto px-6 py-6 text-slate-800 leading-relaxed text-base whitespace-pre-line"
-          style={AGENCY_FB}
-          data-testid="history-modal-body"
-        >
-          {body}
+            {body}
+          </div>
+          </div>
         </div>
       </div>
     </div>

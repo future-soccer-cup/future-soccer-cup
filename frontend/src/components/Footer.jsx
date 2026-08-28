@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../lib/api";
 import { MessageCircle, Mail, Instagram, Facebook } from "lucide-react";
-import { PLANE_CRASH, AGENCY_FB, planeCrashSafe, RED, BLUE } from "../lib/designSystem";
+import { PLANE_CRASH, AGENCY_FB, renderPlaneCrash, RED, BLUE } from "../lib/designSystem";
 
 /**
  * Footer global del sitio (no se aplica en /admin).
@@ -25,8 +25,8 @@ export default function Footer() {
         {/* Izquierda: heading grunge en 4 líneas */}
         <h2 className="font-black text-white leading-[0.95]" style={{ ...PLANE_CRASH, fontSize: "clamp(36px, 5vw, 72px)" }} data-testid="footer-heading">
           {headingLines.length ? headingLines.map((l, i) => (
-            <span key={i} className="block">{planeCrashSafe(l)}</span>
-          )) : <span className="block">{planeCrashSafe(heading)}</span>}
+            <span key={i} className="block">{renderPlaneCrash(l)}</span>
+          )) : <span className="block">{renderPlaneCrash(heading)}</span>}
         </h2>
 
         {/* Derecha: contacto + redes */}

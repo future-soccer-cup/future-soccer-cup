@@ -1,0 +1,64 @@
+{
+  "summary": "Iteración 46 — regresión de la refactorización planeCrashSafe->renderPlaneCrash (11 archivos), nuevo modal LEE AQUÍ con scroll interno, tamaños de fuente en LoginModal/TeamRegister, logos de clubes en /eventos y límite de subida 15MB. Sin pantallas en blanco ni errores JS en ninguna ruta pública. Backend smoke: GET /api/home-settings 200 (107 claves) y POST /api/upload acepta 7-8MB y rechaza 17MB con mensaje '15MB'. Login (coach + admin) y registro de equipo de 3 pasos funcionan (cuenta creada y verificada vía API). Se encontró 1 defecto visual real derivado del fix de la 'ñ' y la ausencia de ruta 404 catch-all.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "designSystem.renderPlaneCrash (LoginModal, TeamRegister labels)",
+        "issue": "El span con fuente 'Anton' para la 'ñ' rompe visualmente la palabra: el label se lee 'INGRESA TU CONTRASE ñ A *' — la 'ñ' es minúscula de trazo limpio dentro de un texto que en 'Plane Crash' se ve en caja alta desgastada, con huecos visibles a ambos lados. Además en mobile 375px la palabra se PARTE en dos líneas justo después del span ('CONTRASE ñ' / 'A *') porque el límite del elemento inline crea oportunidad de salto. Sugerido: envolver la salida completa (o al menos la palabra) en un span con white-space:nowrap, usar 'Ñ' en el span de fallback para igualar el look de caja alta y ajustar font-size/line-height para que iguale la altura de mayúsculas.",
+        "selector": "input[type=password] label / [data-testid=tr-password] label",
+        "priority": "HIGH"
+      },
+      {
+        "component": "App.js routing",
+        "issue": "No existe ruta catch-all (path='*'): cualquier URL desconocida (p.ej. /estadisticas, que es la que intuye el usuario en lugar de /datos-estadisticas) renderiza una página COMPLETAMENTE en blanco, sin navbar ni footer y sin mensaje. Agregar un NotFound con navbar/footer y, opcionalmente, redirect 301 de /estadisticas -> /datos-estadisticas.",
+        "selector": "N/A",
+        "priority": "MEDIUM"
+      },
+      {
+        "component": "LoginModal (mobile 375x812)",
+        "issue": "La card del modal queda recortada arriba: el título 'Ingresa a' y el botón X aparecen cortados por el borde superior del viewport (no hay scroll ni max-h en el contenedor del modal en mobile).",
+        "selector": "modal login card",
+        "priority": "MEDIUM"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Consola (todas las páginas públicas)",
+        "issues": ["2 errores 401 en consola por /api/auth/me en cada carga sin sesión (ruido; considerar tratar 401 como estado esperado y no loguear el error)"]
+      },
+      {
+        "screen": "LoginModal / TeamRegister (panel derecho)",
+        "issues": ["Placeholder 'Imagen no configurada' visible porque auth_login_image_url/auth_register_image_url están vacíos en home_settings (config de contenido, no bug)"]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_upload_limit_iter46.py"
+  ],
+  "action_items": [
+    "P1: Corregir renderPlaneCrash para que la 'ñ' no rompa la palabra (white-space:nowrap + 'Ñ' en caja alta + tamaño/altura equiparados). Verificable en el label 'CONTRASEÑA' de LoginModal y TeamRegister (desktop y 375px).",
+    "P2: Añadir ruta catch-all 404 (y alias /estadisticas -> /datos-estadisticas) para evitar páginas 100% en blanco.",
+    "P3: Hacer scrollable/limitar altura del LoginModal en mobile para que no se recorte el encabezado."
+  ],
+  "critical_code_review_comments": [
+    "renderPlaneCrash devuelve array de nodos; al insertar un elemento inline dentro de la palabra el navegador puede romper línea en el límite del span → necesita nowrap.",
+    "El span de fallback usa 'ñ' minúscula sin heredar text-transform/escala, por lo que nunca coincidirá visualmente con 'Plane Crash' (que se lee como caja alta).",
+    "Los imports de planeCrashSafe/renderPlaneCrash en los 11 archivos están correctos (verificado por grep + eslint): no hay 'is not defined'.",
+    "App.js no tiene <Route path='*'>; cualquier typo de URL da pantalla blanca sin layout."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_upload_limit_iter46.py"
+  ],
+  "success_rate": {"backend": "100% (3/3 pytest)", "frontend": "~85% (flujos funcionales OK; 1 defecto visual P1 + 2 medios)"},
+  "seed_data_creation": "Cuenta de prueba creada vía UI de registro: TEST_iter46_1787923720@test.com / Qa2026Test! (rol team, Directivo, club 'QA Club Iter46' pendiente de aprobación). Imagen de prueba subida al storage (8.27MB PNG -> webp) desde /admin/home; NO se guardaron cambios (no se pulsó 'Guardar cambios'), por lo que home_settings quedó intacto.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "coach@test.com / Coach2025! y admin@futuresoccercup.com / FSCAdmin2025! (ambos validados en esta iteración)",
+  "context_for_next_testing_agent": "Verificado en iter46 (no repetir): las 7 rutas públicas cargan sin errores JS ni pantalla en blanco tras la refactorización renderPlaneCrash; modal LEE AQUÍ de /nosotros (velo azul en 2019, label+título fijos, scroll SOLO en history-modal-body-scroll, card <=85vh incluso en viewport 375x520, cierra con X y Escape); clubs-section en /eventos muestra 'Aún no hay clubes configurados' (0 logos, esperado); labels/inputs a 24px sin overflow en desktop ni 375px; login coach y admin OK; registro de equipo 3 pasos OK (cuenta verificada por API); subida de imagen 8.27MB aceptada desde Admin UI y por API (17MB rechazada 400). Nota: la ruta correcta de estadísticas es /datos-estadisticas (no /estadisticas). Pendiente reverificar sólo el fix visual de la 'ñ'.",
+  "rca_of_the_issue": "renderPlaneCrash divide el string en nodos y envuelve la 'ñ' en un <span> con 'Anton'. Esto resuelve el problema de censura ('año'->'ano') pero introduce dos efectos: (1) el glifo de Anton es minúscula limpia y no coincide con el aspecto de caja alta desgastada de 'Plane Crash', generando 'CONTRASE ñ A'; (2) el límite del elemento inline permite un salto de línea, partiendo la palabra en viewports estrechos. Mitigación: aplicar white-space:nowrap al conjunto y renderizar 'Ñ' con tamaño/altura ajustados."
+}

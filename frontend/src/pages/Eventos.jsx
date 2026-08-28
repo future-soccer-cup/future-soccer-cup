@@ -14,7 +14,7 @@
 import { useEffect, useState } from "react";
 import api, { imgSrc } from "../lib/api";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe } from "../lib/designSystem";
+import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe, renderPlaneCrash } from "../lib/designSystem";
 import ChevronStack from "../components/ChevronStack";
 
 const RED = "#e31f27";
@@ -175,7 +175,7 @@ function TabsBar({ tab, onTab, festival, premier, center }) {
           data-testid="tab-festival"
         >
           <div className="leading-none" style={{ ...PLANE_CRASH, color: "#ffffff", fontSize: "clamp(1.5rem, 3.6vw, 3rem)" }}>
-            {planeCrashSafe(festival.tab_label || "FESTIVAL")}
+            {renderPlaneCrash(festival.tab_label || "FESTIVAL")}
           </div>
           <div className="text-white text-center mt-2 text-lg md:text-xl lg:text-2xl" style={AGENCY_FB}>
             {festival.tab_dates || ""}
@@ -184,7 +184,7 @@ function TabsBar({ tab, onTab, festival, premier, center }) {
 
         <div className="text-center px-3 py-4 md:py-6 bg-white flex flex-col items-center justify-center" data-testid="tab-center">
           <div className="leading-none" style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(1.5rem, 3.6vw, 3rem)" }}>
-            {planeCrashSafe(center?.top || "EVENTOS")}
+            {renderPlaneCrash(center?.top || "EVENTOS")}
           </div>
           <div className="mt-1" style={{ ...AGENCY_FB, color: RED, fontWeight: 700, fontSize: "clamp(1.1rem, 2vw, 1.7rem)" }}>
             {center?.bottom || "Diseñados para ti"}
@@ -199,7 +199,7 @@ function TabsBar({ tab, onTab, festival, premier, center }) {
           data-testid="tab-premier"
         >
           <div className="leading-none" style={{ ...PLANE_CRASH, color: "#ffffff", fontSize: "clamp(1.5rem, 3.6vw, 3rem)" }}>
-            {planeCrashSafe(premier.tab_label || "PREMIER")}
+            {renderPlaneCrash(premier.tab_label || "PREMIER")}
           </div>
           <div className="text-white text-center mt-2 text-base md:text-lg lg:text-xl space-y-0.5" style={AGENCY_FB}>
             <div>{premier.tab_dates_even || ""}</div>
@@ -238,7 +238,7 @@ function EventTitleSection({ month, word, isFestival }) {
         </div>
         <div className="text-center">
           <div className="leading-[0.9]" style={{ ...PLANE_CRASH, color: BLUE, fontSize: "clamp(2.2rem, 5vw, 4rem)" }} data-testid="event-title-month">
-            {planeCrashSafe(month || "")}
+            {renderPlaneCrash(month || "")}
           </div>
           {isFestival ? (
             // "FESTIVAL" con cada letra en un color distinto — misma fuente grunge Plane Crash
@@ -286,10 +286,10 @@ function CategoryBlock({ year, cat, testId }) {
   return (
     <div className="bg-white/95 rounded-md px-3 py-2 md:px-4 md:py-3 shadow flex flex-col items-center justify-center leading-none" data-testid={testId}>
       <div className="font-black tabular-nums" style={{ color: BLUE, ...PLANE_CRASH, fontSize: "clamp(1.6rem, 2.6vw, 2.4rem)" }}>
-        {planeCrashSafe(String(year))}
+        {renderPlaneCrash(String(year))}
       </div>
       <div className="mt-1 tracking-wider" style={{ color: BLUE, ...PLANE_CRASH, fontSize: "clamp(0.7rem, 1vw, 0.9rem)", opacity: 0.85 }}>
-        {planeCrashSafe(`CAT.${cat}`)}
+        {renderPlaneCrash(`CAT.${cat}`)}
       </div>
     </div>
   );
@@ -301,7 +301,7 @@ function FestivalCategories({ categories }) {
     <section className="w-full py-8 md:py-12" style={{ background: BLUE }} data-testid="festival-categories">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <h3 className="text-center text-white tracking-widest mb-6" style={{ ...PLANE_CRASH, fontSize: "clamp(1.4rem, 2.5vw, 2rem)" }}>
-          {planeCrashSafe("CAT")}
+          {renderPlaneCrash("CAT")}
         </h3>
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 md:gap-4 place-items-center">
           {categories.map((c, i) => (
@@ -322,7 +322,7 @@ function PremierCategories({ evenCats, oddCats }) {
           <div className="absolute left-1/2 top-0 bottom-0 w-px bg-white/40 hidden md:block" aria-hidden />
           <div>
             <h3 className="text-center text-white tracking-widest mb-6" style={{ ...PLANE_CRASH, fontSize: "clamp(1.2rem, 2vw, 1.8rem)" }}>
-              {planeCrashSafe("PARES")}
+              {renderPlaneCrash("PARES")}
             </h3>
             <div className="grid grid-cols-3 gap-3 md:gap-4 place-items-center">
               {evenCats.map((c, i) => <CategoryBlock key={`pe-${i}`} year="20" cat={c} testId={`premier-even-${i}`} />)}
@@ -330,7 +330,7 @@ function PremierCategories({ evenCats, oddCats }) {
           </div>
           <div>
             <h3 className="text-center text-white tracking-widest mb-6" style={{ ...PLANE_CRASH, fontSize: "clamp(1.2rem, 2vw, 1.8rem)" }}>
-              {planeCrashSafe("IMPARES")}
+              {renderPlaneCrash("IMPARES")}
             </h3>
             <div className="grid grid-cols-3 gap-3 md:gap-4 place-items-center">
               {oddCats.map((c, i) => <CategoryBlock key={`po-${i}`} year="20" cat={c} testId={`premier-odd-${i}`} />)}
@@ -424,7 +424,7 @@ function ScenariosSection({ title, cursive, subTop, subBottom, photos }) {
           style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(3rem, 11vw, 8rem)", letterSpacing: "clamp(0rem, 0.8vw, 0.2rem)" }}
           data-testid="scenarios-title"
         >
-          {planeCrashSafe(title || "ESCENARIOS")}
+          {renderPlaneCrash(title || "ESCENARIOS")}
         </div>
         <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 mt-1">
           <div className="leading-[0.85]" style={{ ...AGENCY_FB, color: RED, fontWeight: 800, fontSize: "clamp(2.8rem, 10.5vw, 7.2rem)" }}>
@@ -482,7 +482,7 @@ function PremiacionSection({ title, subtitle, cups, individual }) {
     <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-14" data-testid="premiacion-section">
       <div className="text-center mb-6 md:mb-8">
         <h2 className="leading-none" style={{ ...PLANE_CRASH, color: BLUE, fontSize: "clamp(2.5rem, 6vw, 4.5rem)" }} data-testid="premiacion-title">
-          {planeCrashSafe(title || "PREMIACIÓN")}
+          {renderPlaneCrash(title || "PREMIACIÓN")}
         </h2>
         <p className="mt-3 max-w-2xl mx-auto text-sm md:text-base" style={{ ...AGENCY_FB, color: RED, fontWeight: 700, fontSize: "clamp(1.1rem, 2.2vw, 1.6rem)" }}>
           {subtitle || ""}
@@ -497,7 +497,7 @@ function PremiacionSection({ title, subtitle, cups, individual }) {
               style={{ background: RED, ...PLANE_CRASH, fontSize: "clamp(1.4rem, 2.4vw, 1.9rem)" }}
               data-testid={`cup-${i}`}
             >
-              {planeCrashSafe(c)}
+              {renderPlaneCrash(c)}
             </div>
           ))}
         </div>
@@ -518,7 +518,7 @@ function PremiacionSection({ title, subtitle, cups, individual }) {
               style={{ ...PLANE_CRASH, color: BLUE, fontSize: "clamp(1.4rem, 2.4vw, 2rem)" }}
               data-testid={`indiv-${i}`}
             >
-              {planeCrashSafe(a)}
+              {renderPlaneCrash(a)}
             </div>
           ))}
         </div>
@@ -534,9 +534,9 @@ function ClubsSection({ title, logos }) {
       <h2 className="italic mb-6 md:mb-8" style={{ ...CURSIVE, color: BLUE, fontSize: "clamp(2.4rem, 7vw, 4.6rem)" }}>
         {title || "Clubes que han Participado"}
       </h2>
-      <div className="flex flex-wrap items-center justify-center gap-5 md:gap-8">
+      <div className="flex flex-wrap items-center justify-center gap-6 md:gap-10">
         {logos.length ? logos.map((l, i) => (
-          <img key={`club-${i}`} src={imgSrc(l)} alt="" className="h-14 md:h-16 lg:h-20 w-auto object-contain" data-testid={`club-logo-${i}`} />
+          <img key={`club-${i}`} src={imgSrc(l)} alt="" className="h-20 md:h-28 lg:h-36 w-auto object-contain" data-testid={`club-logo-${i}`} />
         )) : (
           <span className="text-slate-400 text-sm italic" style={AGENCY_FB}>Aún no hay clubes configurados.</span>
         )}

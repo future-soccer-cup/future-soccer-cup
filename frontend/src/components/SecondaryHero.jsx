@@ -1,5 +1,5 @@
 import { imgSrc } from "../lib/api";
-import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe, RED, BLUE } from "../lib/designSystem";
+import { PLANE_CRASH, AGENCY_FB, CURSIVE, renderPlaneCrash, RED, BLUE } from "../lib/designSystem";
 import { motion } from "framer-motion";
 
 /**
@@ -57,7 +57,7 @@ export default function SecondaryHero({ kicker, title, body, bgUrl = "", overlay
           style={{ ...PLANE_CRASH, textShadow: "3px 3px 0 rgba(0,0,0,0.25)", willChange: "transform, opacity" }}
           data-testid={`${testIdPrefix}-title`}
         >
-          {planeCrashSafe(title || "")}
+          {renderPlaneCrash(title || "")}
         </motion.h1>
         <motion.div
           initial={{ opacity: 0, scaleX: 0 }}

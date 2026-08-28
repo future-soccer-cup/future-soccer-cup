@@ -9,7 +9,7 @@
 import { useEffect, useState } from "react";
 import { X, ChevronLeft } from "lucide-react";
 import api, { imgSrc } from "../lib/api";
-import { PLANE_CRASH, AGENCY_FB, planeCrashSafe } from "../lib/designSystem";
+import { PLANE_CRASH, AGENCY_FB, renderPlaneCrash } from "../lib/designSystem";
 
 const RED = "#e31f27";
 const BLUE = "#0640c8";
@@ -59,7 +59,7 @@ function HeroSection({ heroUrl, watermark, title, subtitle }) {
           }}
           data-testid="noticias-hero-watermark"
         >
-          {planeCrashSafe(watermark)}
+          {renderPlaneCrash(watermark)}
         </div>
       </div>
       {/* Título principal */}
@@ -74,7 +74,7 @@ function HeroSection({ heroUrl, watermark, title, subtitle }) {
           }}
           data-testid="noticias-hero-title"
         >
-          {planeCrashSafe(title)}
+          {renderPlaneCrash(title)}
         </div>
         <div
           className="mt-1 md:mt-3"
@@ -150,7 +150,7 @@ function CategoryCard({ cat, onClick }) {
             className="leading-tight text-white transition-transform group-hover:scale-105"
             style={{ ...PLANE_CRASH, fontSize: "clamp(1.4rem, 3vw, 2.4rem)", textShadow: "2px 2px 0 rgba(0,0,0,0.4)" }}
           >
-            {planeCrashSafe(cat.title || "")}
+            {renderPlaneCrash(cat.title || "")}
           </div>
         </div>
       </div>
@@ -196,7 +196,7 @@ function CategoryModal({ category, onClose }) {
               style={{ ...PLANE_CRASH, fontSize: "clamp(1.2rem, 2vw, 1.9rem)" }}
               data-testid="noticias-modal-title"
             >
-              {planeCrashSafe((openNews ? openNews.title : category.title) || "")}
+              {renderPlaneCrash((openNews ? openNews.title : category.title) || "")}
             </span>
           </div>
           <button type="button" onClick={onClose} className="text-white/90 hover:text-white p-1 rounded-full hover:bg-white/10 transition flex-shrink-0" aria-label="Cerrar" data-testid="noticias-modal-close">
