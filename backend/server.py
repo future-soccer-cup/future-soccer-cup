@@ -949,8 +949,10 @@ async def register_team(payload: TeamRegisterIn, response: Response):
 @api.post("/auth/login")
 async def login(payload: LoginIn, request: Request, response: Response):
     email = payload.email.lower()
-    ip = request.client.host if request.client else "unknown"
-    identifier = f"{ip}:{email}"
+    # Nota: detrás del proxy/ingress, request.client.host no es la IP real del cliente
+    # (todas las requests llegan con la misma IP del proxy), por lo que el bloqueo se
+    # aplica por email únicamente — sigue protegiendo la cuenta contra fuerza bruta.
+    identifier = email
 
     attempts_doc = await db.login_attempts.find_one({"identifier": identifier})
     if attempts_doc:
@@ -2595,7 +2597,7 @@ async def standings(category: Optional[str] = None, group_name: Optional[str] = 
     if category:
         fx_q["category"] = category
     if group_name:
-        fx_q["group_name"] = group_name
+        fx_q["group_name"] = {"$regex": f"^{re.escape(group_name)}$", "$options": "i"}
     fixtures_exist = await db.fixtures.find(fx_q, {"_id": 0, "team_ids": 1}).to_list(200)
     if not fixtures_exist:
         return []
@@ -2611,7 +2613,7 @@ async def standings(category: Optional[str] = None, group_name: Optional[str] = 
     if category:
         q_team["category"] = category
     if group_name:
-        q_team["group_name"] = group_name
+        q_team["group_name"] = {"$regex": f"^{re.escape(group_name)}$", "$options": "i"}
     teams = await db.teams.find(q_team, {"_id": 0}).to_list(500)
     team_ids = [t["id"] for t in teams]
 
@@ -2718,8 +2720,10 @@ async def standings(category: Optional[str] = None, group_name: Optional[str] = 
     return rows
 
 @api.get("/stats/top-scorers")
-async def top_scorers(category: Optional[str] = None, limit: int = 20):
+async def top_scorers(category: Optional[str] = None, group_name: Optional[str] = None, tournament_id: Optional[str] = None, limit: int = 20):
     q = {"status": "finalizado"}
+    if tournament_id:
+        q["tournament_id"] = tournament_id
     matches = await db.matches.find(q, {"_id": 0}).to_list(2000)
     counter = {}
     for m in matches:
@@ -2739,6 +2743,8 @@ async def top_scorers(category: Optional[str] = None, limit: int = 20):
     for p in players:
         t = tmap.get(p["team_id"], {})
         if category and t.get("category") != category:
+            continue
+        if group_name and t.get("group_name") != group_name:
             continue
         rows.append({
             "player_id": p["id"], "name": p["name"], "photo_url": p.get("photo_url", ""),

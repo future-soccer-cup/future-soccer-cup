@@ -249,7 +249,7 @@ function CategoryDataPanel({ category, eventLabel, onClose }) {
     setLoading(true);
     Promise.all([
       api.get(`/stats/standings?${params.toString()}`).then((r) => r.data || []).catch(() => []),
-      api.get(`/stats/top-scorers?category=${encodeURIComponent(category.category)}&limit=10`).then((r) => r.data || []).catch(() => []),
+      api.get(`/stats/top-scorers?${params.toString()}&limit=10`).then((r) => r.data || []).catch(() => []),
     ]).then(([st, sc]) => {
       setStandings(st);
       setScorers(sc);
@@ -360,9 +360,9 @@ function ScorersTable({ rows }) {
         </thead>
         <tbody>
           {rows.map((r, i) => (
-            <tr key={`sc-${i}`} className="border-t border-slate-100">
+            <tr key={`sc-${i}`} className="border-t border-slate-100" data-testid={`stats-scorer-row-${i}`}>
               <td className="px-2 py-1.5 font-bold">{i + 1}</td>
-              <td className="px-2 py-1.5">{r.player_name || "—"}</td>
+              <td className="px-2 py-1.5">{r.name || r.player_name || "—"}</td>
               <td className="px-2 py-1.5 text-slate-500">{r.team_name || ""}</td>
               <td className="text-center font-black" style={{ color: RED }}>{r.goals}</td>
             </tr>

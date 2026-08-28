@@ -284,12 +284,17 @@ function EventTitleSection({ month, word, isFestival }) {
 function CategoryBlock({ year, cat, testId }) {
   // "20" = año 2000-2019 (usamos "20" fijo como muestra el wireframe: los niños nacieron en 20XX).
   return (
-    <div className="bg-white/95 rounded-md px-3 py-2 md:px-4 md:py-3 shadow flex flex-col items-center justify-center leading-none" data-testid={testId}>
-      <div className="font-black tabular-nums" style={{ color: BLUE, ...PLANE_CRASH, fontSize: "clamp(1.6rem, 2.6vw, 2.4rem)" }}>
+    <div className="bg-white/25 rounded-md px-3 py-2 md:px-4 md:py-3 shadow flex flex-col items-center justify-center leading-none gap-1" data-testid={testId}>
+      <div className="font-black tabular-nums text-white" style={{ ...PLANE_CRASH, fontSize: "clamp(1.6rem, 2.6vw, 2.4rem)" }}>
         {renderPlaneCrash(String(year))}
       </div>
-      <div className="mt-1 tracking-wider" style={{ color: BLUE, ...PLANE_CRASH, fontSize: "clamp(0.7rem, 1vw, 0.9rem)", opacity: 0.85 }}>
-        {renderPlaneCrash(`CAT.${cat}`)}
+      <div className="flex items-baseline gap-1">
+        <div className="tracking-wider text-white" style={{ ...AGENCY_FB, fontSize: "clamp(0.95rem, 1.4vw, 1.15rem)", opacity: 0.9 }}>
+          CAT.
+        </div>
+        <div className="font-black tabular-nums text-white" style={{ ...PLANE_CRASH, fontSize: "clamp(1.6rem, 2.6vw, 2.4rem)" }}>
+          {renderPlaneCrash(String(cat))}
+        </div>
       </div>
     </div>
   );
@@ -300,8 +305,8 @@ function FestivalCategories({ categories }) {
   return (
     <section className="w-full py-8 md:py-12" style={{ background: BLUE }} data-testid="festival-categories">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h3 className="text-center text-white tracking-widest mb-6" style={{ ...PLANE_CRASH, fontSize: "clamp(1.4rem, 2.5vw, 2rem)" }}>
-          {renderPlaneCrash("CAT")}
+        <h3 className="text-center text-white tracking-widest mb-6" style={{ ...AGENCY_FB, fontSize: "clamp(2.2rem, 4vw, 3.2rem)", fontWeight: 800 }}>
+          CAT
         </h3>
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 md:gap-4 place-items-center">
           {categories.map((c, i) => (
@@ -484,7 +489,7 @@ function PremiacionSection({ title, subtitle, cups, individual }) {
         <h2 className="leading-none" style={{ ...PLANE_CRASH, color: BLUE, fontSize: "clamp(2.5rem, 6vw, 4.5rem)" }} data-testid="premiacion-title">
           {renderPlaneCrash(title || "PREMIACIÓN")}
         </h2>
-        <p className="mt-3 max-w-2xl mx-auto text-sm md:text-base" style={{ ...AGENCY_FB, color: RED, fontWeight: 700, fontSize: "clamp(1.1rem, 2.2vw, 1.6rem)" }}>
+        <p className="mt-3 max-w-lg mx-auto text-sm md:text-base" style={{ ...AGENCY_FB, color: RED, fontWeight: 700, fontSize: "clamp(1.1rem, 2.2vw, 1.6rem)" }}>
           {subtitle || ""}
         </p>
       </div>
@@ -501,12 +506,11 @@ function PremiacionSection({ title, subtitle, cups, individual }) {
             </div>
           ))}
         </div>
-        <div className="flex flex-col items-center gap-2 order-first md:order-none" aria-hidden>
+        <div className="flex flex-col items-center gap-3 order-first md:order-none" aria-hidden>
           {cups.slice(0, Math.max(cups.length, 1)).map((_, i) => (
-            <div key={`icon-${i}`} className="flex items-center gap-3">
-              <img src="/award_icons/trophy_gold.jpg" alt="" className="w-8 h-8 rounded-full object-cover" />
-              <span className="text-slate-700 font-black">V</span>
-              <img src="/award_icons/medal_gold.jpg" alt="" className="w-8 h-8 rounded-full object-cover" />
+            <div key={`icon-${i}`} className="flex items-center gap-7">
+              <img src="/award_icons/trophy_gold.jpg" alt="" className="w-14 h-14 rounded-full object-cover" />
+              <img src="/award_icons/medal_gold.jpg" alt="" className="w-14 h-14 rounded-full object-cover" />
             </div>
           ))}
         </div>

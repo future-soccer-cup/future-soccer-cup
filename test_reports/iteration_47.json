@@ -1,0 +1,88 @@
+{
+  "summary": "Iteración 47 — verificación de las 3 features nuevas del módulo Admin > Partidos / Estadísticas. (1) CardsEditor: para 'Jugador' aparece PRIMERO el selector 'Equipo...' y luego 'Jugador...' (deshabilitado hasta elegir equipo y filtrado sólo por ese equipo: AMERICA mostró TEST_ARIAS/TEST_MORENO y NO al jugador de BOGOTA); 'Cuerpo Técnico' sigue igual (equipo -> persona del CT); tarjeta amarilla a jugador (min 31) + roja a CT (min 55) guardadas y persistidas correctamente al reabrir el modal (equipo, jugador/CT, minuto y toggle activo). También verificada la tarjeta 'Otra' (equipo + descripción). (2) Nueva pestaña TARJETAS: deshabilitada sin Evento+Categoría, muestra 'No hay tarjetas registradas para este filtro' cuando el filtro no tiene tarjetas, y con datos agrupa por equipo (cards-report-team-AMERICA / -HALCONES) con nombre de jugador o CT, color, minuto, partido y totales de amarillas/rojas. (3) Admin > Home > Estadísticas: los selectores en cascada muestran NOMBRES de torneo (no UUID), la 'Categoría' se habilita y se pobla con las categorías reales del torneo, persiste tras guardar+recargar, y la página pública /datos-estadisticas usa esa config end-to-end (al pulsar la pastilla se cargó la TABLA DE POSICIONES con 5 filas; pastilla sin torneo muestra 'Próximamente'). Regresión OK: listado/búsqueda/paginación de Partidos, Clasificación, Juego Limpio, Generar Fixture y /eventos (categorías + premiación) sin errores de consola. Backend smoke: 6/6 pytest verdes (tournaments, matches, players?team_id, persistencia de cards, roundtrip de /result, shape de home-settings.estadisticas). La configuración de home_settings.estadisticas fue restaurada a su valor original al terminar.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "AdminHomeSettings > EstadisticasEditor (migración de datos existentes)",
+        "issue": "Las categorías ya guardadas tienen category='2010'..'2018' con tournament_id='' . Con los nuevos selects en cascada el campo 'Categoría' aparece VACÍO y deshabilitado ('Seleccionar categoría...') aunque el valor sigue en la BD, por lo que el admin no ve la configuración previa y puede sobrescribirla sin darse cuenta. Sugerido: si it.category no está en catOptions, inyectarla como <option> (o mostrar 'valor actual: 2010') para no perder visibilidad del dato legado.",
+        "selector": "[data-testid='stats-cats-0-category-0']",
+        "priority": "MEDIUM"
+      },
+      {
+        "component": "AdminMatches > FilterAndExportBar (categorías del filtro)",
+        "issue": "El desplegable de Categoría se llena con tournament.categories, pero los equipos/partidos reales pueden tener otra categoría. Ej: torneo 'PRUEBA 2027' declara 2010/2014/2018 mientras sus 24 partidos son de equipos Sub-8/Sub-12 → es IMPOSIBLE filtrar esos partidos por categoría y por tanto las pestañas Clasificación / Juego Limpio / TARJETAS quedan inutilizables para ese torneo (con cualquier categoría elegida filteredMatches=0 y el reporte muestra siempre el estado vacío). Sugerido: unir las categorías declaradas del torneo con las categorías reales de los equipos de ese torneo.",
+        "selector": "[data-testid='pdf-export-category']",
+        "priority": "MEDIUM"
+      },
+      {
+        "component": "AdminMatches > Modal (cargar resultado)",
+        "issue": "El modal no se cierra con la tecla Escape (sólo con la X). Menor de usabilidad y molesto en pruebas/uso rápido.",
+        "selector": "Modal (AdminTeams.jsx:157)",
+        "priority": "LOW"
+      },
+      {
+        "component": "AdminMatches > CardsReport",
+        "issue": "Detalles menores del reporte: (a) los totales sólo cuentan amarillas y rojas, las tarjetas 'Otra' no tienen contador; (b) cuando el minuto está vacío se imprime 'Min 0'; (c) el data-testid usa el nombre del equipo crudo con espacios ('cards-report-team-EQUIPO ALCONES'), frágil para automatización (mejor slug o team_id).",
+        "selector": "[data-testid='cards-report']",
+        "priority": "LOW"
+      },
+      {
+        "component": "AdminMatches > CardsEditor (mobile 390px)",
+        "issue": "En 390px los dos selects (Equipo + Jugador) y el input Min comparten una sola fila: los selects quedan de ~147px y el texto se corta ('Jugador...'). Sugerido apilar verticalmente (grid-cols-1) por debajo de sm.",
+        "selector": "[data-testid='card-player-team-0'] / [data-testid='card-player-0']",
+        "priority": "LOW"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Consola (todas las páginas admin con <select>)",
+        "issues": ["Warning de React repetido: 'In HTML, <span> cannot be a child of <option>. This will cause a hydration error' apuntando a los <option> instrumentados (x-file-name/x-id) de AdminMatches:1016 y AdminFixtureGenerator:286. Parece ruido del instrumentador de dev (no afecta la UI), pero conviene confirmar que no se está inyectando markup dentro de <option>.", "Ruido de 2 errores 401 por /api/auth/me en cada carga sin sesión (ya reportado en iter46)."]
+      },
+      {
+        "screen": "/admin/generador-fixture",
+        "issues": ["Usa inputs nativos type=date (formato mm/dd/yyyy del navegador) en lugar del calendario del design system — preexistente, no de esta iteración."]
+      },
+      {
+        "screen": "/eventos (regresión visual)",
+        "issues": ["Sin errores de consola; secciones de categorías y premiación se ven correctas (CAT en AgencyFB, iconos trofeo/medalla grandes y separados, texto en 2 líneas). Observación menor: el bloque del hero superior queda como una franja gris vacía de ~500px porque no hay imagen/vídeo configurado en el CMS (config de contenido, no bug)."]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter47_cards_and_stats.py",
+    "/app/test_reports/pytest/iteration_47.xml",
+    "/app/backend/tests/seed_iter47_cards.py",
+    "/app/backend/tests/iter47_backup_estadisticas.py"
+  ],
+  "action_items": [
+    "P2: En EstadisticasEditor, preservar/mostrar el valor legado de 'category' cuando no exista en las opciones del torneo (evitar que la config previa parezca vacía).",
+    "P2: En el filtro de Categoría de Admin > Partidos, unir tournament.categories con las categorías reales de los equipos del torneo (hoy 'PRUEBA 2027' no puede filtrarse y sus tabs Clasificación/JL/Tarjetas quedan vacías).",
+    "P3: Añadir contador de tarjetas 'Otra' y omitir 'Min 0' cuando no hay minuto en CardsReport; usar slug/team_id en el data-testid del grupo.",
+    "P3: Apilar los selects del CardsEditor en mobile (<sm) y permitir cerrar el modal con Escape.",
+    "P3: Añadir .catch()/estado de error al Promise.all de /players en CardsEditor y CardsReport (hoy un fallo deja el dropdown vacío sin aviso)."
+  ],
+  "critical_code_review_comments": [
+    "AdminMatches.jsx: CardsEditor y CardsReport hacen Promise.all(api.get('/players?team_id=...')) sin .catch ni estado de carga/error; si un id es inválido o '__BYE__' el dropdown/reporte queda vacío silenciosamente.",
+    "AdminMatches.jsx tiene 1306 líneas: conviene extraer CardsEditor/CardsReport/ScorersEditor y las tablas a módulos separados (>700 líneas).",
+    "CardsReport usa useEffect con dep [teamIds.join(',')] (expresión, no variable memoizada) — funciona pero es un patrón que eslint-plugin-react-hooks no puede verificar; mejor memoizar la clave.",
+    "El reporte identifica la tarjeta sólo por color (cuadrito) sin texto; añadir sr-only/title con 'Amarilla/Roja/Otra' mejora accesibilidad.",
+    "El data-testid dinámico con nombre de equipo (espacios/acentos) es frágil para automatización."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter47_cards_and_stats.py",
+    "/app/backend/tests/seed_iter47_cards.py",
+    "/app/backend/tests/iter47_backup_estadisticas.py"
+  ],
+  "success_rate": {"backend": "100% (6/6 pytest)", "frontend": "100% de las 3 features nuevas verificadas OK; 5 defectos menores/medios (ninguno bloqueante)"},
+  "seed_data_creation": "Para poder probar tarjetas se crearon vía API en el torneo de prueba 'PRUEBA 2028' (cat 2009): jugadores TEST_ARIAS (#7) y TEST_MORENO (#9) en AMERICA, TEST_CASTRO (#5) en BOGOTA, y cuerpo técnico 'TEST_DT PEREZ (Director técnico)' en AMERICA. Resultados cargados desde la UI: AMERICA 2-0 BOGOTA (amarilla a TEST_ARIAS min 31 + roja a TEST_DT PEREZ min 55) y EQUIPO ALCONES 1-1 HALCONES (tarjeta 'Otra' con descripción TEST_Protesta grupal del banco). home_settings.estadisticas se modificó temporalmente (festival/CAT: 2010 -> PRUEBA 2028 · 2009) y se RESTAURÓ al original (backup en /app/test_reports/iter47_estadisticas_backup.json).",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "admin@futuresoccercup.com / FSCAdmin2025! (validado en esta iteración)",
+  "context_for_next_testing_agent": "Verificado en iter47 (no repetir): CardsEditor con selector equipo->jugador (filtrado y deshabilitado correctamente), CT equipo->persona, tarjeta 'Otra' con descripción, persistencia de cards vía PUT /api/matches/{id}/result, pestaña TARJETAS (deshabilitada sin filtros / estado vacío / agrupada por equipo con totales), selectores en cascada de Estadísticas en /admin/home con persistencia y /datos-estadisticas cargando la tabla de posiciones desde esa config, y regresión de listado/búsqueda/Clasificación/Juego Limpio/Generar Fixture//eventos. Datos útiles: torneo 'PRUEBA 2028' (982d9f06-60b5-4681-8b9e-7e9b63915d3d) categoría '2009' es el único scope filtrable con tarjetas cargadas; el torneo 'PRUEBA 2027' NO puede filtrarse por categoría (sus equipos son Sub-8 pero declara 2010/2014/2018). Login rápido en Playwright: page.request.post('/api/auth/login') y luego goto('/admin/partidos').",
+  "rca_of_the_issue": "No hubo fallos funcionales en las 3 features. El hallazgo de mayor impacto es de datos/UX: (a) el filtro de categoría de Admin > Partidos se construye desde tournament.categories mientras los partidos se atan a la categoría del EQUIPO, por lo que torneos con desalineación (PRUEBA 2027) no pueden filtrarse y sus nuevas pestañas quedan siempre vacías; (b) el nuevo select de 'Categoría' del CMS de Estadísticas sólo puede mostrar valores presentes en las opciones del torneo elegido, así que las categorías legadas (guardadas sin tournament_id) se muestran vacías aunque el dato exista en la BD."
+}

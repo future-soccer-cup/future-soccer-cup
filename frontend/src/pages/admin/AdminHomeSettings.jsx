@@ -66,6 +66,12 @@ const csvToArr = (v) => String(v || "").split(",").map(x => x.trim()).filter(Boo
 
 export default function AdminHomeSettings() {
   const [s, setS] = useState(EMPTY);
+  const [tournaments, setTournaments] = useState([]);
+  const [fixtures, setFixtures] = useState([]);
+  useEffect(() => {
+    api.get("/tournaments").then((r) => setTournaments(r.data || [])).catch(() => {});
+    api.get("/fixtures").then((r) => setFixtures(r.data || [])).catch(() => {});
+  }, []);
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
@@ -293,7 +299,7 @@ export default function AdminHomeSettings() {
       </Section>
 
       <Section title="Estadísticas (página) — Nueva estructura" icon={<Hash size={18}/>}>
-        <EstadisticasEditor value={s.estadisticas || {}} onChange={(v) => upd("estadisticas", v)} />
+        <EstadisticasEditor value={s.estadisticas || {}} onChange={(v) => upd("estadisticas", v)} tournaments={tournaments} fixtures={fixtures} />
       </Section>
 
       <Section title="Noticias (página) — Nueva estructura" icon={<Info size={18}/>}>
@@ -675,7 +681,7 @@ function ArrayItemsEditor({ items, onChange, newItem, renderItem, testId, addLab
 // Iter61: Editor de la página Estadísticas — objeto anidado con hero, intro, eventos
 // (Festival / Premier Pares / Impares) y cada evento con sus categorías (label +
 // tournament_id + category + group_name para conectar con /api/stats/standings).
-function EstadisticasEditor({ value, onChange }) {
+function EstadisticasEditor({ value, onChange, tournaments = [], fixtures = [] }) {
   const v = value || {};
   const patch = (p) => onChange({ ...v, ...p });
   const events = v.events || [];
@@ -737,14 +743,64 @@ function EstadisticasEditor({ value, onChange }) {
                 items={ev.categories || []}
                 onChange={(cats) => updateEvent(idx, { categories: cats })}
                 newItem={() => ({ label: "CAT: ", tournament_id: "", category: "", group_name: "" })}
-                renderItem={(it, ci, upd) => (
-                  <div className="grid md:grid-cols-4 gap-2">
-                    <Field label="Etiqueta visible" v={it.label} onChange={(x) => upd({ label: x })} placeholder="CAT: 2010" />
-                    <Field label="Torneo ID (tournament_id)" v={it.tournament_id} onChange={(x) => upd({ tournament_id: x })} placeholder="uuid del torneo" />
-                    <Field label="Categoría (nombre en BD)" v={it.category} onChange={(x) => upd({ category: x })} placeholder="Sub-10" />
-                    <Field label="Grupo (opcional)" v={it.group_name} onChange={(x) => upd({ group_name: x })} placeholder="A" />
-                  </div>
-                )}
+                renderItem={(it, ci, upd) => {
+                  const selectedTournament = tournaments.find((t) => t.id === it.tournament_id);
+                  const catOptions = selectedTournament ? (selectedTournament.categories || []).map((c) => c.name).filter(Boolean) : [];
+                  const hasLegacyCat = it.category && !catOptions.includes(it.category);
+                  // Iter74: los grupos se leen de los fixtures REALES (no texto libre), para evitar
+                  // desajustes de mayúsculas/typos entre lo guardado aquí y lo que el generador de fixture escribió.
+                  const groupOptions = Array.from(new Set(
+                    fixtures
+                      .filter((f) => f.tournament_id === it.tournament_id && f.category === it.category)
+                      .map((f) => f.group_name || "")
+                      .filter(Boolean)
+                  ));
+                  const hasLegacyGroup = it.group_name && !groupOptions.includes(it.group_name);
+                  return (
+                    <div className="grid md:grid-cols-4 gap-2">
+                      <Field label="Etiqueta visible" v={it.label} onChange={(x) => upd({ label: x })} placeholder="CAT: 2010" />
+                      <label className="block">
+                        <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Evento (torneo)</span>
+                        <select
+                          value={it.tournament_id || ""}
+                          onChange={(e) => upd({ tournament_id: e.target.value, category: "", group_name: "" })}
+                          className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md text-sm"
+                          data-testid={`stats-cats-${idx}-tournament-${ci}`}
+                        >
+                          <option value="">Seleccionar evento...</option>
+                          {tournaments.map((t) => <option key={t.id} value={t.id}>{t.name} · {t.season}</option>)}
+                        </select>
+                      </label>
+                      <label className="block">
+                        <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Categoría</span>
+                        <select
+                          value={it.category || ""}
+                          onChange={(e) => upd({ category: e.target.value, group_name: "" })}
+                          disabled={!it.tournament_id && !it.category}
+                          className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md text-sm disabled:bg-slate-50"
+                          data-testid={`stats-cats-${idx}-category-${ci}`}
+                        >
+                          <option value="">Seleccionar categoría...</option>
+                          {hasLegacyCat && <option value={it.category}>{it.category} (valor guardado)</option>}
+                          {catOptions.map((c) => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                      </label>
+                      <label className="block">
+                        <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Grupo (según fixture real)</span>
+                        <select
+                          value={it.group_name || ""}
+                          onChange={(e) => upd({ group_name: e.target.value })}
+                          className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md text-sm"
+                          data-testid={`stats-cats-${idx}-group-${ci}`}
+                        >
+                          <option value="">Todos los grupos</option>
+                          {hasLegacyGroup && <option value={it.group_name}>{it.group_name} (valor guardado, no coincide con ningún fixture)</option>}
+                          {groupOptions.map((g) => <option key={g} value={g}>{g}</option>)}
+                        </select>
+                      </label>
+                    </div>
+                  );
+                }}
                 testId={`stats-cats-${idx}`}
                 addLabel="+ Agregar categoría"
               />

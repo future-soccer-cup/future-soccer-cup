@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import api, { formatApiError } from "../../lib/api";
 import { Plus, Trash2, Edit3, CalendarClock, Shuffle, FileDown, FileText, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
@@ -286,6 +286,12 @@ export default function AdminMatches() {
           testId="tab-juego-limpio"
           disabled={!filterTid || !filterCat || !hasFixtureForFilters(fixtures, filterTid, filterCat, filterGrp)}
         >Juego Limpio</TabBtn>
+        <TabBtn
+          active={tab === "tarjetas"}
+          onClick={() => setTab("tarjetas")}
+          testId="tab-tarjetas"
+          disabled={!filterTid || !filterCat}
+        >Tarjetas</TabBtn>
       </div>
 
       {tab === "partidos" && (
@@ -313,6 +319,9 @@ export default function AdminMatches() {
       )}
       {tab === "juego_limpio" && (
         <StandingsTable rows={standings} mode="fairplay" />
+      )}
+      {tab === "tarjetas" && (
+        <CardsReport matches={filteredMatches} teams={teams} />
       )}
 
       {editing && (
@@ -579,21 +588,36 @@ function ScorersEditor({ scoring, setScoring, teams }) {
   useEffect(() => {
     const ids = [scoring.home_team_id, scoring.away_team_id];
     Promise.all(ids.map((id) => api.get(`/players?team_id=${id}`))).then((rs) => {
-      setPlayers([...rs[0].data, ...rs[1].data]);
+      const allPlayers = [...rs[0].data, ...rs[1].data];
+      setPlayers(allPlayers);
+      // Backward-compat: goleadores guardados antes de este cambio no tenían team_id propio (se
+      // derivaba del jugador). Lo completamos una sola vez al cargar para que el select de equipo
+      // no aparezca vacío en partidos ya cargados.
+      const scorers = scoring.scorers || [];
+      const needsBackfill = scorers.some((s) => s.player_id && !s.team_id);
+      if (needsBackfill) {
+        const pmap = Object.fromEntries(allPlayers.map((p) => [p.id, p]));
+        setScoring((prev) => ({
+          ...prev,
+          scorers: (prev.scorers || []).map((s) => (s.player_id && !s.team_id && pmap[s.player_id]) ? { ...s, team_id: pmap[s.player_id].team_id } : s),
+        }));
+      }
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scoring.home_team_id, scoring.away_team_id]);
+
+  const teamOptions = [
+    { id: scoring.home_team_id, name: scoring.home_team_name || "Local" },
+    { id: scoring.away_team_id, name: scoring.away_team_name || "Visitante" },
+  ];
 
   const addScorer = () => {
     setScoring({ ...scoring, scorers: [...(scoring.scorers || []), { _uid: crypto.randomUUID(), player_id: "", team_id: "", minute: 0 }] });
   };
 
-  const updateScorer = (i, field, val) => {
+  const updateScorer = (i, patch) => {
     const next = [...(scoring.scorers || [])];
-    next[i] = { ...next[i], [field]: val };
-    if (field === "player_id") {
-      const p = players.find((x) => x.id === val);
-      if (p) next[i].team_id = p.team_id;
-    }
+    next[i] = { ...next[i], ...patch };
     setScoring({ ...scoring, scorers: next });
   };
 
@@ -609,14 +633,30 @@ function ScorersEditor({ scoring, setScoring, teams }) {
         <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Goleadores</span>
         <button type="button" onClick={addScorer} className="text-xs font-bold text-blue-700">+ Agregar</button>
       </div>
+      {(scoring.scorers || []).length === 0 && <p className="text-xs text-slate-400 py-1">Sin goleadores registrados</p>}
       {(scoring.scorers || []).map((s, i) => (
-        <div key={s._uid || `scorer-${i}`} className="grid grid-cols-12 gap-2 mb-2">
-          <select value={s.player_id} onChange={(e) => updateScorer(i, "player_id", e.target.value)} className="col-span-8 px-2 py-1 border border-slate-200 rounded text-sm">
-            <option value="">Jugador...</option>
-            {players.map((p) => <option key={p.id} value={p.id}>{p.name} (#{p.jersey_number})</option>)}
+        <div key={s._uid || `scorer-${i}`} className="grid grid-cols-12 gap-2 mb-2 items-center" data-testid={`scorer-row-${i}`}>
+          <select
+            value={s.team_id || ""}
+            onChange={(e) => updateScorer(i, { team_id: e.target.value, player_id: "" })}
+            className="col-span-4 px-2 py-1 border border-slate-200 rounded text-sm"
+            data-testid={`scorer-team-${i}`}
+          >
+            <option value="">Equipo...</option>
+            {teamOptions.map((t) => t.id ? <option key={t.id} value={t.id}>{t.name}</option> : null)}
           </select>
-          <input type="number" placeholder="Min" value={s.minute || ""} onChange={(e) => updateScorer(i, "minute", Number(e.target.value))} className="col-span-3 px-2 py-1 border border-slate-200 rounded text-sm" />
-          <button type="button" onClick={() => removeScorer(i)} className="col-span-1 text-red-600">✕</button>
+          <select
+            value={s.player_id}
+            onChange={(e) => updateScorer(i, { player_id: e.target.value })}
+            disabled={!s.team_id}
+            className="col-span-4 px-2 py-1 border border-slate-200 rounded text-sm disabled:bg-slate-50"
+            data-testid={`scorer-player-${i}`}
+          >
+            <option value="">Jugador...</option>
+            {players.filter((p) => p.team_id === s.team_id).map((p) => <option key={p.id} value={p.id}>{p.name} (#{p.jersey_number})</option>)}
+          </select>
+          <input type="number" placeholder="Min" value={s.minute || ""} onChange={(e) => updateScorer(i, { minute: Number(e.target.value) })} className="col-span-3 px-2 py-1 border border-slate-200 rounded text-sm" />
+          <button type="button" onClick={() => removeScorer(i)} className="col-span-1 text-red-600" data-testid={`scorer-remove-${i}`}>✕</button>
         </div>
       ))}
     </div>
@@ -738,17 +778,29 @@ function CardsEditor({ scoring, setScoring, teams = [] }) {
             {/* Fila principal: Jugador/CT (grande) + Min (angosto) + eliminar — alineadas horizontalmente */}
             <div className="grid grid-cols-12 gap-2 items-center pl-5">
               {kind === "player" ? (
-                <select
-                  value={c.player_id || ""}
-                  onChange={(e) => updateCard(i, { player_id: e.target.value })}
-                  className="col-span-8 px-2 py-1 border border-slate-200 rounded text-sm"
-                  data-testid={`card-player-${i}`}
-                >
-                  <option value="">Jugador...</option>
-                  {players.map((p) => <option key={p.id} value={p.id}>{p.name} (#{p.jersey_number})</option>)}
-                </select>
+                <div className="col-span-12 sm:col-span-8 flex flex-col sm:flex-row gap-1">
+                  <select
+                    value={c.team_id || ""}
+                    onChange={(e) => updateCard(i, { team_id: e.target.value, player_id: "" })}
+                    className="flex-1 px-2 py-1 border border-slate-200 rounded text-sm"
+                    data-testid={`card-player-team-${i}`}
+                  >
+                    <option value="">Equipo...</option>
+                    {teamOptions.map((t) => t.id ? <option key={t.id} value={t.id}>{t.name}</option> : null)}
+                  </select>
+                  <select
+                    value={c.player_id || ""}
+                    onChange={(e) => updateCard(i, { player_id: e.target.value })}
+                    disabled={!c.team_id}
+                    className="flex-1 px-2 py-1 border border-slate-200 rounded text-sm disabled:bg-slate-50"
+                    data-testid={`card-player-${i}`}
+                  >
+                    <option value="">Jugador...</option>
+                    {players.filter((p) => p.team_id === c.team_id).map((p) => <option key={p.id} value={p.id}>{p.name} (#{p.jersey_number})</option>)}
+                  </select>
+                </div>
               ) : (
-                <div className="col-span-8 flex gap-1">
+                <div className="col-span-12 sm:col-span-8 flex flex-col sm:flex-row gap-1">
                   <select
                     value={c.team_id || ""}
                     onChange={(e) => updateCard(i, { team_id: e.target.value, staff_name: "" })}
@@ -772,12 +824,92 @@ function CardsEditor({ scoring, setScoring, teams = [] }) {
                   </select>
                 </div>
               )}
-              <input type="number" placeholder="Min" value={c.minute || ""} onChange={(e) => updateCard(i, { minute: Number(e.target.value) })} className="col-span-3 px-2 py-1 border border-slate-200 rounded text-sm" />
-              <button type="button" onClick={() => removeCard(i)} className="col-span-1 text-red-600">✕</button>
+              <input type="number" placeholder="Min" value={c.minute || ""} onChange={(e) => updateCard(i, { minute: Number(e.target.value) })} className="col-span-8 sm:col-span-3 px-2 py-1 border border-slate-200 rounded text-sm" />
+              <button type="button" onClick={() => removeCard(i)} className="col-span-4 sm:col-span-1 text-red-600">✕</button>
             </div>
           </div>
         );
       })}
+    </div>
+  );
+}
+
+
+function CardsReport({ matches, teams }) {
+  const teamIds = useMemo(() => Array.from(new Set(
+    matches.flatMap((m) => [m.home_team_id, m.away_team_id]).filter((id) => id && id !== "__BYE__")
+  )), [matches]);
+  const [players, setPlayers] = useState([]);
+  useEffect(() => {
+    if (!teamIds.length) { setPlayers([]); return; }
+    Promise.all(teamIds.map((id) => api.get(`/players?team_id=${id}`).catch(() => ({ data: [] }))))
+      .then((rs) => setPlayers(rs.flatMap((r) => r.data)));
+  }, [teamIds.join(",")]);
+
+  const tmap = Object.fromEntries(teams.map((t) => [t.id, t]));
+  const pmap = Object.fromEntries(players.map((p) => [p.id, p]));
+
+  const rows = [];
+  matches.forEach((m) => {
+    (m.cards || []).forEach((c) => {
+      const team = tmap[c.team_id];
+      let who = "Equipo (otra)";
+      if (c.target_kind === "staff" || c.staff_name) who = c.staff_name || "Cuerpo técnico";
+      else if (c.player_id) who = pmap[c.player_id]?.name || "Jugador";
+      rows.push({
+        matchLabel: `${m.home_team_name} vs ${m.away_team_name}`,
+        team: team?.name || "Equipo desconocido",
+        team_id: c.team_id || "sin-equipo",
+        type: c.type,
+        who,
+        minute: c.minute,
+        description: c.description,
+      });
+    });
+  });
+  rows.sort((a, b) => (a.team || "").localeCompare(b.team || ""));
+  const byTeam = {};
+  rows.forEach((r) => { (byTeam[r.team] = byTeam[r.team] || { team_id: r.team_id, rows: [] }); byTeam[r.team].rows.push(r); });
+
+  const yellowCount = rows.filter((r) => r.type === "yellow").length;
+  const redCount = rows.filter((r) => r.type === "red").length;
+  const otherCount = rows.filter((r) => r.type === "other").length;
+
+  if (!rows.length) {
+    return <p className="text-sm text-slate-400 py-8 text-center" data-testid="cards-report-empty">No hay tarjetas registradas para este filtro.</p>;
+  }
+
+  return (
+    <div className="space-y-4" data-testid="cards-report">
+      <div className="flex gap-4 text-sm font-bold">
+        <span className="flex items-center gap-1" data-testid="cards-report-yellow-total"><span className="inline-block w-3 h-4 bg-yellow-400 rounded-sm" /> {yellowCount} amarillas</span>
+        <span className="flex items-center gap-1" data-testid="cards-report-red-total"><span className="inline-block w-3 h-4 bg-red-600 rounded-sm" /> {redCount} rojas</span>
+        {otherCount > 0 && (
+          <span className="flex items-center gap-1" data-testid="cards-report-other-total"><span className="inline-block w-3 h-4 bg-slate-400 rounded-sm" /> {otherCount} otras</span>
+        )}
+      </div>
+      {Object.entries(byTeam).map(([teamName, group]) => (
+        <div key={teamName} className="border border-slate-200 rounded-lg overflow-hidden" data-testid={`cards-report-team-${group.team_id}`}>
+          <div className="bg-slate-50 px-3 py-2 font-bold text-sm text-fsc-azul">{teamName}</div>
+          <table className="w-full text-sm">
+            <tbody>
+              {group.rows.map((r, i) => (
+                <tr key={i} className="border-t border-slate-100">
+                  <td className="px-3 py-2 w-6">
+                    <span
+                      className={`inline-block w-3 h-4 rounded-sm ${r.type === "red" ? "bg-red-600" : r.type === "other" ? "bg-slate-400" : "bg-yellow-400"}`}
+                      title={r.type === "red" ? "Roja" : r.type === "other" ? "Otra" : "Amarilla"}
+                    />
+                  </td>
+                  <td className="px-3 py-2 font-semibold">{r.who}</td>
+                  <td className="px-3 py-2 text-slate-500 text-xs">{r.description || ""}</td>
+                  <td className="px-3 py-2 text-slate-400 text-xs whitespace-nowrap">{r.minute ? `Min ${r.minute} · ` : ""}{r.matchLabel}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ))}
     </div>
   );
 }
@@ -893,11 +1025,16 @@ function hasFixtureForFilters(fixtures, tid, cat, grp) {
 function FilterAndExportBar({ tournaments, teams, fixtures = [], tid, setTid, cat, setCat, grp, setGrp }) {
   const activeTournaments = (tournaments || []).filter((t) => !t.archived);
   const tournament = activeTournaments.find((t) => t.id === tid);
-  const cats = tournament
+  const declaredCats = tournament
     ? ((tournament.categories || []).map((c) => c.name).filter(Boolean).length
         ? (tournament.categories || []).map((c) => c.name).filter(Boolean)
         : (tournament.category ? [tournament.category] : []))
     : [];
+  // Iter47: además de las categorías declaradas en el torneo, se incluyen las categorías
+  // reales de los equipos inscritos — evita que un torneo con categorías desalineadas
+  // (ej. declara 2010 pero sus equipos son Sub-8) quede imposible de filtrar.
+  const teamCats = tid ? Array.from(new Set((teams || []).filter((t) => t.tournament_id === tid).map((t) => t.category).filter(Boolean))) : [];
+  const cats = Array.from(new Set([...declaredCats, ...teamCats]));
   // Iter44: los grupos disponibles vienen de FIXTURES existentes (no de teams sueltos),
   // así no aparece "Grupo A" cuando aún no se generó ningún fixture para ese torneo+categoría.
   const groupsAvail = Array.from(new Set(

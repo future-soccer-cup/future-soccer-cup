@@ -1,0 +1,49 @@
+{
+  "summary": "Iter74 verification (frontend-focused + backend regression). BUG1 (Cards Jugador<->Cuerpo Tecnico toggle clearing team) is NOT reproducible - team_id is preserved in both directions. FEATURE2 (Goleadores Team->Player cascade) works fully: player select disabled until team chosen, list filtered per team, player reset on team change, save persists team_id via PUT /api/matches/{id}/result, and legacy scorers stored with only player_id are correctly backfilled to show the right team. FEATURE3 (public /datos-estadisticas standings) now renders the 5 real teams for PRUEBA 2028 in both 'Premier Impares CAT: 2009' and 'Premier Pares CAT: 2018'. FEATURE4 (CMS Grupo dropdown from real fixtures) works: Torneo -> Categoria -> Grupo cascade populates 'Grupo H' from fixtures and PUT /api/home-settings persists. Backend pytest: 14/15 passed (only failure is a documented brute-force-lockout gap through the public ingress). One NEW frontend bug found: the public Goleadores table shows '-' instead of player names (field name mismatch).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/auth/login", "issue": "Brute-force lockout (5 fails -> 429) works when hitting the app directly (localhost:8001) but is NOT enforced through the public ingress: 6 consecutive bad logins for the same email all returned 401. Cause: identifier = f'{request.client.host}:{email}' and behind the proxy client.host is not the real/stable client IP. Use X-Forwarded-For (first hop) or key the counter by email only."},
+      {"endpoint": "GET /api/matches/{id}", "issue": "No single-match GET endpoint exists (405 Method Not Allowed); clients must fetch the whole list. Not blocking, but worth adding for detail/verification flows."},
+      {"endpoint": "GET /api/stats/standings", "issue": "group_name comparison is exact/case-sensitive (documented in tests): 'GRUPO H' returns [] while 'Grupo H' returns data. The CMS dropdown now prevents typos, but a case-insensitive match (or normalization on save) would make this robust."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "DatosEstadisticas / ScorersTable", "issue": "Goleadores table renders '-' in the Jugador column for every scorer. GET /api/stats/top-scorers returns the field `name` (e.g. TEST_ARIAS) but the component reads `r.player_name`. Fix: use r.name (or r.player_name || r.name).", "selector": "[data-testid=\"stats-category-panel\"] table", "priority": "HIGH"},
+      {"component": "DatosEstadisticas / CategoryDataPanel", "issue": "top-scorers is requested with only `category` and `limit` - tournament_id and group_name from the CMS config are NOT sent, so scorers of any tournament sharing the same category number will leak into the panel (standings correctly send tournament_id+group_name).", "selector": "GET /api/stats/top-scorers?category=..&limit=10", "priority": "MEDIUM"},
+      {"component": "DatosEstadisticas / IntroAndSelector", "issue": "Event tab clicks issued while the hero image is still loading are lost (layout shifts after the home-settings fetch + image load, so the click lands on the old position). Reproduced twice with Playwright trusted clicks; works reliably once the page settles. Consider reserving hero height / min-h to avoid CLS.", "selector": "[data-testid=\"stats-event-premier-impares\"]", "priority": "LOW"},
+      {"component": "AdminMatches / CardsEditor", "issue": "Not a bug but a behavioural note: toggling Jugador -> Cuerpo Tecnico -> Jugador keeps team_id but clears player_id (by design, since the staff toggle sets player_id:''). The review request expected the player selection to also survive the round trip; confirm the intended UX.", "selector": "[data-testid=\"card-kind-player-0\"]", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/datos-estadisticas (Festival tab default)", "issues": ["Before home-settings resolves, the categories area briefly shows 'Aun no hay categorias configuradas para este evento' which reads like an error state; a skeleton/loading state would be better."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iter74_stats_scorers_auth.py",
+    "/app/test_reports/pytest/iter74_results.xml"
+  ],
+  "action_items": [
+    "Fix ScorersTable in /app/frontend/src/pages/DatosEstadisticas.jsx: use `r.name` (API field) instead of `r.player_name` - public Goleadores currently shows '-' for all players.",
+    "Send tournament_id (and group_name if used) to /api/stats/top-scorers from CategoryDataPanel so scorers are scoped to the configured tournament.",
+    "Harden login brute-force lockout: derive client IP from X-Forwarded-For or key attempts by email, since the current key never accumulates behind the ingress.",
+    "Optional: make /api/stats/standings group_name matching case-insensitive as a defence-in-depth against legacy CMS values."
+  ],
+  "critical_code_review_comments": [
+    "AdminMatches.jsx is 1351 lines - CardsEditor/ScorersEditor/CardsReport/FilterAndExportBar should be split into separate files (>700 line guideline).",
+    "ScorersEditor and CardsEditor duplicate the same players-fetch effect and teamOptions construction; extract a shared hook (useMatchRoster) to keep team/player filtering logic in one place.",
+    "Console shows a React hydration warning from the dev instrumentation injecting <span> inside <option> in AdminMatches selects (x-dynamic wrappers). Harmless in preview but noisy - worth confirming it does not appear in a production build."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter74_stats_scorers_auth.py",
+    "/app/frontend/src/pages/DatosEstadisticas.jsx (added data-testid=\"stats-scorer-row-{i}\" only)"
+  ],
+  "success_rate": {"backend": "93% (14/15 pytest)", "frontend": "90% (4 verified features, 1 new display bug in public Goleadores)"},
+  "seed_data_creation": "Match b439fac5-db4e-462e-ab1c-bba114f9f713 (AMERICA 2-0 BOGOTA, PRUEBA 2028 / 2009 / Grupo H) now has 2 scorers: TEST_ARIAS (min 12, seeded first WITHOUT team_id to test the backfill, later persisted with team_id via the UI) and TEST_MORENO (min 44, added via the UI). Its 2 original cards (yellow player TEST_ARIAS min 31, red staff TEST_DT PEREZ min 55) were restored. CMS home_settings premier-impares CAT: 2011 was temporarily pointed at PRUEBA 2028/2009/Grupo H for the FEATURE4 save test and then reverted to its original empty values.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "admin@futuresoccercup.com / FSCAdmin2025! (login is a modal at /login -> data-testid login-modal-email/password/submit)",
+  "context_for_next_testing_agent": "Public stats page is /datos-estadisticas (/estadisticas redirects). Event tabs: [data-testid=stats-event-{key}] with keys festival / premier-pares / premier-impares; category pills [data-testid=stats-cat-{key}-{i}]; standings rows [data-testid=stats-row-{i}]; scorer rows now [data-testid=stats-scorer-row-{i}]. IMPORTANT: wait for networkidle + ~2.5s before clicking event tabs, otherwise the click is swallowed by layout shift. Admin score modal: [data-testid=score-match-{matchId}], scorer selects scorer-team-{i}/scorer-player-{i}, cards card-kind-player/staff-{i}, card-player-team-{i}/card-player-{i}, card-staff-team-{i}/card-staff-name-{i}. Regression suite: /app/backend/tests/test_iter74_stats_scorers_auth.py (pytest, uses public URL except CORS/lockout app-level checks).",
+  "rca_of_the_issue": "FEATURE3 root cause was a case mismatch between the CMS-stored group_name ('GRUPO H'/'H') and the fixture's real group_name ('Grupo H'); GET /api/stats/standings does an exact string match, so it returned []. The data fix plus the new fixture-driven Grupo dropdown resolve it (verified: 'Grupo H' returns 5 rows, 'GRUPO H' still returns []). BUG1 could not be reproduced: updateCard() only patches target_kind (+clears the opposite target field) and never touches team_id, so the team select keeps its value; the staff dropdown is populated from teams[team_id].cuerpo_tecnico and correctly listed 'TEST_DT PEREZ (Director tecnico)'. NEW bug: public Goleadores shows '-' because ScorersTable reads r.player_name while /api/stats/top-scorers returns r.name."
+}
