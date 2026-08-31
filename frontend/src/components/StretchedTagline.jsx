@@ -24,7 +24,10 @@ export function StretchedTagline({ text, color, className = "", testId }) {
       const containerWidth = el.offsetWidth;
       const naturalWidth = txt.scrollWidth;
       if (containerWidth > 0 && naturalWidth > 0) {
-        txt.style.fontSize = `${BASE_PX * (containerWidth / naturalWidth)}px`;
+        // Margen de seguridad: Natura Script tiene rasgos/florituras que se salen de la
+        // caja del glifo (ej. la "l" final) — sin este margen, overflow-hidden las recorta.
+        const SAFETY = 0.9;
+        txt.style.fontSize = `${BASE_PX * (containerWidth / naturalWidth) * SAFETY}px`;
       }
     };
 
