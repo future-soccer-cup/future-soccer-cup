@@ -16,8 +16,11 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
-### 2026-08-31 — Iter76: Tagline "Torneo Internacional" más grande y a todo el ancho (v2 — usuario pidió aún más grande, con referencia visual)
-- Primera pasada (v1) fue insuficiente ("sigue muy pequeña" según el usuario, que adjuntó una imagen de referencia). Se aumentó considerablemente el tamaño de fuente a `clamp(2.4rem, 5vw, 5.5rem)` (antes `clamp(1.8rem, 3.2vw, 3.5rem)`), con `leading-none` y `tracking-wide`, manteniendo `flex-1 + justify-center` para ocupar el espacio entre el logo y el borde derecho. Aplicado en `Navbar.jsx` y `Home.jsx`. Verificado con screenshot contra la imagen de referencia del usuario — proporción ahora coincide (altura del cursivo similar a la del wordmark del logo).
+### 2026-08-31 — Iter76: Tagline "Torneo Internacional" estirado a todo el ancho (v3 — solución final con scaleX)
+- Aclaración del usuario: no era solo "más grande", sino que el texto debe **abarcar exactamente** el ancho desde el lado del logo hasta el final del menú (mismo borde derecho que el menú de abajo), igual que en su imagen de referencia (estilo "caja de texto estirada" de una herramienta de diseño).
+- Nuevo componente compartido `/app/frontend/src/components/StretchedTagline.jsx`: mide el ancho del contenedor disponible (`ResizeObserver`) y el ancho natural del texto, y aplica `transform: scaleX(containerWidth / naturalWidth)` con `transform-origin: left` — esto estira el texto para que ocupe EXACTAMENTE el espacio de "después del logo" hasta el borde derecho del contenedor, sin dejar huecos, igual que en la referencia. Se re-mide con `document.fonts.ready` (la fuente cursiva carga async) y en cada resize.
+- Usado en `Navbar.jsx` (`nav-tagline`) y `Home.jsx` (`hero-cursive-tagline`), reemplazando el intento anterior (v1/v2 con `flex-1 justify-center` + font-size grande, que solo centraba el texto sin llenar el ancho completo).
+- Verificado con screenshot en Home y en /nosotros — el texto ahora toca el borde derecho exacto donde termina el menú/REGISTRO, igual que la referencia del usuario.
 
 ### 2026-08-28 — Iter75: Recuperar contraseña dentro del mismo modal de Ingreso (sin navegar a otra página)
 - **Pedido del usuario**: al hacer clic en "¿Olvidaste tu contraseña?" dentro del modal de Ingreso, antes se cerraba el modal y navegaba a `/recuperar-clave` (página aparte). El usuario pidió que se quede en el mismo formulario, que "se limpie" y muestre ahí mismo el formulario de recuperación.

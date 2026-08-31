@@ -8,6 +8,7 @@ import ChevronStack from "../components/ChevronStack";
 import AnimateIn from "../components/AnimateIn";
 import Counter from "../components/Counter";
 import ImageCarousel from "../components/ImageCarousel";
+import { StretchedTagline } from "../components/StretchedTagline";
 import { motion, AnimatePresence } from "framer-motion";
 
 const scrollToStats = (e) => {
@@ -149,9 +150,7 @@ export default function Home() {
                   {renderPlaneCrash("FUTUR")}<br/>{renderPlaneCrash("SOCCER")}<br/>{renderPlaneCrash("CUP")}
                 </span>
               </Link>
-              <span className="hidden md:flex flex-1 items-center justify-center text-center text-white italic drop-shadow-md px-4 leading-none tracking-wide" style={{ ...CURSIVE, fontSize: "clamp(2.4rem, 5vw, 5.5rem)" }} data-testid="hero-cursive-tagline">
-                Torneo Internacional
-              </span>
+              <StretchedTagline text="Torneo Internacional" color="#ffffff" className="drop-shadow-md" testId="hero-cursive-tagline" />
             </div>
             {/* Barra blanca con links — más padding y tipografía más grande */}
             <div className="mt-5 bg-white rounded-md shadow-md px-3 md:px-5 py-2 md:py-3 flex flex-wrap items-center gap-1 md:gap-1" data-testid="hero-nav-bar">

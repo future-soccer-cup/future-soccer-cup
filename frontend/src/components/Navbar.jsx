@@ -5,6 +5,7 @@ import { useAuth } from "../context/AuthContext";
 import { useLoginModal } from "../context/LoginModalContext";
 import api from "../lib/api";
 import { PLANE_CRASH, AGENCY_FB, CURSIVE, renderPlaneCrash, RED, BLUE } from "../lib/designSystem";
+import { StretchedTagline } from "./StretchedTagline";
 
 const NAV = [
   { to: "/", label: "INICIO", end: true },
@@ -46,9 +47,7 @@ export default function Navbar() {
               {renderPlaneCrash("FUTUR")}<br/>{renderPlaneCrash("SOCCER")}<br/>{renderPlaneCrash("CUP")}
             </span>
           </Link>
-          <span className="hidden md:flex flex-1 items-center justify-center italic text-center px-4 leading-none tracking-wide" style={{ ...CURSIVE, color: BLUE, fontSize: "clamp(2.4rem, 5vw, 5.5rem)" }} data-testid="nav-tagline">
-            Torneo Internacional
-          </span>
+          <StretchedTagline text="Torneo Internacional" color={BLUE} testId="nav-tagline" />
           {/* Botón mobile */}
           <button onClick={() => setOpen(!open)} className="md:hidden text-slate-700" aria-label="Menú" data-testid="nav-mobile-toggle">
             {open ? <X size={26} /> : <Menu size={26} />}
