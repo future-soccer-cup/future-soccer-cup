@@ -149,15 +149,15 @@ export default function TeamRegister() {
         <Toaster richColors position="top-right" />
 
         <div className="relative max-w-4xl mx-auto px-8 sm:px-14 py-10 md:py-14 text-white">
-          <Link to="/login" className="text-sm md:text-base uppercase tracking-widest font-bold text-white/80 hover:text-white flex items-center gap-1" data-testid="tr-back-login">
-            <ArrowLeft size={16}/> Volver
+          <Link to="/login" className="text-base md:text-lg uppercase tracking-widest font-bold text-white/80 hover:text-white flex items-center gap-1" data-testid="tr-back-login">
+            <ArrowLeft size={18}/> Volver
           </Link>
 
           {/* Título */}
-          <div className="mt-8" style={{ ...AGENCY_FB, fontWeight: 700, color: "#ffffff", fontSize: "clamp(2rem, 4vw, 3rem)", lineHeight: 1 }}>
+          <div className="mt-8" style={{ ...AGENCY_FB, fontWeight: 700, color: "#ffffff", fontSize: "clamp(2.4rem, 4.8vw, 3.6rem)", lineHeight: 1 }}>
             Sé parte del
           </div>
-          <div className="italic -mt-1" style={{ ...CURSIVE, color: "#ffffff", fontWeight: 700, fontSize: "clamp(3.4rem, 7vw, 5.2rem)", lineHeight: 1 }} data-testid="tr-title">
+          <div className="italic -mt-1" style={{ ...CURSIVE, color: "#ffffff", fontWeight: 700, fontSize: "clamp(4rem, 8.2vw, 6rem)", lineHeight: 1 }} data-testid="tr-title">
             team fsc
           </div>
           <div className="h-1 w-20 bg-fsc-rojo mt-4"/>
@@ -212,7 +212,7 @@ export default function TeamRegister() {
           </form>
 
           {/* Enlace secundario */}
-          <div className="mt-10 text-white/80 text-base md:text-lg">
+          <div className="mt-10 text-white/80 text-lg md:text-xl">
             ¿Ya tienes cuenta?{" "}
             <Link to="/login" className="font-black underline hover:text-white" data-testid="tr-to-login">
               INICIA SESIÓN

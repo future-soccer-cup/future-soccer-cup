@@ -16,9 +16,8 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
-### 2026-08-31 — Iter78: Textos más grandes en formularios de Ingreso y Registro
-- `LoginModal.jsx`: "¿OLVIDASTE TU CONTRASEÑA?" (`text-xs`→`text-sm md:text-base`), "¿ERES NUEVO?"/"REGÍSTRATE" (`text-base md:text-lg`→`text-lg md:text-xl`), y los 3 "← Volver a Ingresar" de las vistas forgot/forgot-sent/reset (`text-xs`→`text-sm md:text-base`).
-- `TeamRegister.jsx`: "← Volver" (`text-xs`→`text-sm md:text-base`), título "Sé parte del" (`clamp(1.6rem,3.2vw,2.4rem)`→`clamp(2rem,4vw,3rem)`) y "team fsc" (`clamp(2.8rem,5.8vw,4.4rem)`→`clamp(3.4rem,7vw,5.2rem)`), "¿Ya tienes cuenta? INICIA SESIÓN" (`text-sm`→`text-base md:text-lg`).
+### 2026-08-31 — Iter78: Textos más grandes en formularios de Ingreso y Registro (v2 — usuario pidió aún más grande)
+- Primera pasada insuficiente. Segunda vuelta con incremento notorio: `LoginModal.jsx` "¿OLVIDASTE TU CONTRASEÑA?" → `text-base md:text-lg`, "¿ERES NUEVO?"/"REGÍSTRATE" → `text-xl md:text-2xl`, "← Volver a Ingresar" (x3) → `text-base md:text-lg`. `TeamRegister.jsx`: "← Volver" → `text-base md:text-lg`, "Sé parte del" → `clamp(2.4rem,4.8vw,3.6rem)`, "team fsc" → `clamp(4rem,8.2vw,6rem)`, "¿Ya tienes cuenta? INICIA SESIÓN" → `text-lg md:text-xl`.
 ### 2026-08-31 — Iter77: Sección "Países que han Participado" en /eventos — fondo blanco, texto rojo más grande, banderas más grandes
 - `CountriesBar` en `Eventos.jsx`: fondo cambiado de azul a blanco (`bg-white`), título "Países que han Participado" en rojo (antes blanco) y tamaño aumentado (`text-2xl md:text-3xl lg:text-4xl` + `font-weight 800`, antes `text-lg/xl/2xl` + 700). Banderas agrandadas de `h-6/h-8/h-9` a `h-12/h-16/h-20` con sombra y borde sutil (el borde blanco anterior no se veía sobre fondo blanco).
 - Nota para el usuario: actualmente ningún país tiene `flag_url` cargado en el CMS (Admin > Configuración de Eventos > Países), por lo que se ve el texto del nombre en vez de la bandera — el tamaño más grande ya está listo para cuando se suban las imágenes de bandera reales.
