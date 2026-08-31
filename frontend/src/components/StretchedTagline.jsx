@@ -1,11 +1,14 @@
 /**
- * Texto cursivo que se estira para ocupar exactamente el ancho disponible del
- * contenedor padre — pero SIN deformar las letras (evita `scaleX`, que rompe los
- * trazos del script/cursiva). En su lugar calcula el `letter-spacing` necesario
- * para que el texto, a tamaño normal, llegue exactamente al borde derecho.
+ * Texto cursivo (Natura Script) que ocupa EXACTAMENTE el ancho disponible del
+ * contenedor — sin `scaleX` (deforma los trazos) y sin `letter-spacing` (rompe las
+ * uniones entre letras del script, que debe verse "pegado" tal como es la fuente).
+ * En su lugar se ajusta el `font-size` de forma uniforme (escala ancho y alto por
+ * igual, preserva la forma exacta de la letra) hasta que el texto llegue al borde.
  */
 import { useEffect, useRef } from "react";
 import { CURSIVE } from "../lib/designSystem";
+
+const BASE_PX = 32;
 
 export function StretchedTagline({ text, color, className = "", testId }) {
   const containerRef = useRef(null);
@@ -17,32 +20,32 @@ export function StretchedTagline({ text, color, className = "", testId }) {
     if (!el || !txt) return;
 
     const fit = () => {
-      txt.style.letterSpacing = "normal";
+      txt.style.fontSize = `${BASE_PX}px`;
       const containerWidth = el.offsetWidth;
       const naturalWidth = txt.scrollWidth;
-      const chars = text.length;
-      const fontSizePx = parseFloat(getComputedStyle(txt).fontSize) || 32;
-      const maxSpacing = fontSizePx * 0.16; // tope para que el cursivo no se vea "roto" por exceso de espacio
-      if (containerWidth > 0 && naturalWidth > 0 && containerWidth > naturalWidth && chars > 1) {
-        const extra = Math.min((containerWidth - naturalWidth) / chars, maxSpacing);
-        txt.style.letterSpacing = `${extra}px`;
+      if (containerWidth > 0 && naturalWidth > 0) {
+        txt.style.fontSize = `${BASE_PX * (containerWidth / naturalWidth)}px`;
       }
     };
 
     fit();
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
-    const ro = new ResizeObserver(fit);
+    let raf = null;
+    const ro = new ResizeObserver(() => {
+      if (raf) cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(fit);
+    });
     ro.observe(el);
-    return () => ro.disconnect();
+    return () => { if (raf) cancelAnimationFrame(raf); ro.disconnect(); };
   }, [text]);
 
   return (
-    <div ref={containerRef} className={`hidden md:flex flex-1 min-w-0 overflow-hidden items-center justify-center ${className}`}>
+    <div ref={containerRef} className={`hidden md:block flex-1 min-w-0 overflow-hidden ${className}`}>
       <span
         ref={textRef}
         data-testid={testId}
         className="inline-block whitespace-nowrap italic leading-none"
-        style={{ ...CURSIVE, color, fontSize: "clamp(2.2rem, 3.8vw, 4rem)" }}
+        style={{ ...CURSIVE, color, fontSize: `${BASE_PX}px` }}
       >
         {text}
       </span>
