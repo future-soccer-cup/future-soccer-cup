@@ -16,6 +16,9 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-08-31 — Iter77: Sección "Países que han Participado" en /eventos — fondo blanco, texto rojo más grande, banderas más grandes
+- `CountriesBar` en `Eventos.jsx`: fondo cambiado de azul a blanco (`bg-white`), título "Países que han Participado" en rojo (antes blanco) y tamaño aumentado (`text-2xl md:text-3xl lg:text-4xl` + `font-weight 800`, antes `text-lg/xl/2xl` + 700). Banderas agrandadas de `h-6/h-8/h-9` a `h-12/h-16/h-20` con sombra y borde sutil (el borde blanco anterior no se veía sobre fondo blanco).
+- Nota para el usuario: actualmente ningún país tiene `flag_url` cargado en el CMS (Admin > Configuración de Eventos > Países), por lo que se ve el texto del nombre en vez de la bandera — el tamaño más grande ya está listo para cuando se suban las imágenes de bandera reales.
 ### 2026-08-31 — Iter76: Tagline "Torneo Internacional" (v5 — solución final: solo font-size, sin distorsión ni espaciado)
 - El usuario aclaró: (1) las letras deben seguir "pegadas" como el diseño real de Natura Script (el letter-spacing de la v4 las separaba, dando la sensación de que se había cambiado de fuente), y (2) el texto SÍ debe llegar exactamente al final del menú (en v4 quedaba corto a propósito por el tope de espaciado).
 - Solución correcta: `StretchedTagline` ya no toca `letter-spacing` ni `transform`. Mide el ancho natural del texto a un tamaño base y ajusta el `font-size` (escala uniforme ancho+alto, sin deformar ni separar letras) hasta que el texto ocupe exactamente el ancho del contenedor `flex-1` (desde el lado del logo hasta el borde derecho, igual que el menú). Fix adicional: el `ResizeObserver` se envuelve en `requestAnimationFrame` para evitar el error de consola "ResizeObserver loop completed with undelivered notifications" (CRA lo mostraba como overlay de error en dev).

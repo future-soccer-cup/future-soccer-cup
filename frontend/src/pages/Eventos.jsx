@@ -125,16 +125,16 @@ function HeroSection({ heroVideoUrl, heroUrl, logoUrl }) {
 
 function CountriesBar({ title, countries }) {
   return (
-    <section className="w-full py-4 md:py-5" style={{ background: BLUE }} data-testid="eventos-countries">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4">
+    <section className="w-full py-6 md:py-8 bg-white" data-testid="eventos-countries">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-5">
         <h2
-          className="text-white text-lg md:text-xl lg:text-2xl"
-          style={{ ...AGENCY_FB, fontWeight: 700 }}
+          className="text-2xl md:text-3xl lg:text-4xl"
+          style={{ ...AGENCY_FB, fontWeight: 800, color: RED }}
           data-testid="countries-title"
         >
           {title || "Países que han Participado"}
         </h2>
-        <div className="flex items-center gap-3 md:gap-5 flex-wrap justify-center">
+        <div className="flex items-center gap-4 md:gap-6 flex-wrap justify-center">
           {countries.map((c, i) => (
             <div
               key={`country-${i}`}
@@ -146,11 +146,11 @@ function CountriesBar({ title, countries }) {
                 <img
                   src={imgSrc(c.flag_url)}
                   alt={c.name}
-                  className="h-6 md:h-8 lg:h-9 w-auto object-contain"
-                  style={{ border: "1px solid rgba(255,255,255,0.4)" }}
+                  className="h-12 md:h-16 lg:h-20 w-auto object-contain rounded-sm shadow-md"
+                  style={{ border: "1px solid rgba(0,0,0,0.12)" }}
                 />
               ) : (
-                <span className="text-white/70 text-xs italic px-2 py-1 border border-white/30 rounded">{c.name || "—"}</span>
+                <span className="text-slate-400 text-xs italic px-2 py-1 border border-slate-200 rounded">{c.name || "—"}</span>
               )}
             </div>
           ))}
