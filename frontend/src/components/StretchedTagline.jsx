@@ -1,8 +1,8 @@
 /**
- * Texto cursivo que se ESTIRA horizontalmente (scaleX) para ocupar exactamente
- * el ancho disponible del contenedor padre — igual que cuando se arrastra una caja
- * de texto en una herramienta de diseño (Illustrator/Canva). Se usa para el tagline
- * "Torneo Internacional" que debe abarcar desde el lado del logo hasta el final del menú.
+ * Texto cursivo que se estira para ocupar exactamente el ancho disponible del
+ * contenedor padre — pero SIN deformar las letras (evita `scaleX`, que rompe los
+ * trazos del script/cursiva). En su lugar calcula el `letter-spacing` necesario
+ * para que el texto, a tamaño normal, llegue exactamente al borde derecho.
  */
 import { useEffect, useRef } from "react";
 import { CURSIVE } from "../lib/designSystem";
@@ -17,11 +17,15 @@ export function StretchedTagline({ text, color, className = "", testId }) {
     if (!el || !txt) return;
 
     const fit = () => {
-      txt.style.transform = "scaleX(1)";
+      txt.style.letterSpacing = "normal";
       const containerWidth = el.offsetWidth;
       const naturalWidth = txt.scrollWidth;
-      if (containerWidth > 0 && naturalWidth > 0) {
-        txt.style.transform = `scaleX(${containerWidth / naturalWidth})`;
+      const chars = text.length;
+      const fontSizePx = parseFloat(getComputedStyle(txt).fontSize) || 32;
+      const maxSpacing = fontSizePx * 0.16; // tope para que el cursivo no se vea "roto" por exceso de espacio
+      if (containerWidth > 0 && naturalWidth > 0 && containerWidth > naturalWidth && chars > 1) {
+        const extra = Math.min((containerWidth - naturalWidth) / chars, maxSpacing);
+        txt.style.letterSpacing = `${extra}px`;
       }
     };
 
@@ -33,12 +37,12 @@ export function StretchedTagline({ text, color, className = "", testId }) {
   }, [text]);
 
   return (
-    <div ref={containerRef} className={`hidden md:block flex-1 min-w-0 overflow-hidden ${className}`}>
+    <div ref={containerRef} className={`hidden md:flex flex-1 min-w-0 overflow-hidden items-center justify-center ${className}`}>
       <span
         ref={textRef}
         data-testid={testId}
-        className="inline-block whitespace-nowrap italic origin-left leading-none"
-        style={{ ...CURSIVE, color, fontSize: "clamp(1.6rem, 2.8vw, 2.8rem)" }}
+        className="inline-block whitespace-nowrap italic leading-none"
+        style={{ ...CURSIVE, color, fontSize: "clamp(2.2rem, 3.8vw, 4rem)" }}
       >
         {text}
       </span>
