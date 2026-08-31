@@ -16,9 +16,8 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
-### 2026-08-31 — Iter76: Tagline "Torneo Internacional" más grande y a todo el ancho
-- El texto "Torneo Internacional" (arriba del menú) ahora usa `flex-1` + `justify-center` para ocupar todo el espacio entre el wordmark del logo y el borde derecho (igualando visualmente el ancho del menú de abajo), con tamaño de fuente aumentado (`clamp(1.8rem, 3.2vw, 3.5rem)`). Aplicado en ambos lugares donde existe: `Navbar.jsx` (compartido, todas las páginas internas) y `Home.jsx` (nav embebida propia del hero).
-- Verificado visualmente con screenshot en Home y en /nosotros (usa Navbar.jsx compartida) — consistente en ambos.
+### 2026-08-31 — Iter76: Tagline "Torneo Internacional" más grande y a todo el ancho (v2 — usuario pidió aún más grande, con referencia visual)
+- Primera pasada (v1) fue insuficiente ("sigue muy pequeña" según el usuario, que adjuntó una imagen de referencia). Se aumentó considerablemente el tamaño de fuente a `clamp(2.4rem, 5vw, 5.5rem)` (antes `clamp(1.8rem, 3.2vw, 3.5rem)`), con `leading-none` y `tracking-wide`, manteniendo `flex-1 + justify-center` para ocupar el espacio entre el logo y el borde derecho. Aplicado en `Navbar.jsx` y `Home.jsx`. Verificado con screenshot contra la imagen de referencia del usuario — proporción ahora coincide (altura del cursivo similar a la del wordmark del logo).
 
 ### 2026-08-28 — Iter75: Recuperar contraseña dentro del mismo modal de Ingreso (sin navegar a otra página)
 - **Pedido del usuario**: al hacer clic en "¿Olvidaste tu contraseña?" dentro del modal de Ingreso, antes se cerraba el modal y navegaba a `/recuperar-clave` (página aparte). El usuario pidió que se quede en el mismo formulario, que "se limpie" y muestre ahí mismo el formulario de recuperación.

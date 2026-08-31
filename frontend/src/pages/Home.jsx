@@ -149,7 +149,7 @@ export default function Home() {
                   {renderPlaneCrash("FUTUR")}<br/>{renderPlaneCrash("SOCCER")}<br/>{renderPlaneCrash("CUP")}
                 </span>
               </Link>
-              <span className="hidden md:flex flex-1 items-center justify-center text-center text-white italic drop-shadow-md px-4" style={{ ...CURSIVE, fontSize: "clamp(1.8rem, 3.2vw, 3.5rem)" }} data-testid="hero-cursive-tagline">
+              <span className="hidden md:flex flex-1 items-center justify-center text-center text-white italic drop-shadow-md px-4 leading-none tracking-wide" style={{ ...CURSIVE, fontSize: "clamp(2.4rem, 5vw, 5.5rem)" }} data-testid="hero-cursive-tagline">
                 Torneo Internacional
               </span>
             </div>
