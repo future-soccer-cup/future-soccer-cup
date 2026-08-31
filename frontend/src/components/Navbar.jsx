@@ -46,7 +46,7 @@ export default function Navbar() {
               {renderPlaneCrash("FUTUR")}<br/>{renderPlaneCrash("SOCCER")}<br/>{renderPlaneCrash("CUP")}
             </span>
           </Link>
-          <span className="hidden md:inline-block italic text-2xl lg:text-4xl" style={{ ...CURSIVE, color: BLUE }} data-testid="nav-tagline">
+          <span className="hidden md:flex flex-1 items-center justify-center italic text-center px-4" style={{ ...CURSIVE, color: BLUE, fontSize: "clamp(1.8rem, 3.2vw, 3.5rem)" }} data-testid="nav-tagline">
             Torneo Internacional
           </span>
           {/* Botón mobile */}
