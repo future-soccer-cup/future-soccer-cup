@@ -16,7 +16,8 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
-### 2026-08-31 — Iter78: Textos más grandes en formularios de Ingreso y Registro (v2 — usuario pidió aún más grande)
+### 2026-08-31 — Iter78: Textos más grandes en formularios de Ingreso y Registro (v3 — un poco más grande aún)
+- Tercer ajuste: `LoginModal.jsx` "¿OLVIDASTE TU CONTRASEÑA?" → `text-lg md:text-xl`, "¿ERES NUEVO?"/"REGÍSTRATE" → `text-2xl md:text-3xl`, "← Volver a Ingresar" (x3) → `text-lg md:text-xl`. `TeamRegister.jsx`: "← Volver" → `text-lg md:text-xl`, "Sé parte del" → `clamp(2.7rem,5.4vw,4rem)`, "team fsc" → `clamp(4.4rem,9vw,6.6rem)`, "¿Ya tienes cuenta? INICIA SESIÓN" → `text-xl md:text-2xl`.
 - Primera pasada insuficiente. Segunda vuelta con incremento notorio: `LoginModal.jsx` "¿OLVIDASTE TU CONTRASEÑA?" → `text-base md:text-lg`, "¿ERES NUEVO?"/"REGÍSTRATE" → `text-xl md:text-2xl`, "← Volver a Ingresar" (x3) → `text-base md:text-lg`. `TeamRegister.jsx`: "← Volver" → `text-base md:text-lg`, "Sé parte del" → `clamp(2.4rem,4.8vw,3.6rem)`, "team fsc" → `clamp(4rem,8.2vw,6rem)`, "¿Ya tienes cuenta? INICIA SESIÓN" → `text-lg md:text-xl`.
 ### 2026-08-31 — Iter77: Sección "Países que han Participado" en /eventos — fondo blanco, texto rojo más grande, banderas más grandes
 - `CountriesBar` en `Eventos.jsx`: fondo cambiado de azul a blanco (`bg-white`), título "Países que han Participado" en rojo (antes blanco) y tamaño aumentado (`text-2xl md:text-3xl lg:text-4xl` + `font-weight 800`, antes `text-lg/xl/2xl` + 700). Banderas agrandadas de `h-6/h-8/h-9` a `h-12/h-16/h-20` con sombra y borde sutil (el borde blanco anterior no se veía sobre fondo blanco).

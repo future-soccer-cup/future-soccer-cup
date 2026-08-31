@@ -219,7 +219,7 @@ export default function LoginModal() {
                   <button
                     type="button"
                     onClick={goForgot}
-                    className="text-white/90 text-base md:text-lg underline hover:text-white"
+                    className="text-white/90 text-lg md:text-xl underline hover:text-white"
                     data-testid="login-modal-forgot"
                   >
                     ¿OLVIDASTE TU CONTRASEÑA?
@@ -229,7 +229,7 @@ export default function LoginModal() {
 
               <div className="my-6 border-t border-white/30" />
 
-              <div className="text-white text-xl md:text-2xl">
+              <div className="text-white text-2xl md:text-3xl">
                 <span>¿ERES NUEVO? </span>
                 <button
                   type="button"
@@ -246,7 +246,7 @@ export default function LoginModal() {
 
           {view === "forgot" && (
             <div data-testid="login-modal-forgot-form">
-              <button type="button" onClick={backToLogin} className="flex items-center gap-1 text-white/80 hover:text-white text-base md:text-lg font-bold uppercase tracking-widest mb-6" data-testid="forgot-back-to-login">
+              <button type="button" onClick={backToLogin} className="flex items-center gap-1 text-white/80 hover:text-white text-lg md:text-xl font-bold uppercase tracking-widest mb-6" data-testid="forgot-back-to-login">
                 <ArrowLeft size={14} /> Volver a Ingresar
               </button>
               <div className="text-white mb-2" style={{ ...AGENCY_FB, fontWeight: 800, fontSize: "clamp(1.8rem, 3.4vw, 2.6rem)", lineHeight: 1.05 }}>
@@ -288,7 +288,7 @@ export default function LoginModal() {
 
           {view === "forgot-sent" && (
             <div data-testid="login-modal-forgot-sent">
-              <button type="button" onClick={backToLogin} className="flex items-center gap-1 text-white/80 hover:text-white text-base md:text-lg font-bold uppercase tracking-widest mb-6" data-testid="forgot-back-to-login">
+              <button type="button" onClick={backToLogin} className="flex items-center gap-1 text-white/80 hover:text-white text-lg md:text-xl font-bold uppercase tracking-widest mb-6" data-testid="forgot-back-to-login">
                 <ArrowLeft size={14} /> Volver a Ingresar
               </button>
               <div className="bg-white/15 border border-white/30 rounded-2xl p-5">
@@ -311,7 +311,7 @@ export default function LoginModal() {
 
           {view === "reset" && (
             <div data-testid="login-modal-reset-form">
-              <button type="button" onClick={backToLogin} className="flex items-center gap-1 text-white/80 hover:text-white text-base md:text-lg font-bold uppercase tracking-widest mb-6" data-testid="reset-back-to-login">
+              <button type="button" onClick={backToLogin} className="flex items-center gap-1 text-white/80 hover:text-white text-lg md:text-xl font-bold uppercase tracking-widest mb-6" data-testid="reset-back-to-login">
                 <ArrowLeft size={14} /> Volver a Ingresar
               </button>
               <div className="text-white mb-2" style={{ ...AGENCY_FB, fontWeight: 800, fontSize: "clamp(1.8rem, 3.4vw, 2.6rem)", lineHeight: 1.05 }}>
