@@ -106,6 +106,7 @@ export default function FSCHistorySection({ settings }) {
   const goTo = (newIdx) => {
     if (newIdx === activeIdx) return;
     setShowOverlay(false); // oculta overlay durante la transición
+    setShowKow(false); // si Kow seguía en pantalla, se descarta de inmediato al navegar a un hito
     setActiveIdx(newIdx);
   };
   const goPrev = () => goTo(activeIdx > 0 ? activeIdx - 1 : timeline.length - 1);
