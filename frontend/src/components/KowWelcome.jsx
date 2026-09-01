@@ -3,7 +3,7 @@ import { AGENCY_FB } from "../lib/designSystem";
 import { imgSrc } from "../lib/api";
 
 const RED = "#e31f27";
-const AUTO_DISMISS_MS = 12000;
+const AUTO_DISMISS_MS = 10000;
 
 /** Pantalla de bienvenida de Kow — ocupa solo el área de "FSC en la Historia" (no toda la página). */
 export default function KowWelcome({ imageUrl, text, onDone }) {
