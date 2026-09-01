@@ -85,7 +85,7 @@ function HeroSection({ heroUrl, watermark, titleTop, titleBottom }) {
         <img src={imgSrc(heroUrl)} alt="" className="absolute inset-0 w-full h-full object-cover" />
       ) : null}
       {/* Overlay rojo denso y oscuro (oscurece la foto de fondo) */}
-      <div className="absolute inset-0" style={{ background: "rgba(180, 0, 0, 0.75)" }} />
+      <div className="absolute inset-0" style={{ background: "rgba(150, 0, 0, 0.88)" }} />
       {/* Título principal + ecos apilados detrás (mismo tamaño, más arriba y desvanecidos) */}
       <div className="relative z-10 h-full flex flex-col items-center justify-center px-4 text-center">
         <div className="relative leading-[0.9]">
