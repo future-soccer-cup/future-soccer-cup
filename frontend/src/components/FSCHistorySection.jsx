@@ -15,6 +15,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { imgSrc } from "../lib/api";
 import { PLANE_CRASH, AGENCY_FB, renderPlaneCrash } from "../lib/designSystem";
+import KowWelcome from "./KowWelcome";
 
 const RED = "#e31f27";
 const BLUE = "#0640c8";
@@ -29,6 +30,22 @@ const SLOTS = [
   { left: "36%", top: "62%",  width: "26%", height: "30%", rotate: -1 },
   { left: "78%", top: "60%",  width: "18%", height: "22%", rotate: 2.5 },
 ];
+
+// Timing de la flotación independiente por foto (duración en s, delay en s, amplitud en px).
+const FLOAT = [
+  { duration: 3.4, delay: 0,   amp: -6 },
+  { duration: 4.2, delay: 0.6, amp: -8 },
+  { duration: 3.8, delay: 1.2, amp: -5 },
+  { duration: 4.6, delay: 0.3, amp: -7 },
+  { duration: 3.6, delay: 0.9, amp: -6 },
+  { duration: 4.0, delay: 1.5, amp: -8 },
+];
+
+// Caja de "FSC" — centrada y más angosta que el slot central para que el trazo grueso
+// de Plane Crash quede completamente sobre la foto, sin desbordar al fondo blanco.
+const FSC_BOX = { left: "37%", top: "16%", width: "26%", height: "32%" };
+// Caja de "EN LA HISTORIA" — debajo del slot central, sobre fondo blanco (sin foto detrás).
+const SUBTITLE_BOX = { left: "10%", top: "49%", width: "80%", height: "13%" };
 
 // Posición cover completa (usada por la foto principal en modo YEAR).
 const COVER = { left: "0%", top: "0%", width: "100%", height: "100%", rotate: 0 };
@@ -51,9 +68,17 @@ export default function FSCHistorySection({ settings }) {
   const [modalOpen, setModalOpen] = useState(false);
   // Delay para el overlay (aparece tras la expansión de la foto).
   const [showOverlay, setShowOverlay] = useState(false);
+  // Bienvenida de Kow — visible al montar y cada vez que se vuelve a INTRODUCCIÓN.
+  const [showKow, setShowKow] = useState(true);
 
   const active = timeline[activeIdx] || timeline[0];
   const isIntro = !active || (active.key || "").toLowerCase() === "intro" || activeIdx === 0;
+
+  // Al entrar/volver a modo INTRO mostramos otra vez la bienvenida de Kow.
+  useEffect(() => {
+    if (isIntro) setShowKow(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeIdx]);
 
   // Collage de INTRO: 1 foto por cada hito (no-intro), hasta 6. Cada foto flotante
   // representa un hito distinto en lugar de exigir 6 fotos en un único hito.
@@ -99,6 +124,13 @@ export default function FSCHistorySection({ settings }) {
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" style={{ minHeight: "min(88vh, 780px)" }}>
         {/* Área central con posición relativa */}
         <div className="relative w-full overflow-hidden" style={{ minHeight: "min(76vh, 680px)" }}>
+          {showKow && (
+            <KowWelcome
+              imageUrl={settings?.nosotros_kow_image_url || settings?.mascot_image_url}
+              text={settings?.nosotros_kow_welcome_text}
+              onDone={() => setShowKow(false)}
+            />
+          )}
 
           {/* Desktop: 6 fotos absolutamente posicionadas — animan hacia cover en modo YEAR */}
           <div className="hidden md:block absolute inset-0" data-testid="history-photos-wrapper">
@@ -116,6 +148,8 @@ export default function FSCHistorySection({ settings }) {
               // La foto principal en modo YEAR sube z-index y quita border/shadow.
               const zIndex = !isIntro && isMain ? 6 : 3;
               const isCovering = !isIntro && isMain;
+              const floatCfg = FLOAT[i] || FLOAT[0];
+              const clickable = isIntro;
               return (
                 <div
                   key={`slot-${i}`}
@@ -128,8 +162,11 @@ export default function FSCHistorySection({ settings }) {
                     transform: `rotate(${target.rotate}deg)`,
                     opacity,
                     zIndex,
+                    pointerEvents: clickable ? "auto" : "none",
+                    cursor: clickable ? "pointer" : "default",
                     transition: "left 0.55s cubic-bezier(0.22,1,0.36,1), top 0.55s cubic-bezier(0.22,1,0.36,1), width 0.55s cubic-bezier(0.22,1,0.36,1), height 0.55s cubic-bezier(0.22,1,0.36,1), transform 0.55s cubic-bezier(0.22,1,0.36,1), opacity 0.35s ease",
                   }}
+                  onClick={clickable ? () => goTo(i + 1) : undefined}
                   data-testid={`history-photo-${i}`}
                 >
                   <div
@@ -138,6 +175,8 @@ export default function FSCHistorySection({ settings }) {
                       border: isCovering ? "none" : "3px solid #ffffff",
                       boxShadow: isCovering ? "none" : "0 12px 28px rgba(0,0,0,0.18)",
                       transition: "border 0.35s ease, box-shadow 0.35s ease",
+                      animation: isIntro ? `fsc-float ${floatCfg.duration}s ease-in-out ${floatCfg.delay}s infinite` : "none",
+                      "--float-amp": `${floatCfg.amp}px`,
                     }}
                   >
                     <img src={imgSrc(p)} alt="" className="w-full h-full object-cover block" loading="lazy" />
@@ -147,10 +186,14 @@ export default function FSCHistorySection({ settings }) {
             })}
           </div>
 
-          {/* Texto central FSC · EN LA HISTORIA — SUPERPUESTO (z-index sobre las fotos) */}
+          {/* "FSC" en Plane Crash rojo, SUPERPUESTO sobre la foto central (slot principal) */}
           <div
-            className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none select-none"
+            className="absolute flex items-center justify-center text-center pointer-events-none select-none"
             style={{
+              left: FSC_BOX.left,
+              top: FSC_BOX.top,
+              width: FSC_BOX.width,
+              height: FSC_BOX.height,
               zIndex: 5,
               opacity: isIntro ? 1 : 0,
               transition: "opacity 0.35s ease",
@@ -169,9 +212,25 @@ export default function FSCHistorySection({ settings }) {
             >
               {renderPlaneCrash(topWord || "fsc")}
             </div>
-            {bottomWords && (
+          </div>
+
+          {/* "EN LA HISTORIA" — debajo de "FSC", sobre el fondo blanco de la sección (sin foto) */}
+          {bottomWords && (
+            <div
+              className="absolute flex items-center justify-center text-center pointer-events-none select-none"
+              style={{
+                left: SUBTITLE_BOX.left,
+                top: SUBTITLE_BOX.top,
+                width: SUBTITLE_BOX.width,
+                height: SUBTITLE_BOX.height,
+                zIndex: 5,
+                opacity: isIntro ? 1 : 0,
+                transition: "opacity 0.35s ease",
+              }}
+              aria-hidden={!isIntro}
+            >
               <div
-                className="leading-none mt-1"
+                className="leading-none"
                 style={{
                   ...PLANE_CRASH,
                   color: RED,
@@ -182,8 +241,8 @@ export default function FSCHistorySection({ settings }) {
               >
                 {renderPlaneCrash(bottomWords)}
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Overlay YEAR: pregunta + LEE AQUÍ (aparece con delay tras la expansión) */}
           {!isIntro && (question || hasBody) && (

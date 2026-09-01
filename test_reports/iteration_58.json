@@ -1,0 +1,33 @@
+{
+  "summary": "Frontend-only testing of the new 'FSC en la Historia' + Kow welcome feature on /nosotros (TEST 1-9). All 9 requested scenarios PASS. Kow welcome screen appears on entry with red (#e31f27) Agency FB text and the fallback mascot image (lion with hat, loads 200 from /api/files, naturalWidth=1667). Auto-dismiss at ~4.5s and click-to-dismiss both work. Floating photos have distinct fsc-float animation durations/delays/amp. 'FSC' overlaps the central photo (slot 1) and 'EN LA HISTORIA' sits below it over plain white. Clicking history-photo-3 expands the corresponding 2023 milestone with question '¿quien es kow?' + LEE AQUÍ and marks label 2023 active. Cyclic arrows verified: Intro->2019->2021->2022->2023->2025->2026->Intro and reverse. Clicking INTRODUCCIÓN re-shows Kow. CMS admin (/admin/home) shows the 'Pantalla de bienvenida de Kow' block with kow-welcome-image-upload + kow-welcome-text-input (262 chars) and hides 'Foto del hito' for key='intro', showing the informational note instead. No navbar/footer/'SOMOS MAS QUE UN TORNEO' regression on Home.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "KowWelcome", "issue": "On re-show (clicking INTRODUCCIÓN / cycling back to intro) the lion image is re-requested from scratch (ingress serves /api/files with 'cache-control: no-store'), so for ~0.5-1s the welcome screen shows only the red text with an empty left area. Same happens on first paint until /api/home-settings resolves. Consider preloading the image (new Image()) or delaying the welcome screen/auto-dismiss timer until the image is loaded.", "selector": "[data-testid='kow-welcome-image']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/nosotros — FSC en la Historia (intro)", "issues": ["FSC_BOX (SLOTS[1], w 491px) is wider than the actual central photo (395px), so the outer strokes of the 'F' and 'C' spill onto the white background instead of sitting fully over the photo — narrow FSC_BOX (~left 38%/width 26%) if full overlap is desired.", "Kow welcome layout is left-image/right-text centered in a max-w-4xl block; on 1920px it looks slightly off-center to the right (acceptable, just noting)."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "OPTIONAL: preload/await the Kow image before starting the 4.5s auto-dismiss so the welcome screen never renders text-only.",
+    "OPTIONAL: narrow FSC_BOX so 'FSC' sits entirely over the central photo.",
+    "OPTIONAL/data cleanup: the 'intro' milestone in nosotros_history_timeline still stores 6 legacy photos which the UI now ignores (introPhotos are built from the year milestones). Harmless but dead data.",
+    "DECISION NEEDED: Kow welcome re-appears every time the user reaches 'Introducción', including via the ← / → arrows while browsing the cycle (not only on first load / label click). Confirm with the user if that is intended."
+  ],
+  "critical_code_review_comments": [
+    "FSCHistorySection: in YEAR mode the expanded element is always slot 0 (it swaps its src to active.photos[0]) while the photo actually clicked fades out. It looks correct because the image content matches, but a photo whose slot != 0 visually 'jumps' to the top-left origin during expansion — consider expanding the clicked slot itself.",
+    "KowWelcome: no guard for empty text/image; if the CMS text is cleared the screen shows a fully blank white overlay for 4.5s. Render nothing (call onDone immediately) when both image and text are empty.",
+    "FSCHistorySection is ~500 lines with the modal inline — fine for now, but the modal could be extracted."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "not tested (frontend-only request)", "frontend": "100% (9/9 requested scenarios pass)"},
+  "seed_data_creation": "none",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "admin@futuresoccercup.com / FSCAdmin2025! (login is via the navbar INGRESO modal: data-testid login-modal-email/password/submit; admin CMS route is /admin/home, NOT /admin/home-settings)",
+  "context_for_next_testing_agent": "Verified data-testids: kow-welcome-screen/-image/-text, history-section, history-photo-0..5, history-title-top/-bottom, history-year-overlay, history-question, history-read-btn, history-prev-btn/history-next-btn, history-label-{key}, history-dot-{key}, kow-welcome-image-upload, kow-welcome-text-input. Note: the Kow welcome overlay (z-60, fixed inset-0) blocks all clicks on /nosotros for the first 4.5s — dismiss it with a click before interacting with the history section. /api/files responses are 405 on HEAD but 200 on GET. nosotros_kow_image_url is still empty in DB; frontend falls back to mascot_image_url and that fallback works.",
+  "rca_of_the_issue": "The main agent's inconsistent screenshots were a timing artifact: KowWelcome mounts before /api/home-settings resolves, so during the first ~0.5-1.5s the overlay renders with no image and empty text; combined with the 4.5s auto-dismiss, a screenshot taken too early shows a blank white screen and one taken too late shows the history section. With explicit waits, image and text render correctly every time."
+}

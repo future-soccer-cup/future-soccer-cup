@@ -186,6 +186,12 @@ html, body {
     will-change: transform;
 }
 
+/* === Flotación suave (fotos de "FSC en la Historia" en Nosotros) === */
+@keyframes fsc-float {
+    0%, 100% { transform: translateY(0px); }
+    50%      { transform: translateY(var(--float-amp, -6px)); }
+}
+
 /* === Pulse sutil (WhatsApp flotante) === */
 @keyframes fsc-pulse-ring {
     0%   { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.55); }

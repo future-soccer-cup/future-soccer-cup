@@ -1,0 +1,25 @@
+{
+  "summary": "Frontend-only re-test of the 2 reported bug fixes in 'FSC en la Historia' (/nosotros). ALL 4 requested tests PASS. TEST1: [data-testid='kow-welcome-screen'] computed position='absolute' (z-index 20, NOT fixed), its parentElement is exactly the 'relative w-full overflow-hidden' div that is also the parent of [data-testid='history-photos-wrapper']. Kow rect = top 209.9px / 1216x680 inside the section area; navbar (y 141.9-209.9, full 1920 width) remains visible and hit-testable (elementFromPoint over nav center returns the nav link <A>, not Kow; elementFromPoint(10,10) is page bg, not Kow). Mobile 390x844: Kow absolute, top=96, h=641 (viewport 844) — scoped, navbar untouched. TEST2: Kow image (mascot fallback, naturalWidth 1667) loads in ~0.6s and auto-dismiss fires 6.0s after image-ready (matches AUTO_DISMISS_MS=6000 + 0.4s fade); click anywhere on Kow also dismisses with fade-out both on first load and on re-show, revealing floating photos (naturalWidth 3820) + FSC text at opacity 1. TEST3: container height 680px, 'FSC' top at 19.0% / bottom 45.0%, 'EN LA HISTORIA' top 52.2% / bottom 58.8% — matches the reference (FSC ~19%, subtitle ending ~59%); no longer at 0-2%. TEST4 regression: click on history-photo-3 expands the 2023 milestone (label 2023 fontWeight 900, '¿QUIEN ES KOW?' + LEE AQUI overlay visible); next arrow cycles 2023->2025->2026->INTRODUCCION and prev from INTRODUCCION goes to 2026 (cyclic OK); returning to INTRODUCCION from a year re-shows Kow (scoped, absolute).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/nosotros — FSC en la Historia (intro, 1920px)", "issues": ["Cosmetic leftover from iteration_58: the outer strokes of 'F' and 'C' still spill a little past the left/right edges of the central photo onto the white background (FSC_BOX left 37%/width 26% vs the photo slot 34%/32%). Only tighten if the user wants full overlap.", "Kow welcome block (image left / text right) is centered in a max-w-2xl container, so on 1920px it reads slightly right-of-center inside the section area — acceptable."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "FSCHistorySection: the useEffect that re-shows Kow depends only on [activeIdx]; goTo() early-returns when newIdx===activeIdx, so clicking 'INTRODUCCIÓN' while already on intro does NOT re-show Kow. Current behaviour is consistent, just noting the intended semantics.",
+    "FSCHistorySection is ~505 lines with HistoryReadModal inline — consider extracting the modal (pre-existing note)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "not tested (frontend-only request)", "frontend": "100% (4/4 requested tests pass)"},
+  "seed_data_creation": "none",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "not required for these tests; admin (from iteration_58): admin@futuresoccercup.com / FSCAdmin2025! via navbar INGRESO modal",
+  "context_for_next_testing_agent": "Kow is now rendered inside FSCHistorySection (absolute inset-0 z-20) so it no longer blocks navbar/page clicks — but it still blocks clicks inside the history area for ~6s; dismiss with a click on [data-testid='kow-welcome-screen'] before interacting with photos/labels. Note: clicking history-label-intro when already on intro does nothing (goTo early return); navigate to a year first to re-trigger Kow. Two 401 console errors on /nosotros load (auth/me style probe for anonymous visitor) — harmless, pre-existing.",
+  "rca_of_the_issue": "Both reported bugs are fixed at the source: KowWelcome switched from 'fixed inset-0 z-[60]' to 'absolute inset-0 z-20' and is mounted inside the section's relative wrapper (so the white background is clipped to the 1216x680 history area), and FSC_BOX/SUBTITLE_BOX were moved from top 2%/40% to top 16%/32% and 49%/13%, measured live at 19% and 52-59% of the 680px container."
+}

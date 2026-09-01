@@ -6048,6 +6048,8 @@ class HomeSettings(BaseModel):
     # Cada hito: {key: str, label: str, question: str, body: str, photos: List[str]}. Editable desde el CMS.
     nosotros_history_title: Optional[str] = "FSC EN LA HISTORIA"
     nosotros_history_timeline: Optional[List[Dict[str, Any]]] = None
+    nosotros_kow_image_url: Optional[str] = ""
+    nosotros_kow_welcome_text: Optional[str] = "¡Hola! Soy Kow, la mascota oficial de Future Soccer Cup. Qué nota tenerte por aquí. Hoy quiero contarte, en un ratico, cómo nació este parche futbolero que reúne talento, pasión y sueños de jugadores de todas partes. ¡Ponte cómodo que esta historia vale la pena!"
 
     # === Iter58: Página Eventos — todo el contenido editable via CMS. ===
     # Estructura anidada para agrupar por sección; ver DEFAULT_EVENTOS_CONFIG.

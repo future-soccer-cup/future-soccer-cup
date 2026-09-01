@@ -289,6 +289,30 @@ export default function AdminHomeSettings() {
           {/* FSC en la Historia — Timeline editor (única sección activa en /nosotros) */}
           <div className="md:col-span-2">
             <Field label="Título grande (ej: FSC EN LA HISTORIA)" v={s.nosotros_history_title} onChange={(v) => upd("nosotros_history_title", v)} placeholder="FSC EN LA HISTORIA" />
+          </div>
+          <div className="md:col-span-2 border border-slate-200 rounded-md p-3 bg-slate-50">
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Pantalla de bienvenida de Kow (aparece al entrar a Nosotros y al hacer clic en "INTRODUCCIÓN")</p>
+            <div className="grid md:grid-cols-2 gap-4">
+              <ImageUpload
+                value={s.nosotros_kow_image_url}
+                onChange={(v) => upd("nosotros_kow_image_url", v)}
+                label="Imagen de Kow (fondo blanco/transparente)"
+                hint="Recomendado: PNG con fondo blanco o transparente."
+                testId="kow-welcome-image-upload"
+              />
+              <label className="block">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Texto de bienvenida de Kow</span>
+                <textarea
+                  rows={6}
+                  value={s.nosotros_kow_welcome_text || ""}
+                  onChange={(e) => upd("nosotros_kow_welcome_text", e.target.value)}
+                  className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md"
+                  data-testid="kow-welcome-text-input"
+                />
+              </label>
+            </div>
+          </div>
+          <div className="md:col-span-2">
             <HistoryTimelineEditor value={s.nosotros_history_timeline || []} onChange={(v) => upd("nosotros_history_timeline", v)} />
           </div>
         </div>
@@ -420,16 +444,20 @@ function HistoryTimelineEditor({ value, onChange }) {
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Texto del hito (se muestra en modal al hacer clic en LEE AQUÍ)</span>
             <textarea rows={4} value={it.body || ""} onChange={(e) => update(idx, { body: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" placeholder="Respuesta larga del hito..." data-testid={`timeline-body-${idx}`} />
           </label>
-          <div className="mt-3">
-            <ImageListUpload
-              label="Foto del hito (1 sola)"
-              hint="Esta foto se usa como imagen principal del hito y también aparece en el collage de la introducción (cada foto flotante representa un hito distinto)."
-              values={it.photos || []}
-              onChange={(v) => update(idx, { photos: v || [] })}
-              testId={`timeline-photos-${idx}`}
-              max={1}
-            />
-          </div>
+          {(it.key || "").toLowerCase() !== "intro" ? (
+            <div className="mt-3">
+              <ImageListUpload
+                label="Foto del hito (1 sola)"
+                hint="Esta foto se usa como imagen principal del hito y también aparece en el collage de la introducción (cada foto flotante representa un hito distinto)."
+                values={it.photos || []}
+                onChange={(v) => update(idx, { photos: v || [] })}
+                testId={`timeline-photos-${idx}`}
+                max={1}
+              />
+            </div>
+          ) : (
+            <p className="mt-3 text-xs text-slate-500 italic">El hito "intro" no usa foto propia: muestra las fotos de los demás hitos flotando alrededor del texto.</p>
+          )}
         </div>
       ))}
       <button type="button" onClick={addMilestone} className="w-full py-2 border border-dashed border-slate-400 rounded-md text-sm text-slate-600 hover:bg-slate-50 hover:border-slate-500" data-testid="timeline-add-btn">
