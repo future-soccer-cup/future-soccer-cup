@@ -6169,6 +6169,7 @@ DEFAULT_EVENTOS_CONFIG: Dict[str, Any] = {
     "scenarios_photos": [],
     "premiacion_title": "PREMIACIÓN",
     "premiacion_subtitle": "EN LA FSC CADA NIÑO ES UN TESORO Y SU ESFUERZO MERECE UN PREMIO...",
+    "premiacion_gallery": [],
     "clubs_title": "Clubes que han Participado",
     "clubs_logos": [],
 }

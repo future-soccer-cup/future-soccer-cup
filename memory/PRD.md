@@ -16,6 +16,11 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-09-01 — Iter79: Sección "Premiación" en /eventos ahora es una galería con carrusel automático (antes: lista de copas + iconos)
+- Se quitó el bloque de "COPA ORO/PLATA/BRONCE/KOW/TITANES" + iconos de trofeo/medalla + lista "MVP/FAIR PLAY/GOLEADOR/MEJOR PORTERO" (campos `awards_cups`/`awards_individual` de festival y premier, ya no se usan ni se muestran).
+- Reemplazado por una galería de fotos con transición automática (crossfade cada 4.5s, usando el componente ya existente `ImageCarousel.jsx` — mismo que usa el Hero). Si hay 1 sola foto, se muestra fija sin rotar (comportamiento nativo del componente). Si no hay fotos, muestra un estado vacío ("Aún no hay fotos de premiación configuradas").
+- Nuevo campo `eventos.premiacion_gallery: string[]` (dict flexible en Mongo, sin necesidad de tocar el modelo Pydantic `HomeSettings.eventos: Dict[str, Any]`). Editable en Admin > Configuración de Eventos > Sección 8, reusando el componente `ImageListUpload` (agregar/quitar/reordenar con flechas ← →, igual que "Fotos del carrusel" de Escenarios y "Escudos de clubes").
+- Verificado con datos de prueba (2 fotos temporales) que la rotación automática funciona (cambia de foto tras ~4.5s) y que el editor de Admin aparece correctamente; datos de prueba revertidos a `[]` tras la verificación.
 ### 2026-08-31 — Iter76: Tagline "Torneo Internacional" (v7 — más a la derecha + fix parpadeo de fuente al cargar)
 - Corrido más a la derecha (`ml-10 md:ml-16`, antes `ml-4 md:ml-6`).
 - **Fix FOUT**: el usuario notó que al cargar la página se veía primero una fuente de reemplazo y luego cambiaba a Natura Script (parpadeo normal de `font-display: swap`). Se agregó estado `ready` en `StretchedTagline`: el texto queda con `opacity: 0` hasta que `document.fonts.ready` resuelve (fuente realmente cargada), y solo entonces se calcula el tamaño final y se muestra con transición de opacidad. Antes el `fit()` corría inmediatamente con la fuente de reemplazo, causando además un salto de tamaño visible al llegar la fuente real.

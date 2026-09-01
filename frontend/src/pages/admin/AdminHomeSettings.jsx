@@ -589,29 +589,20 @@ function EventosEditor({ value, onChange }) {
       </SubSection>
 
       {/* Sección 8 — Premiación */}
-      <SubSection title="8. Premiación — títulos y premios por evento">
+      <SubSection title="8. Premiación — título y galería de fotos">
         <Field label="Título grande" v={v.premiacion_title} onChange={(x) => patch({ premiacion_title: x })} placeholder="PREMIACIÓN" />
         <label className="block mt-3">
           <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Subtítulo</span>
           <textarea rows={2} value={v.premiacion_subtitle || ""} onChange={(e) => patch({ premiacion_subtitle: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" placeholder="EN LA FSC CADA NIÑO ES UN TESORO..." />
         </label>
-        <div className="grid md:grid-cols-2 gap-3 mt-3">
-          <label className="block">
-            <span className="text-xs font-bold uppercase tracking-wider text-red-700">Festival — Copas (badges rojos, separadas por coma)</span>
-            <input type="text" value={arrToCsv(v.festival?.awards_cups)} onChange={(e) => patchFestival({ awards_cups: csvToArr(e.target.value) })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" placeholder="COPA ORO, COPA PLATA, COPA BRONCE..." />
-          </label>
-          <label className="block">
-            <span className="text-xs font-bold uppercase tracking-wider text-blue-700">Festival — Individuales (azul, separadas por coma)</span>
-            <input type="text" value={arrToCsv(v.festival?.awards_individual)} onChange={(e) => patchFestival({ awards_individual: csvToArr(e.target.value) })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" placeholder="MVP, FAIR PLAY, GOLEADOR, MEJOR PORTERO" />
-          </label>
-          <label className="block">
-            <span className="text-xs font-bold uppercase tracking-wider text-red-700">Premier — Copas (separadas por coma)</span>
-            <input type="text" value={arrToCsv(v.premier?.awards_cups)} onChange={(e) => patchPremier({ awards_cups: csvToArr(e.target.value) })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" placeholder="COPA ORO, COPA PLATA" />
-          </label>
-          <label className="block">
-            <span className="text-xs font-bold uppercase tracking-wider text-blue-700">Premier — Individuales (separadas por coma)</span>
-            <input type="text" value={arrToCsv(v.premier?.awards_individual)} onChange={(e) => patchPremier({ awards_individual: csvToArr(e.target.value) })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" placeholder="MVP, FAIR PLAY, GOLEADOR, MEJOR PORTERO" />
-          </label>
+        <div className="mt-4">
+          <ImageListUpload
+            label="Galería de fotos de premiación (carrusel automático)"
+            hint="Se rota sola cada 4-5 segundos con crossfade. Con 1 sola foto se muestra fija. JPG horizontal recomendado."
+            values={v.premiacion_gallery || []}
+            onChange={(arr) => patch({ premiacion_gallery: arr })}
+            testId="premiacion-gallery"
+          />
         </div>
       </SubSection>
 

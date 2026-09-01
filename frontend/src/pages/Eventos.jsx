@@ -16,6 +16,7 @@ import api, { imgSrc } from "../lib/api";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe, renderPlaneCrash } from "../lib/designSystem";
 import ChevronStack from "../components/ChevronStack";
+import ImageCarousel from "../components/ImageCarousel";
 
 const RED = "#e31f27";
 const BLUE = "#0640c8";
@@ -80,12 +81,11 @@ export default function Eventos() {
         photos={ev.scenarios_photos || []}
       />
 
-      {/* SECCIÓN 8 — Premiación (según tab activo) */}
+      {/* SECCIÓN 8 — Premiación (galería con transición automática) */}
       <PremiacionSection
         title={ev.premiacion_title}
         subtitle={ev.premiacion_subtitle}
-        cups={active.awards_cups || []}
-        individual={active.awards_individual || []}
+        gallery={ev.premiacion_gallery || []}
       />
 
       {/* SECCIÓN 9 — Clubes */}
@@ -482,7 +482,7 @@ function ScenariosSection({ title, cursive, subTop, subBottom, photos }) {
 }
 
 
-function PremiacionSection({ title, subtitle, cups, individual }) {
+function PremiacionSection({ title, subtitle, gallery }) {
   return (
     <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-14" data-testid="premiacion-section">
       <div className="text-center mb-6 md:mb-8">
@@ -493,40 +493,21 @@ function PremiacionSection({ title, subtitle, cups, individual }) {
           {subtitle || ""}
         </p>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-4 items-center">
-        <div className="space-y-2" data-testid="premiacion-cups">
-          {cups.map((c, i) => (
-            <div
-              key={`cup-${i}`}
-              className="text-center px-4 py-3 rounded-sm text-white tracking-wider"
-              style={{ background: RED, ...PLANE_CRASH, fontSize: "clamp(1.4rem, 2.4vw, 1.9rem)" }}
-              data-testid={`cup-${i}`}
-            >
-              {renderPlaneCrash(c)}
-            </div>
-          ))}
+      {gallery.length > 0 ? (
+        <ImageCarousel
+          images={gallery.map((g) => imgSrc(g))}
+          intervalMs={4500}
+          fadeMs={900}
+          alt="Premiación FSC"
+          className="relative w-full h-64 sm:h-80 md:h-[420px] rounded-2xl overflow-hidden shadow-lg"
+          imgClassName="w-full h-full object-cover"
+          testId="premiacion-gallery"
+        />
+      ) : (
+        <div className="w-full h-48 md:h-64 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 text-sm italic" style={AGENCY_FB} data-testid="premiacion-gallery-empty">
+          Aún no hay fotos de premiación configuradas.
         </div>
-        <div className="flex flex-col items-center gap-3 order-first md:order-none" aria-hidden>
-          {cups.slice(0, Math.max(cups.length, 1)).map((_, i) => (
-            <div key={`icon-${i}`} className="flex items-center gap-7">
-              <img src="/award_icons/trophy_gold.jpg" alt="" className="w-14 h-14 rounded-full object-cover" />
-              <img src="/award_icons/medal_gold.jpg" alt="" className="w-14 h-14 rounded-full object-cover" />
-            </div>
-          ))}
-        </div>
-        <div className="space-y-1" data-testid="premiacion-individual">
-          {individual.map((a, i) => (
-            <div
-              key={`ind-${i}`}
-              className="leading-tight"
-              style={{ ...PLANE_CRASH, color: BLUE, fontSize: "clamp(1.4rem, 2.4vw, 2rem)" }}
-              data-testid={`indiv-${i}`}
-            >
-              {renderPlaneCrash(a)}
-            </div>
-          ))}
-        </div>
-      </div>
+      )}
     </section>
   );
 }
