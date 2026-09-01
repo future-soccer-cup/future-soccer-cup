@@ -16,6 +16,9 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-08-31 — Iter76: Tagline "Torneo Internacional" (v7 — más a la derecha + fix parpadeo de fuente al cargar)
+- Corrido más a la derecha (`ml-10 md:ml-16`, antes `ml-4 md:ml-6`).
+- **Fix FOUT**: el usuario notó que al cargar la página se veía primero una fuente de reemplazo y luego cambiaba a Natura Script (parpadeo normal de `font-display: swap`). Se agregó estado `ready` en `StretchedTagline`: el texto queda con `opacity: 0` hasta que `document.fonts.ready` resuelve (fuente realmente cargada), y solo entonces se calcula el tamaño final y se muestra con transición de opacidad. Antes el `fit()` corría inmediatamente con la fuente de reemplazo, causando además un salto de tamaño visible al llegar la fuente real.
 ### 2026-08-31 — Iter76: Tagline "Torneo Internacional" (v6 — corrida un poco a la derecha y reducida ligeramente)
 - Ajuste fino final: margen izquierdo (`ml-4 md:ml-6`) en el span para correrlo un poco hacia la derecha respecto al logo, y `SAFETY` bajado de `0.9` a `0.85` para reducir el tamaño levemente (sin que se note un cambio drástico). Verificado en Home y /nosotros.
 ### 2026-08-31 — Iter78: Textos más grandes en formularios de Ingreso y Registro (v3 — un poco más grande aún)
