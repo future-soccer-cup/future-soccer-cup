@@ -7,7 +7,7 @@
  * Al hacer clic en una noticia dentro del modal → expande con galería + texto completo.
  */
 import { useEffect, useState } from "react";
-import { X, ChevronLeft } from "lucide-react";
+import { X, ChevronLeft, Play } from "lucide-react";
 import api, { imgSrc } from "../lib/api";
 import { PLANE_CRASH, AGENCY_FB, renderPlaneCrash } from "../lib/designSystem";
 
@@ -229,6 +229,13 @@ function CategoryModal({ category, onClose }) {
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs">Sin imagen</div>
                     )}
+                    {n.video_url && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/30" data-testid={`noticia-item-video-badge-${i}`}>
+                        <span className="bg-white/90 rounded-full p-3 shadow-lg">
+                          <Play size={22} className="text-slate-900" fill="currentColor" />
+                        </span>
+                      </div>
+                    )}
                   </div>
                   <div className="p-4">
                     <h3 className="font-black text-slate-800 line-clamp-2" style={{ color: BLUE }}>{n.title}</h3>
@@ -255,6 +262,11 @@ function NewsDetail({ news }) {
   const images = news.images || [];
   return (
     <article className="p-4 md:p-6" data-testid="noticia-detail">
+      {news.video_url && (
+        <div className="mb-5 aspect-video bg-black rounded-md overflow-hidden" data-testid="noticia-video">
+          <video src={imgSrc(news.video_url)} controls playsInline className="w-full h-full object-contain" />
+        </div>
+      )}
       {images.length > 0 && (
         <div className="mb-5">
           <div className="aspect-video bg-slate-100 rounded-md overflow-hidden mb-2">

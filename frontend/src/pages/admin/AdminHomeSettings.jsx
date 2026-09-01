@@ -895,7 +895,7 @@ function NewsListEditor({ items, onChange, testId }) {
     [copy[idx], copy[t]] = [copy[t], copy[idx]];
     onChange(copy);
   };
-  const add = () => onChange([...items, { id: `news-${Date.now()}`, title: "Nueva noticia", body: "", images: [], published: true }]);
+  const add = () => onChange([...items, { id: `news-${Date.now()}`, title: "Nueva noticia", body: "", images: [], video_url: "", published: true }]);
 
   return (
     <div className="space-y-2" data-testid={`${testId}-list`}>
@@ -925,6 +925,15 @@ function NewsListEditor({ items, onChange, testId }) {
               values={n.images || []}
               onChange={(arr) => update(i, { images: arr })}
               testId={`${testId}-imgs-${i}`}
+            />
+          </div>
+          <div className="mt-2">
+            <VideoUpload
+              label="Video de la noticia (opcional)"
+              hint="Si cargas un video, el público lo verá al abrir esta noticia (máx 30MB)."
+              value={n.video_url}
+              onChange={(u) => update(i, { video_url: u })}
+              testId={`${testId}-video-${i}`}
             />
           </div>
         </div>
