@@ -40,26 +40,13 @@
 
 
 /* ====== FSC fuentes propias del manual de marca v2 ====== */
-/* Plane Crash y Natura Script no están en Google Fonts. Los declaramos como font-face
-   con `local()` para usar el archivo si el cliente lo tiene instalado; si no, el
-   navegador cae al siguiente fallback (Anton / Allura) automáticamente. */
-@font-face {
-    font-family: 'Plane Crash';
-    src: local('Plane Crash'), local('PlaneCrash');
-    font-weight: 400 900;
-    font-style: normal;
-    font-display: swap;
-}
-@font-face {
-    font-family: 'Natura Script';
-    /* La URL con url('/fonts/NaturaScript.otf') se declara en public/fonts.css
-       (cargado como link estático en index.html) para evitar que webpack la
-       procese como módulo. Aquí solo declaramos el fallback local. */
-    src: local('Natura Script'), local('NaturaScript'), local('Natura Script Regular');
-    font-weight: 400 700;
-    font-style: normal;
-    font-display: swap;
-}
+/* Plane Crash y Natura Script: declaradas exclusivamente en /public/fonts.css (con
+   `url()` real al archivo estático) para evitar que webpack procese la ruta como
+   módulo. IMPORTANTE: no re-declarar `@font-face` para estas familias aquí — una
+   segunda declaración con solo `local()` (sin url) pisaba la de fonts.css y hacía que
+   el navegador NUNCA cargara el archivo real, cayendo siempre al fallback (Anton /
+   Allura / Dancing Script) sin que se notara visualmente hasta que un usuario lo
+   detectó comparando con el diseño de marca real. */
 
 html, body {
     margin: 0;
