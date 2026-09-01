@@ -151,14 +151,12 @@ function IntroAndSelector({ top, bottom, events, activeKey, onSelect }) {
         <div className="mt-6 md:mt-8 flex items-center justify-center gap-2 md:gap-3 flex-wrap" data-testid="stats-event-selector">
           {events.map((ev) => {
             const isActive = ev.key === activeKey;
-            const rawLabel = ev.label || ev.key;
-            const words = rawLabel.trim().split(/\s+/);
             return (
               <button
                 key={ev.key}
                 type="button"
                 onClick={() => onSelect(ev.key)}
-                className="px-4 md:px-6 py-2 md:py-2.5 rounded-full transition-all text-base md:text-lg"
+                className="px-4 md:px-6 py-2 md:py-2.5 rounded-full transition-all text-sm md:text-base"
                 style={{
                   ...PLANE_CRASH,
                   background: isActive ? RED : "transparent",
@@ -168,14 +166,7 @@ function IntroAndSelector({ top, bottom, events, activeKey, onSelect }) {
                 }}
                 data-testid={`stats-event-${ev.key}`}
               >
-                {words.map((w, i) => (
-                  <span key={i}>
-                    {i > 0 && " "}
-                    {w.toUpperCase() === "PREMIER" ? (
-                      <span className="italic" style={{ ...CURSIVE, color: "inherit" }}>{w}</span>
-                    ) : renderPlaneCrash(w)}
-                  </span>
-                ))}
+                {renderPlaneCrash(ev.label || ev.key)}
               </button>
             );
           })}
@@ -219,7 +210,7 @@ function CategoriesGrid({ event, onSelectCat }) {
             <img src={imgSrc(event.logo_url)} alt="" className="max-h-24 md:max-h-32 object-contain" data-testid="stats-event-logo" />
           ) : null}
           <div className="text-center">
-            <div className="leading-none" style={{ ...PLANE_CRASH, color: BLUE, fontSize: "clamp(1.4rem, 2.4vw, 2.2rem)" }}>
+            <div className="leading-none" style={{ ...PLANE_CRASH, color: BLUE, fontSize: "clamp(1.7rem, 2.9vw, 2.7rem)" }}>
               {renderPlaneCrash(event.title_month || "")}
             </div>
             {isMulti ? (
@@ -230,7 +221,7 @@ function CategoriesGrid({ event, onSelectCat }) {
                 })}
               </div>
             ) : (
-              <div className="italic mt-1" style={{ ...CURSIVE, color: GOLD, fontSize: "clamp(2.2rem, 3.8vw, 3.4rem)" }} data-testid="stats-event-title-word">
+              <div className="italic mt-1" style={{ ...CURSIVE, color: GOLD, fontSize: "clamp(2.6rem, 4.4vw, 4rem)" }} data-testid="stats-event-title-word">
                 {event.title_word || ""}
               </div>
             )}
