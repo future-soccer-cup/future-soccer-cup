@@ -1,0 +1,27 @@
+{
+  "summary": "Frontend-only visual/measurement testing of the 'EL EJE CAFETERO LOS ESPERA' mascot section on Home (/) after raising the lion height to 980px. TEST1 PASS: mascot img measures exactly 980x980 px, top of hat is only 24px below the 'Comfenalco Soleden' subtitle (target <60px). TEST2 PASS: once the footer slide-up animation settles (footer scrolled into view), gap between img.bottom and [data-testid=home-footer].top is exactly 0.0px - lion base touches the red footer with no white space (an apparent 48px gap measured before the footer enters the viewport is only the framer-motion slide-up initial transform, not a layout gap). TEST3 PASS: cat-festival (left, right edge 738px) and cat-premier (left edge 1181px) render at the sides; lion spans 470-1450px so it visually sits behind the columns (z-0 vs z-10, pointer-events-none) with no interaction blocking; both 'Acepta el reto' buttons clicked normally and navigated to /registro-equipo. TEST4 PARTIAL: no overflow at 1920 (1920/1920), but 16px horizontal overflow at 1280 (1296/1280) and 1024 (1040/1024) - offenders are the gallery arrows [data-testid=gallery-prev / gallery-next] using -left-2/-right-2 in a DIFFERENT section, NOT the mascot. TEST5 PASS: mobile 390x844 renders single centered mascot img (342x342, left 24 / right 366) with no overflow (390/390).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Gallery carousel arrows (Home)", "issue": "16px horizontal overflow at viewport widths 1280 and 1024 (scrollWidth 1296/1040 vs clientWidth 1280/1024) caused by absolutely positioned arrows at -left-2 / -right-2 escaping the max-w-7xl container; unrelated to the mascot change but produces a horizontal scrollbar", "selector": "[data-testid='gallery-prev'], [data-testid='gallery-next']", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Home - EJE CAFETERO section", "issues": ["Requested layout achieved: lion 980px, hat 24px under subtitle, base flush with red footer (0px). No overlap/clipping of category columns.", "At 1024-1280px the 980px-wide lion visually comes close to the category cards, but no overlap of interactive elements was detected and CTAs remain clickable."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Optional: clamp the gallery arrow offsets (e.g. left-2/right-2 instead of -left-2/-right-2 below lg, or add overflow-x-hidden on that section) to remove the 16px horizontal overflow at 1024/1280."
+  ],
+  "critical_code_review_comments": [
+    "Mascot height 980px is hardcoded in two places (spacer [data-testid='mascot-box'] minHeight and [data-testid='mascot-box-img-wrap'] height). Consider a single CSS variable to avoid future mismatch regressions (the earlier 760/860 bug)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "not tested", "frontend": "95% (4/5 tests fully pass; TEST4 partial due to pre-existing gallery-arrow overflow at <1440px)"},
+  "seed_data_creation": "none",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Mascot fix verified at iteration 55: img exactly 980x980, gap to subtitle 24px, gap to footer 0px, centered at x=960 on 1920. IMPORTANT measurement note: the footer uses AnimateIn slide-up distance=48, so measuring footer.top before the footer is scrolled into view yields a false 48px gap - always scroll [data-testid='footer-heading'] into view and wait ~2s before measuring. Remaining known issue: 16px horizontal overflow at 1024/1280 from gallery-prev/gallery-next arrows (not mascot related).",
+  "rca_of_the_issue": "Previous white gap was a height mismatch between the mascot spacer and the absolutely positioned image wrapper; both are now 980px, so the section bottom equals the image bottom and the red footer starts exactly at that y coordinate (0px gap confirmed by getBoundingClientRect)."
+}
