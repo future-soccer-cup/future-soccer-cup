@@ -151,12 +151,14 @@ function IntroAndSelector({ top, bottom, events, activeKey, onSelect }) {
         <div className="mt-6 md:mt-8 flex items-center justify-center gap-2 md:gap-3 flex-wrap" data-testid="stats-event-selector">
           {events.map((ev) => {
             const isActive = ev.key === activeKey;
+            const rawLabel = ev.label || ev.key;
+            const words = rawLabel.trim().split(/\s+/);
             return (
               <button
                 key={ev.key}
                 type="button"
                 onClick={() => onSelect(ev.key)}
-                className="px-4 md:px-6 py-2 md:py-2.5 rounded-full transition-all text-sm md:text-base"
+                className="px-4 md:px-6 py-2 md:py-2.5 rounded-full transition-all text-base md:text-lg"
                 style={{
                   ...PLANE_CRASH,
                   background: isActive ? RED : "transparent",
@@ -166,7 +168,14 @@ function IntroAndSelector({ top, bottom, events, activeKey, onSelect }) {
                 }}
                 data-testid={`stats-event-${ev.key}`}
               >
-                {renderPlaneCrash(ev.label || ev.key)}
+                {words.map((w, i) => (
+                  <span key={i}>
+                    {i > 0 && " "}
+                    {w.toUpperCase() === "PREMIER" ? (
+                      <span className="italic" style={{ ...CURSIVE, color: "inherit" }}>{w}</span>
+                    ) : renderPlaneCrash(w)}
+                  </span>
+                ))}
               </button>
             );
           })}
@@ -221,7 +230,7 @@ function CategoriesGrid({ event, onSelectCat }) {
                 })}
               </div>
             ) : (
-              <div className="italic mt-1" style={{ ...CURSIVE, color: GOLD, fontSize: "clamp(1.8rem, 3.2vw, 2.8rem)" }} data-testid="stats-event-title-word">
+              <div className="italic mt-1" style={{ ...CURSIVE, color: GOLD, fontSize: "clamp(2.2rem, 3.8vw, 3.4rem)" }} data-testid="stats-event-title-word">
                 {event.title_word || ""}
               </div>
             )}
