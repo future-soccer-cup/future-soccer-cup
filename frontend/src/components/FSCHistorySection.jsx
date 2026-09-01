@@ -310,34 +310,35 @@ export default function FSCHistorySection({ settings }) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-8">
           <div className="relative">
             <div className="h-[3px] w-full bg-white/80 rounded-full" />
-            <div className="absolute inset-0 flex items-center justify-between">
+            <div className="absolute inset-0 flex items-center">
               {timeline.map((m, i) => {
                 const isActive = i === activeIdx;
                 return (
-                  <button
-                    key={m.key}
-                    type="button"
-                    onClick={() => goTo(i)}
-                    className="relative flex items-center justify-center transition-transform hover:scale-110"
-                    aria-label={m.label}
-                    data-testid={`history-dot-${m.key}`}
-                  >
-                    <span
-                      className="block rounded-full"
-                      style={{
-                        width: isActive ? 22 : 16,
-                        height: isActive ? 22 : 16,
-                        background: isActive ? "#ffffff" : BLUE,
-                        border: "3px solid #ffffff",
-                        transition: "all 0.2s ease",
-                      }}
-                    />
-                  </button>
+                  <div key={m.key} className="flex-1 flex items-center justify-center">
+                    <button
+                      type="button"
+                      onClick={() => goTo(i)}
+                      className="relative flex items-center justify-center transition-transform hover:scale-110"
+                      aria-label={m.label}
+                      data-testid={`history-dot-${m.key}`}
+                    >
+                      <span
+                        className="block rounded-full"
+                        style={{
+                          width: isActive ? 22 : 16,
+                          height: isActive ? 22 : 16,
+                          background: isActive ? "#ffffff" : BLUE,
+                          border: "3px solid #ffffff",
+                          transition: "all 0.2s ease",
+                        }}
+                      />
+                    </button>
+                  </div>
                 );
               })}
             </div>
           </div>
-          <div className="flex items-center justify-between mt-4">
+          <div className="flex items-center mt-4">
             {timeline.map((m, i) => (
               <button
                 key={`lbl-${m.key}`}
