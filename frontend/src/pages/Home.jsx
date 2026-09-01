@@ -540,7 +540,7 @@ function CategoryColumn({ title, dateBadge, logoUrl, ctaUrl, groups, testId }) {
       <div className="rounded-2xl p-3 bg-white" style={{ border: `3px solid #e31f27` }}>
         {groups.map((g, gi) => (
           <div key={g.label || `group-${gi}`} className={gi > 0 ? "mt-3" : ""}>
-            <div className="text-2xl md:text-3xl font-bold mb-2" style={{ ...AGENCY_FB, color: "#0640c8" }}>{g.label}</div>
+            <div className="text-3xl md:text-4xl font-bold mb-2" style={{ ...AGENCY_FB, color: "#0640c8" }}>{g.label}</div>
             <div className="grid grid-cols-3 gap-1.5">
               {g.items.map((c, i) => (
                 <div
@@ -557,7 +557,7 @@ function CategoryColumn({ title, dateBadge, logoUrl, ctaUrl, groups, testId }) {
           </div>
         ))}
       </div>
-      <Link to={ctaUrl} data-testid={`${testId}-cta`} className="inline-block mt-4 px-8 py-3 font-bold text-white rounded shadow text-lg md:text-xl transition-transform duration-200 ease-out hover:scale-110 hover:shadow-xl" style={{ ...AGENCY_FB, background: "#0640c8" }}>
+      <Link to={ctaUrl} data-testid={`${testId}-cta`} className="inline-block mt-4 px-8 py-3 font-bold text-white rounded shadow text-xl md:text-2xl transition-transform duration-200 ease-out hover:scale-110 hover:shadow-xl" style={{ ...AGENCY_FB, background: "#0640c8" }}>
         Acepta el reto
       </Link>
     </div>
