@@ -56,7 +56,7 @@ export function StretchedTagline({ text, color, className = "", testId }) {
         ref={textRef}
         data-testid={testId}
         className="inline-block whitespace-nowrap italic leading-none ml-10 md:ml-16 transition-opacity duration-300"
-        style={{ ...CURSIVE, color, fontSize: `${BASE_PX}px`, opacity: ready ? 1 : 0 }}
+        style={{ ...CURSIVE, color, fontWeight: 300, fontSize: `${BASE_PX}px`, opacity: ready ? 1 : 0 }}
       >
         {text}
       </span>
