@@ -1,0 +1,22 @@
+{
+  "summary": "Frontend-only verification (3rd iteration del fix del leon) en '/' Inicio, viewport 1920x1200. TEST 1 PASS: gap subtitulo 'Comfenalco Soleden'.bottom (2546.89) -> mascot-box-img-wrap.top (2540.89) = -6px (toque/leve overlap), ya NO 24px. TEST 2 PASS: mascot-box-img-wrap.bottom (3590.89) -> home-footer.top (3590.89) = 0px una vez completada la animacion slide-up del footer. TEST 3 PASS: separacion horizontal cat-festival.right -> cat-premier.left = 485.33px y el boton 'Acepta el reto' navega a /registro-equipo. Imagen mascota carga OK (natural 1667x1667, render 1050x1050, sin letterboxing).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Nota de medicion (no es bug): el footer usa AnimateIn slide-up distance=48, por lo que si se mide antes de que la animacion entre en viewport el gap wrap.bottom->footer.top aparece como 48px (transform pendiente). Al hacer scroll_into_view del footer y esperar, el transform es 'none' y el gap real es 0px. Los futuros tests deben medir el footer solo despues de que su animacion termine.",
+    "El desacople de alturas (espaciador minHeight 1020px vs wrap height 1050px) es fragil: cualquier cambio en la altura del contenido de las columnas o en la imagen requerira reajustar ambos numeros manualmente. Recomendado usar una CSS var compartida (--mascot-h) con un offset (calc(var(--mascot-h) + 30px)) para documentar la intencion."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "not tested", "frontend": "100% (3/3 tests)"},
+  "seed_data_creation": "none",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Home.jsx: espaciador [data-testid='mascot-box'] minHeight 1020px, wrap [data-testid='mascot-box-img-wrap'] height 1050px (absolute bottom-0). Mediciones verificadas en 1920x1200: sub.bottom 2546.89, wrap.top 2540.89 (gap -6px), wrap.bottom 3590.89 == footer.top (gap 0px), gap horizontal festival/premier 485.33px. IMPORTANTE: esperar el fin de la animacion del footer antes de medir su top. El overflow preexistente de la galeria sigue sin revisarse (issue conocido/aceptado).",
+  "rca_of_the_issue": "El fix funciono: al dar al wrap absoluto 30px mas de altura que el espaciador, su top (calculado desde bottom-0 del contenedor) sube 30px por encima del top del contenedor y absorbe el margin-bottom de 24px del subtitulo, resultando en -6px de overlap. El bottom permanece anclado al bottom del contenedor, por lo que el gap 0px con el footer no se rompio."
+}

@@ -1,0 +1,28 @@
+{
+  "summary": "Frontend-only verificación de los 2 cambios en Home (mascota 1020px y grid gap-14). TEST 1 FALLA: el gap entre 'Comfenalco Soleden' y el top de la imagen del león sigue siendo exactamente 24.0px (no cambió respecto a iteration_55) — subir la altura de 980->1020px no cierra el gap por un problema estructural. TEST 2 PASA (gap imagen->footer = 0.0px). TEST 3 PASA (separación horizontal Festival->Premier subió de ~442.7px a 485.3px, consistente con gap 24->56px en desktop; el león ya no se ve pegado a las tarjetas). TEST 4 PASA (ambos 'Acepta el reto' navegan a /registro-equipo; overflow 0px en 1920 y 16px preexistente en 1280/1024, sin empeorar).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Home.jsx mascota (mascot-box-img-wrap / mascot-box)", "issue": "El gap de 24px con 'Comfenalco Soleden' NO se cerró. Medido a 1920x1200: subtitle.bottom=623.9, img.top=647.9 => gap 24.0px (idéntico a iteration_55). Causa: el wrap de la imagen es absolute bottom-0 dentro del contenedor cuya ALTURA la define el espaciador [data-testid='mascot-box'] (minHeight). Ambos se subieron a 1020px, así que el contenedor creció lo mismo que la imagen y el top del wrap sigue coincidiendo exactamente con container.top; el gap residual es el margin-bottom:24px (mb-6) del subtítulo. Con esta estructura el león nunca tocará el subtítulo mientras espaciador y wrap tengan la misma altura.", "selector": "[data-testid='mascot-box-img-wrap']", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Home / sección Eje Cafetero", "issues": ["El aumento de gap a lg:gap-14 se ve bien: hay más aire entre el león y las tarjetas Festival/Premier (bordes de tarjetas en x=717.3 y x=1202.7; el sombrero/cabeza visible ocupa ~759-1200px, sin solaparse con los recuadros)."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Para que el león TOQUE el subtítulo: hacer que la altura del wrap de la imagen sea MAYOR que la del espaciador (el wrap no depende del espaciador). Ej.: mantener [data-testid='mascot-box'] minHeight 1020px y poner [data-testid='mascot-box-img-wrap'] height: 1044px (1020 + 24), o directamente style={{height:'calc(100% + 24px)'}}. Alternativa equivalente: quitar/reducir el mb-6 del [data-testid='region-subtitle'] (mb-6 -> mb-0) y dejar ambas alturas iguales.",
+    "Verificar tras el fix que el gap imagen->footer siga en 0px (el bottom está anclado al footer, no debería cambiar)."
+  ],
+  "critical_code_review_comments": [
+    "Home.jsx: la altura de la mascota está duplicada como literal en dos sitios (espaciador y wrap). El comentario del código menciona una var --mascot-h que no se usa; conviene definir una CSS var/constante única y derivar el wrap con calc(var(--mascot-h) + offset) para evitar que futuros ajustes vuelvan a mover ambos a la vez y anularse."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "not tested", "frontend": "75% (3/4 tests)"},
+  "seed_data_creation": "ninguno",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Mediciones a 1920x1200 tras scroll y 2.5s de espera (animaciones asentadas): wrap/box height=1020, container height=1020 (definida por el espaciador), gap subtítulo->imagen=24.0px, gap imagen->footer=0.0px, gap horizontal cat-festival.right -> cat-premier.left = 485.33px tanto en 1920 como en 1280 (lg activo). Overflow horizontal: 0px en 1920, 16px en 1280 y 1024 (issue preexistente de flechas de galería, sin cambios). CTAs 'Acepta el reto' de ambas columnas navegan correctamente a /registro-equipo.",
+  "rca_of_the_issue": "El wrap de la imagen (absolute bottom-0) vive en el mismo contenedor relativo cuya altura la fija el espaciador central con minHeight. Al subir ambos valores de 980 a 1020px, el contenedor crece exactamente igual que la imagen, por lo que el top del wrap sigue igualado a container.top y el gap visible permanece igual al margin-bottom (24px, mb-6) del subtítulo. La solución es desacoplar: wrap más alto que el espaciador, o eliminar el mb-6 del subtítulo."
+}
