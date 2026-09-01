@@ -40,41 +40,47 @@ export default function Noticias() {
 
 
 function HeroSection({ heroUrl, watermark, title, subtitle }) {
+  const titleStyle = {
+    ...PLANE_CRASH,
+    fontSize: "clamp(3.4rem, 10vw, 9rem)",
+    letterSpacing: "0.01em",
+  };
   return (
     <section className="relative w-full h-72 md:h-[420px] lg:h-[500px] overflow-hidden bg-slate-800" data-testid="noticias-hero">
       {heroUrl ? (
         <img src={imgSrc(heroUrl)} alt="" className="absolute inset-0 w-full h-full object-cover" />
       ) : null}
-      {/* Overlay azul semitransparente (deja ver la foto de fondo, como en la referencia) */}
-      <div className="absolute inset-0" style={{ background: `${BLUE}A6` }} />
-      {/* Watermark ghost */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden">
-        <div
-          className="leading-none whitespace-nowrap"
-          style={{
-            ...PLANE_CRASH,
-            color: "rgba(255,255,255,0.15)",
-            fontSize: "clamp(4rem, 15vw, 14rem)",
-            letterSpacing: "0.06em",
-          }}
-          data-testid="noticias-hero-watermark"
-        >
-          {renderPlaneCrash(watermark)}
-        </div>
-      </div>
-      {/* Título principal */}
+      {/* Overlay azul denso y oscuro (oscurece la foto de fondo) */}
+      <div className="absolute inset-0" style={{ background: "rgba(6, 20, 80, 0.82)" }} />
+      {/* Título principal + ecos apilados detrás (mismo tamaño, más arriba y desvanecidos) */}
       <div className="relative z-10 h-full flex flex-col items-center justify-center px-4 text-center">
-        <div
-          className="leading-[0.9]"
-          style={{
-            ...PLANE_CRASH,
-            color: "#ffffff",
-            fontSize: "clamp(3.4rem, 10vw, 9rem)",
-            textShadow: "3px 5px 0 rgba(0,0,0,0.28)",
-          }}
-          data-testid="noticias-hero-title"
-        >
-          {renderPlaneCrash(title)}
+        <div className="relative leading-[0.9]">
+          {/* Eco 2: más lejano, más desvanecido, más arriba */}
+          <div
+            className="absolute inset-x-0 -top-7 md:-top-12 leading-[0.9] pointer-events-none select-none"
+            style={{ ...titleStyle, color: "rgba(255,255,255,0.14)" }}
+            aria-hidden="true"
+            data-testid="noticias-hero-watermark-2"
+          >
+            {renderPlaneCrash(title)}
+          </div>
+          {/* Eco 1: intermedio */}
+          <div
+            className="absolute inset-x-0 -top-3.5 md:-top-6 leading-[0.9] pointer-events-none select-none"
+            style={{ ...titleStyle, color: "rgba(255,255,255,0.32)" }}
+            aria-hidden="true"
+            data-testid="noticias-hero-watermark-1"
+          >
+            {renderPlaneCrash(title)}
+          </div>
+          {/* Principal */}
+          <div
+            className="relative leading-[0.9]"
+            style={{ ...titleStyle, color: "#ffffff", textShadow: "3px 5px 0 rgba(0,0,0,0.28)" }}
+            data-testid="noticias-hero-title"
+          >
+            {renderPlaneCrash(title)}
+          </div>
         </div>
         <div
           className="mt-1 md:mt-3"
