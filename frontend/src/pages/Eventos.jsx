@@ -526,7 +526,7 @@ function ClubsSection({ title, logos }) {
       </h2>
       {hasLogos ? (
         <div
-          className="relative w-full overflow-hidden"
+          className="relative max-w-4xl mx-auto overflow-hidden"
           style={{ maskImage: "linear-gradient(90deg, transparent, black 5%, black 95%, transparent)", WebkitMaskImage: "linear-gradient(90deg, transparent, black 5%, black 95%, transparent)" }}
         >
           <div
