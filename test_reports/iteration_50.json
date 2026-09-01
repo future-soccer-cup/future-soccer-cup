@@ -1,0 +1,24 @@
+{
+  "summary": "Frontend-only verification of the reported session-persistence bug on Home ('/'). The embedded hero navbar in Home.jsx now reads AuthContext correctly. TEST1 (admin), TEST2 (team/coach), TEST3 (logout from Home) and TEST4 (hero smoke on /datos-estadisticas and /noticias) all PASSED. Login modal opened reliably on a normal click (no overlay/timing issue found in this environment).",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Home.jsx hero navbar and the shared Navbar.jsx duplicate the same conditional auth-nav block (user? ADMIN/MI EQUIPO/SALIR : INGRESO/REGISTRO) plus the same nav-link array. Consider extracting a shared <NavAuthActions/> + nav items constant to avoid this class of bug recurring (DRY).",
+    "Both Home hero navbar and shared Navbar render data-testid='nav-link-ingreso'; when both are mounted on the same route a testid collision could occur. Currently Home does not render the shared Navbar, so no collision, but keep in mind for future layout changes.",
+    "Home.jsx is 558 lines and growing; consider splitting Hero/Gallery/Stats sections into components."
+  ],
+  "updated_files": [],
+  "success_rate": { "backend": "N/A (out of scope)", "frontend": "100% (4/4 requested tests passed)" },
+  "seed_data_creation": "None. Logged out of both accounts after testing; no data created or modified.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": false,
+  "test_credentials": "admin@futuresoccercup.com / FSCAdmin2025! and coach@test.com / Coach2025! both verified working",
+  "context_for_next_testing_agent": "Login flow verified via Playwright: click [data-testid=nav-link-ingreso] -> [data-testid=login-modal-overlay] appears within ~1s -> fill login-modal-email/login-modal-password -> login-modal-submit. Admin redirects to /admin, team to /mi-equipo. On Home the embedded navbar is scoped by [data-testid=hero-nav-bar]; scope selectors to it. IMPORTANT: page.goto on '/' with wait_until='networkidle' times out (persistent connections from the chat widget) - use wait_until='domcontentloaded' instead. Also note renderPlaneCrash() splits hero titles into per-character spans, so get_by_text('MARCADOR', exact=True) returns 0; assert visually or via container testid instead.",
+  "rca_of_the_issue": "Original bug RCA (confirmed by code review + reproduction of the fixed state): Home.jsx renders its own hero navbar independent from the shared Navbar.jsx and never consumed useAuth(), so it always rendered INGRESO/REGISTRO, giving the impression the session was lost when navigating back to '/'. The fix (useAuth() + conditional ADMIN/MI EQUIPO/SALIR block) is verified working for both SPA navigation (logo click) and a full hard reload of '/' (cookie-based rehydration keeps ADMIN + SALIR visible). Logout from Home restores INGRESO/REGISTRO immediately."
+}

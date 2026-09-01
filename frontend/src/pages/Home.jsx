@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import api from "../lib/api";
 import { useLoginModal } from "../context/LoginModalContext";
-import { ChevronLeft, ChevronRight, Calendar, MessageCircle, Mail, Instagram, Facebook } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
+import { ChevronLeft, ChevronRight, Calendar, MessageCircle, Mail, Instagram, Facebook, LogOut, UserCircle2, Shield } from "lucide-react";
 import { PLANE_CRASH, AGENCY_FB, NEO_SANS, STENCIL, CURSIVE, renderPlaneCrash, RED, BLUE, GRAY } from "../lib/designSystem";
 import ChevronStack from "../components/ChevronStack";
 import AnimateIn from "../components/AnimateIn";
@@ -19,6 +20,9 @@ const scrollToStats = (e) => {
 
 export default function Home() {
   const { openLogin } = useLoginModal();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const handleLogout = async () => { await logout(); navigate("/"); };
   const [s, setS] = useState({});
   const [gallery, setGallery] = useState([]);
   const [gIdx, setGIdx] = useState(0);
@@ -174,8 +178,28 @@ export default function Home() {
                 </NavLink>
               ))}
               <div className="flex-1" />
-              <button type="button" onClick={openLogin} className="px-4 md:px-5 py-2 md:py-3 font-black uppercase tracking-wider text-lg md:text-xl hover:opacity-80" style={{ ...AGENCY_FB, color: RED }} data-testid="nav-link-ingreso">INGRESO</button>
-              <NavLink to="/registro-equipo" className="px-4 md:px-5 py-2 md:py-3 font-black uppercase tracking-wider text-lg md:text-xl hover:opacity-80" style={{ ...AGENCY_FB, color: RED }} data-testid="nav-link-registro">REGISTRO</NavLink>
+              {user ? (
+                <>
+                  {user.role === "admin" && (
+                    <NavLink to="/admin" className="px-4 md:px-5 py-2 md:py-3 font-black uppercase tracking-wider text-lg md:text-xl flex items-center gap-1.5 hover:opacity-80" style={{ ...AGENCY_FB, color: BLUE }} data-testid="nav-link-admin">
+                      <Shield size={16}/> ADMIN
+                    </NavLink>
+                  )}
+                  {user.role === "team" && (
+                    <NavLink to="/mi-equipo" className="px-4 md:px-5 py-2 md:py-3 font-black uppercase tracking-wider text-lg md:text-xl flex items-center gap-1.5 hover:opacity-80" style={{ ...AGENCY_FB, color: RED }} data-testid="nav-link-mi-equipo">
+                      <UserCircle2 size={16}/> MI EQUIPO
+                    </NavLink>
+                  )}
+                  <button type="button" onClick={handleLogout} className="px-4 md:px-5 py-2 md:py-3 font-black uppercase tracking-wider text-lg md:text-xl flex items-center gap-1.5 hover:opacity-80" style={{ ...AGENCY_FB, color: RED }} data-testid="nav-logout">
+                    <LogOut size={16}/> SALIR
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button type="button" onClick={openLogin} className="px-4 md:px-5 py-2 md:py-3 font-black uppercase tracking-wider text-lg md:text-xl hover:opacity-80" style={{ ...AGENCY_FB, color: RED }} data-testid="nav-link-ingreso">INGRESO</button>
+                  <NavLink to="/registro-equipo" className="px-4 md:px-5 py-2 md:py-3 font-black uppercase tracking-wider text-lg md:text-xl hover:opacity-80" style={{ ...AGENCY_FB, color: RED }} data-testid="nav-link-registro">REGISTRO</NavLink>
+                </>
+              )}
             </div>
           </div>
 
