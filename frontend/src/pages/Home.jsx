@@ -3,7 +3,8 @@ import { Link, NavLink, useNavigate } from "react-router-dom";
 import api from "../lib/api";
 import { useLoginModal } from "../context/LoginModalContext";
 import { useAuth } from "../context/AuthContext";
-import { ChevronLeft, ChevronRight, Calendar, MessageCircle, Mail, Instagram, Facebook, LogOut, UserCircle2, Shield } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, Mail, Instagram, Facebook, LogOut, UserCircle2, Shield } from "lucide-react";
+import { WhatsAppIcon } from "../components/WhatsAppIcon";
 import { PLANE_CRASH, AGENCY_FB, NEO_SANS, STENCIL, CURSIVE, renderPlaneCrash, RED, BLUE, GRAY } from "../lib/designSystem";
 import ChevronStack from "../components/ChevronStack";
 import AnimateIn from "../components/AnimateIn";
@@ -447,7 +448,7 @@ export default function Home() {
               data-testid="footer-whatsapp"
             >
               <span className="bg-[#25D366] rounded-full p-3 inline-flex shadow-md">
-                <MessageCircle size={28} className="text-white" strokeWidth={2.4} />
+                <WhatsAppIcon size={28} />
               </span>
               <span className="font-black tracking-wider text-lg md:text-xl lg:text-2xl whitespace-nowrap" style={AGENCY_FB} data-testid="footer-phone-text">
                 {s.contact_phone || "+57 324 6134658"}
@@ -514,7 +515,7 @@ export default function Home() {
         data-testid="floating-whatsapp"
         aria-label="WhatsApp"
       >
-        <MessageCircle size={28} strokeWidth={2.5} />
+        <WhatsAppIcon size={28} />
       </a>
     </div>
   );

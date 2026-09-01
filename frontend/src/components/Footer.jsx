@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../lib/api";
-import { MessageCircle, Mail, Instagram, Facebook } from "lucide-react";
+import { Mail, Instagram, Facebook } from "lucide-react";
+import { WhatsAppIcon } from "./WhatsAppIcon";
 import { PLANE_CRASH, AGENCY_FB, renderPlaneCrash, RED, BLUE } from "../lib/designSystem";
 
 /**
@@ -33,7 +34,7 @@ export default function Footer() {
         <div className="space-y-5">
           <a href={s.whatsapp_url || `https://wa.me/${phone.replace(/\D/g, "")}`} target="_blank" rel="noreferrer" className="flex items-center gap-4 hover:opacity-80" data-testid="footer-whatsapp">
             <span className="bg-white rounded-full p-3 inline-flex shadow-md" style={{ color: BLUE }}>
-              <MessageCircle size={28} strokeWidth={2.4} />
+              <WhatsAppIcon size={28} color={BLUE} />
             </span>
             <span className="font-black tracking-wider text-lg md:text-xl lg:text-2xl text-white whitespace-nowrap" style={AGENCY_FB} data-testid="footer-phone-text">
               {phone}
