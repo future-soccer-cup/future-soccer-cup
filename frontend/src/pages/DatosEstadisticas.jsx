@@ -74,6 +74,11 @@ export default function DatosEstadisticas() {
 
 
 function HeroSection({ heroUrl, watermark, titleTop, titleBottom }) {
+  const titleTopStyle = {
+    ...PLANE_CRASH,
+    fontSize: "clamp(3.5rem, 10vw, 9rem)",
+    letterSpacing: "0.01em",
+  };
   return (
     <section className="relative w-full h-72 md:h-[420px] lg:h-[500px] overflow-hidden bg-slate-800" data-testid="stats-hero">
       {heroUrl ? (
@@ -81,34 +86,35 @@ function HeroSection({ heroUrl, watermark, titleTop, titleBottom }) {
       ) : null}
       {/* Overlay rojo denso y oscuro (oscurece la foto de fondo) */}
       <div className="absolute inset-0" style={{ background: "rgba(180, 0, 0, 0.75)" }} />
-      {/* Watermark ghost — grande, corrido a la derecha y recortado en el borde */}
-      <div className="absolute inset-0 flex items-center justify-end pointer-events-none select-none overflow-hidden">
-        <div
-          className="leading-none whitespace-nowrap translate-x-[18%]"
-          style={{
-            ...PLANE_CRASH,
-            color: "rgba(255,255,255,0.12)",
-            fontSize: "clamp(7rem, 24vw, 22rem)",
-            letterSpacing: "0.08em",
-          }}
-          data-testid="stats-hero-watermark"
-        >
-          {renderPlaneCrash(watermark)}
-        </div>
-      </div>
-      {/* Título principal */}
+      {/* Título principal + ecos apilados detrás (mismo tamaño, más arriba y desvanecidos) */}
       <div className="relative z-10 h-full flex flex-col items-center justify-center px-4 text-center">
-        <div
-          className="leading-[0.9]"
-          style={{
-            ...PLANE_CRASH,
-            color: "#ffffff",
-            fontSize: "clamp(3.5rem, 10vw, 9rem)",
-            textShadow: "3px 5px 0 rgba(0,0,0,0.25)",
-          }}
-          data-testid="stats-hero-title-top"
-        >
-          {renderPlaneCrash(titleTop)}
+        <div className="relative leading-[0.9]">
+          {/* Eco 2: más lejano, más desvanecido, más arriba */}
+          <div
+            className="absolute inset-x-0 -top-7 md:-top-12 leading-[0.9] pointer-events-none select-none"
+            style={{ ...titleTopStyle, color: "rgba(255,255,255,0.14)" }}
+            aria-hidden="true"
+            data-testid="stats-hero-watermark-2"
+          >
+            {renderPlaneCrash(titleTop)}
+          </div>
+          {/* Eco 1: intermedio */}
+          <div
+            className="absolute inset-x-0 -top-3.5 md:-top-6 leading-[0.9] pointer-events-none select-none"
+            style={{ ...titleTopStyle, color: "rgba(255,255,255,0.32)" }}
+            aria-hidden="true"
+            data-testid="stats-hero-watermark-1"
+          >
+            {renderPlaneCrash(titleTop)}
+          </div>
+          {/* Principal */}
+          <div
+            className="relative leading-[0.9]"
+            style={{ ...titleTopStyle, color: "#ffffff", textShadow: "3px 5px 0 rgba(0,0,0,0.25)" }}
+            data-testid="stats-hero-title-top"
+          >
+            {renderPlaneCrash(titleTop)}
+          </div>
         </div>
         <div
           className="leading-[0.9] mt-1 md:mt-3"
