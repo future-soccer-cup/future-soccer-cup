@@ -1,0 +1,29 @@
+{
+  "summary": "Frontend-only visual verification of the enlarged mascot (lion) in the Home '/' EJE CAFETERO section. Scroll worked fine for me (no scroll bug reproduced). Measured absolute page geometry at 1920x1080 and 390x844. RESULT: the lion's bottom now touches the red footer exactly (gap = 0.07px), so the 'no white gap before the red strip' part of the request is satisfied. HOWEVER the image itself did NOT get bigger: it renders at 394.67 x 394.67 px inside a 760px-tall box, so there is ~365px of empty white space ABOVE the lion inside mascot-box. Root cause: Tailwind preflight sets img{max-width:100%} and the lion is a square 1667x1667 webp inside a 394.67px-wide grid column, so 'h-full' is overridden by the width cap and aspect ratio. Since the previous CSS had scale-110 on the same 394px render, the lion is effectively ~10% SMALLER than before, not 'notablemente más grande'. Regression check passed: FESTIVAL and PREMIER columns render correctly side by side, no overlap/clipped text (extra white space below them as expected). Mobile view unchanged and correct (lion 342x342, 80px gap to footer).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Home.jsx mascot (EJE CAFETERO section)", "issue": "Lion image renders only 394.67x394.67px inside the 760px-tall mascot-box, leaving ~365px of white space above it. The image did not get larger (it is ~10% smaller than before since scale-110 was removed). Cause: Tailwind preflight img{max-width:100%} + square 1667x1667 asset + 394.67px grid column width override 'h-full'.", "selector": "[data-testid='mascot-box'] img", "priority": "HIGH"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Home desktop - home-region", "issues": ["Vertical white band (~365px) between the FESTIVAL/PREMIER cards and the top of the lion, because the lion cannot fill the 760px box height", "Lion looks narrow/cramped: it is constrained to the 394px center grid column while the section is 1920px wide"]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "To actually enlarge the lion, let it break out of the 394px grid column: e.g. give the img className 'h-[760px] w-auto max-w-none object-contain object-bottom' (max-w-none is required to defeat Tailwind preflight max-width:100%), or absolutely position the mascot in the existing 'relative' wrapper (e.g. absolute bottom-0 left-1/2 -translate-x-1/2 h-[760px] max-w-none pointer-events-none) so it overlaps the empty center area without affecting the grid.",
+    "After enlarging, re-verify that the lion bottom still lands exactly on the footer top (currently gap = 0.07px, correct) and that it does not overlap the FESTIVAL/PREMIER cards at 1024-1280px widths."
+  ],
+  "critical_code_review_comments": [
+    "Fixed pixel minHeight of 760px on mascot-box is brittle across lg (1024px) to 2xl widths; consider aspect/vh-based sizing or absolute positioning instead.",
+    "Duplicated mascot <img> markup for desktop/mobile could share a single component/const for the className and alt text."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "not tested", "frontend": "TEST1 partial (bottom alignment OK, enlargement FAILED), TEST2 PASS, TEST3 PASS"},
+  "seed_data_creation": "none",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Scroll on '/' works via page.evaluate(scrollIntoView) — the previously reported scroll problem did not reproduce. Useful measurement snippet: compare absolute bottoms of [data-testid='mascot-box'] img vs top of [data-testid='home-footer']. Mascot asset is square 1667x1667 webp served from /api/files/... . Two unrelated 401 console errors appear on home load (likely auth/me probe) - not investigated.",
+  "rca_of_the_issue": "Tailwind's preflight applies max-width:100% to img. The mascot is in the middle column of a 3-column max-w-7xl grid (~394.67px wide). With a 1:1 aspect asset, the width cap forces the rendered height to 394.67px, so the 'h-full' (100% of the 760px box) never takes effect; the flex items-end alignment then pushes the small image to the bottom, which is why the bottom edge correctly meets the footer while a large white gap remains above."
+}

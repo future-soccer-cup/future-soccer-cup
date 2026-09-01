@@ -1,0 +1,22 @@
+{
+  "summary": "Frontend-only retest (3ra iteración) del fix de la mascota (león) en '/' Inicio. Medí con getBoundingClientRect el <img> dentro de [data-testid='mascot-box-img-wrap'] en 1920x1080, 1280x900, 1024x900 y regresión mobile 390x844, más regresión de CTAs. RESULTADO: el fix funcionó — centrado exacto (delta 0.0px en los 3 breakpoints), sin overflow horizontal atribuible al león, tamaño mucho mayor al de referencia (760px en 1280/1920, 640px en 1024 vs ~324-394px original), el borde inferior del león toca el footer (gap real 0px; los 48px medidos antes de la animación corresponden al slide-up de framer-motion del propio footer, confirmado por screenshot donde las patas tocan el borde rojo), sin loading='lazy' y sin quedar en blanco al hacer scroll rápido (complete=true, naturalWidth=1667, 760x760). CTAs de Festival y Premier siguen navegando a /registro-equipo. Mobile sin cambios (342x342, lazy, sin overflow).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Home (1280 y 1024)", "issues": ["Overflow horizontal residual de 16px (document.scrollWidth 1296 vs clientWidth 1280; window.scrollX llega a 16). Causa raíz NO es la mascota: los elementos que desbordan son [data-testid='gallery-prev'] (left:-16) y [data-testid='gallery-next'] (right:1296) por las clases '-left-2 lg:-left-10' / '-right-2 lg:-right-10' del carrusel de galería. Es un defecto preexistente e independiente del fix del león. Sugerencia: envolver la galería en un contenedor con overflow-x-hidden o usar left-0/right-0 en <1280px."]},
+      {"screen": "Home desktop (1024-1279)", "issues": ["Desviación menor vs spec: la clase es 'h-[560px] lg:h-[640px] xl:h-[760px]', por lo que en 1024-1279 (lg activo) el alto real es 640px, no 560px. El 560px base nunca aplica porque la mascota desktop está 'hidden lg:block'. Es inofensivo visualmente (el león se ve más grande y toca el footer), solo aclaro la discrepancia con lo descrito."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": ["(Opcional, no bloqueante) Corregir el overflow horizontal de 16px causado por gallery-prev/gallery-next en <1280px", "(Opcional) Limpiar la clase base h-[560px] de la mascota desktop ya que nunca se aplica"],
+  "critical_code_review_comments": ["El patrón actual (div plano con 'absolute bottom-0 left-1/2 -translate-x-1/2' envolviendo un <AnimateIn> que solo contiene el <img>) es la solución correcta: framer-motion ya no sobrescribe el transform de centrado. Mantener esta separación en futuros cambios.", "El 'overflow-x-hidden lg:overflow-x-visible' del contenedor max-w-7xl es innecesario ahora que el león está centrado y cabe dentro del viewport en todos los breakpoints probados; podría quedarse como red de seguridad sin efectos negativos observados."],
+  "updated_files": [],
+  "success_rate": {"backend": "not tested", "frontend": "100% (6/6 tests: centrado, overflow del león, tamaño+gap footer, carga de imagen, CTAs, mobile)"},
+  "seed_data_creation": "ninguno",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Mediciones exactas: 1920 -> img left 580 width 760 center 960.0 (delta 0.0); 1280 -> left 260 width 760 center 640.0 (delta 0.0); 1024 -> left 192 width 640 center 512.0 (delta 0.0). Gap al footer = 0 tras la animación slide-up del footer (los 48px son el estado inicial de framer-motion). Overflow 16px en 1280/1024 proviene de gallery-prev/gallery-next, no del león. Mobile 390: mascota 342x342, loading=lazy, scrollWidth==clientWidth.",
+  "rca_of_the_issue": "El bug de iteration_53 (león descentrado + overflow) se debía a que framer-motion escribía transform inline en el mismo nodo que llevaba '-translate-x-1/2', anulando el centrado. Moviendo la traslación a un div plano externo y dejando la animación en un nodo interno que solo envuelve al <img>, el centrado ya es exacto (delta 0px) y desaparece el overflow provocado por la mascota."
+}

@@ -1,0 +1,35 @@
+{
+  "summary": "Frontend-only retest del fix de la mascota (león) en Home ('/'), sección data-testid='home-region'. Medido con getBoundingClientRect en 1920x1080, 1280x900, 1024x900 y mobile 390x844. RESULTADO: el león SÍ es más grande (760x760 renderizado vs 394px antes) y SÍ toca el footer (gap = 0px). PERO el fix introdujo una regresión visual grave: el <img> NO está centrado horizontalmente porque framer-motion (AnimateIn) escribe transform inline ('transform: none' al terminar la animación) que sobrescribe la clase Tailwind '-translate-x-1/2'. Resultado: el león arranca en left = 50% del contenedor y se extiende hacia la derecha, tapando COMPLETAMENTE la columna PREMIER (overlap horizontal 395px en 1920 y 1280) y provocando overflow horizontal de página en 1280 (scrollWidth 1400 vs 1280) y en 1024 (1272 vs 1024). Los CTAs siguen clickeables (pointer-events-none + z-0 funcionan): ambos navegan a /registro-equipo. Mobile sin cambios (342x342, correcto).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Home.jsx - mascota desktop (AnimateIn + img)", "issue": "El león no está centrado: framer-motion aplica 'transform' inline (transform: none tras la animación slide-up) y anula la clase Tailwind '-translate-x-1/2'. Medido en 1920: img left=960 right=1720 (centro de página = 960) => todo el león queda a la derecha del centro y se solapa 395px con la columna PREMIER (1181-1576), tapando sus textos y botones. Igual en 1280 (img 640-1400 vs premier 861-1256) y 1024 (img 512-1272 vs viewport 1024).", "selector": "[data-testid=\"mascot-box-img-wrap\"] img", "priority": "HIGH"},
+      {"component": "Home.jsx - mascota desktop", "issue": "Overflow horizontal de la página por el león absoluto de 760px sin centrar: documentElement.scrollWidth 1400 con clientWidth 1280, y 1272 con 1024. Aparece scroll horizontal / león recortado en el borde derecho en viewports lg-xl.", "selector": "[data-testid=\"mascot-box-img-wrap\"]", "priority": "HIGH"},
+      {"component": "Home.jsx - mascota desktop (loading=lazy + w-auto)", "issue": "Intermitente: con scroll rápido al final de la página el <img> queda con width=0 (naturalWidth 0, aún cargando) porque usa h-[760px] w-auto con loading='lazy'; en una corrida el león no se veía (zona blanca) hasta que terminó de cargar. Considerar quitar lazy o fijar también un ancho/aspect-ratio.", "selector": "[data-testid=\"mascot-box-img-wrap\"] img", "priority": "MEDIUM"},
+      {"component": "Home.jsx - columna izquierda FESTIVAL / espaciador 760px", "issue": "Queda una franja blanca vacía grande (~430px) debajo del contenido de FESTIVAL/PREMIER porque el espaciador central reserva 760px de alto mientras las columnas miden 324-374px. Visualmente el bloque se ve muy vacío a la izquierda del león.", "selector": "[data-testid=\"mascot-box\"]", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Home - sección EL EJE CAFETERO LOS ESPERA (desktop lg/xl)", "issues": ["León descentrado a la derecha, encima de la columna PREMIER", "Scroll horizontal indeseado en 1024-1280px", "Espacio blanco vacío amplio a la izquierda del león"]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Centrar el león sin depender de la clase Tailwind translate: framer-motion sobrescribe transform. Opciones: (a) mover AnimateIn DENTRO de un div wrapper 'absolute bottom-0 left-1/2 -translate-x-1/2' y dejar que la animación aplique sólo al hijo; (b) pasar el desplazamiento como prop de motion: style={{ x: '-50%' }} en el AnimateIn (framer respeta x en style) y quitar '-translate-x-1/2'; (c) usar left:50% + marginLeft:-380px inline.",
+    "Evitar overflow horizontal: añadir overflow-x-hidden al contenedor de la sección o reducir la altura del león en breakpoints lg (ej. lg:h-[520px] xl:h-[760px]).",
+    "Revisar el hueco blanco de ~430px generado por el espaciador de 760px (data-testid='mascot-box') en desktop.",
+    "Opcional: quitar loading='lazy' del img de la mascota (o fijar aspect-square) para evitar width=0 durante la carga."
+  ],
+  "critical_code_review_comments": [
+    "Anti-patrón: combinar clases Tailwind de transform (-translate-x-1/2) con componentes framer-motion; motion escribe la propiedad transform inline y anula la clase. Siempre pasar transforms por style/props de motion.",
+    "El <img> con w-auto + loading='lazy' produce width 0 antes de cargar, rompiendo layouts absolutos."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A", "frontend": "50% (TEST1 tamaño OK, TEST2 gap con footer OK, TEST3 overlap FALLA aunque los CTAs siguen clickeables, TEST4 mobile OK)"},
+  "seed_data_creation": "Ninguno",
+  "should_call_test_agent_after_fix": true,
+  "should_main_agent_self_test": false,
+  "test_credentials": "No requeridas (contenido público)",
+  "context_for_next_testing_agent": "Medir siempre: img de [data-testid='mascot-box-img-wrap'] vs [data-testid='cat-premier'] y [data-testid='home-footer'] con getBoundingClientRect en 1920x1080, 1280x900 y 1024x900, y verificar document.documentElement.scrollWidth vs clientWidth (no debe haber overflow). Estado actual: gap león-footer = 0px OK; alto 760px OK; el problema es el centrado horizontal (transform inline de framer-motion) y el overflow. CTAs cat-festival-cta / cat-premier-cta navegan bien a /registro-equipo. Mobile 390x844 muestra el león a 342x342, sin cambios.",
+  "rca_of_the_issue": "framer-motion (componente AnimateIn) aplica animate {x:0,y:0} y al finalizar deja style inline 'transform: none', lo que sobrescribe la clase utilitaria '-translate-x-1/2' de Tailwind. Por eso el <img> absoluto queda anclado en left:50% sin la compensación del -50%, desplazándose 380px a la derecha: solapa la columna PREMIER y genera overflow horizontal en viewports <1400px."
+}
