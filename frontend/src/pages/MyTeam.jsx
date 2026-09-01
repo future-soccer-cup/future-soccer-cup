@@ -291,10 +291,17 @@ export default function MyTeam() {
               <div className="font-display text-sm uppercase tracking-tight mt-1">Solo el Directivo del club puede cotizar.</div>
             </div>
           )}
-          <Link to="/mis-cotizaciones" className="bg-slate-900 text-white rounded-xl p-4 hover:bg-slate-800 transition-colors" data-testid="cta-mis-cotizaciones">
-            <div className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Historial</div>
-            <div className="font-display text-2xl font-black uppercase tracking-tight">Mis cotizaciones →</div>
-          </Link>
+          {!isCT ? (
+            <Link to="/mis-cotizaciones" className="bg-slate-900 text-white rounded-xl p-4 hover:bg-slate-800 transition-colors" data-testid="cta-mis-cotizaciones">
+              <div className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Historial</div>
+              <div className="font-display text-2xl font-black uppercase tracking-tight">Mis cotizaciones →</div>
+            </Link>
+          ) : (
+            <div className="bg-slate-50 border-2 border-dashed border-slate-300 text-slate-500 rounded-xl p-4" data-testid="cta-mis-cotizaciones-blocked">
+              <div className="text-xs font-bold uppercase tracking-[0.2em]">Historial</div>
+              <div className="font-display text-sm uppercase tracking-tight mt-1">Solo el Directivo del club puede ver las cotizaciones.</div>
+            </div>
+          )}
         </div>
 
         {clubTeams.length > 0 && (
@@ -772,10 +779,17 @@ export default function MyTeam() {
             <div className="font-display text-sm uppercase tracking-tight mt-1">Solo el Directivo del club puede cotizar.</div>
           </div>
         )}
-        <Link to="/mis-cotizaciones" className="bg-slate-900 text-white rounded-xl p-4 hover:bg-slate-800 transition-colors" data-testid="cta-mis-cotizaciones">
-          <div className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Historial</div>
-          <div className="font-display text-2xl font-black uppercase tracking-tight">Mis cotizaciones →</div>
-        </Link>
+        {(user.manager_role || "").trim().toLowerCase() !== "cuerpo técnico" ? (
+          <Link to="/mis-cotizaciones" className="bg-slate-900 text-white rounded-xl p-4 hover:bg-slate-800 transition-colors" data-testid="cta-mis-cotizaciones">
+            <div className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Historial</div>
+            <div className="font-display text-2xl font-black uppercase tracking-tight">Mis cotizaciones →</div>
+          </Link>
+        ) : (
+          <div className="bg-slate-50 border-2 border-dashed border-slate-300 text-slate-500 rounded-xl p-4" data-testid="cta-mis-cotizaciones-blocked">
+            <div className="text-xs font-bold uppercase tracking-[0.2em]">Historial</div>
+            <div className="font-display text-sm uppercase tracking-tight mt-1">Solo el Directivo del club puede ver las cotizaciones.</div>
+          </div>
+        )}
       </div>
 
       {/* Equipos del club */}

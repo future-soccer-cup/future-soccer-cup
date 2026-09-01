@@ -2,10 +2,11 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api, { formatApiError } from "../lib/api";
 import { toast, Toaster } from "sonner";
-import { CreditCard, ChevronDown, ChevronUp, Receipt as ReceiptIcon, Download } from "lucide-react";
+import { CreditCard, ChevronDown, ChevronUp, Receipt as ReceiptIcon, Download, Lock } from "lucide-react";
 import PaymentForm from "../components/PaymentForm";
 import PaymentsList from "../components/PaymentsList";
 import { formatDate } from "../lib/dateFormat";
+import { useAuth } from "../context/AuthContext";
 
 const STATUS = {
   pendiente: { color: "bg-yellow-100 text-yellow-800", label: "Pendiente" },
@@ -19,6 +20,7 @@ const fmtUSD = (n) => `US$${Number(n || 0).toLocaleString("en-US", { minimumFrac
 const fmtCur = (n, cur) => (cur === "USD" ? fmtUSD(n) : fmtCOP(n));
 
 export default function MyQuotes() {
+  const { user } = useAuth();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(null);
@@ -27,9 +29,11 @@ export default function MyQuotes() {
   const [payments, setPayments] = useState({}); // {quoteId: {items, balance}}
   const [loadingPayments, setLoadingPayments] = useState(null);
 
+  const isCT = (user?.manager_role || "").trim().toLowerCase() === "cuerpo técnico";
+
   const reload = () => api.get("/quotes/mine").then((r) => setItems(r.data));
 
-  useEffect(() => { reload().finally(() => setLoading(false)); }, []);
+  useEffect(() => { if (!isCT) reload().finally(() => setLoading(false)); }, [isCT]);
 
   const loadPayments = async (qid) => {
     setLoadingPayments(qid);
@@ -76,6 +80,10 @@ export default function MyQuotes() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12" data-testid="my-quotes-page">
       <Toaster position="top-right" />
+      {isCT ? (
+        <MyQuotesGate />
+      ) : (
+        <>
       <div className="mb-8 flex items-end justify-between">
         <div>
           <span className="text-xs tracking-[0.25em] uppercase font-bold text-blue-700">Mi cuenta</span>
@@ -238,6 +246,21 @@ export default function MyQuotes() {
           );
         })}
       </div>
+      </>
+      )}
+    </div>
+  );
+}
+
+function MyQuotesGate() {
+  return (
+    <div className="max-w-2xl mx-auto py-20 text-center" data-testid="mis-cotizaciones-gate">
+      <div className="inline-flex items-center justify-center h-20 w-20 rounded-2xl bg-slate-900 text-white mb-6">
+        <Lock size={36} />
+      </div>
+      <h1 className="font-display text-4xl md:text-5xl font-black uppercase tracking-tighter">Solo el Directivo puede ver esto</h1>
+      <p className="text-slate-600 mt-3">Tu rol es Cuerpo Técnico. El historial de cotizaciones del club solo lo puede ver el Directivo.</p>
+      <Link to="/mi-equipo" className="inline-block mt-6 fsc-btn-primary px-6 py-3 rounded-md text-sm">Ir a Mi Club</Link>
     </div>
   );
 }

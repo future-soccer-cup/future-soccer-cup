@@ -1,0 +1,26 @@
+{
+  "summary": "Frontend-only verification of the new 'Mis cotizaciones' block for the Cuerpo Técnico (CT) role. TEST1 (CT on /mi-equipo 'Mi Club' view: cta-mis-cotizaciones-blocked present, cta-mis-cotizaciones link absent, cta-cotizar-blocked still present) PASSED. TEST3 (direct URL /mis-cotizaciones as CT shows mis-cotizaciones-gate with correct copy, no quotes list, back link to /mi-equipo works) PASSED. TEST4 regression (Directivo coach@test.com: cta-mis-cotizaciones is a working link, /mis-cotizaciones renders the normal history with new-quote-btn, no gate) PASSED. TEST2 (CT with own team_id) could NOT be executed with real data because the CT test account has team_id=null; verified by code review that MyTeam.jsx lines 782-792 use the identical conditional/testid/copy as the no-team view (lines 294-303).",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/mi-equipo (CT, Mi Club view)", "issues": ["A tall (~600px) empty dark-navy band renders between the navbar and the 'MI CLUB / AUDITCLUB' header, pushing content below the fold. Looks like a hero/banner section without image or content for CT users - worth checking if intentional."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "MyTeam.jsx duplicates the CT check three ways: a local `isCT` const (line 253) in the no-team view and two inline `(user.manager_role || '').trim().toLowerCase() !== 'cuerpo técnico'` expressions in the with-team view (lines 771, 782). MyQuotes.jsx repeats the same expression again. Extract a shared `isCuerpoTecnico(user)` helper/hook to avoid drift.",
+    "The CT restriction is UI-only. GET /api/quotes/mine is presumably still callable by a CT user (only the fetch is skipped client-side via `if (!isCT) reload()`). Enforce the role check server-side too, otherwise the restriction can be bypassed via the API.",
+    "MyTeam.jsx is 1388 lines; should be split into smaller components (club header, CTAs, roster, payments)."
+  ],
+  "updated_files": [],
+  "success_rate": { "backend": "N/A (out of scope)", "frontend": "100% (3/3 executable tests passed; TEST2 covered by code review only)" },
+  "seed_data_creation": "None. No data created or modified.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": false,
+  "test_credentials": "ct_smoke2_1780348474@test.com / abc123 (CT, AuditClub, team_id null) and coach@test.com / Coach2025! (Director técnico) both verified working",
+  "context_for_next_testing_agent": "Login flow: goto '/' with wait_until='domcontentloaded' (networkidle times out), click [data-testid=nav-link-ingreso] -> [data-testid=login-modal-overlay] -> fill login-modal-email/password -> login-modal-submit; team users land on /mi-equipo. Logout via get_by_text('SALIR'). To test the CT with-team view (TEST2) a CT account linked to a team_id is needed - none exists today. Two harmless 401 console errors appear on '/' before login (auth/me probe).",
+  "rca_of_the_issue": "N/A - feature verification, no defects found in the requested scope."
+}
