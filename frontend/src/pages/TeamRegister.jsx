@@ -149,8 +149,8 @@ export default function TeamRegister() {
         <Toaster richColors position="top-right" />
 
         <div className="relative max-w-4xl mx-auto px-8 sm:px-14 py-10 md:py-14 text-white">
-          <Link to="/login" className="text-lg md:text-xl uppercase tracking-widest font-bold text-white/80 hover:text-white flex items-center gap-1" data-testid="tr-back-login">
-            <ArrowLeft size={20}/> Volver
+          <Link to="/login" className="text-xl md:text-2xl uppercase tracking-widest font-bold text-white/80 hover:text-white flex items-center gap-1" data-testid="tr-back-login">
+            <ArrowLeft size={22}/> Volver
           </Link>
 
           {/* Título */}
@@ -212,7 +212,7 @@ export default function TeamRegister() {
           </form>
 
           {/* Enlace secundario */}
-          <div className="mt-10 text-white/80 text-xl md:text-2xl">
+          <div className="mt-10 text-white/80 text-2xl md:text-3xl">
             ¿Ya tienes cuenta?{" "}
             <Link to="/login" className="font-black underline hover:text-white" data-testid="tr-to-login">
               INICIA SESIÓN
