@@ -210,7 +210,7 @@ function CategoriesGrid({ event, onSelectCat }) {
             <img src={imgSrc(event.logo_url)} alt="" className="max-h-24 md:max-h-32 object-contain" data-testid="stats-event-logo" />
           ) : null}
           <div className="text-center">
-            <div className="leading-none" style={{ ...PLANE_CRASH, color: BLUE, fontSize: "clamp(1.7rem, 2.9vw, 2.7rem)" }}>
+            <div className="leading-none" style={{ ...PLANE_CRASH, color: BLUE, fontSize: "clamp(2rem, 3.3vw, 3.1rem)" }}>
               {renderPlaneCrash(event.title_month || "")}
             </div>
             {isMulti ? (
@@ -221,7 +221,7 @@ function CategoriesGrid({ event, onSelectCat }) {
                 })}
               </div>
             ) : (
-              <div className="italic mt-1" style={{ ...CURSIVE, color: GOLD, fontSize: "clamp(2.6rem, 4.4vw, 4rem)" }} data-testid="stats-event-title-word">
+              <div className="italic mt-1" style={{ ...CURSIVE, color: GOLD, fontSize: "clamp(3.4rem, 5.6vw, 5.2rem)" }} data-testid="stats-event-title-word">
                 {toTitleCaseForScript(event.title_word)}
               </div>
             )}
