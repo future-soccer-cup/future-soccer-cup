@@ -69,6 +69,19 @@ export function renderPlaneCrash(str) {
   );
 }
 
+/**
+ * Convierte un texto a Title Case (solo la primera letra de cada palabra en mayúscula)
+ * para usar con fuentes script/cursivas conectadas (ej. "Natura Script"). Estas fuentes
+ * están diseñadas para escritura fluida en minúsculas — si el texto viene en MAYÚSCULA
+ * SOSTENIDA (como lo puede escribir un admin en el CMS), cada letra se dibuja separada
+ * y rompe el efecto de caligrafía conectada. Se normaliza siempre antes de renderizar.
+ */
+export function toTitleCaseForScript(str) {
+  return String(str || "")
+    .toLowerCase()
+    .replace(/(^|\s)\S/g, (c) => c.toUpperCase());
+}
+
 // === Paleta de colores oficiales FSC ===
 export const COLORS = {
   RED: "#e31f27",

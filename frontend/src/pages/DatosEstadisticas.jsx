@@ -12,7 +12,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
 import api, { imgSrc } from "../lib/api";
-import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe, renderPlaneCrash } from "../lib/designSystem";
+import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe, renderPlaneCrash, toTitleCaseForScript } from "../lib/designSystem";
 
 const RED = "#e31f27";
 const BLUE = "#0640c8";
@@ -222,7 +222,7 @@ function CategoriesGrid({ event, onSelectCat }) {
               </div>
             ) : (
               <div className="italic mt-1" style={{ ...CURSIVE, color: GOLD, fontSize: "clamp(2.6rem, 4.4vw, 4rem)" }} data-testid="stats-event-title-word">
-                {event.title_word || ""}
+                {toTitleCaseForScript(event.title_word)}
               </div>
             )}
           </div>

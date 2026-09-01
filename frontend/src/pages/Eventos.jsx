@@ -14,7 +14,7 @@
 import { useEffect, useState } from "react";
 import api, { imgSrc } from "../lib/api";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe, renderPlaneCrash } from "../lib/designSystem";
+import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe, renderPlaneCrash, toTitleCaseForScript } from "../lib/designSystem";
 import ChevronStack from "../components/ChevronStack";
 import ImageCarousel from "../components/ImageCarousel";
 
@@ -266,7 +266,7 @@ function EventTitleSection({ month, word, isFestival }) {
               style={{ ...CURSIVE, color: GOLD, fontSize: "clamp(3.4rem, 8.5vw, 6.4rem)", textShadow: "0 2px 0 rgba(0,0,0,0.05)" }}
               data-testid="event-title-word"
             >
-              {word || ""}
+              {toTitleCaseForScript(word)}
             </div>
           )}
         </div>
