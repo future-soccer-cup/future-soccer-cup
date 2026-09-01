@@ -514,18 +514,35 @@ function PremiacionSection({ title, subtitle, gallery }) {
 
 
 function ClubsSection({ title, logos }) {
+  const hasLogos = logos.length > 0;
+  // Se duplica la lista para que la cinta haga loop perfecto: al desplazar exactamente
+  // -50% del ancho total (2 copias idénticas), el corte es invisible.
+  const track = hasLogos ? [...logos, ...logos] : [];
+  const durationSec = Math.max(18, logos.length * 3.5);
   return (
-    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-14 text-center" data-testid="clubs-section">
+    <section className="py-10 md:py-14 text-center" data-testid="clubs-section">
       <h2 className="italic mb-6 md:mb-8" style={{ ...CURSIVE, color: BLUE, fontSize: "clamp(2.4rem, 7vw, 4.6rem)" }}>
         {title || "Clubes que han Participado"}
       </h2>
-      <div className="flex flex-wrap items-center justify-center gap-6 md:gap-10">
-        {logos.length ? logos.map((l, i) => (
-          <img key={`club-${i}`} src={imgSrc(l)} alt="" className="h-20 md:h-28 lg:h-36 w-auto object-contain" data-testid={`club-logo-${i}`} />
-        )) : (
-          <span className="text-slate-400 text-sm italic" style={AGENCY_FB}>Aún no hay clubes configurados.</span>
-        )}
-      </div>
+      {hasLogos ? (
+        <div
+          className="relative w-full overflow-hidden"
+          style={{ maskImage: "linear-gradient(90deg, transparent, black 5%, black 95%, transparent)", WebkitMaskImage: "linear-gradient(90deg, transparent, black 5%, black 95%, transparent)" }}
+        >
+          <div
+            className="flex items-center gap-10 md:gap-16 w-max"
+            style={{ animation: `scroll ${durationSec}s linear infinite` }}
+          >
+            {track.map((l, i) => (
+              <div key={`club-${i}`} className="flex items-center justify-center shrink-0 h-20 md:h-28 w-28 md:w-36" data-testid={`club-logo-${i % logos.length}`}>
+                <img src={imgSrc(l)} alt="" className="max-h-full max-w-full object-contain" />
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <span className="text-slate-400 text-sm italic" style={AGENCY_FB}>Aún no hay clubes configurados.</span>
+      )}
     </section>
   );
 }

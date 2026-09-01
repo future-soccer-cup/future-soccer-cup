@@ -598,7 +598,7 @@ function EventosEditor({ value, onChange }) {
         <div className="mt-4">
           <ImageListUpload
             label="Galería de fotos de premiación (carrusel automático)"
-            hint="Se rota sola cada 4-5 segundos con crossfade. Con 1 sola foto se muestra fija. JPG horizontal recomendado."
+            hint="Tamaño recomendado: 1200×700 px horizontal. Se acepta cualquier formato de imagen (JPG, PNG, WEBP, HEIC, etc.). Se rota sola cada 4-5 segundos con crossfade; con 1 sola foto se muestra fija."
             values={v.premiacion_gallery || []}
             onChange={(arr) => patch({ premiacion_gallery: arr })}
             testId="premiacion-gallery"
@@ -612,7 +612,7 @@ function EventosEditor({ value, onChange }) {
         <div className="mt-3">
           <ImageListUpload
             label="Escudos de clubes"
-            hint="PNG con fondo transparente, 200×200 px aprox. Se muestran en fila."
+            hint="Tamaño recomendado: 300×300 px (cuadrado), fondo transparente PNG. Se acepta cualquier formato de imagen. Se muestran en una cinta horizontal que se desplaza sola en loop infinito (nunca se apilan en varias líneas)."
             values={v.clubs_logos || []}
             onChange={(arr) => patch({ clubs_logos: arr })}
             testId="clubs-logos"
