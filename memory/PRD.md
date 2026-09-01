@@ -16,6 +16,8 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-08-31 — Iter76: Tagline "Torneo Internacional" (v6 — corrida un poco a la derecha y reducida ligeramente)
+- Ajuste fino final: margen izquierdo (`ml-4 md:ml-6`) en el span para correrlo un poco hacia la derecha respecto al logo, y `SAFETY` bajado de `0.9` a `0.85` para reducir el tamaño levemente (sin que se note un cambio drástico). Verificado en Home y /nosotros.
 ### 2026-08-31 — Iter78: Textos más grandes en formularios de Ingreso y Registro (v3 — un poco más grande aún)
 - Tercer ajuste: `LoginModal.jsx` "¿OLVIDASTE TU CONTRASEÑA?" → `text-lg md:text-xl`, "¿ERES NUEVO?"/"REGÍSTRATE" → `text-2xl md:text-3xl`, "← Volver a Ingresar" (x3) → `text-lg md:text-xl`. `TeamRegister.jsx`: "← Volver" → `text-lg md:text-xl`, "Sé parte del" → `clamp(2.7rem,5.4vw,4rem)`, "team fsc" → `clamp(4.4rem,9vw,6.6rem)`, "¿Ya tienes cuenta? INICIA SESIÓN" → `text-xl md:text-2xl`.
 - Primera pasada insuficiente. Segunda vuelta con incremento notorio: `LoginModal.jsx` "¿OLVIDASTE TU CONTRASEÑA?" → `text-base md:text-lg`, "¿ERES NUEVO?"/"REGÍSTRATE" → `text-xl md:text-2xl`, "← Volver a Ingresar" (x3) → `text-base md:text-lg`. `TeamRegister.jsx`: "← Volver" → `text-base md:text-lg`, "Sé parte del" → `clamp(2.4rem,4.8vw,3.6rem)`, "team fsc" → `clamp(4rem,8.2vw,6rem)`, "¿Ya tienes cuenta? INICIA SESIÓN" → `text-lg md:text-xl`.

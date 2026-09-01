@@ -26,7 +26,8 @@ export function StretchedTagline({ text, color, className = "", testId }) {
       if (containerWidth > 0 && naturalWidth > 0) {
         // Margen de seguridad: Natura Script tiene rasgos/florituras que se salen de la
         // caja del glifo (ej. la "l" final) — sin este margen, overflow-hidden las recorta.
-        const SAFETY = 0.9;
+        // También deja un poco de aire a la izquierda para correr el texto hacia la derecha.
+        const SAFETY = 0.85;
         txt.style.fontSize = `${BASE_PX * (containerWidth / naturalWidth) * SAFETY}px`;
       }
     };
@@ -47,7 +48,7 @@ export function StretchedTagline({ text, color, className = "", testId }) {
       <span
         ref={textRef}
         data-testid={testId}
-        className="inline-block whitespace-nowrap italic leading-none"
+        className="inline-block whitespace-nowrap italic leading-none ml-4 md:ml-6"
         style={{ ...CURSIVE, color, fontSize: `${BASE_PX}px` }}
       >
         {text}
