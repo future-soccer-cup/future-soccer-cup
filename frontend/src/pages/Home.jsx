@@ -396,7 +396,7 @@ export default function Home() {
               />
             </div>
             {/* Espaciador — reserva la columna central para que Festival/Premier queden a los lados; la mascota real se posiciona absoluta más abajo para poder crecer sin la restricción de ancho de esta columna */}
-            <div className="hidden lg:block" style={{ minHeight: "760px" }} data-testid="mascot-box" />
+            <div className="hidden lg:block" style={{ minHeight: "860px" }} data-testid="mascot-box" />
             {/* PREMIER */}
             <div className="relative z-10">
               <CategoryColumn
@@ -412,11 +412,11 @@ export default function Home() {
               />
             </div>
           </div>
-          {/* Mascota real (desktop) — el div externo centra/posiciona (no lo toca framer-motion), el AnimateIn interno solo anima el fade/slide del <img> */}
+          {/* Mascota real (desktop) — el div externo centra/posiciona (no lo toca framer-motion), el AnimateIn interno solo anima el fade/slide del <img>. Altura igual a la del espaciador (var --mascot-h) para que la base quede siempre pegada al footer */}
           {s.mascot_image_url && (
-            <div className="hidden lg:block absolute bottom-0 left-1/2 -translate-x-1/2 pointer-events-none z-0" data-testid="mascot-box-img-wrap">
-              <AnimateIn variant="slide-up" distance={64} duration={0.8}>
-                <img src={s.mascot_image_url} alt="Mascota Future Soccer Cup" className="h-[560px] lg:h-[640px] xl:h-[760px] w-auto max-w-none object-contain object-bottom" />
+            <div className="hidden lg:block absolute bottom-0 left-1/2 -translate-x-1/2 pointer-events-none z-0" style={{ height: "860px" }} data-testid="mascot-box-img-wrap">
+              <AnimateIn variant="slide-up" distance={64} duration={0.8} style={{ height: "100%" }}>
+                <img src={s.mascot_image_url} alt="Mascota Future Soccer Cup" className="h-full w-auto max-w-none object-contain object-bottom" />
               </AnimateIn>
             </div>
           )}
