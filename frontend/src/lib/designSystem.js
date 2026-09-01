@@ -47,26 +47,33 @@ export function planeCrashSafe(str) {
  */
 export function renderPlaneCrash(str) {
   const lower = String(str || "").toLowerCase();
-  const parts = lower.split(/(ñ)/);
-  if (parts.length === 1) {
-    return parts[0].normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  if (!lower.includes("ñ")) {
+    return lower.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   }
-  // Envuelve TODO en un único <span> (no un array) para que, dentro de contenedores
-  // flex con flex-wrap, la palabra se trate como un solo ítem y no se parta en dos líneas.
-  return React.createElement(
-    "span",
-    { style: { whiteSpace: "nowrap" } },
-    parts.map((part, i) => {
-      if (part === "ñ") {
-        return React.createElement(
-          "span",
-          { key: `ntilde-${i}`, style: { fontFamily: "'Anton', 'Barlow Condensed', sans-serif", fontWeight: 700 } },
-          "Ñ"
-        );
-      }
-      return part.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    })
-  );
+  // Solo envolvemos en nowrap la(s) palabra(s) que contienen "ñ" (para no partirlas
+  // en dos líneas), dejando que el resto del texto siga el wrap normal por espacios.
+  // Así una oración larga como "¿En qué año nació...?" sigue ajustándose al ancho
+  // del contenedor en vez de desbordarse en una sola línea gigante.
+  return lower.split(/(\s+)/).map((token, i) => {
+    if (!token.includes("ñ")) {
+      return token.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    }
+    const parts = token.split(/(ñ)/);
+    return React.createElement(
+      "span",
+      { key: `w-${i}`, style: { whiteSpace: "nowrap" } },
+      parts.map((part, j) => {
+        if (part === "ñ") {
+          return React.createElement(
+            "span",
+            { key: `ntilde-${i}-${j}`, style: { fontFamily: "'Anton', 'Barlow Condensed', sans-serif", fontWeight: 700 } },
+            "Ñ"
+          );
+        }
+        return part.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      })
+    );
+  });
 }
 
 /**
