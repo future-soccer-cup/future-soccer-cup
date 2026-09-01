@@ -7,6 +7,7 @@ import { Toaster } from "sonner";
 
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
+import FloatingWhatsApp from "./components/FloatingWhatsApp";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 import Home from "./pages/Home";
@@ -69,6 +70,7 @@ function PublicLayout() {
         <Outlet />
       </main>
       {!hideChrome && !isHome && <Footer />}
+      <FloatingWhatsApp />
     </div>
   );
 }
