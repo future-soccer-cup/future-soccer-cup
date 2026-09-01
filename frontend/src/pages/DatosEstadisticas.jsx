@@ -79,16 +79,16 @@ function HeroSection({ heroUrl, watermark, titleTop, titleBottom }) {
       {heroUrl ? (
         <img src={imgSrc(heroUrl)} alt="" className="absolute inset-0 w-full h-full object-cover" />
       ) : null}
-      {/* Overlay rojo semitransparente (deja ver la foto de fondo, como en la referencia) */}
-      <div className="absolute inset-0" style={{ background: `${RED}A6` }} />
-      {/* Watermark ghost */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden">
+      {/* Overlay rojo denso y oscuro (oscurece la foto de fondo) */}
+      <div className="absolute inset-0" style={{ background: "rgba(180, 0, 0, 0.75)" }} />
+      {/* Watermark ghost — grande, corrido a la derecha y recortado en el borde */}
+      <div className="absolute inset-0 flex items-center justify-end pointer-events-none select-none overflow-hidden">
         <div
-          className="leading-none whitespace-nowrap"
+          className="leading-none whitespace-nowrap translate-x-[18%]"
           style={{
             ...PLANE_CRASH,
-            color: "rgba(255,255,255,0.18)",
-            fontSize: "clamp(4rem, 15vw, 14rem)",
+            color: "rgba(255,255,255,0.12)",
+            fontSize: "clamp(7rem, 24vw, 22rem)",
             letterSpacing: "0.08em",
           }}
           data-testid="stats-hero-watermark"
