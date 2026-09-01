@@ -3,8 +3,10 @@
    intente resolver el path como módulo. */
 @font-face {
   font-family: 'Plane Crash';
-  src: local('Plane Crash'), local('PlaneCrash'),
-       url('/fonts/PlaneCrash.ttf') format('truetype');
+  /* Sin local(): 'Plane Crash'/'PlaneCrash' pueden coincidir por error con una fuente
+     genérica ya instalada en el sistema (fontconfig en Linux hace matching difuso),
+     forzando siempre la descarga del archivo real evita ese riesgo. */
+  src: url('/fonts/PlaneCrash.ttf') format('truetype');
   font-weight: 100 900;
   font-style: normal;
   /* `optional` evita el FOUC: si la fuente no carga en ~100ms, el bloque permanece
@@ -18,8 +20,10 @@
    Se usa para "Torneo Internacional" en el navbar y otros textos cursivos. */
 @font-face {
   font-family: 'Natura Script';
-  src: local('Natura Script'), local('NaturaScript'),
-       url('/fonts/NaturaScript.otf') format('opentype');
+  /* Sin local(): mismo motivo de arriba — se confirmó que el navegador podía
+     resolver 'Natura Script'/'NaturaScript' contra una fuente del sistema
+     (no la real) y reportarla como "cargada" sin serlo. */
+  src: url('/fonts/NaturaScript.otf') format('opentype');
   font-weight: 400 700;
   font-style: normal;
   font-display: swap;
