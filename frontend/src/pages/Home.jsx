@@ -557,7 +557,7 @@ function CategoryColumn({ title, dateBadge, logoUrl, ctaUrl, groups, testId }) {
           </div>
         ))}
       </div>
-      <Link to={ctaUrl} data-testid={`${testId}-cta`} className="inline-block mt-4 px-8 py-3 font-bold text-white rounded shadow text-xl md:text-2xl transition-transform duration-200 ease-out hover:scale-110 hover:shadow-xl" style={{ ...AGENCY_FB, background: "#0640c8" }}>
+      <Link to={ctaUrl} data-testid={`${testId}-cta`} className="inline-block mt-4 px-8 py-3 font-bold text-white rounded shadow text-2xl md:text-3xl transition-transform duration-200 ease-out hover:scale-110 hover:shadow-xl" style={{ ...AGENCY_FB, background: "#0640c8" }}>
         Acepta el reto
       </Link>
     </div>
