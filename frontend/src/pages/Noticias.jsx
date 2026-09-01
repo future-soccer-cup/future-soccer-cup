@@ -187,7 +187,7 @@ function CategoryModal({ category, onClose }) {
       data-testid="noticias-modal"
     >
       <div
-        className="bg-white rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden"
+        className={`bg-white rounded-lg shadow-2xl w-full ${news.length === 1 && !openNews ? "max-w-5xl" : "max-w-4xl"} max-h-[90vh] flex flex-col overflow-hidden`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-5 py-3 gap-3" style={{ background: BLUE }}>
@@ -214,7 +214,7 @@ function CategoryModal({ category, onClose }) {
           {openNews ? (
             <NewsDetail news={openNews} />
           ) : news.length ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 md:p-6">
+            <div className={news.length === 1 ? "grid grid-cols-1 p-4 md:p-6" : "grid grid-cols-1 md:grid-cols-2 gap-4 p-4 md:p-6"}>
               {news.map((n, i) => (
                 <button
                   key={n.id || i}
@@ -223,7 +223,7 @@ function CategoryModal({ category, onClose }) {
                   className="text-left border border-slate-200 rounded-md overflow-hidden hover:shadow-lg transition"
                   data-testid={`noticia-item-${i}`}
                 >
-                  <div className="aspect-video bg-slate-100 relative">
+                  <div className={news.length === 1 ? "aspect-[4/3] md:aspect-video bg-slate-100 relative" : "aspect-video bg-slate-100 relative"}>
                     {n.images?.[0] ? (
                       <img src={imgSrc(n.images[0])} alt="" className="w-full h-full object-cover" />
                     ) : (
@@ -231,14 +231,14 @@ function CategoryModal({ category, onClose }) {
                     )}
                     {n.video_url && (
                       <div className="absolute inset-0 flex items-center justify-center bg-black/30" data-testid={`noticia-item-video-badge-${i}`}>
-                        <span className="bg-white/90 rounded-full p-3 shadow-lg">
-                          <Play size={22} className="text-slate-900" fill="currentColor" />
+                        <span className={news.length === 1 ? "bg-white/90 rounded-full p-5 shadow-lg" : "bg-white/90 rounded-full p-3 shadow-lg"}>
+                          <Play size={news.length === 1 ? 34 : 22} className="text-slate-900" fill="currentColor" />
                         </span>
                       </div>
                     )}
                   </div>
                   <div className="p-4">
-                    <h3 className="font-black text-slate-800 line-clamp-2" style={{ color: BLUE }}>{n.title}</h3>
+                    <h3 className={news.length === 1 ? "font-black text-slate-800 text-xl md:text-2xl" : "font-black text-slate-800 line-clamp-2"} style={{ color: BLUE }}>{n.title}</h3>
                     {n.body && (
                       <p className="text-sm text-slate-600 mt-1.5 line-clamp-3">{n.body}</p>
                     )}
