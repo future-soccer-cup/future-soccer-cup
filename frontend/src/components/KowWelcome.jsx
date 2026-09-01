@@ -5,7 +5,6 @@ import { imgSrc } from "../lib/api";
 const RED = "#e31f27";
 const AUTO_DISMISS_MS = 6000;
 
-/** Pantalla de bienvenida de Kow — aparece al entrar a /nosotros y al volver a "INTRODUCCIÓN". */
 /** Pantalla de bienvenida de Kow — ocupa solo el área de "FSC en la Historia" (no toda la página). */
 export default function KowWelcome({ imageUrl, text, onDone }) {
   const [closing, setClosing] = useState(false);
@@ -52,19 +51,19 @@ export default function KowWelcome({ imageUrl, text, onDone }) {
       onClick={close}
       data-testid="kow-welcome-screen"
     >
-      <div className="max-w-2xl w-full flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
+      <div className="max-w-5xl w-full flex flex-col sm:flex-row items-center gap-6 sm:gap-10">
         {imageUrl && (
           <img
             src={imgSrc(imageUrl)}
             alt="Kow"
-            className="w-32 sm:w-40 md:w-48 h-auto object-contain flex-shrink-0"
+            className="w-56 sm:w-72 md:w-80 lg:w-96 h-auto object-contain flex-shrink-0"
             style={{ opacity: imgReady ? 1 : 0, transition: "opacity 0.3s ease" }}
             data-testid="kow-welcome-image"
           />
         )}
         <p
           className="text-center sm:text-left leading-relaxed"
-          style={{ ...AGENCY_FB, color: RED, fontSize: "clamp(0.85rem, 1.3vw, 1.05rem)", fontWeight: 600 }}
+          style={{ ...AGENCY_FB, color: RED, fontSize: "clamp(1.3rem, 2.6vw, 2.2rem)", fontWeight: 600 }}
           data-testid="kow-welcome-text"
         >
           {text}
