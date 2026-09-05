@@ -131,37 +131,53 @@ function HeroSection({ heroVideoUrl, heroUrl, logoUrl }) {
 
 
 function CountriesBar({ title, countries }) {
+  const hasFlags = countries.length > 0;
+  // Se duplica la lista para loop perfecto (igual que Clubes que han Participado).
+  const track = hasFlags ? [...countries, ...countries] : [];
+  const durationSec = Math.max(14, countries.length * 3);
   return (
     <section className="w-full py-6 md:py-8 bg-white" data-testid="eventos-countries">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-5">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center gap-5">
         <h2
-          className="text-2xl md:text-3xl lg:text-4xl"
+          className="text-2xl md:text-3xl lg:text-4xl shrink-0"
           style={{ ...AGENCY_FB, fontWeight: 800, color: RED }}
           data-testid="countries-title"
         >
           {title || "Países que han Participado"}
         </h2>
-        <div className="flex items-center gap-4 md:gap-6 flex-wrap justify-center">
-          {countries.map((c, i) => (
-            <div
-              key={`country-${i}`}
-              className="flex items-center gap-2"
-              title={c.name}
-              data-testid={`country-${i}`}
-            >
-              {c.flag_url ? (
-                <img
-                  src={imgSrc(c.flag_url)}
-                  alt={c.name}
-                  className="h-12 md:h-16 lg:h-20 w-auto object-contain rounded-sm shadow-md"
-                  style={{ border: "1px solid rgba(0,0,0,0.12)" }}
-                />
-              ) : (
-                <span className="text-slate-400 text-xs italic px-2 py-1 border border-slate-200 rounded">{c.name || "—"}</span>
-              )}
+        {hasFlags ? (
+          <div
+            className="relative flex-1 w-full overflow-hidden"
+            style={{
+              maskImage: "linear-gradient(to right, transparent, black 8%, black 92%, transparent)",
+              WebkitMaskImage: "linear-gradient(to right, transparent, black 8%, black 92%, transparent)",
+            }}
+          >
+            <div className="flex items-center gap-4 md:gap-6 w-max" style={{ animation: `scroll ${durationSec}s linear infinite` }}>
+              {track.map((c, i) => (
+                <div
+                  key={`country-${i}`}
+                  className="flex items-center gap-2 shrink-0"
+                  title={c.name}
+                  data-testid={`country-${i % countries.length}`}
+                >
+                  {c.flag_url ? (
+                    <img
+                      src={imgSrc(c.flag_url)}
+                      alt={c.name}
+                      className="h-12 md:h-16 lg:h-20 w-auto object-contain rounded-sm shadow-md"
+                      style={{ border: "1px solid rgba(0,0,0,0.12)" }}
+                    />
+                  ) : (
+                    <span className="text-slate-400 text-xs italic px-2 py-1 border border-slate-200 rounded">{c.name || "—"}</span>
+                  )}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </div>
+        ) : (
+          <span className="text-slate-400 text-sm italic" style={AGENCY_FB}>Aún no hay países configurados.</span>
+        )}
       </div>
     </section>
   );
@@ -535,6 +551,10 @@ function ClubsSection({ title, logos }) {
       {hasLogos ? (
         <div
           className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 overflow-hidden"
+          style={{
+            maskImage: "linear-gradient(to right, transparent, black 8%, black 92%, transparent)",
+            WebkitMaskImage: "linear-gradient(to right, transparent, black 8%, black 92%, transparent)",
+          }}
         >
           <div
             className="flex items-center gap-10 md:gap-16 w-max"

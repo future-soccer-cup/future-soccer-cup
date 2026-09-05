@@ -16,6 +16,11 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-09-05 — Iter92: Banderas "Países que han Participado" con ticker animado + fade en bordes (igual que Clubes)
+- El usuario pidió que las banderas tengan la misma animación de scroll infinito que "Clubes que han Participado", y que al llegar al borde (inicio/fin) se desvanezcan en vez de cortarse abruptamente.
+- Fix en `CountriesBar` (`Eventos.jsx`): reemplazado el layout estático `flex-wrap` por el mismo patrón de `ClubsSection` — lista duplicada (`[...countries, ...countries]`) + `animation: scroll {duration}s linear infinite` (keyframe `scroll` ya existente en `index.css`). Se agregó `maskImage`/`WebkitMaskImage: linear-gradient(to right, transparent, black 8%, black 92%, transparent)` al contenedor para el efecto de fade en ambos bordes.
+- Se aplicó el mismo `maskImage` de fade también a `ClubsSection` (antes no lo tenía) para consistencia visual entre ambos "tickers" de logos/banderas.
+- Verificado con screenshot: banderas se desplazan en loop continuo con fade visible en el borde izquierdo.
 ### 2026-09-05 — Iter91: "PREMIACIÓN" más grande (igual a "ESCENARIOS") + subtítulo más grande + animaciones
 - El usuario pidió que "PREMIACIÓN" tenga el mismo tamaño que "ESCENARIOS", que el subtítulo "EN LA FSC CADA NIÑO ES UN TESORO..." sea más grande, y que ambos textos tengan animación.
 - Fix en `PremiacionSection` (`Eventos.jsx`): título `fontSize` de `clamp(2.5rem,6vw,4.5rem)` → `clamp(3rem,11vw,8rem)` (igual que `ScenariosSection`). Subtítulo de `clamp(1.1rem,2.2vw,1.6rem)` → `clamp(1.4rem,3vw,2.2rem)`, contenedor `max-w-lg`→`max-w-2xl`. Ambos envueltos en `<AnimateIn>`: título `variant="slide-down"`, subtítulo `variant="slide-up"` con `delay={0.15}`, `duration={1.3}` (mismo patrón lento usado en Escenarios). Verificado con scroll simulado (opacity 0→1) y screenshot.
