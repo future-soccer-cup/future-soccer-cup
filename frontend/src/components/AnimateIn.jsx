@@ -2,8 +2,9 @@ import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
 
 /**
- * Animación de entrada one-shot al hacer scroll hasta el elemento.
- * Se dispara UNA sola vez por sesión (no se repite al volver a entrar al viewport).
+ * Animación de entrada al hacer scroll hasta el elemento.
+ * Se repite cada vez que el elemento entra al viewport (al salir, vuelve al estado inicial
+ * para poder animarse de nuevo la próxima vez que se vea).
  *
  * Variantes disponibles:
  *  - "slide-left": entra desde la izquierda con fade
@@ -34,7 +35,7 @@ export default function AnimateIn({
   ...rest
 }) {
   const ref = useRef(null);
-  const inView = useInView(ref, { once: true, amount });
+  const inView = useInView(ref, { once: false, amount });
 
   const initial = computeInitial(variant, distance);
   const animate = inView ? computeAnimate(variant) : initial;

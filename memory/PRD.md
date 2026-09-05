@@ -16,6 +16,10 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-09-05 — Iter90: Animaciones se repiten cada vez que el elemento entra al viewport (global)
+- El usuario preguntó si al recargar la página, bajar y ver las animaciones, luego subir al inicio y bajar de nuevo, las animaciones podían repetirse (antes solo se disparaban una vez por sesión).
+- Fix en `AnimateIn.jsx` (componente compartido usado en Home, Nosotros y Eventos): `useInView(ref, { once: true, ... })` → `{ once: false, ... }`. La lógica de `animate = inView ? computeAnimate(variant) : initial` ya revertía al estado inicial al salir del viewport, así que solo bastó cambiar el flag `once` para que se repita en cada entrada/salida. Cambio GLOBAL — afecta todas las animaciones de entrada del sitio (Home: título región, categorías; Eventos: título Escenarios, logos Aventura; Nosotros: timeline, etc.).
+- Verificado con scroll simulado (scroll-in → opacity 1, scroll-out → opacity ~0, scroll-in de nuevo → opacity 1).
 ### 2026-09-05 — Iter89: Animación de entrada en título "ESCENARIOS Deportivos!" (Eventos.jsx)
 - El usuario pidió animación al hacer scroll: "ESCENARIOS" entra desde arriba, "Deportivos!" y "COMFENALCO / ESTADIO DE ARMENIA" entran desde la izquierda, de forma suave y no muy rápida.
 - Fix en `ScenariosSection` (`Eventos.jsx`): se envolvió cada bloque de texto en `<AnimateIn>` — título con `variant="slide-down"`, cursiva y subtítulos con `variant="slide-left"` (con `delay={0.15}` en el segundo para que no entren exactamente igual), todos con `duration={1.3}` y `distance={60}` para una animación lenta y perceptible. Verificado con scroll simulado + chequeo de `opacity` (0 antes / 1 después) y screenshot final.
