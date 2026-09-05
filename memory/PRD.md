@@ -16,6 +16,9 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-09-05 — Iter95: Animación de "OCTUBRE FESTIVAL"/"DICIEMBRE PREMIER" se repite al cambiar de tab
+- El usuario pidió que al hacer clic en Festival / Premier Pares / Impares, la animación del bloque logo+texto se reactive (antes solo se disparaba una vez al entrar al viewport, y como el bloque ya estaba visible, cambiar de tab no la repetía).
+- Fix en `CategoriesGrid` (`DatosEstadisticas.jsx`): se agregó `key={event.key}` al `<AnimateIn>` que envuelve el bloque, forzando un remount de React cada vez que cambia el evento activo — esto reinicia el estado de `useInView`/Framer Motion y reproduce la animación de entrada (`slide-right`) de nuevo. Verificado con screenshot + chequeo de opacity (baja a ~0.26 justo tras el clic, luego vuelve a 1).
 ### 2026-09-05 — Iter94: Animaciones en Estadísticas + logo FSC en evento + textos más grandes al ver categoría
 - Se agregaron animaciones de entrada (`AnimateIn`, `duration=1.3`) en `DatosEstadisticas.jsx`: "ASÍ VA LA" (`slide-down`) + "competencia!" (`slide-up`, delay 0.15) en `IntroAndSelector`; y el bloque completo logo+"OCTUBRE FESTIVAL"/"DICIEMBRE Premier" (`slide-right`) en `CategoriesGrid`.
 - El campo para subir el logo del evento (`event.logo_url`) ya existía en el Admin (`AdminHomeSettings.jsx` línea 759, "Logo del evento (opcional)") pero no estaba configurado — se le asignó el escudo FSC (`nav_shield_url`) al evento Festival como valor inicial; el admin puede cambiarlo libremente desde ese mismo campo.

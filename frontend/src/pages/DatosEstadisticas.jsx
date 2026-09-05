@@ -224,7 +224,7 @@ function CategoriesGrid({ event, onSelectCat }) {
         </div>
 
         <div className="flex flex-col items-center gap-3">
-          <AnimateIn as="div" variant="slide-right" duration={1.3} distance={50} amount={0.4} className="flex flex-col items-center gap-3">
+          <AnimateIn key={event.key} as="div" variant="slide-right" duration={1.3} distance={50} amount={0.4} className="flex flex-col items-center gap-3">
             {event.logo_url ? (
               <img src={imgSrc(event.logo_url)} alt="" className="max-h-24 md:max-h-32 object-contain" data-testid="stats-event-logo" />
             ) : null}
