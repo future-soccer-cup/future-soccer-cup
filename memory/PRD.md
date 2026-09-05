@@ -16,6 +16,8 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-09-05 — Iter86: Hover "lift" en cuadros de categorías (Eventos.jsx)
+- Se agregó animación hover a `CategoryBlock` (componente compartido por `FestivalCategories` y `PremierCategories`, secciones PARES/IMPARES): `hover:-translate-y-2 hover:shadow-xl hover:bg-white/35` con `transition-transform duration-200 ease-out`. Al pasar el mouse el cuadro sube un poco y gana sombra/brillo. Verificado con screenshot_tool (hover state).
 ### 2026-09-05 — Iter85: Fondo azul full-bleed en "El Eje Cafetero Los Espera" (Home.jsx) + león reducido
 - El usuario mostró una imagen de referencia: faltaba el fondo azul detrás de las columnas Festival/Premier + la mascota (león), y pidió achicar un poco al león para que toque el texto "Comfenalco Soleden" arriba y el footer rojo quede justo después del azul (sin espacio blanco de por medio).
 - Fix en `Home.jsx` (sección `home-region`): se envolvió el bloque de columnas + mascota en un div full-bleed (`relative left-1/2 right-1/2 -mx-[50vw] w-screen`, `background: BLUE`) que va de borde a borde de la pantalla, comenzando justo debajo del subtítulo "Comfenalco Soleden".

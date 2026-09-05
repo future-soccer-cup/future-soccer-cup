@@ -290,7 +290,10 @@ function EventTitleSection({ month, word, isFestival }) {
 function CategoryBlock({ year, cat, testId }) {
   // "20" = año 2000-2019 (usamos "20" fijo como muestra el wireframe: los niños nacieron en 20XX).
   return (
-    <div className="bg-white/25 rounded-md px-3 py-2 md:px-4 md:py-3 shadow flex flex-col items-center justify-center leading-none gap-1" data-testid={testId}>
+    <div
+      className="bg-white/25 rounded-md px-3 py-2 md:px-4 md:py-3 shadow flex flex-col items-center justify-center leading-none gap-1 transition-transform duration-200 ease-out hover:-translate-y-2 hover:shadow-xl hover:bg-white/35 cursor-default"
+      data-testid={testId}
+    >
       <div className="font-black tabular-nums text-white" style={{ ...PLANE_CRASH, fontSize: "clamp(1.6rem, 2.6vw, 2.4rem)" }}>
         {renderPlaneCrash(String(year))}
       </div>
