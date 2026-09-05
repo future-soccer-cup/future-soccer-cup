@@ -384,42 +384,48 @@ function PremierCategories({ evenCats, oddCats }) {
 function StadiumSection({ stadium }) {
   const showBadge = !!stadium.badge_text && !stadium.confirmed;
   return (
-    <section className="relative w-full h-96 md:h-[520px] lg:h-[600px] overflow-hidden bg-slate-800" data-testid="stadium-section">
-      {stadium.image_url ? (
-        <img
-          src={imgSrc(stadium.image_url)}
-          alt=""
-          className="w-full h-full object-cover"
-          style={{ filter: "grayscale(100%)" }}
-        />
-      ) : (
-        <div className="w-full h-full flex items-center justify-center text-white/40" style={AGENCY_FB}>Imagen no configurada</div>
-      )}
-      <div className="absolute inset-0 flex flex-col items-center justify-start pt-8 md:pt-14 text-center px-4">
-        <div className="italic" style={{ ...CURSIVE, color: "#000000", fontSize: "clamp(2.8rem, 6vw, 4.8rem)", textShadow: "0 2px 10px rgba(255,255,255,0.55)" }}>
-          {stadium.cursive || "Estadio"}
-        </div>
-        <div className="leading-none mt-1 uppercase" style={{ ...AGENCY_FB, fontWeight: 800, color: "#000000", fontSize: "clamp(2.6rem, 6vw, 4.8rem)", textShadow: "0 2px 10px rgba(255,255,255,0.4)" }}>
-          {stadium.title_top || "CENTENARIO"}
-        </div>
-        <div className="leading-none mt-1 uppercase" style={{ ...AGENCY_FB, fontWeight: 800, color: "#000000", fontSize: "clamp(2.2rem, 5vw, 3.8rem)", textShadow: "0 2px 10px rgba(255,255,255,0.4)" }}>
-          {stadium.title_bottom || "ARMENIA"}
-        </div>
-        {showBadge && (
-          <div
-            className="mt-5 px-8 py-1.5 md:py-2 rounded-sm text-black uppercase tracking-widest text-base md:text-lg"
-            style={{
-              background: "linear-gradient(135deg, #fff4c2 0%, #ffd23f 30%, #f0a500 70%, #c9820a 100%)",
-              ...AGENCY_FB,
-              fontWeight: 900,
-              boxShadow: "0 4px 20px rgba(240, 165, 0, 0.65), inset 0 1px 0 rgba(255,255,255,0.8)",
-              border: "1px solid rgba(0,0,0,0.15)",
-            }}
-            data-testid="stadium-badge"
-          >
-            {stadium.badge_text || "POR CONFIRMAR"}
-          </div>
+    <section className="w-full px-10 md:px-14" data-testid="stadium-section-wrap">
+      <div className="relative w-full h-96 md:h-[520px] lg:h-[600px] overflow-hidden bg-slate-800 rounded-sm" data-testid="stadium-section">
+        {stadium.image_url ? (
+          <img
+            src={imgSrc(stadium.image_url)}
+            alt=""
+            className="w-full h-full object-cover"
+            style={{ filter: "grayscale(100%)" }}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-white/40" style={AGENCY_FB}>Imagen no configurada</div>
         )}
+        <div className="absolute inset-0 flex flex-col items-center justify-start pt-8 md:pt-14 text-center px-4">
+          <AnimateIn variant="slide-down" duration={1.3} distance={50} amount={0.4}>
+            <div className="italic" style={{ ...CURSIVE, color: "#000000", fontSize: "clamp(3.2rem, 7vw, 5.4rem)", textShadow: "0 2px 10px rgba(255,255,255,0.55)" }}>
+              {stadium.cursive || "Estadio"}
+            </div>
+            <div className="leading-none mt-1 uppercase" style={{ ...AGENCY_FB, fontWeight: 800, color: "#000000", fontSize: "clamp(3rem, 7vw, 5.4rem)", textShadow: "0 2px 10px rgba(255,255,255,0.4)" }}>
+              {stadium.title_top || "CENTENARIO"}
+            </div>
+            <div className="leading-none mt-1 uppercase" style={{ ...AGENCY_FB, fontWeight: 800, color: "#000000", fontSize: "clamp(2.6rem, 5.8vw, 4.4rem)", textShadow: "0 2px 10px rgba(255,255,255,0.4)" }}>
+              {stadium.title_bottom || "ARMENIA"}
+            </div>
+          </AnimateIn>
+          {showBadge && (
+            <AnimateIn variant="zoom-in" duration={1.1} delay={0.2} amount={0.4}>
+              <div
+                className="mt-6 px-10 py-2 md:py-2.5 rounded-sm text-black uppercase tracking-widest text-lg md:text-xl"
+                style={{
+                  background: "linear-gradient(135deg, #fff4c2 0%, #ffd23f 30%, #f0a500 70%, #c9820a 100%)",
+                  ...AGENCY_FB,
+                  fontWeight: 900,
+                  boxShadow: "0 4px 20px rgba(240, 165, 0, 0.65), inset 0 1px 0 rgba(255,255,255,0.8)",
+                  border: "1px solid rgba(0,0,0,0.15)",
+                }}
+                data-testid="stadium-badge"
+              >
+                {stadium.badge_text || "POR CONFIRMAR"}
+              </div>
+            </AnimateIn>
+          )}
+        </div>
       </div>
     </section>
   );
