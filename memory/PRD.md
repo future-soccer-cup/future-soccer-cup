@@ -16,6 +16,12 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-09-05 — Iter87: Categorías de Eventos ya no asumen "20" fijo — año completo configurable
+- El usuario notó que `CategoryBlock` (cuadros PARES/IMPARES y CAT en Eventos) siempre anteponía "20" al valor de categoría (ej. "18" → "2018"), asumiendo que todo empieza en los 2000s. Esto rompía si el admin quería un año distinto (ej. 1999).
+- Fix en `Eventos.jsx`: `CategoryBlock` ahora recibe un solo prop `value` (el año completo, ej. "2018") y lo divide dinámicamente: primeros N-2 dígitos arriba, últimos 2 dígitos abajo junto a "CAT.". Fallback de compatibilidad: si el valor tiene solo 2 dígitos (datos viejos ya guardados), se sigue asumiendo prefijo "20" para no romper configuraciones existentes.
+- `FestivalCategories` y `PremierCategories` ahora pasan `value={c}` en vez de `year="20" cat={c}`.
+- Labels/placeholders actualizados en `AdminHomeSettings.jsx` (Sección 4A/4B) para reflejar que ahora se ingresa el año completo (ej. "2018, 2017, 2015...") en vez de solo 2 dígitos.
+- Verificado con curl (PUT /api/home-settings con categorías "2018,2017,2019,2016", "1999", y legacy "13") + screenshot: "2018"→"20/18", "1999"→"19/99", "13" (legacy)→"20/13". Datos de producción restaurados a sus valores originales tras la prueba.
 ### 2026-09-05 — Iter86: Hover "lift" en cuadros de categorías (Eventos.jsx)
 - Se agregó animación hover a `CategoryBlock` (componente compartido por `FestivalCategories` y `PremierCategories`, secciones PARES/IMPARES): `hover:-translate-y-2 hover:shadow-xl hover:bg-white/35` con `transition-transform duration-200 ease-out`. Al pasar el mouse el cuadro sube un poco y gana sombra/brillo. Verificado con screenshot_tool (hover state).
 ### 2026-09-05 — Iter85: Fondo azul full-bleed en "El Eje Cafetero Los Espera" (Home.jsx) + león reducido

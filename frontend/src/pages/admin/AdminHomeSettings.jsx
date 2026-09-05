@@ -533,13 +533,13 @@ function EventosEditor({ value, onChange }) {
         </div>
         <div className="mt-3">
           <label className="block">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Categorías Festival (separadas por coma, ej: 18, 17, 15...)</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Categorías Festival (año completo, separadas por coma, ej: 2018, 2017, 2015...)</span>
             <input
               type="text"
               value={arrToCsv(v.festival?.categories)}
               onChange={(e) => patchFestival({ categories: csvToArr(e.target.value) })}
               className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md"
-              placeholder="18, 17, 15, 16, 14, 13, 12, 11, 10, 09"
+              placeholder="2018, 2017, 2015, 2016, 2014, 2013, 2012, 2011, 2010, 2009"
               data-testid="festival-categories"
             />
           </label>
@@ -557,12 +557,12 @@ function EventosEditor({ value, onChange }) {
         </div>
         <div className="grid md:grid-cols-2 gap-3 mt-3">
           <label className="block">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Categorías PARES (separadas por coma)</span>
-            <input type="text" value={arrToCsv(v.premier?.categories_even)} onChange={(e) => patchPremier({ categories_even: csvToArr(e.target.value) })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" placeholder="18, 16, 14, 12, 10" data-testid="premier-cats-even" />
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Categorías PARES (año completo, separadas por coma)</span>
+            <input type="text" value={arrToCsv(v.premier?.categories_even)} onChange={(e) => patchPremier({ categories_even: csvToArr(e.target.value) })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" placeholder="2018, 2016, 2014, 2012, 2010" data-testid="premier-cats-even" />
           </label>
           <label className="block">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Categorías IMPARES (separadas por coma)</span>
-            <input type="text" value={arrToCsv(v.premier?.categories_odd)} onChange={(e) => patchPremier({ categories_odd: csvToArr(e.target.value) })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" placeholder="17, 15, 13, 11, 09" data-testid="premier-cats-odd" />
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Categorías IMPARES (año completo, separadas por coma)</span>
+            <input type="text" value={arrToCsv(v.premier?.categories_odd)} onChange={(e) => patchPremier({ categories_odd: csvToArr(e.target.value) })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" placeholder="2017, 2015, 2013, 2011, 2009" data-testid="premier-cats-odd" />
           </label>
         </div>
       </SubSection>

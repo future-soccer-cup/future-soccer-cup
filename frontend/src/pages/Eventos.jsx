@@ -287,22 +287,28 @@ function EventTitleSection({ month, word, isFestival }) {
 }
 
 
-function CategoryBlock({ year, cat, testId }) {
-  // "20" = año 2000-2019 (usamos "20" fijo como muestra el wireframe: los niños nacieron en 20XX).
+function CategoryBlock({ value, testId }) {
+  // El admin ingresa el año completo (ej: "2018", "1999"). Se divide en 2+2 dígitos para el diseño visual
+  // (arriba los primeros 2, abajo "CAT." + los últimos 2). Fallback: si solo ingresan 2 dígitos (dato viejo),
+  // se asume "20" como prefijo para no romper configuraciones ya guardadas.
+  const raw = String(value ?? "").trim();
+  const digits = raw.replace(/\D/g, "");
+  const top = digits.length >= 4 ? digits.slice(0, digits.length - 2) : "20";
+  const bottom = digits.length >= 4 ? digits.slice(-2) : (digits || raw);
   return (
     <div
       className="bg-white/25 rounded-md px-3 py-2 md:px-4 md:py-3 shadow flex flex-col items-center justify-center leading-none gap-1 transition-transform duration-200 ease-out hover:-translate-y-2 hover:shadow-xl hover:bg-white/35 cursor-default"
       data-testid={testId}
     >
       <div className="font-black tabular-nums text-white" style={{ ...PLANE_CRASH, fontSize: "clamp(1.6rem, 2.6vw, 2.4rem)" }}>
-        {renderPlaneCrash(String(year))}
+        {renderPlaneCrash(top)}
       </div>
       <div className="flex items-baseline gap-1">
         <div className="tracking-wider text-white" style={{ ...AGENCY_FB, fontSize: "clamp(0.95rem, 1.4vw, 1.15rem)", opacity: 0.9 }}>
           CAT.
         </div>
         <div className="font-black tabular-nums text-white" style={{ ...PLANE_CRASH, fontSize: "clamp(1.6rem, 2.6vw, 2.4rem)" }}>
-          {renderPlaneCrash(String(cat))}
+          {renderPlaneCrash(bottom)}
         </div>
       </div>
     </div>
@@ -319,7 +325,7 @@ function FestivalCategories({ categories }) {
         </h3>
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 md:gap-4 place-items-center">
           {categories.map((c, i) => (
-            <CategoryBlock key={`fc-${i}`} year="20" cat={c} testId={`festival-cat-${i}`} />
+            <CategoryBlock key={`fc-${i}`} value={c} testId={`festival-cat-${i}`} />
           ))}
         </div>
       </div>
@@ -339,7 +345,7 @@ function PremierCategories({ evenCats, oddCats }) {
               {renderPlaneCrash("PARES")}
             </h3>
             <div className="grid grid-cols-3 gap-3 md:gap-4 place-items-center">
-              {evenCats.map((c, i) => <CategoryBlock key={`pe-${i}`} year="20" cat={c} testId={`premier-even-${i}`} />)}
+              {evenCats.map((c, i) => <CategoryBlock key={`pe-${i}`} value={c} testId={`premier-even-${i}`} />)}
             </div>
           </div>
           <div>
@@ -347,7 +353,7 @@ function PremierCategories({ evenCats, oddCats }) {
               {renderPlaneCrash("IMPARES")}
             </h3>
             <div className="grid grid-cols-3 gap-3 md:gap-4 place-items-center">
-              {oddCats.map((c, i) => <CategoryBlock key={`po-${i}`} year="20" cat={c} testId={`premier-odd-${i}`} />)}
+              {oddCats.map((c, i) => <CategoryBlock key={`po-${i}`} value={c} testId={`premier-odd-${i}`} />)}
             </div>
           </div>
         </div>
