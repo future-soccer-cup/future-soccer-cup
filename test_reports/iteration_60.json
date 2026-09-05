@@ -1,0 +1,27 @@
+{
+  "summary": "Verified visual fix for 'ñ' rendering with Plane Crash font in /nosotros history milestones and login modal. The fix in renderPlaneCrash (designSystem.js) now renders 'n' in the inherited Plane Crash font (same grunge texture) with a small overlaid tilde (~) in Anton, rotated -4deg, positioned above. Tested TEST 1, TEST 2, TEST 3 (login modal), TEST 4 (flow regression). All pass.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_results": {
+    "TEST_1_ntilde_visual_nosotros": "PASS - Clicked history-label-2019, overlay shows '¿COMO EMPEZO TODO, EN QUE AÑO?' with Ñ rendered in same grunge Plane Crash texture as surrounding letters plus small tilde above. No font mismatch anymore.",
+    "TEST_2_no_layout_overflow": "PASS - overlay scrollWidth==clientWidth (1216px), hasOverflow=false. Question wraps correctly within max-w-xl.",
+    "TEST_3_ntilde_regression_login": "PASS - Login modal 'INGRESA TU CONTRASEÑA' shows Ñ with same grunge texture + tilde. Detected 1 relative-position wrapper span containing 'n' + '~' as expected.",
+    "TEST_4_kow_flow_regression": "PASS (implicit) - Welcome overlay dismissed on click, history labels rendered (7 found: intro/2019/2021/2022/2023/2025/2026), clicking label expands photo + shows year overlay with question. No JS/console errors related to the change (only unrelated 401s for background resources)."
+  },
+  "test_report_links": ["/app/test_reports/ntilde_overlay.png", "/app/test_reports/ntilde_login.png"],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "renderPlaneCrash implementation is clean and appropriate: uses whiteSpace:nowrap only on words containing 'ñ' (preserving wrapping for the rest), inherits color via currentColor, and uses aria-hidden on the tilde overlay for accessibility.",
+    "Minor: the tilde is rendered in Anton family which is a slight typographic mismatch, but visually acceptable and documented in the file's JSDoc."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (frontend only)", "frontend": "100%"},
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "renderPlaneCrash in /app/frontend/src/lib/designSystem.js is the shared helper for Plane Crash text with 'ñ'. When testing any UI text with 'ñ' rendered in Plane Crash, expect a nested <span style='position: relative; display: inline-block'>n<span aria-hidden style='position:absolute...'>~</span></span>. Fix verified in FSCHistorySection year overlay and LoginModal."
+}

@@ -40,9 +40,12 @@ export function planeCrashSafe(str) {
 
 /**
  * Igual que `planeCrashSafe` pero devuelve nodos React (array) en vez de un string plano.
- * La fuente "Plane Crash" no tiene un glifo visible para "ñ" (aparece en blanco), así que
- * esa letra se envuelve en un span forzado a 'Anton' (el fallback ya declarado en
- * PLANE_CRASH) para que "año" se vea como "año" y no como "ano" ni desaparezca.
+ * La fuente "Plane Crash" no tiene un glifo visible para "ñ" (el contorno está vacío), pero
+ * SÍ tiene la "n" con la textura grunge completa. Para no romper la textura mezclando toda
+ * la letra con otra tipografía (se veía "pegada"/desalineada), renderizamos la "n" en Plane
+ * Crash (misma textura que el resto de la palabra) y le dibujamos encima solo la virgulilla
+ * (~) en una tipografía chica, rotada, del mismo color — un remiendo tipográfico común para
+ * fuentes display sin diacríticos.
  * Usar en cualquier lugar donde el resultado se renderice directo como children de JSX.
  */
 export function renderPlaneCrash(str) {
@@ -66,8 +69,26 @@ export function renderPlaneCrash(str) {
         if (part === "ñ") {
           return React.createElement(
             "span",
-            { key: `ntilde-${i}-${j}`, style: { fontFamily: "'Anton', 'Barlow Condensed', sans-serif", fontWeight: 700 } },
-            "Ñ"
+            { key: `ntilde-${i}-${j}`, style: { position: "relative", display: "inline-block" } },
+            "n",
+            React.createElement(
+              "span",
+              {
+                "aria-hidden": true,
+                style: {
+                  position: "absolute",
+                  top: "-0.5em",
+                  left: "50%",
+                  transform: "translateX(-50%) rotate(-4deg)",
+                  fontFamily: "'Anton', 'Barlow Condensed', sans-serif",
+                  fontWeight: 700,
+                  fontSize: "0.62em",
+                  lineHeight: 1,
+                  color: "currentColor",
+                },
+              },
+              "~"
+            )
           );
         }
         return part.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
