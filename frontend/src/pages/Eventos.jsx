@@ -384,7 +384,7 @@ function PremierCategories({ evenCats, oddCats }) {
 function StadiumSection({ stadium }) {
   const showBadge = !!stadium.badge_text && !stadium.confirmed;
   return (
-    <section className="w-full px-10 md:px-14" data-testid="stadium-section-wrap">
+    <section className="w-full px-10 md:px-14 py-8 md:py-12" data-testid="stadium-section-wrap">
       <div className="relative w-full h-96 md:h-[520px] lg:h-[600px] overflow-hidden bg-slate-800 rounded-sm" data-testid="stadium-section">
         {stadium.image_url ? (
           <img
