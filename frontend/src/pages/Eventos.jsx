@@ -190,27 +190,27 @@ function TabsBar({ tab, onTab, festival, premier, center }) {
   const isPrem = tab === "premier";
   return (
     <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" data-testid="eventos-tabs">
-      <div className="grid grid-cols-3 gap-3 md:gap-5">
+      <div className="grid grid-cols-3 gap-2 md:gap-5">
         <button
           type="button"
           onClick={() => onTab("festival")}
-          className={`text-center px-3 py-4 md:py-6 rounded-sm transition-all ${isFest ? "ring-4 ring-red-300 scale-[1.02]" : "opacity-90 hover:opacity-100"}`}
+          className={`min-w-0 text-center px-2 md:px-3 py-4 md:py-6 rounded-sm transition-all ${isFest ? "ring-4 ring-red-300 scale-[1.02]" : "opacity-90 hover:opacity-100"}`}
           style={{ background: RED }}
           data-testid="tab-festival"
         >
-          <div className="leading-none" style={{ ...PLANE_CRASH, color: "#ffffff", fontSize: "clamp(1.5rem, 3.6vw, 3rem)" }}>
+          <div className="leading-none break-words" style={{ ...PLANE_CRASH, color: "#ffffff", fontSize: "clamp(0.95rem, 3.6vw, 3rem)" }}>
             {renderPlaneCrash(festival.tab_label || "FESTIVAL")}
           </div>
-          <div className="text-white text-center mt-2 text-lg md:text-xl lg:text-2xl" style={AGENCY_FB}>
+          <div className="text-white text-center mt-2 text-xs sm:text-lg md:text-xl lg:text-2xl" style={AGENCY_FB}>
             {festival.tab_dates || ""}
           </div>
         </button>
 
-        <div className="text-center px-3 py-4 md:py-6 bg-white flex flex-col items-center justify-center" data-testid="tab-center">
-          <div className="leading-none" style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(1.5rem, 3.6vw, 3rem)" }}>
+        <div className="min-w-0 text-center px-1 md:px-3 py-4 md:py-6 bg-white flex flex-col items-center justify-center" data-testid="tab-center">
+          <div className="leading-none break-words" style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(0.95rem, 3.6vw, 3rem)" }}>
             {renderPlaneCrash(center?.top || "EVENTOS")}
           </div>
-          <div className="mt-1" style={{ ...AGENCY_FB, color: RED, fontWeight: 700, fontSize: "clamp(1.1rem, 2vw, 1.7rem)" }}>
+          <div className="mt-1 break-words" style={{ ...AGENCY_FB, color: RED, fontWeight: 700, fontSize: "clamp(0.68rem, 2vw, 1.7rem)" }}>
             {center?.bottom || "Diseñados para ti"}
           </div>
         </div>
@@ -218,14 +218,14 @@ function TabsBar({ tab, onTab, festival, premier, center }) {
         <button
           type="button"
           onClick={() => onTab("premier")}
-          className={`text-center px-3 py-4 md:py-6 rounded-sm transition-all ${isPrem ? "ring-4 ring-blue-300 scale-[1.02]" : "opacity-90 hover:opacity-100"}`}
+          className={`min-w-0 text-center px-1 md:px-3 py-4 md:py-6 rounded-sm transition-all ${isPrem ? "ring-4 ring-blue-300 scale-[1.02]" : "opacity-90 hover:opacity-100"}`}
           style={{ background: BLUE }}
           data-testid="tab-premier"
         >
-          <div className="leading-none" style={{ ...PLANE_CRASH, color: "#ffffff", fontSize: "clamp(1.5rem, 3.6vw, 3rem)" }}>
+          <div className="leading-none break-words" style={{ ...PLANE_CRASH, color: "#ffffff", fontSize: "clamp(0.95rem, 3.6vw, 3rem)" }}>
             {renderPlaneCrash(premier.tab_label || "PREMIER")}
           </div>
-          <div className="text-white text-center mt-2 text-base md:text-lg lg:text-xl space-y-0.5" style={AGENCY_FB}>
+          <div className="text-white text-center mt-2 text-xs sm:text-base md:text-lg lg:text-xl space-y-0.5" style={AGENCY_FB}>
             <div>{premier.tab_dates_even || ""}</div>
             <div>{premier.tab_dates_odd || ""}</div>
           </div>
@@ -260,8 +260,8 @@ function EventTitleSection({ month, word, isFestival }) {
             <ChevronStack color={RED} size={56} direction="up" count={5} />
           </button>
         </div>
-        <div className="text-center">
-          <div className="leading-[0.9]" style={{ ...PLANE_CRASH, color: BLUE, fontSize: "clamp(2.2rem, 5vw, 4rem)" }} data-testid="event-title-month">
+        <div className="min-w-0 text-center">
+          <div className="leading-[0.9]" style={{ ...PLANE_CRASH, color: BLUE, fontSize: "clamp(1.6rem, 5vw, 4rem)" }} data-testid="event-title-month">
             {renderPlaneCrash(month || "")}
           </div>
           {isFestival ? (
@@ -271,7 +271,7 @@ function EventTitleSection({ month, word, isFestival }) {
               className="leading-[0.9] mt-2"
               style={{
                 ...PLANE_CRASH,
-                fontSize: "clamp(2.8rem, 6.5vw, 5rem)",
+                fontSize: "clamp(1.8rem, 6.5vw, 5rem)",
                 letterSpacing: "0.02em",
               }}
               data-testid="event-title-word"
@@ -287,7 +287,7 @@ function EventTitleSection({ month, word, isFestival }) {
             // Premier: cursivo dorado (estilo original).
             <div
               className="italic mt-1"
-              style={{ ...CURSIVE, color: GOLD, fontSize: "clamp(3.4rem, 8.5vw, 6.4rem)", textShadow: "0 2px 0 rgba(0,0,0,0.05)" }}
+              style={{ ...CURSIVE, color: GOLD, fontSize: "clamp(2.2rem, 8.5vw, 6.4rem)", textShadow: "0 2px 0 rgba(0,0,0,0.05)" }}
               data-testid="event-title-word"
             >
               {toTitleCaseForScript(word)}
@@ -472,7 +472,7 @@ function ScenariosSection({ title, cursive, subTop, subBottom }) {
           distance={60}
           amount={0.4}
           className="leading-[0.85] w-full text-center"
-          style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(3rem, 11vw, 8rem)", letterSpacing: "clamp(0rem, 0.8vw, 0.2rem)" }}
+          style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(2rem, 11vw, 8rem)", letterSpacing: "clamp(0rem, 0.8vw, 0.2rem)" }}
           data-testid="scenarios-title"
         >
           {renderPlaneCrash(title || "ESCENARIOS")}
@@ -520,7 +520,7 @@ function PremiacionSection({ title, subtitle, gallery }) {
           distance={60}
           amount={0.4}
           className="leading-none"
-          style={{ ...PLANE_CRASH, color: BLUE, fontSize: "clamp(3rem, 11vw, 8rem)", letterSpacing: "clamp(0rem, 0.8vw, 0.2rem)" }}
+          style={{ ...PLANE_CRASH, color: BLUE, fontSize: "clamp(2rem, 11vw, 8rem)", letterSpacing: "clamp(0rem, 0.8vw, 0.2rem)" }}
           data-testid="premiacion-title"
         >
           {renderPlaneCrash(title || "PREMIACIÓN")}

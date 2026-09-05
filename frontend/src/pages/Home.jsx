@@ -3,7 +3,7 @@ import { Link, NavLink, useNavigate } from "react-router-dom";
 import api from "../lib/api";
 import { useLoginModal } from "../context/LoginModalContext";
 import { useAuth } from "../context/AuthContext";
-import { ChevronLeft, ChevronRight, Calendar, Mail, Instagram, Facebook, LogOut, UserCircle2, Shield } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, Mail, Instagram, Facebook, LogOut, UserCircle2, Shield, Menu, X } from "lucide-react";
 import { WhatsAppIcon } from "../components/WhatsAppIcon";
 import { PLANE_CRASH, AGENCY_FB, NEO_SANS, STENCIL, CURSIVE, renderPlaneCrash, RED, BLUE, GRAY } from "../lib/designSystem";
 import ChevronStack from "../components/ChevronStack";
@@ -25,6 +25,7 @@ export default function Home() {
   const navigate = useNavigate();
   const handleLogout = async () => { await logout(); navigate("/"); };
   const [s, setS] = useState({});
+  const [navOpen, setNavOpen] = useState(false);
   const [gallery, setGallery] = useState([]);
   const [gIdx, setGIdx] = useState(0);
   // Dirección del último cambio (+1 = avance / next, -1 = retroceso / prev).
@@ -158,49 +159,64 @@ export default function Home() {
               <StretchedTagline text="Torneo Internacional" color="#ffffff" className="drop-shadow-md" testId="hero-cursive-tagline" />
             </div>
             {/* Barra blanca con links — más padding y tipografía más grande */}
-            <div className="mt-5 bg-white rounded-md shadow-md px-3 md:px-5 py-2 md:py-3 flex flex-wrap items-center gap-1 md:gap-1" data-testid="hero-nav-bar">
-              {[
-                { to: "/", label: "INICIO", end: true },
-                { to: "/nosotros", label: "NOSOTROS" },
-                { to: "/eventos", label: "EVENTOS" },
-                { to: "/datos-estadisticas", label: "ESTADÍSTICAS" },
-                { to: "/noticias", label: "NOTICIAS" },
-                { to: "/contacto", label: "CONTÁCTO" },
-              ].map((n) => (
-                <NavLink
-                  key={n.to}
-                  to={n.to}
-                  end={n.end}
-                  className={({ isActive }) => `px-4 md:px-5 py-2 md:py-3 font-black uppercase tracking-wider text-lg md:text-xl transition ${isActive ? "text-white rounded" : "hover:opacity-80"}`}
-                  style={({ isActive }) => ({ ...AGENCY_FB, background: isActive ? BLUE : "transparent", color: isActive ? "#fff" : RED })}
-                  data-testid={`nav-link-${n.label.toLowerCase()}`}
+            <div className="mt-5 bg-white rounded-md shadow-md px-3 md:px-5 py-2 md:py-3" data-testid="hero-nav-bar">
+              <div className="flex items-center justify-between lg:hidden">
+                <span className="font-black uppercase text-sm tracking-wider" style={{ ...AGENCY_FB, color: RED }}>MENÚ</span>
+                <button
+                  type="button"
+                  onClick={() => setNavOpen(!navOpen)}
+                  className="min-w-[44px] min-h-[44px] flex items-center justify-center text-slate-700"
+                  aria-label="Menú"
+                  data-testid="hero-nav-mobile-toggle"
                 >
-                  {n.label}
-                </NavLink>
-              ))}
-              <div className="flex-1" />
-              {user ? (
-                <>
-                  {user.role === "admin" && (
-                    <NavLink to="/admin" className="px-4 md:px-5 py-2 md:py-3 font-black uppercase tracking-wider text-lg md:text-xl flex items-center gap-1.5 hover:opacity-80" style={{ ...AGENCY_FB, color: BLUE }} data-testid="nav-link-admin">
-                      <Shield size={16}/> ADMIN
-                    </NavLink>
-                  )}
-                  {user.role === "team" && (
-                    <NavLink to="/mi-equipo" className="px-4 md:px-5 py-2 md:py-3 font-black uppercase tracking-wider text-lg md:text-xl flex items-center gap-1.5 hover:opacity-80" style={{ ...AGENCY_FB, color: RED }} data-testid="nav-link-mi-equipo">
-                      <UserCircle2 size={16}/> MI EQUIPO
-                    </NavLink>
-                  )}
-                  <button type="button" onClick={handleLogout} className="px-4 md:px-5 py-2 md:py-3 font-black uppercase tracking-wider text-lg md:text-xl flex items-center gap-1.5 hover:opacity-80" style={{ ...AGENCY_FB, color: RED }} data-testid="nav-logout">
-                    <LogOut size={16}/> SALIR
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button type="button" onClick={openLogin} className="px-4 md:px-5 py-2 md:py-3 font-black uppercase tracking-wider text-lg md:text-xl hover:opacity-80" style={{ ...AGENCY_FB, color: RED }} data-testid="nav-link-ingreso">INGRESO</button>
-                  <NavLink to="/registro-equipo" className="px-4 md:px-5 py-2 md:py-3 font-black uppercase tracking-wider text-lg md:text-xl hover:opacity-80" style={{ ...AGENCY_FB, color: RED }} data-testid="nav-link-registro">REGISTRO</NavLink>
-                </>
-              )}
+                  {navOpen ? <X size={24} /> : <Menu size={24} />}
+                </button>
+              </div>
+              <div className={`${navOpen ? "flex" : "hidden"} lg:flex flex-col lg:flex-row lg:items-center gap-1 mt-2 lg:mt-0`}>
+                {[
+                  { to: "/", label: "INICIO", end: true },
+                  { to: "/nosotros", label: "NOSOTROS" },
+                  { to: "/eventos", label: "EVENTOS" },
+                  { to: "/datos-estadisticas", label: "ESTADÍSTICAS" },
+                  { to: "/noticias", label: "NOTICIAS" },
+                  { to: "/contacto", label: "CONTÁCTO" },
+                ].map((n) => (
+                  <NavLink
+                    key={n.to}
+                    to={n.to}
+                    end={n.end}
+                    onClick={() => setNavOpen(false)}
+                    className={({ isActive }) => `px-4 md:px-5 py-2 md:py-3 font-black uppercase tracking-wider text-lg md:text-xl transition ${isActive ? "text-white rounded" : "hover:opacity-80"}`}
+                    style={({ isActive }) => ({ ...AGENCY_FB, background: isActive ? BLUE : "transparent", color: isActive ? "#fff" : RED })}
+                    data-testid={`nav-link-${n.label.toLowerCase()}`}
+                  >
+                    {n.label}
+                  </NavLink>
+                ))}
+                <div className="flex-1 hidden lg:block" />
+                {user ? (
+                  <>
+                    {user.role === "admin" && (
+                      <NavLink to="/admin" onClick={() => setNavOpen(false)} className="px-4 md:px-5 py-2 md:py-3 font-black uppercase tracking-wider text-lg md:text-xl flex items-center gap-1.5 hover:opacity-80" style={{ ...AGENCY_FB, color: BLUE }} data-testid="nav-link-admin">
+                        <Shield size={16}/> ADMIN
+                      </NavLink>
+                    )}
+                    {user.role === "team" && (
+                      <NavLink to="/mi-equipo" onClick={() => setNavOpen(false)} className="px-4 md:px-5 py-2 md:py-3 font-black uppercase tracking-wider text-lg md:text-xl flex items-center gap-1.5 hover:opacity-80" style={{ ...AGENCY_FB, color: RED }} data-testid="nav-link-mi-equipo">
+                        <UserCircle2 size={16}/> MI EQUIPO
+                      </NavLink>
+                    )}
+                    <button type="button" onClick={() => { setNavOpen(false); handleLogout(); }} className="px-4 md:px-5 py-2 md:py-3 font-black uppercase tracking-wider text-lg md:text-xl flex items-center gap-1.5 hover:opacity-80" style={{ ...AGENCY_FB, color: RED }} data-testid="nav-logout">
+                      <LogOut size={16}/> SALIR
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button type="button" onClick={() => { setNavOpen(false); openLogin(); }} className="px-4 md:px-5 py-2 md:py-3 font-black uppercase tracking-wider text-lg md:text-xl hover:opacity-80 text-left" style={{ ...AGENCY_FB, color: RED }} data-testid="nav-link-ingreso">INGRESO</button>
+                    <NavLink to="/registro-equipo" onClick={() => setNavOpen(false)} className="px-4 md:px-5 py-2 md:py-3 font-black uppercase tracking-wider text-lg md:text-xl hover:opacity-80" style={{ ...AGENCY_FB, color: RED }} data-testid="nav-link-registro">REGISTRO</NavLink>
+                  </>
+                )}
+              </div>
             </div>
           </div>
 
@@ -293,7 +309,7 @@ export default function Home() {
           <div className="relative">
             <button
               onClick={() => advanceGallery(-1)}
-              className="absolute -left-2 lg:-left-10 top-1/2 -translate-y-1/2 rounded-full p-2 hover:scale-110 transition disabled:opacity-30 z-10"
+              className="absolute -left-2 lg:-left-6 top-1/2 -translate-y-1/2 rounded-full p-2 hover:scale-110 transition disabled:opacity-30 z-10"
               disabled={gallery.length === 0}
               data-testid="gallery-prev"
               style={{ color: BLUE }}
@@ -337,7 +353,7 @@ export default function Home() {
             </div>
             <button
               onClick={() => advanceGallery(1)}
-              className="absolute -right-2 lg:-right-10 top-1/2 -translate-y-1/2 rounded-full p-2 hover:scale-110 transition disabled:opacity-30 z-10"
+              className="absolute -right-2 lg:-right-6 top-1/2 -translate-y-1/2 rounded-full p-2 hover:scale-110 transition disabled:opacity-30 z-10"
               disabled={gallery.length === 0}
               data-testid="gallery-next"
               style={{ color: BLUE }}

@@ -299,7 +299,7 @@ function StepPersonal({ form, upd, showPw, setShowPw, isCuerpoTecnico, clubs }) 
               style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.35)" }}
               data-testid="tr-password"
             />
-            <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/80 p-1" aria-label="Mostrar contraseña">
+            <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-1 top-1/2 -translate-y-1/2 text-white/80 p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Mostrar contraseña">
               {showPw ? <EyeOff size={22} /> : <Eye size={22} />}
             </button>
           </div>

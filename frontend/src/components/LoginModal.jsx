@@ -200,7 +200,7 @@ export default function LoginModal() {
                       style={{ background: "#ffffff", border: "1px solid rgba(255,255,255,0.4)" }}
                       data-testid="login-modal-password"
                     />
-                    <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 p-1" aria-label="Mostrar contraseña">
+                    <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-1 top-1/2 -translate-y-1/2 text-slate-500 p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Mostrar contraseña">
                       {showPw ? <EyeOff size={22} /> : <Eye size={22} />}
                     </button>
                   </div>

@@ -49,23 +49,23 @@ export default function Navbar() {
           </Link>
           <StretchedTagline text="Torneo Internacional" color={BLUE} testId="nav-tagline" />
           {/* Botón mobile */}
-          <button onClick={() => setOpen(!open)} className="md:hidden text-slate-700" aria-label="Menú" data-testid="nav-mobile-toggle">
+          <button onClick={() => setOpen(!open)} className="lg:hidden text-slate-700 min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Menú" data-testid="nav-mobile-toggle">
             {open ? <X size={26} /> : <Menu size={26} />}
           </button>
         </div>
       </div>
 
       {/* Fila 2: Menú estilo wireframe — fondo blanco, links rojos en bold uppercase con Agency FB */}
-      <nav className={`bg-white ${open ? "block" : "hidden"} md:block`}>
-        <div className="max-w-7xl mx-auto px-6 py-1 md:py-2 flex flex-col md:flex-row md:items-stretch md:justify-between gap-1">
-          <div className="flex flex-col md:flex-row md:items-stretch gap-0">
+      <nav className={`bg-white ${open ? "block" : "hidden"} lg:block`}>
+        <div className="max-w-7xl mx-auto px-6 py-1 lg:py-2 flex flex-col lg:flex-row lg:items-stretch lg:justify-between gap-1">
+          <div className="flex flex-col lg:flex-row lg:items-stretch gap-0">
             {NAV.map((n) => (
               <NavLink
                 key={n.to}
                 to={n.to}
                 end={n.end}
                 onClick={() => setOpen(false)}
-                className={({ isActive }) => `px-4 md:px-5 py-3 font-black uppercase tracking-wider text-lg md:text-xl transition ${isActive ? "text-white" : "hover:opacity-80"}`}
+                className={({ isActive }) => `px-4 lg:px-5 py-3 font-black uppercase tracking-wider text-lg lg:text-xl transition ${isActive ? "text-white" : "hover:opacity-80"}`}
                 style={({ isActive }) => ({ ...AGENCY_FB, background: isActive ? BLUE : "transparent", color: isActive ? "#fff" : RED })}
                 data-testid={`nav-link-${n.label.toLowerCase()}`}
               >
@@ -73,20 +73,20 @@ export default function Navbar() {
               </NavLink>
             ))}
           </div>
-          <div className="flex flex-col md:flex-row md:items-stretch md:gap-1">
+          <div className="flex flex-col lg:flex-row lg:items-stretch lg:gap-1">
             {user ? (
               <>
                 {user.role === "admin" && (
-                  <NavLink to="/admin" onClick={() => setOpen(false)} className="px-4 md:px-5 py-3 font-black uppercase tracking-wider text-lg md:text-xl flex items-center gap-1.5 hover:opacity-80" style={{ ...AGENCY_FB, color: BLUE }} data-testid="nav-link-admin">
+                  <NavLink to="/admin" onClick={() => setOpen(false)} className="px-4 lg:px-5 py-3 font-black uppercase tracking-wider text-lg lg:text-xl flex items-center gap-1.5 hover:opacity-80" style={{ ...AGENCY_FB, color: BLUE }} data-testid="nav-link-admin">
                     <Shield size={16}/> ADMIN
                   </NavLink>
                 )}
                 {user.role === "team" && (
-                  <NavLink to="/mi-equipo" onClick={() => setOpen(false)} className="px-4 md:px-5 py-3 font-black uppercase tracking-wider text-lg md:text-xl flex items-center gap-1.5 hover:opacity-80" style={{ ...AGENCY_FB, color: RED }} data-testid="nav-link-mi-equipo">
+                  <NavLink to="/mi-equipo" onClick={() => setOpen(false)} className="px-4 lg:px-5 py-3 font-black uppercase tracking-wider text-lg lg:text-xl flex items-center gap-1.5 hover:opacity-80" style={{ ...AGENCY_FB, color: RED }} data-testid="nav-link-mi-equipo">
                     <UserCircle2 size={16}/> MI EQUIPO
                   </NavLink>
                 )}
-                <button onClick={handleLogout} className="px-4 md:px-5 py-3 font-black uppercase tracking-wider text-lg md:text-xl flex items-center gap-1.5 hover:opacity-80" style={{ ...AGENCY_FB, color: RED }} data-testid="nav-logout">
+                <button onClick={handleLogout} className="px-4 lg:px-5 py-3 font-black uppercase tracking-wider text-lg lg:text-xl flex items-center gap-1.5 hover:opacity-80" style={{ ...AGENCY_FB, color: RED }} data-testid="nav-logout">
                   <LogOut size={16}/> SALIR
                 </button>
               </>
@@ -95,13 +95,13 @@ export default function Navbar() {
                 <button
                   type="button"
                   onClick={() => { setOpen(false); openLogin(); }}
-                  className="px-4 md:px-5 py-3 font-black uppercase tracking-wider text-lg md:text-xl hover:opacity-80 text-left"
+                  className="px-4 lg:px-5 py-3 font-black uppercase tracking-wider text-lg lg:text-xl hover:opacity-80 text-left"
                   style={{ ...AGENCY_FB, color: RED }}
                   data-testid="nav-link-ingreso"
                 >
                   INGRESO
                 </button>
-                <NavLink to="/registro-equipo" onClick={() => setOpen(false)} className="px-4 md:px-5 py-3 font-black uppercase tracking-wider text-lg md:text-xl hover:opacity-80" style={{ ...AGENCY_FB, color: RED }} data-testid="nav-link-registro">
+                <NavLink to="/registro-equipo" onClick={() => setOpen(false)} className="px-4 lg:px-5 py-3 font-black uppercase tracking-wider text-lg lg:text-xl hover:opacity-80" style={{ ...AGENCY_FB, color: RED }} data-testid="nav-link-registro">
                   REGISTRO
                 </NavLink>
               </>

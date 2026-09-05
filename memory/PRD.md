@@ -15,7 +15,15 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Storage: Emergent Object Storage for images/PDFs.
 - Tests: pytest under `/app/backend/tests/`.
 
-## What's been implemented (CHANGELOG)
+### 2026-09-05 — Iter98: Revisión responsive completa del sitio (375px/768px/1280px)
+- El usuario pidió una auditoría responsive completa. Se corrigieron bugs reales de overflow horizontal encontrados con mediciones (`document.body.scrollWidth`) y confirmados por `testing_agent` (iteration_63.json):
+  1. **Navbar tablet roto**: el breakpoint de colapso era `md` (768px) pero el menú horizontal completo no cabía justo en 768px (scrollWidth=1003). Cambiado todo `md:` → `lg:` (1024px) en `Navbar.jsx` para que tablet también use hamburguesa.
+  2. **Eventos.jsx overflow mobile**: `TabsBar` (grid-cols-3 sin `min-w-0` causaba que "FESTIVAL"/"PREMIER" expandieran el grid), `EventTitleSection` ("OCTUBRE FESTIVAL" con floor de fuente muy grande), `ScenariosSection`/`PremiacionSection` (floor `3rem` muy grande para "ESCENARIOS"/"PREMIACIÓN" en 375px) — todos ajustados con `min-w-0`, `break-words` y floors de `clamp()` más chicos en mobile. Verificado: `scrollWidth` pasó de 413→375 en mobile.
+  3. **Touch targets 44px**: botón mostrar/ocultar contraseña (`TeamRegister.jsx`, `LoginModal.jsx`) de ~30px → `min-w-[44px] min-h-[44px]`. Hamburguesa de `Navbar.jsx` también a 44px.
+  4. **Home.jsx tenía su propio navbar embebido** (`hero-nav-bar`, NO usa el `Navbar.jsx` compartido) que no colapsaba en mobile/tablet — se le agregó su propio toggle hamburguesa (`hero-nav-mobile-toggle`) con el mismo patrón.
+  5. **Home carrusel "Finales" desktop 1280px**: botones prev/next con `lg:-left-10`/`lg:-right-10` empujaban 16px fuera del viewport exacto en 1280px (scrollWidth=1296). Reducido a `lg:-left-6`/`lg:-right-6`.
+  6. Ajuste visual (no bloqueante): `TabsBar` en Eventos mobile tenía wrap feo de "FESTIVAL"/"PREMIER" — floor de fuente bajado más (`1.2rem`→`0.95rem`) y padding reducido (`px-2`→`px-1`).
+- Verificado con `testing_agent`: 1ra pasada encontró 3 issues (navbar Home, carrusel Home 1280, wrap feo Eventos tabs) — los 3 corregidos y verificados con screenshot + `scrollWidth` tras el fix (Home mobile=375, Home desktop=1280, Eventos mobile=375, tabs sin overlap).
 ### 2026-09-05 — Iter96: Sección "Estadio Centenario" — texto más arriba + botón "POR CONFIRMAR" más grande y dorado
 - El usuario mostró referencia: el texto "Estadio CENTENARIO ARMENIA" debía subir (no quedar centrado verticalmente) y el badge "POR CONFIRMAR" debía ser más grande y con un dorado más vivo.
 - Fix en `StadiumSection` (`Eventos.jsx`): contenedor de texto cambiado de `justify-center` a `justify-start pt-8 md:pt-14`. Badge: padding de `px-4 py-1.5`→`px-8 py-3/3.5`, texto `text-xs/sm`→`text-base/lg`, fondo de `GOLD` sólido a gradiente `linear-gradient(135deg, #ffe071, #f5c542, #d99a0a)` + `boxShadow` dorado difuso. Verificado con screenshot (tab Premier).
