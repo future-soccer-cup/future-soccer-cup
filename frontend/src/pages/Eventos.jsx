@@ -407,12 +407,12 @@ function StadiumSection({ stadium }) {
         </div>
         {showBadge && (
           <div
-            className="mt-5 px-8 py-3 md:py-3.5 rounded-sm text-black uppercase tracking-widest text-base md:text-lg"
+            className="mt-5 px-8 py-1.5 md:py-2 rounded-sm text-black uppercase tracking-widest text-base md:text-lg"
             style={{
-              background: "linear-gradient(135deg, #ffe071 0%, #f5c542 45%, #d99a0a 100%)",
+              background: "linear-gradient(135deg, #fff4c2 0%, #ffd23f 30%, #f0a500 70%, #c9820a 100%)",
               ...AGENCY_FB,
               fontWeight: 900,
-              boxShadow: "0 4px 18px rgba(245, 197, 66, 0.55)",
+              boxShadow: "0 4px 20px rgba(240, 165, 0, 0.65), inset 0 1px 0 rgba(255,255,255,0.8)",
               border: "1px solid rgba(0,0,0,0.15)",
             }}
             data-testid="stadium-badge"
