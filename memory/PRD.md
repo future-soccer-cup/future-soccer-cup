@@ -16,6 +16,9 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-09-05 — Iter89: Animación de entrada en título "ESCENARIOS Deportivos!" (Eventos.jsx)
+- El usuario pidió animación al hacer scroll: "ESCENARIOS" entra desde arriba, "Deportivos!" y "COMFENALCO / ESTADIO DE ARMENIA" entran desde la izquierda, de forma suave y no muy rápida.
+- Fix en `ScenariosSection` (`Eventos.jsx`): se envolvió cada bloque de texto en `<AnimateIn>` — título con `variant="slide-down"`, cursiva y subtítulos con `variant="slide-left"` (con `delay={0.15}` en el segundo para que no entren exactamente igual), todos con `duration={1.3}` y `distance={60}` para una animación lenta y perceptible. Verificado con scroll simulado + chequeo de `opacity` (0 antes / 1 después) y screenshot final.
 ### 2026-09-05 — Iter88: Cuadros "Día de Aventura" más grandes + animación de entrada dinámica en los logos
 - El usuario pidió que los cuadros rojos de "Día de Aventura" (Eventos.jsx) sean más grandes, los logos más grandes, y que los logos tengan una animación dinámica al aparecer en pantalla (entrar desde un lado y posicionarse en el centro).
 - Fix en `AdventureSection` (`Eventos.jsx`): `minHeight` de 200→280px, padding vertical `py-10/16`→`py-14/24`, logos `max-h-32/40`→`max-h-48/64`. Se envolvió cada logo en `<AnimateIn variant={i % 2 === 0 ? "slide-left" : "slide-right"}>` (componente ya existente `/app/frontend/src/components/AnimateIn.jsx`, animación one-shot al entrar al viewport vía `useInView`) — el primer logo entra desde la izquierda, el segundo desde la derecha, alternando si hay más bloques.

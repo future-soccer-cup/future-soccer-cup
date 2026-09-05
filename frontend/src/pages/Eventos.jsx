@@ -436,21 +436,43 @@ function ScenariosSection({ title, cursive, subTop, subBottom }) {
   return (
     <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-14" data-testid="scenarios-section">
       <div>
-        <div
+        <AnimateIn
+          as="div"
+          variant="slide-down"
+          duration={1.3}
+          distance={60}
+          amount={0.4}
           className="leading-[0.85] w-full text-center"
           style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(3rem, 11vw, 8rem)", letterSpacing: "clamp(0rem, 0.8vw, 0.2rem)" }}
           data-testid="scenarios-title"
         >
           {renderPlaneCrash(title || "ESCENARIOS")}
-        </div>
+        </AnimateIn>
         <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 mt-1">
-          <div className="leading-[0.85]" style={{ ...AGENCY_FB, color: RED, fontWeight: 800, fontSize: "clamp(2.8rem, 10.5vw, 7.2rem)" }}>
+          <AnimateIn
+            as="div"
+            variant="slide-left"
+            duration={1.3}
+            distance={60}
+            amount={0.4}
+            className="leading-[0.85]"
+            style={{ ...AGENCY_FB, color: RED, fontWeight: 800, fontSize: "clamp(2.8rem, 10.5vw, 7.2rem)" }}
+          >
             {cursive || "Deportivos!"}
-          </div>
-          <div className="leading-[1.05]" style={{ ...AGENCY_FB, color: RED, fontWeight: 800 }}>
+          </AnimateIn>
+          <AnimateIn
+            as="div"
+            variant="slide-left"
+            duration={1.3}
+            delay={0.15}
+            distance={60}
+            amount={0.4}
+            className="leading-[1.05]"
+            style={{ ...AGENCY_FB, color: RED, fontWeight: 800 }}
+          >
             <div style={{ fontSize: "clamp(1.5rem, 4.6vw, 3rem)" }}>{subTop || "COMFENALCO"}</div>
             <div style={{ fontSize: "clamp(1.5rem, 4.6vw, 3rem)" }}>{subBottom || "ESTADIO DE ARMENIA"}</div>
-          </div>
+          </AnimateIn>
         </div>
       </div>
     </section>
