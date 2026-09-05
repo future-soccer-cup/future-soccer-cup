@@ -418,7 +418,7 @@ function AdventureSection({ title, blocks }) {
             data-testid={`adventure-block-${i}`}
           >
             {b.logo_url ? (
-              <AnimateIn variant={i % 2 === 0 ? "slide-left" : "slide-right"} duration={0.7} amount={0.35}>
+              <AnimateIn variant={i % 2 === 0 ? "slide-left" : "slide-right"} duration={1.3} amount={0.35}>
                 <img src={imgSrc(b.logo_url)} alt="" className="max-h-48 md:max-h-64 max-w-full object-contain" />
               </AnimateIn>
             ) : (
