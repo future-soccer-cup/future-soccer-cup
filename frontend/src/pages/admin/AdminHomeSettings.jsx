@@ -597,26 +597,17 @@ function EventosEditor({ value, onChange }) {
         />
       </SubSection>
 
-      {/* Sección 7 — Escenarios */}
-      <SubSection title="7. Escenarios Deportivos — carrusel de fotos">
+      {/* Sección 7 — Escenarios (título + subtítulos; el carrusel de fotos único está en 7B) */}
+      <SubSection title="7. Escenarios Deportivos — título y subtítulos">
         <div className="grid md:grid-cols-2 gap-3">
           <Field label="Título grande" v={v.scenarios_title} onChange={(x) => patch({ scenarios_title: x })} placeholder="ESCENARIOS" />
           <Field label="Palabra cursiva" v={v.scenarios_cursive} onChange={(x) => patch({ scenarios_cursive: x })} placeholder="Deportivos!" />
           <Field label="Subtítulo línea 1" v={v.scenarios_subtitle_top} onChange={(x) => patch({ scenarios_subtitle_top: x })} placeholder="COMFENALCO" />
           <Field label="Subtítulo línea 2" v={v.scenarios_subtitle_bottom} onChange={(x) => patch({ scenarios_subtitle_bottom: x })} placeholder="ESTADIO DE ARMENIA" />
         </div>
-        <div className="mt-3">
-          <ImageListUpload
-            label="Fotos del carrusel"
-            hint="Se muestran 3 a la vez con navegación ← →. JPG horizontal 1200×800 px."
-            values={v.scenarios_photos || []}
-            onChange={(arr) => patch({ scenarios_photos: arr })}
-            testId="scenarios-photos"
-          />
-        </div>
       </SubSection>
 
-      {/* Sección 7B — Galería Escenarios Deportivos (carrusel adicional, sin título) */}
+      {/* Sección 7B — Galería Escenarios Deportivos (única galería de fotos de esta sección, sin título) */}
       <SubSection title="7B. Galería Escenarios Deportivos — carrusel de fotos (sin título)">
         <ImageListUpload
           label="Fotos del carrusel"
