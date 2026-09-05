@@ -616,6 +616,17 @@ function EventosEditor({ value, onChange }) {
         </div>
       </SubSection>
 
+      {/* Sección 7B — Galería Escenarios Deportivos (carrusel adicional, sin título) */}
+      <SubSection title="7B. Galería Escenarios Deportivos — carrusel de fotos (sin título)">
+        <ImageListUpload
+          label="Fotos del carrusel"
+          hint="Se muestran 3 a la vez con navegación ← →. JPG horizontal 1200×800 px. Va justo debajo de Escenarios Deportivos, sin título."
+          values={v.scenarios_gallery_2 || []}
+          onChange={(arr) => patch({ scenarios_gallery_2: arr })}
+          testId="scenarios-gallery-2"
+        />
+      </SubSection>
+
       {/* Sección 8 — Premiación */}
       <SubSection title="8. Premiación — título y galería de fotos">
         <Field label="Título grande" v={v.premiacion_title} onChange={(x) => patch({ premiacion_title: x })} placeholder="PREMIACIÓN" />

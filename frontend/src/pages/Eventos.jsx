@@ -81,6 +81,13 @@ export default function Eventos() {
         photos={ev.scenarios_photos || []}
       />
 
+      {/* SECCIÓN 7B — Galería adicional de Escenarios (sin título) */}
+      {ev.scenarios_gallery_2 && ev.scenarios_gallery_2.length > 0 && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-14" data-testid="scenarios-gallery-2-section">
+          <GalleryCarousel images={ev.scenarios_gallery_2.map((p) => imgSrc(p))} testIdPrefix="scenarios-gallery-2" accentColor={GOLD} />
+        </section>
+      )}
+
       {/* SECCIÓN 8 — Premiación (galería con transición automática) */}
       <PremiacionSection
         title={ev.premiacion_title}

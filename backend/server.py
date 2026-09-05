@@ -6169,6 +6169,7 @@ DEFAULT_EVENTOS_CONFIG: Dict[str, Any] = {
     "scenarios_subtitle_top": "COMFENALCO",
     "scenarios_subtitle_bottom": "ESTADIO DE ARMENIA",
     "scenarios_photos": [],
+    "scenarios_gallery_2": [],
     "premiacion_title": "PREMIACIÓN",
     "premiacion_subtitle": "EN LA FSC CADA NIÑO ES UN TESORO Y SU ESFUERZO MERECE UN PREMIO...",
     "premiacion_gallery": [],

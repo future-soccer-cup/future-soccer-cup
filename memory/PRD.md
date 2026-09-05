@@ -16,6 +16,13 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-09-05 — Iter84: Nueva galería "Escenarios Deportivos" (carrusel intermedio sin título) en Eventos.jsx
+- El usuario notó que faltaba una galería adicional debajo de "Escenarios Deportivos" (distinta de "Premiación"). No existía ese campo en el schema — se creó de cero:
+  - Backend: `DEFAULT_EVENTOS_CONFIG["scenarios_gallery_2"] = []` en `server.py` (~línea 6171). `eventos` sigue siendo `Dict[str, Any]` libre, sin necesidad de migración porque el frontend usa `|| []` como fallback.
+  - Admin CMS: nueva SubSection "7B. Galería Escenarios Deportivos — carrusel de fotos (sin título)" en `AdminHomeSettings.jsx` (~línea 600), usa `ImageListUpload` con testId `scenarios-gallery-2`.
+  - Frontend público: nueva `<section data-testid="scenarios-gallery-2-section">` en `Eventos.jsx`, renderizada SOLO si `ev.scenarios_gallery_2.length > 0`, ubicada entre `ScenariosSection` y `PremiacionSection`. Usa `<GalleryCarousel accentColor={GOLD} testIdPrefix="scenarios-gallery-2">`, sin título ni subtítulo (a diferencia de Premiación).
+  - Verificado con testing_agent (`iteration_62.json`): 100% frontend, sin bugs. Navegación de flechas OK, panel admin OK, sin regresiones en Escenarios/Premiación existentes.
+- Bloqueado explícitamente por el usuario en este ciclo (NO tocar): tamaño de "FSC" en Nosotros.jsx, efecto stacked del Hero en Eventos.jsx.
 ### 2026-09-01 — Iter83: La causa REAL era mayúscula sostenida en el dato — Natura Script no conecta letras en MAYÚSCULAS
 - Se renderizó el archivo `NaturaScript.otf` directamente con Python/PIL (sin navegador, sin caché) comparando "Premier" (mixto) vs "PREMIER" (mayúscula sostenida): "Premier" se ve conectado y elegante (igual a la imagen de referencia del usuario); "PREMIER" se ve con letras separadas/rotas — la fuente es una caligrafía monolineal diseñada para minúsculas conectadas, NO tiene ligaduras entre mayúsculas.
 - Causa raíz encontrada: `home_settings.estadisticas.events[].title_word` tenía guardado literalmente "PREMIER" en mayúscula sostenida (a diferencia de `eventos.premier.title_word` = "Premier", que sí estaba bien). Por eso se veía distinto en Estadísticas vs en Eventos.
