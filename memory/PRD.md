@@ -16,6 +16,9 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-09-05 — Iter91: "PREMIACIÓN" más grande (igual a "ESCENARIOS") + subtítulo más grande + animaciones
+- El usuario pidió que "PREMIACIÓN" tenga el mismo tamaño que "ESCENARIOS", que el subtítulo "EN LA FSC CADA NIÑO ES UN TESORO..." sea más grande, y que ambos textos tengan animación.
+- Fix en `PremiacionSection` (`Eventos.jsx`): título `fontSize` de `clamp(2.5rem,6vw,4.5rem)` → `clamp(3rem,11vw,8rem)` (igual que `ScenariosSection`). Subtítulo de `clamp(1.1rem,2.2vw,1.6rem)` → `clamp(1.4rem,3vw,2.2rem)`, contenedor `max-w-lg`→`max-w-2xl`. Ambos envueltos en `<AnimateIn>`: título `variant="slide-down"`, subtítulo `variant="slide-up"` con `delay={0.15}`, `duration={1.3}` (mismo patrón lento usado en Escenarios). Verificado con scroll simulado (opacity 0→1) y screenshot.
 ### 2026-09-05 — Iter90: Animaciones se repiten cada vez que el elemento entra al viewport (global)
 - El usuario preguntó si al recargar la página, bajar y ver las animaciones, luego subir al inicio y bajar de nuevo, las animaciones podían repetirse (antes solo se disparaban una vez por sesión).
 - Fix en `AnimateIn.jsx` (componente compartido usado en Home, Nosotros y Eventos): `useInView(ref, { once: true, ... })` → `{ once: false, ... }`. La lógica de `animate = inView ? computeAnimate(variant) : initial` ya revertía al estado inicial al salir del viewport, así que solo bastó cambiar el flag `once` para que se repita en cada entrada/salida. Cambio GLOBAL — afecta todas las animaciones de entrada del sitio (Home: título región, categorías; Eventos: título Escenarios, logos Aventura; Nosotros: timeline, etc.).

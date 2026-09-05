@@ -484,12 +484,30 @@ function PremiacionSection({ title, subtitle, gallery }) {
   return (
     <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-14" data-testid="premiacion-section">
       <div className="text-center mb-6 md:mb-8">
-        <h2 className="leading-none" style={{ ...PLANE_CRASH, color: BLUE, fontSize: "clamp(2.5rem, 6vw, 4.5rem)" }} data-testid="premiacion-title">
+        <AnimateIn
+          as="h2"
+          variant="slide-down"
+          duration={1.3}
+          distance={60}
+          amount={0.4}
+          className="leading-none"
+          style={{ ...PLANE_CRASH, color: BLUE, fontSize: "clamp(3rem, 11vw, 8rem)", letterSpacing: "clamp(0rem, 0.8vw, 0.2rem)" }}
+          data-testid="premiacion-title"
+        >
           {renderPlaneCrash(title || "PREMIACIÓN")}
-        </h2>
-        <p className="mt-3 max-w-lg mx-auto text-sm md:text-base" style={{ ...AGENCY_FB, color: RED, fontWeight: 700, fontSize: "clamp(1.1rem, 2.2vw, 1.6rem)" }}>
+        </AnimateIn>
+        <AnimateIn
+          as="p"
+          variant="slide-up"
+          duration={1.3}
+          delay={0.15}
+          distance={40}
+          amount={0.4}
+          className="mt-3 max-w-2xl mx-auto"
+          style={{ ...AGENCY_FB, color: RED, fontWeight: 700, fontSize: "clamp(1.4rem, 3vw, 2.2rem)" }}
+        >
           {subtitle || ""}
-        </p>
+        </AnimateIn>
       </div>
       {gallery.length > 0 ? (
         <GalleryCarousel images={gallery.map((g) => imgSrc(g))} testIdPrefix="premiacion-gallery" accentColor={BLUE} />
