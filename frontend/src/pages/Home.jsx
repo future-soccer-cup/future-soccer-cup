@@ -381,10 +381,10 @@ export default function Home() {
             {s.region_subtitle || "Comfenalco Soleden"}
           </AnimateIn>
         </div>
-        {/* Franja azul de borde a borde (full-bleed) que contiene las columnas de categorías + la mascota */}
-        <div className="relative left-1/2 right-1/2 -mx-[50vw] w-screen pt-8 pb-0 lg:pb-0" style={{ background: BLUE }} data-testid="home-region-blue-strip">
-          {/* Layout 3 columnas: Festival - Mascota CENTRADA - Premier */}
-          <div className="relative max-w-7xl mx-auto px-6 overflow-x-hidden lg:overflow-x-visible pb-10 lg:pb-0">
+        {/* Franja azul de borde a borde (full-bleed) con un panel/contenedor blanco inset — efecto "marco azul" */}
+        <div className="relative left-1/2 right-1/2 -mx-[50vw] w-screen py-6 md:py-9 px-3 md:px-8" style={{ background: BLUE }} data-testid="home-region-blue-strip">
+          <div className="relative max-w-7xl mx-auto bg-white rounded-2xl px-6 pt-6 pb-0 overflow-x-hidden lg:overflow-x-visible" data-testid="home-region-white-panel">
+            {/* Layout 3 columnas: Festival - Mascota CENTRADA - Premier */}
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-14 items-start" data-testid="home-categories">
               {/* FESTIVAL */}
               <div className="relative z-10">
@@ -398,7 +398,7 @@ export default function Home() {
                 />
               </div>
               {/* Espaciador — reserva la columna central para que Festival/Premier queden a los lados; la mascota real se posiciona absoluta más abajo para poder crecer sin la restricción de ancho de esta columna */}
-              <div className="hidden lg:block" style={{ minHeight: "860px" }} data-testid="mascot-box" />
+              <div className="hidden lg:block" style={{ minHeight: "800px" }} data-testid="mascot-box" />
               {/* PREMIER */}
               <div className="relative z-10">
                 <CategoryColumn
@@ -414,9 +414,9 @@ export default function Home() {
                 />
               </div>
             </div>
-            {/* Mascota real (desktop) — el div externo centra/posiciona (no lo toca framer-motion), el AnimateIn interno solo anima el fade/slide del <img>. Altura igual a la del espaciador (var --mascot-h) para que la base quede siempre pegada al final de la franja azul */}
+            {/* Mascota real (desktop) — el div externo centra/posiciona (no lo toca framer-motion), el AnimateIn interno solo anima el fade/slide del <img>. Altura igual a la del espaciador (var --mascot-h) para que la base quede pegada al fondo del panel blanco */}
             {s.mascot_image_url && (
-              <div className="hidden lg:block absolute bottom-0 left-1/2 -translate-x-1/2 pointer-events-none z-0" style={{ height: "880px" }} data-testid="mascot-box-img-wrap">
+              <div className="hidden lg:block absolute bottom-0 left-1/2 -translate-x-1/2 pointer-events-none z-0" style={{ height: "820px" }} data-testid="mascot-box-img-wrap">
                 <AnimateIn variant="slide-up" distance={64} duration={0.8} style={{ height: "100%" }}>
                   <img src={s.mascot_image_url} alt="Mascota Future Soccer Cup" className="h-full w-auto max-w-none object-contain object-bottom" />
                 </AnimateIn>
