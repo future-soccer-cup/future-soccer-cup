@@ -16,6 +16,11 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-09-05 — Iter94: Animaciones en Estadísticas + logo FSC en evento + textos más grandes al ver categoría
+- Se agregaron animaciones de entrada (`AnimateIn`, `duration=1.3`) en `DatosEstadisticas.jsx`: "ASÍ VA LA" (`slide-down`) + "competencia!" (`slide-up`, delay 0.15) en `IntroAndSelector`; y el bloque completo logo+"OCTUBRE FESTIVAL"/"DICIEMBRE Premier" (`slide-right`) en `CategoriesGrid`.
+- El campo para subir el logo del evento (`event.logo_url`) ya existía en el Admin (`AdminHomeSettings.jsx` línea 759, "Logo del evento (opcional)") pero no estaba configurado — se le asignó el escudo FSC (`nav_shield_url`) al evento Festival como valor inicial; el admin puede cambiarlo libremente desde ese mismo campo.
+- Se agrandó el texto de todo el panel que aparece al seleccionar una categoría (`CategoryDataPanel`): header de categoría, "Tabla de posiciones"/"Goleadores", y las tablas `StandingsTable`/`ScorersTable` (de `text-sm` a `text-base md:text-lg`, headers de tabla más grandes, columna de puntos/goles destacada en `text-lg md:text-xl`).
+- Verificado con screenshot: animaciones confirmadas, logo FSC visible junto a "OCTUBRE FESTIVAL", panel de categoría con texto notablemente más grande.
 ### 2026-09-05 — Iter93: Auto-rotación de imágenes en GalleryCarousel con solo 3 fotos
 - El usuario notó que la galería "Escenarios" (con exactamente 3 fotos) no cambiaba sola. Causa: `GalleryCarousel.jsx` solo activaba el `setInterval` de auto-rotación si `list.length > 3`, dejando fija cualquier galería con 3 o menos fotos.
 - Fix: condición cambiada a `list.length <= 1` (se activa con 2+ fotos). Afecta a las 3 galerías que usan este componente compartido (Escenarios, la nueva galería intermedia `scenarios_gallery_2`, y Premiación). Verificado con screenshot: la imagen central cambió automáticamente tras ~5s de espera, sin interacción del usuario.

@@ -13,6 +13,7 @@ import { useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
 import api, { imgSrc } from "../lib/api";
 import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe, renderPlaneCrash, toTitleCaseForScript } from "../lib/designSystem";
+import AnimateIn from "../components/AnimateIn";
 
 const RED = "#e31f27";
 const BLUE = "#0640c8";
@@ -138,20 +139,31 @@ function HeroSection({ heroUrl, watermark, titleTop, titleBottom }) {
 function IntroAndSelector({ top, bottom, events, activeKey, onSelect }) {
   return (
     <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 md:pt-14 text-center" data-testid="stats-intro">
-      <div
+      <AnimateIn
+        as="div"
+        variant="slide-down"
+        duration={1.3}
+        distance={50}
+        amount={0.4}
         className="leading-[0.9]"
         style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(2.4rem, 5.5vw, 4.5rem)" }}
         data-testid="stats-intro-top"
       >
         {renderPlaneCrash(top)}
-      </div>
-      <div
+      </AnimateIn>
+      <AnimateIn
+        as="div"
+        variant="slide-up"
+        duration={1.3}
+        delay={0.15}
+        distance={30}
+        amount={0.4}
         className="mt-2"
         style={{ ...AGENCY_FB, fontWeight: 700, color: RED, fontSize: "clamp(1.8rem, 3.6vw, 3rem)" }}
         data-testid="stats-intro-bottom"
       >
         {bottom}
-      </div>
+      </AnimateIn>
 
       {events.length > 1 && (
         <div className="mt-6 md:mt-8 flex items-center justify-center gap-2 md:gap-3 flex-wrap" data-testid="stats-event-selector">
@@ -212,26 +224,28 @@ function CategoriesGrid({ event, onSelectCat }) {
         </div>
 
         <div className="flex flex-col items-center gap-3">
-          {event.logo_url ? (
-            <img src={imgSrc(event.logo_url)} alt="" className="max-h-24 md:max-h-32 object-contain" data-testid="stats-event-logo" />
-          ) : null}
-          <div className="text-center">
-            <div className="leading-none" style={{ ...PLANE_CRASH, color: BLUE, fontSize: "clamp(2rem, 3.3vw, 3.1rem)" }}>
-              {renderPlaneCrash(event.title_month || "")}
+          <AnimateIn as="div" variant="slide-right" duration={1.3} distance={50} amount={0.4} className="flex flex-col items-center gap-3">
+            {event.logo_url ? (
+              <img src={imgSrc(event.logo_url)} alt="" className="max-h-24 md:max-h-32 object-contain" data-testid="stats-event-logo" />
+            ) : null}
+            <div className="text-center">
+              <div className="leading-none" style={{ ...PLANE_CRASH, color: BLUE, fontSize: "clamp(2rem, 3.3vw, 3.1rem)" }}>
+                {renderPlaneCrash(event.title_month || "")}
+              </div>
+              {isMulti ? (
+                <div className="leading-none mt-1" style={{ ...PLANE_CRASH, fontSize: "clamp(1.8rem, 3vw, 2.8rem)" }} data-testid="stats-event-title-word">
+                  {Array.from(planeCrashSafe(event.title_word || "")).map((ch, i) => {
+                    const color = ch === " " ? "transparent" : FESTIVAL_LETTER_COLORS[i % FESTIVAL_LETTER_COLORS.length];
+                    return <span key={i} style={{ color, WebkitTextFillColor: color }}>{ch}</span>;
+                  })}
+                </div>
+              ) : (
+                <div className="italic mt-1" style={{ ...CURSIVE, color: GOLD, fontSize: "clamp(3.4rem, 5.6vw, 5.2rem)" }} data-testid="stats-event-title-word">
+                  {toTitleCaseForScript(event.title_word)}
+                </div>
+              )}
             </div>
-            {isMulti ? (
-              <div className="leading-none mt-1" style={{ ...PLANE_CRASH, fontSize: "clamp(1.8rem, 3vw, 2.8rem)" }} data-testid="stats-event-title-word">
-                {Array.from(planeCrashSafe(event.title_word || "")).map((ch, i) => {
-                  const color = ch === " " ? "transparent" : FESTIVAL_LETTER_COLORS[i % FESTIVAL_LETTER_COLORS.length];
-                  return <span key={i} style={{ color, WebkitTextFillColor: color }}>{ch}</span>;
-                })}
-              </div>
-            ) : (
-              <div className="italic mt-1" style={{ ...CURSIVE, color: GOLD, fontSize: "clamp(3.4rem, 5.6vw, 5.2rem)" }} data-testid="stats-event-title-word">
-                {toTitleCaseForScript(event.title_word)}
-              </div>
-            )}
-          </div>
+          </AnimateIn>
         </div>
       </div>
     </section>
@@ -269,43 +283,43 @@ function CategoryDataPanel({ category, eventLabel, onClose }) {
   return (
     <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-10" data-testid="stats-category-panel">
       <div className="bg-white border-2 rounded-lg shadow-lg" style={{ borderColor: BLUE }}>
-        <div className="px-5 py-3 flex items-center justify-between" style={{ background: BLUE }}>
+        <div className="px-5 py-4 flex items-center justify-between" style={{ background: BLUE }}>
           <div className="text-white">
-            <div className="text-[10px] uppercase tracking-widest opacity-80" style={AGENCY_FB}>{eventLabel}</div>
-            <div className="leading-none mt-0.5" style={{ ...PLANE_CRASH, fontSize: "clamp(1.3rem, 2.5vw, 2rem)" }}>
+            <div className="text-xs uppercase tracking-widest opacity-80" style={AGENCY_FB}>{eventLabel}</div>
+            <div className="leading-none mt-0.5" style={{ ...PLANE_CRASH, fontSize: "clamp(1.7rem, 3.4vw, 2.6rem)" }}>
               {renderPlaneCrash(category.label || `CAT ${category.category}`)}
             </div>
           </div>
           <button type="button" onClick={onClose} className="text-white/90 hover:text-white p-2 rounded-full hover:bg-white/10" aria-label="Cerrar" data-testid="stats-panel-close">
-            <X size={20} />
+            <X size={24} />
           </button>
         </div>
 
-        <div className="p-4 md:p-6">
+        <div className="p-5 md:p-8">
           {loading ? (
-            <div className="text-center py-6 text-slate-500" style={AGENCY_FB}>Cargando...</div>
+            <div className="text-center py-6 text-slate-500 text-lg" style={AGENCY_FB}>Cargando...</div>
           ) : noConfig || empty ? (
             <div className="text-center py-10">
-              <div className="text-slate-500 italic" style={AGENCY_FB}>Próximamente</div>
+              <div className="text-slate-500 italic text-lg" style={AGENCY_FB}>Próximamente</div>
               {noConfig && (
-                <div className="text-xs text-slate-400 mt-1">
+                <div className="text-sm text-slate-400 mt-1">
                   Esta categoría aún no está vinculada a un torneo desde el CMS.
                 </div>
               )}
             </div>
           ) : (
-            <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid md:grid-cols-2 gap-8">
               <div>
-                <h3 className="text-sm font-black uppercase tracking-widest mb-3" style={{ color: BLUE }}>
+                <h3 className="text-lg md:text-xl font-black uppercase tracking-widest mb-4" style={{ color: BLUE }}>
                   Tabla de posiciones
                 </h3>
-                {standings?.length ? <StandingsTable rows={standings} /> : <p className="text-slate-400 italic text-sm">Sin datos aún.</p>}
+                {standings?.length ? <StandingsTable rows={standings} /> : <p className="text-slate-400 italic text-base">Sin datos aún.</p>}
               </div>
               <div>
-                <h3 className="text-sm font-black uppercase tracking-widest mb-3" style={{ color: BLUE }}>
+                <h3 className="text-lg md:text-xl font-black uppercase tracking-widest mb-4" style={{ color: BLUE }}>
                   Goleadores
                 </h3>
-                {scorers?.length ? <ScorersTable rows={scorers} /> : <p className="text-slate-400 italic text-sm">Sin goles registrados.</p>}
+                {scorers?.length ? <ScorersTable rows={scorers} /> : <p className="text-slate-400 italic text-base">Sin goles registrados.</p>}
               </div>
             </div>
           )}
@@ -319,30 +333,30 @@ function CategoryDataPanel({ category, eventLabel, onClose }) {
 function StandingsTable({ rows }) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+      <table className="w-full text-base md:text-lg">
         <thead className="bg-slate-100 text-slate-700">
           <tr>
-            <th className="text-left px-2 py-1.5">#</th>
-            <th className="text-left px-2 py-1.5">Equipo</th>
-            <th className="text-center px-2 py-1.5">PJ</th>
-            <th className="text-center px-2 py-1.5">G</th>
-            <th className="text-center px-2 py-1.5">E</th>
-            <th className="text-center px-2 py-1.5">P</th>
-            <th className="text-center px-2 py-1.5">DG</th>
-            <th className="text-center px-2 py-1.5">Pts</th>
+            <th className="text-left px-3 py-2.5">#</th>
+            <th className="text-left px-3 py-2.5">Equipo</th>
+            <th className="text-center px-3 py-2.5">PJ</th>
+            <th className="text-center px-3 py-2.5">G</th>
+            <th className="text-center px-3 py-2.5">E</th>
+            <th className="text-center px-3 py-2.5">P</th>
+            <th className="text-center px-3 py-2.5">DG</th>
+            <th className="text-center px-3 py-2.5">Pts</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((r, i) => (
             <tr key={r.team_id} className="border-t border-slate-100" data-testid={`stats-row-${i}`}>
-              <td className="px-2 py-1.5 font-bold">{i + 1}</td>
-              <td className="px-2 py-1.5">{r.team_name}</td>
+              <td className="px-3 py-2.5 font-bold">{i + 1}</td>
+              <td className="px-3 py-2.5">{r.team_name}</td>
               <td className="text-center tabular-nums">{r.played}</td>
               <td className="text-center tabular-nums">{r.won}</td>
               <td className="text-center tabular-nums">{r.drawn}</td>
               <td className="text-center tabular-nums">{r.lost}</td>
               <td className="text-center tabular-nums">{r.gd}</td>
-              <td className="text-center font-black" style={{ color: BLUE }}>{r.points}</td>
+              <td className="text-center font-black text-lg md:text-xl" style={{ color: BLUE }}>{r.points}</td>
             </tr>
           ))}
         </tbody>
@@ -355,22 +369,22 @@ function StandingsTable({ rows }) {
 function ScorersTable({ rows }) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+      <table className="w-full text-base md:text-lg">
         <thead className="bg-slate-100 text-slate-700">
           <tr>
-            <th className="text-left px-2 py-1.5">#</th>
-            <th className="text-left px-2 py-1.5">Jugador</th>
-            <th className="text-left px-2 py-1.5">Equipo</th>
-            <th className="text-center px-2 py-1.5">Goles</th>
+            <th className="text-left px-3 py-2.5">#</th>
+            <th className="text-left px-3 py-2.5">Jugador</th>
+            <th className="text-left px-3 py-2.5">Equipo</th>
+            <th className="text-center px-3 py-2.5">Goles</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((r, i) => (
             <tr key={`sc-${i}`} className="border-t border-slate-100" data-testid={`stats-scorer-row-${i}`}>
-              <td className="px-2 py-1.5 font-bold">{i + 1}</td>
-              <td className="px-2 py-1.5">{r.name || r.player_name || "—"}</td>
-              <td className="px-2 py-1.5 text-slate-500">{r.team_name || ""}</td>
-              <td className="text-center font-black" style={{ color: RED }}>{r.goals}</td>
+              <td className="px-3 py-2.5 font-bold">{i + 1}</td>
+              <td className="px-3 py-2.5">{r.name || r.player_name || "—"}</td>
+              <td className="px-3 py-2.5 text-slate-500">{r.team_name || ""}</td>
+              <td className="text-center font-black text-lg md:text-xl" style={{ color: RED }}>{r.goals}</td>
             </tr>
           ))}
         </tbody>
