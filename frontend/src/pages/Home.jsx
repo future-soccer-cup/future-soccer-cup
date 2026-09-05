@@ -374,16 +374,18 @@ export default function Home() {
       {/* ======= EJE CAFETERO + MASCOTA + 2 COLUMNAS DE CATEGORÍAS ======= */}
       <section className="pt-12 pb-0 bg-white" data-testid="home-region">
         <div className="max-w-7xl mx-auto px-6 text-center">
-          <AnimateIn as="h2" variant="zoom-in" className="font-black leading-tight" style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(40px, 6vw, 80px)" }} data-testid="region-title">
+          <AnimateIn as="h2" variant="zoom-in" className="font-black leading-tight whitespace-nowrap" style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(13px, 4.6vw, 58px)" }} data-testid="region-title">
             {renderPlaneCrash(s.region_title || "EL EJE CAFETERO LOS ESPERA")}
           </AnimateIn>
           <AnimateIn as="p" variant="fade" delay={0.3} className="text-4xl md:text-5xl font-bold mb-6" style={{ ...AGENCY_FB, color: BLUE }} data-testid="region-subtitle">
             {s.region_subtitle || "Comfenalco Soleden"}
           </AnimateIn>
         </div>
-        {/* Franja azul de borde a borde (full-bleed) con un panel/contenedor blanco inset — efecto "marco azul" */}
-        <div className="relative left-1/2 right-1/2 -mx-[50vw] w-screen py-6 md:py-9 px-3 md:px-8" style={{ background: BLUE }} data-testid="home-region-blue-strip">
-          <div className="relative max-w-7xl mx-auto bg-white rounded-2xl px-6 pt-6 pb-0 overflow-x-hidden lg:overflow-x-visible" data-testid="home-region-white-panel">
+        {/* Fondo blanco con 2 franjas azules verticales en los bordes (no un rectángulo azul grande) */}
+        <div className="relative left-1/2 right-1/2 -mx-[50vw] w-screen bg-white" data-testid="home-region-blue-strip">
+          <div className="absolute inset-y-0 left-0 w-5 md:w-10" style={{ background: BLUE }} />
+          <div className="absolute inset-y-0 right-0 w-5 md:w-10" style={{ background: BLUE }} />
+          <div className="relative max-w-7xl mx-auto px-6 pt-6 pb-0 overflow-x-hidden lg:overflow-x-visible" data-testid="home-region-white-panel">
             {/* Layout 3 columnas: Festival - Mascota CENTRADA - Premier */}
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-14 items-start" data-testid="home-categories">
               {/* FESTIVAL */}
@@ -414,7 +416,7 @@ export default function Home() {
                 />
               </div>
             </div>
-            {/* Mascota real (desktop) — el div externo centra/posiciona (no lo toca framer-motion), el AnimateIn interno solo anima el fade/slide del <img>. Altura igual a la del espaciador (var --mascot-h) para que la base quede pegada al fondo del panel blanco */}
+            {/* Mascota real (desktop) — el div externo centra/posiciona (no lo toca framer-motion), el AnimateIn interno solo anima el fade/slide del <img>. Altura igual a la del espaciador (var --mascot-h) para que la base quede pegada al fondo de la sección */}
             {s.mascot_image_url && (
               <div className="hidden lg:block absolute bottom-0 left-1/2 -translate-x-1/2 pointer-events-none z-0" style={{ height: "820px" }} data-testid="mascot-box-img-wrap">
                 <AnimateIn variant="slide-up" distance={64} duration={0.8} style={{ height: "100%" }}>
