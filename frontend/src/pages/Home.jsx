@@ -381,10 +381,11 @@ export default function Home() {
             {s.region_subtitle || "Comfenalco Soleden"}
           </AnimateIn>
         </div>
-        {/* Fondo blanco con 2 franjas azules verticales en los bordes (no un rectángulo azul grande) */}
-        <div className="relative left-1/2 right-1/2 -mx-[50vw] w-screen bg-white" data-testid="home-region-blue-strip">
+        {/* Fondo blanco con marco azul en "U": 2 franjas verticales en los bordes + 1 franja horizontal abajo (entre el león y el footer) */}
+        <div className="relative left-1/2 right-1/2 -mx-[50vw] w-screen bg-white pb-5 md:pb-10" data-testid="home-region-blue-strip">
           <div className="absolute inset-y-0 left-0 w-5 md:w-10" style={{ background: BLUE }} />
           <div className="absolute inset-y-0 right-0 w-5 md:w-10" style={{ background: BLUE }} />
+          <div className="absolute bottom-0 left-0 right-0 h-5 md:h-10" style={{ background: BLUE }} />
           <div className="relative max-w-7xl mx-auto px-6 pt-6 pb-0 overflow-x-hidden lg:overflow-x-visible" data-testid="home-region-white-panel">
             {/* Layout 3 columnas: Festival - Mascota CENTRADA - Premier */}
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-14 items-start" data-testid="home-categories">
