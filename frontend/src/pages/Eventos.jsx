@@ -16,7 +16,7 @@ import api, { imgSrc } from "../lib/api";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe, renderPlaneCrash, toTitleCaseForScript } from "../lib/designSystem";
 import ChevronStack from "../components/ChevronStack";
-import ImageCarousel from "../components/ImageCarousel";
+import GalleryCarousel from "../components/GalleryCarousel";
 
 const RED = "#e31f27";
 const BLUE = "#0640c8";
@@ -415,12 +415,6 @@ function AdventureSection({ title, blocks }) {
 
 
 function ScenariosSection({ title, cursive, subTop, subBottom, photos }) {
-  const [idx, setIdx] = useState(0);
-  const perView = 3;
-  const canPrev = idx > 0;
-  const canNext = idx + perView < photos.length;
-  const visible = photos.slice(idx, idx + perView);
-
   return (
     <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-14" data-testid="scenarios-section">
       <div className="mb-6">
@@ -443,39 +437,7 @@ function ScenariosSection({ title, cursive, subTop, subBottom, photos }) {
       </div>
 
       <div className="relative">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {visible.length ? visible.map((p, i) => (
-            <div key={`sc-${idx}-${i}`} className="overflow-hidden rounded-sm bg-slate-100 aspect-video" data-testid={`scenario-photo-${idx + i}`}>
-              <img src={imgSrc(p)} alt="" className="w-full h-full object-cover" />
-            </div>
-          )) : (
-            <div className="md:col-span-3 text-center py-10 text-slate-400" style={AGENCY_FB}>Aún no hay fotos configuradas.</div>
-          )}
-        </div>
-        {photos.length > perView && (
-          <>
-            <button
-              type="button"
-              onClick={() => canPrev && setIdx(idx - 1)}
-              disabled={!canPrev}
-              className="absolute -left-2 md:-left-6 top-1/2 -translate-y-1/2 rounded-full w-9 h-9 md:w-10 md:h-10 bg-white shadow flex items-center justify-center disabled:opacity-30"
-              aria-label="Anterior"
-              data-testid="scenarios-prev"
-            >
-              <ChevronLeft size={20} />
-            </button>
-            <button
-              type="button"
-              onClick={() => canNext && setIdx(idx + 1)}
-              disabled={!canNext}
-              className="absolute -right-2 md:-right-6 top-1/2 -translate-y-1/2 rounded-full w-9 h-9 md:w-10 md:h-10 bg-white shadow flex items-center justify-center disabled:opacity-30"
-              aria-label="Siguiente"
-              data-testid="scenarios-next"
-            >
-              <ChevronRight size={20} />
-            </button>
-          </>
-        )}
+        <GalleryCarousel images={photos.map((p) => imgSrc(p))} testIdPrefix="scenarios" accentColor={RED} />
       </div>
     </section>
   );
@@ -494,15 +456,7 @@ function PremiacionSection({ title, subtitle, gallery }) {
         </p>
       </div>
       {gallery.length > 0 ? (
-        <ImageCarousel
-          images={gallery.map((g) => imgSrc(g))}
-          intervalMs={4500}
-          fadeMs={900}
-          alt="Premiación FSC"
-          className="relative w-full h-64 sm:h-80 md:h-[420px] rounded-2xl overflow-hidden shadow-lg"
-          imgClassName="w-full h-full object-cover"
-          testId="premiacion-gallery"
-        />
+        <GalleryCarousel images={gallery.map((g) => imgSrc(g))} testIdPrefix="premiacion-gallery" accentColor={BLUE} />
       ) : (
         <div className="w-full h-48 md:h-64 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 text-sm italic" style={AGENCY_FB} data-testid="premiacion-gallery-empty">
           Aún no hay fotos de premiación configuradas.
