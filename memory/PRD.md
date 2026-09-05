@@ -16,6 +16,9 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-09-05 — Iter93: Auto-rotación de imágenes en GalleryCarousel con solo 3 fotos
+- El usuario notó que la galería "Escenarios" (con exactamente 3 fotos) no cambiaba sola. Causa: `GalleryCarousel.jsx` solo activaba el `setInterval` de auto-rotación si `list.length > 3`, dejando fija cualquier galería con 3 o menos fotos.
+- Fix: condición cambiada a `list.length <= 1` (se activa con 2+ fotos). Afecta a las 3 galerías que usan este componente compartido (Escenarios, la nueva galería intermedia `scenarios_gallery_2`, y Premiación). Verificado con screenshot: la imagen central cambió automáticamente tras ~5s de espera, sin interacción del usuario.
 ### 2026-09-05 — Iter92: Banderas "Países que han Participado" con ticker animado + fade en bordes (igual que Clubes)
 - El usuario pidió que las banderas tengan la misma animación de scroll infinito que "Clubes que han Participado", y que al llegar al borde (inicio/fin) se desvanezcan en vez de cortarse abruptamente.
 - Fix en `CountriesBar` (`Eventos.jsx`): reemplazado el layout estático `flex-wrap` por el mismo patrón de `ClubsSection` — lista duplicada (`[...countries, ...countries]`) + `animation: scroll {duration}s linear infinite` (keyframe `scroll` ya existente en `index.css`). Se agregó `maskImage`/`WebkitMaskImage: linear-gradient(to right, transparent, black 8%, black 92%, transparent)` al contenedor para el efecto de fade en ambos bordes.

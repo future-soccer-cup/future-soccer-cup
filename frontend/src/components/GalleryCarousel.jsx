@@ -27,7 +27,7 @@ export default function GalleryCarousel({ images = [], testIdPrefix = "gallery",
   };
 
   useEffect(() => {
-    if (list.length <= 3) return;
+    if (list.length <= 1) return;
     const t = setInterval(() => {
       setDirection(1);
       setIdx((i) => (i + 1) % list.length);
