@@ -132,9 +132,10 @@ function HeroSection({ heroVideoUrl, heroUrl, logoUrl }) {
 
 function CountriesBar({ title, countries }) {
   const hasFlags = countries.length > 0;
-  // Se duplica la lista para loop perfecto (igual que Clubes que han Participado).
-  const track = hasFlags ? [...countries, ...countries] : [];
-  const durationSec = Math.max(14, countries.length * 3);
+  // 3 copias para garantizar que el track siempre sea más ancho que el contenedor (incluso con pocas
+  // banderas) y así el desplazamiento cubra todo el ancho hasta el borde derecho, sin dejar hueco vacío.
+  const track = hasFlags ? [...countries, ...countries, ...countries] : [];
+  const durationSec = Math.max(16, countries.length * 4);
   return (
     <section className="w-full py-6 md:py-8 bg-white" data-testid="eventos-countries">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center gap-5">
@@ -153,7 +154,7 @@ function CountriesBar({ title, countries }) {
               WebkitMaskImage: "linear-gradient(to right, transparent, black 8%, black 92%, transparent)",
             }}
           >
-            <div className="flex items-center gap-4 md:gap-6 w-max" style={{ animation: `scroll ${durationSec}s linear infinite` }}>
+            <div className="flex items-center gap-8 md:gap-14 w-max" style={{ animation: `scroll3x ${durationSec}s linear infinite` }}>
               {track.map((c, i) => (
                 <div
                   key={`country-${i}`}

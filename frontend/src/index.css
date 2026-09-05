@@ -176,6 +176,11 @@ html, body {
     to { transform: translateX(-50%); }
 }
 
+@keyframes scroll3x {
+    from { transform: translateX(0); }
+    to { transform: translateX(-33.3333%); }
+}
+
 /* === Bounce vertical infinito (chevron del hero) === */
 @keyframes fsc-bounce-y {
     0%, 100% { transform: translateY(0); }
