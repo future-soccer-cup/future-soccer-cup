@@ -16,6 +16,9 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-09-05 — Iter96: Sección "Estadio Centenario" — texto más arriba + botón "POR CONFIRMAR" más grande y dorado
+- El usuario mostró referencia: el texto "Estadio CENTENARIO ARMENIA" debía subir (no quedar centrado verticalmente) y el badge "POR CONFIRMAR" debía ser más grande y con un dorado más vivo.
+- Fix en `StadiumSection` (`Eventos.jsx`): contenedor de texto cambiado de `justify-center` a `justify-start pt-8 md:pt-14`. Badge: padding de `px-4 py-1.5`→`px-8 py-3/3.5`, texto `text-xs/sm`→`text-base/lg`, fondo de `GOLD` sólido a gradiente `linear-gradient(135deg, #ffe071, #f5c542, #d99a0a)` + `boxShadow` dorado difuso. Verificado con screenshot (tab Premier).
 ### 2026-09-05 — Iter95: Animación de "OCTUBRE FESTIVAL"/"DICIEMBRE PREMIER" se repite al cambiar de tab
 - El usuario pidió que al hacer clic en Festival / Premier Pares / Impares, la animación del bloque logo+texto se reactive (antes solo se disparaba una vez al entrar al viewport, y como el bloque ya estaba visible, cambiar de tab no la repetía).
 - Fix en `CategoriesGrid` (`DatosEstadisticas.jsx`): se agregó `key={event.key}` al `<AnimateIn>` que envuelve el bloque, forzando un remount de React cada vez que cambia el evento activo — esto reinicia el estado de `useInView`/Framer Motion y reproduce la animación de entrada (`slide-right`) de nuevo. Verificado con screenshot + chequeo de opacity (baja a ~0.26 justo tras el clic, luego vuelve a 1).

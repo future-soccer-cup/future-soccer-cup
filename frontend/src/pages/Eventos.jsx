@@ -395,7 +395,7 @@ function StadiumSection({ stadium }) {
       ) : (
         <div className="w-full h-full flex items-center justify-center text-white/40" style={AGENCY_FB}>Imagen no configurada</div>
       )}
-      <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4">
+      <div className="absolute inset-0 flex flex-col items-center justify-start pt-8 md:pt-14 text-center px-4">
         <div className="italic" style={{ ...CURSIVE, color: "#000000", fontSize: "clamp(2.8rem, 6vw, 4.8rem)", textShadow: "0 2px 10px rgba(255,255,255,0.55)" }}>
           {stadium.cursive || "Estadio"}
         </div>
@@ -407,8 +407,14 @@ function StadiumSection({ stadium }) {
         </div>
         {showBadge && (
           <div
-            className="mt-4 px-4 py-1.5 rounded-sm text-black uppercase tracking-widest text-xs md:text-sm"
-            style={{ background: GOLD, ...AGENCY_FB, fontWeight: 900 }}
+            className="mt-5 px-8 py-3 md:py-3.5 rounded-sm text-black uppercase tracking-widest text-base md:text-lg"
+            style={{
+              background: "linear-gradient(135deg, #ffe071 0%, #f5c542 45%, #d99a0a 100%)",
+              ...AGENCY_FB,
+              fontWeight: 900,
+              boxShadow: "0 4px 18px rgba(245, 197, 66, 0.55)",
+              border: "1px solid rgba(0,0,0,0.15)",
+            }}
             data-testid="stadium-badge"
           >
             {stadium.badge_text || "POR CONFIRMAR"}
