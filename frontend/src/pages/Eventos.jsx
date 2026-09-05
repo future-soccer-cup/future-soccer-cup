@@ -398,13 +398,13 @@ function StadiumSection({ stadium }) {
         )}
         <div className="absolute inset-0 flex flex-col items-center justify-start pt-8 md:pt-14 text-center px-4">
           <AnimateIn variant="slide-down" duration={1.3} distance={50} amount={0.4}>
-            <div className="italic" style={{ ...CURSIVE, color: "#000000", fontSize: "clamp(3.2rem, 7vw, 5.4rem)", textShadow: "0 2px 10px rgba(255,255,255,0.55)" }}>
+            <div className="italic" style={{ ...CURSIVE, color: "#000000", fontSize: "clamp(4rem, 8.6vw, 6.6rem)", textShadow: "0 2px 10px rgba(255,255,255,0.55)" }}>
               {stadium.cursive || "Estadio"}
             </div>
-            <div className="leading-none mt-1 uppercase" style={{ ...AGENCY_FB, fontWeight: 800, color: "#000000", fontSize: "clamp(3rem, 7vw, 5.4rem)", textShadow: "0 2px 10px rgba(255,255,255,0.4)" }}>
+            <div className="leading-none mt-1 uppercase" style={{ ...AGENCY_FB, fontWeight: 800, color: "#000000", fontSize: "clamp(3.8rem, 8.6vw, 6.6rem)", textShadow: "0 2px 10px rgba(255,255,255,0.4)" }}>
               {stadium.title_top || "CENTENARIO"}
             </div>
-            <div className="leading-none mt-1 uppercase" style={{ ...AGENCY_FB, fontWeight: 800, color: "#000000", fontSize: "clamp(2.6rem, 5.8vw, 4.4rem)", textShadow: "0 2px 10px rgba(255,255,255,0.4)" }}>
+            <div className="leading-none mt-1 uppercase" style={{ ...AGENCY_FB, fontWeight: 800, color: "#000000", fontSize: "clamp(3.3rem, 7.2vw, 5.4rem)", textShadow: "0 2px 10px rgba(255,255,255,0.4)" }}>
               {stadium.title_bottom || "ARMENIA"}
             </div>
           </AnimateIn>
