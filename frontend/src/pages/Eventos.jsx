@@ -17,6 +17,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe, renderPlaneCrash, toTitleCaseForScript } from "../lib/designSystem";
 import ChevronStack from "../components/ChevronStack";
 import GalleryCarousel from "../components/GalleryCarousel";
+import AnimateIn from "../components/AnimateIn";
 
 const RED = "#e31f27";
 const BLUE = "#0640c8";
@@ -408,16 +409,18 @@ function AdventureSection({ title, blocks }) {
       <h2 className="text-center mb-6 md:mb-8" style={{ ...AGENCY_FB, fontWeight: 700, color: BLUE, fontSize: "clamp(2rem, 3.8vw, 3rem)" }}>
         {title || "Día de Aventura"}
       </h2>
-      <div className={`grid gap-4 md:gap-6 ${blocks.length === 1 ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2"} ${blocks.length > 2 ? "lg:grid-cols-3" : ""}`}>
+      <div className={`grid gap-6 md:gap-8 ${blocks.length === 1 ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2"} ${blocks.length > 2 ? "lg:grid-cols-3" : ""}`}>
         {blocks.map((b, i) => (
           <div
             key={`adv-${i}`}
-            className="flex items-center justify-center py-10 md:py-16 rounded-sm"
-            style={{ background: RED, minHeight: 200 }}
+            className="flex items-center justify-center py-14 md:py-24 rounded-sm overflow-hidden"
+            style={{ background: RED, minHeight: 280 }}
             data-testid={`adventure-block-${i}`}
           >
             {b.logo_url ? (
-              <img src={imgSrc(b.logo_url)} alt="" className="max-h-32 md:max-h-40 max-w-full object-contain" />
+              <AnimateIn variant={i % 2 === 0 ? "slide-left" : "slide-right"} duration={0.7} amount={0.35}>
+                <img src={imgSrc(b.logo_url)} alt="" className="max-h-48 md:max-h-64 max-w-full object-contain" />
+              </AnimateIn>
             ) : (
               <span className="text-white/70 italic" style={AGENCY_FB}>Logo no configurado</span>
             )}
