@@ -16,6 +16,11 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Tests: pytest under `/app/backend/tests/`.
 
 ## What's been implemented (CHANGELOG)
+### 2026-09-05 — Iter85: Fondo azul full-bleed en "El Eje Cafetero Los Espera" (Home.jsx) + león reducido
+- El usuario mostró una imagen de referencia: faltaba el fondo azul detrás de las columnas Festival/Premier + la mascota (león), y pidió achicar un poco al león para que toque el texto "Comfenalco Soleden" arriba y el footer rojo quede justo después del azul (sin espacio blanco de por medio).
+- Fix en `Home.jsx` (sección `home-region`): se envolvió el bloque de columnas + mascota en un div full-bleed (`relative left-1/2 right-1/2 -mx-[50vw] w-screen`, `background: BLUE`) que va de borde a borde de la pantalla, comenzando justo debajo del subtítulo "Comfenalco Soleden".
+- Se redujo el tamaño de la mascota: desktop de `height: 1050px` → `880px` (con spacer `minHeight` de `1020px` → `860px`); mobile de `max-h-[780px]` → `max-h-[640px]`. Se quitó el `pb-20` blanco que había en mobile (ahora el azul llega directo al footer).
+- Verificado con screenshot en desktop y mobile: coincide con la imagen de referencia del usuario — azul de borde a borde, león tocando el área superior (Comfenalco Soleden) y el footer rojo empieza inmediatamente después del azul, sin espacio blanco.
 ### 2026-09-05 — Iter84: Nueva galería "Escenarios Deportivos" (carrusel intermedio sin título) en Eventos.jsx
 - El usuario notó que faltaba una galería adicional debajo de "Escenarios Deportivos" (distinta de "Premiación"). No existía ese campo en el schema — se creó de cero:
   - Backend: `DEFAULT_EVENTOS_CONFIG["scenarios_gallery_2"] = []` en `server.py` (~línea 6171). `eventos` sigue siendo `Dict[str, Any]` libre, sin necesidad de migración porque el frontend usa `|| []` como fallback.

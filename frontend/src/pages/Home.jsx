@@ -372,7 +372,7 @@ export default function Home() {
       </section>
 
       {/* ======= EJE CAFETERO + MASCOTA + 2 COLUMNAS DE CATEGORÍAS ======= */}
-      <section className="pt-12 pb-20 lg:pb-0 bg-white" data-testid="home-region">
+      <section className="pt-12 pb-0 bg-white" data-testid="home-region">
         <div className="max-w-7xl mx-auto px-6 text-center">
           <AnimateIn as="h2" variant="zoom-in" className="font-black leading-tight" style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(40px, 6vw, 80px)" }} data-testid="region-title">
             {renderPlaneCrash(s.region_title || "EL EJE CAFETERO LOS ESPERA")}
@@ -381,51 +381,54 @@ export default function Home() {
             {s.region_subtitle || "Comfenalco Soleden"}
           </AnimateIn>
         </div>
-        {/* Layout 3 columnas: Festival - Mascota CENTRADA - Premier */}
-        <div className="relative max-w-7xl mx-auto px-6 overflow-x-hidden lg:overflow-x-visible">
-          <div className="grid grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-14 items-start" data-testid="home-categories">
-            {/* FESTIVAL */}
-            <div className="relative z-10">
-              <CategoryColumn
-                title={s.festival_title || "FESTIVAL"}
-                dateBadge={s.festival_date_badge || "2 oct"}
-                logoUrl={s.festival_logo_url}
-                ctaUrl={s.festival_cta_url || "/registro-equipo"}
-                groups={[{ label: "Categorias", items: festivalCats }]}
-                testId="cat-festival"
-              />
+        {/* Franja azul de borde a borde (full-bleed) que contiene las columnas de categorías + la mascota */}
+        <div className="relative left-1/2 right-1/2 -mx-[50vw] w-screen pt-8 pb-0 lg:pb-0" style={{ background: BLUE }} data-testid="home-region-blue-strip">
+          {/* Layout 3 columnas: Festival - Mascota CENTRADA - Premier */}
+          <div className="relative max-w-7xl mx-auto px-6 overflow-x-hidden lg:overflow-x-visible pb-10 lg:pb-0">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-14 items-start" data-testid="home-categories">
+              {/* FESTIVAL */}
+              <div className="relative z-10">
+                <CategoryColumn
+                  title={s.festival_title || "FESTIVAL"}
+                  dateBadge={s.festival_date_badge || "2 oct"}
+                  logoUrl={s.festival_logo_url}
+                  ctaUrl={s.festival_cta_url || "/registro-equipo"}
+                  groups={[{ label: "Categorias", items: festivalCats }]}
+                  testId="cat-festival"
+                />
+              </div>
+              {/* Espaciador — reserva la columna central para que Festival/Premier queden a los lados; la mascota real se posiciona absoluta más abajo para poder crecer sin la restricción de ancho de esta columna */}
+              <div className="hidden lg:block" style={{ minHeight: "860px" }} data-testid="mascot-box" />
+              {/* PREMIER */}
+              <div className="relative z-10">
+                <CategoryColumn
+                  title={s.premier_title || "PREMIER"}
+                  dateBadge={s.premier_date_badge || "2 oct"}
+                  logoUrl={s.premier_logo_url}
+                  ctaUrl={s.premier_cta_url || "/registro-equipo"}
+                  groups={[
+                    { label: "Categorias par", items: premierCatsPar },
+                    { label: "Categorias imp", items: premierCatsImp },
+                  ]}
+                  testId="cat-premier"
+                />
+              </div>
             </div>
-            {/* Espaciador — reserva la columna central para que Festival/Premier queden a los lados; la mascota real se posiciona absoluta más abajo para poder crecer sin la restricción de ancho de esta columna */}
-            <div className="hidden lg:block" style={{ minHeight: "1020px" }} data-testid="mascot-box" />
-            {/* PREMIER */}
-            <div className="relative z-10">
-              <CategoryColumn
-                title={s.premier_title || "PREMIER"}
-                dateBadge={s.premier_date_badge || "2 oct"}
-                logoUrl={s.premier_logo_url}
-                ctaUrl={s.premier_cta_url || "/registro-equipo"}
-                groups={[
-                  { label: "Categorias par", items: premierCatsPar },
-                  { label: "Categorias imp", items: premierCatsImp },
-                ]}
-                testId="cat-premier"
-              />
-            </div>
-          </div>
-          {/* Mascota real (desktop) — el div externo centra/posiciona (no lo toca framer-motion), el AnimateIn interno solo anima el fade/slide del <img>. Altura igual a la del espaciador (var --mascot-h) para que la base quede siempre pegada al footer */}
-          {s.mascot_image_url && (
-            <div className="hidden lg:block absolute bottom-0 left-1/2 -translate-x-1/2 pointer-events-none z-0" style={{ height: "1050px" }} data-testid="mascot-box-img-wrap">
-              <AnimateIn variant="slide-up" distance={64} duration={0.8} style={{ height: "100%" }}>
-                <img src={s.mascot_image_url} alt="Mascota Future Soccer Cup" className="h-full w-auto max-w-none object-contain object-bottom" />
+            {/* Mascota real (desktop) — el div externo centra/posiciona (no lo toca framer-motion), el AnimateIn interno solo anima el fade/slide del <img>. Altura igual a la del espaciador (var --mascot-h) para que la base quede siempre pegada al final de la franja azul */}
+            {s.mascot_image_url && (
+              <div className="hidden lg:block absolute bottom-0 left-1/2 -translate-x-1/2 pointer-events-none z-0" style={{ height: "880px" }} data-testid="mascot-box-img-wrap">
+                <AnimateIn variant="slide-up" distance={64} duration={0.8} style={{ height: "100%" }}>
+                  <img src={s.mascot_image_url} alt="Mascota Future Soccer Cup" className="h-full w-auto max-w-none object-contain object-bottom" />
+                </AnimateIn>
+              </div>
+            )}
+            {/* Mascota mobile: debajo */}
+            {s.mascot_image_url && (
+              <AnimateIn variant="slide-up" distance={64} className="lg:hidden flex justify-center mt-8">
+                <img src={s.mascot_image_url} alt="Mascota Future Soccer Cup" loading="lazy" className="max-h-[640px] w-auto object-contain" />
               </AnimateIn>
-            </div>
-          )}
-          {/* Mascota mobile: debajo */}
-          {s.mascot_image_url && (
-            <AnimateIn variant="slide-up" distance={64} className="lg:hidden flex justify-center mt-8">
-              <img src={s.mascot_image_url} alt="Mascota Future Soccer Cup" loading="lazy" className="max-h-[780px] w-auto object-contain" />
-            </AnimateIn>
-          )}
+            )}
+          </div>
         </div>
       </section>
 
