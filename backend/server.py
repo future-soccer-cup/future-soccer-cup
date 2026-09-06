@@ -776,18 +776,6 @@ class QuoteIn(BaseModel):
     other_charges_amount: Optional[float] = 0.0
     other_charges_concept: Optional[str] = ""
 
-class PostIn(BaseModel):
-    title: str
-    content: str
-    image_url: Optional[str] = ""
-    instagram_url: Optional[str] = ""
-    category: Optional[str] = "evento"  # evento, resultado, anuncio, foto
-
-class PostOut(PostIn):
-    id: str
-    published_at: str
-    created_at: str
-
 class HotelIn(BaseModel):
     name: str
     description: str
@@ -5036,80 +5024,6 @@ async def stripe_webhook(request: Request):
             await _apply_paid_transaction(tx)
     return {"ok": True}
 
-# -------------------- Posts (Noticias / Eventos) --------------------
-@api.get("/posts", response_model=List[PostOut])
-async def list_posts(limit: int = 50):
-    items = await db.posts.find({}, {"_id": 0}).sort("published_at", -1).to_list(limit)
-    return items
-
-@api.get("/posts/{pid}", response_model=PostOut)
-async def get_post(pid: str):
-    p = await db.posts.find_one({"id": pid}, {"_id": 0})
-    if not p:
-        raise HTTPException(status_code=404, detail="Publicación no encontrada")
-    return p
-
-@api.post("/posts", response_model=PostOut)
-async def create_post(payload: PostIn, _: dict = Depends(require_admin)):
-    now = datetime.now(timezone.utc).isoformat()
-    doc = payload.model_dump()
-    doc["id"] = str(uuid.uuid4())
-    doc["published_at"] = now
-    doc["created_at"] = now
-    await db.posts.insert_one(doc)
-    doc.pop("_id", None)
-    return doc
-
-@api.put("/posts/{pid}", response_model=PostOut)
-async def update_post(pid: str, payload: PostIn, _: dict = Depends(require_admin)):
-    res = await db.posts.update_one({"id": pid}, {"$set": payload.model_dump()})
-    if res.matched_count == 0:
-        raise HTTPException(status_code=404, detail="Publicación no encontrada")
-    return await db.posts.find_one({"id": pid}, {"_id": 0})
-
-@api.delete("/posts/{pid}")
-async def delete_post(pid: str, _: dict = Depends(require_admin)):
-    await db.posts.delete_one({"id": pid})
-    return {"ok": True}
-
-@api.post("/posts/import-from-url")
-async def import_post_from_url(payload: dict, _: dict = Depends(require_admin)):
-    """Fetches Open Graph metadata from a URL (Instagram public post or any link).
-    Returns prefilled post data the admin can review and save."""
-    url = payload.get("url", "").strip()
-    if not url.startswith("http"):
-        raise HTTPException(status_code=400, detail="URL inválida")
-    try:
-        r = requests.get(url, headers={"User-Agent": "Mozilla/5.0 FSC-Bot"}, timeout=15)
-        html = r.text
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"No se pudo cargar la URL: {e}")
-
-    import re
-    def og(prop: str) -> str:
-        m = re.search(rf'<meta\s+property=["\']og:{prop}["\']\s+content=["\']([^"\']+)["\']', html, re.IGNORECASE)
-        if m:
-            return m.group(1)
-        m = re.search(rf'<meta\s+name=["\']og:{prop}["\']\s+content=["\']([^"\']+)["\']', html, re.IGNORECASE)
-        return m.group(1) if m else ""
-
-    title = og("title") or ""
-    description = og("description") or ""
-    image = og("image") or ""
-    return {
-        "title": title[:200],
-        "content": description[:1000],
-        "image_url": image,
-        "instagram_url": url if "instagram.com" in url else "",
-    }
-
-@api.get("/social/instagram")
-async def social_instagram():
-    return {
-        "handle": os.environ.get("INSTAGRAM_HANDLE", "futuresoccercup"),
-        "url": os.environ.get("INSTAGRAM_URL", "https://www.instagram.com/futuresoccercup"),
-    }
-
 # -------------------- Uploads --------------------
 # Extensiones que se benefician de la conversión a WebP (ahorro de tamaño significativo
 # preservando calidad). Se excluyen: SVG (vector), PDF, ICO, RAW, HEIC/HEIF/AVIF (Pillow
@@ -6456,7 +6370,6 @@ async def on_startup():
     await db.brackets.create_index("id", unique=True)
     await db.matches.create_index("bracket_id")
     await db.quotes.create_index("id", unique=True)
-    await db.posts.create_index("id", unique=True)
     await db.payment_transactions.create_index("session_id", unique=True)
     await db.payments.create_index("id", unique=True)
     await db.payments.create_index([("target_type", 1), ("target_id", 1)])

@@ -46,7 +46,6 @@ import AdminBracketGenerator from "./pages/admin/AdminBracketGenerator";
 import AdminApprovals from "./pages/admin/AdminApprovals";
 import AdminBulkUpload from "./pages/admin/AdminBulkUpload";
 import AdminQuotes from "./pages/admin/AdminQuotes";
-import AdminPosts from "./pages/admin/AdminPosts";
 import AdminInventory from "./pages/admin/AdminInventory";
 import AdminPayments from "./pages/admin/AdminPayments";
 import AdminPasswordResets from "./pages/admin/AdminPasswordResets";
@@ -135,7 +134,6 @@ function App() {
             <Route path="carga-masiva" element={<AdminBulkUpload />} />
             <Route path="cotizaciones" element={<AdminQuotes />} />
             <Route path="pagos" element={<AdminPayments />} />
-            <Route path="noticias" element={<AdminPosts />} />
             <Route path="inventario" element={<AdminInventory />} />
             <Route path="categorias" element={<AdminCategories />} />
             <Route path="tipos-evento" element={<AdminEventTypes />} />

@@ -15,7 +15,12 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Storage: Emergent Object Storage for images/PDFs.
 - Tests: pytest under `/app/backend/tests/`.
 
-### 2026-09-06 — Iter99: Auditoría de imágenes CMS (contain vs cover, contenedores con dimensiones fijas)
+### 2026-09-06 — Iter100: Eliminado módulo "Posts/Noticias" huérfano del Admin (nunca conectado al sitio público)
+- El usuario preguntó dónde se edita la galería "Finales" del Home (respuesta: Panel Admin → sidebar "Galería" (`/admin/galeria`), ya 100% conectada — usa `GET/POST/PUT/DELETE /api/gallery`).
+- Al auditar, se encontró que el ítem "Noticias" del sidebar Admin (`/admin/noticias` → `AdminPosts.jsx`) manejaba una colección `/api/posts` completamente separada y NUNCA leída por la página pública `Noticias.jsx` (que solo lee `home_settings.noticias`, editable en `/admin/home`). Era un módulo huérfano/muerto: el admin podía crear "posts" ahí y nada aparecía en el sitio.
+- Eliminado por completo: `AdminPosts.jsx` (archivo borrado), ruta `/admin/noticias` y su import en `App.js`, ítem "Noticias" del sidebar en `AdminLayout.jsx`, endpoints backend `GET/POST/PUT/DELETE /api/posts` + `/api/posts/import-from-url` + `/api/social/instagram` (tampoco usado en frontend) + modelos `PostIn`/`PostOut` + índice `db.posts.create_index` en `server.py`.
+- El botón "📢 Publicar noticia" en Acciones Rápidas del Dashboard (`AdminDashboard.jsx`) apuntaba a la ruta eliminada — redirigido a `/admin/home` (donde realmente se edita el contenido de Noticias).
+- Verificado: backend reinicia sin errores, sidebar Admin ya no muestra "Noticias", botón del dashboard lleva correctamente a Configuración del Home.
 - El usuario reportó imágenes que se estiran o recortan mal en todo el sitio. Se auditaron los ~70 `<img>` del código (Home, Eventos, Nosotros/FSCHistorySection, DatosEstadisticas, Noticias, TeamRegister, Contacto, ClubDetail, Teams, Bracket, PlayerDetail/carnet).
 - Hallazgo: la GRAN MAYORÍA del sitio YA seguía el patrón correcto (contenedor con `aspect-*`/altura fija + `overflow-hidden`, img con `w-full h-full object-cover`; logos/escudos con `object-contain` dentro de cajas de tamaño fijo). Esto es resultado de trabajo previo ya bien implementado.
 - Único bug real encontrado y corregido: `FSCHistorySection.jsx` (fotos flotantes del timeline en el layout de mobile/tablet) tenía la altura fija (`h-32`) en la propia etiqueta `<img>` en vez del contenedor. Se movió `h-32 w-full` al `<div>` contenedor (`overflow-hidden`) y el `<img>` quedó en `w-full h-full object-cover object-center`.
