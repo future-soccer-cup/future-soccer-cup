@@ -306,8 +306,8 @@ export default function FSCHistorySection({ settings }) {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   {introPhotos.map((p, i) => (
-                    <div key={`m-${i}`} className="overflow-hidden" style={{ border: "2px solid #ffffff", boxShadow: "0 4px 12px rgba(0,0,0,0.18)" }}>
-                      <img src={imgSrc(p)} alt="" className="w-full h-32 object-cover" loading="lazy" />
+                    <div key={`m-${i}`} className="overflow-hidden h-32 w-full" style={{ border: "2px solid #ffffff", boxShadow: "0 4px 12px rgba(0,0,0,0.18)" }}>
+                      <img src={imgSrc(p)} alt="" className="w-full h-full object-cover object-center" loading="lazy" />
                     </div>
                   ))}
                 </div>

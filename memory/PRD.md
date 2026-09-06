@@ -15,7 +15,11 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Storage: Emergent Object Storage for images/PDFs.
 - Tests: pytest under `/app/backend/tests/`.
 
-### 2026-09-05 — Iter98: Revisión responsive completa del sitio (375px/768px/1280px)
+### 2026-09-06 — Iter99: Auditoría de imágenes CMS (contain vs cover, contenedores con dimensiones fijas)
+- El usuario reportó imágenes que se estiran o recortan mal en todo el sitio. Se auditaron los ~70 `<img>` del código (Home, Eventos, Nosotros/FSCHistorySection, DatosEstadisticas, Noticias, TeamRegister, Contacto, ClubDetail, Teams, Bracket, PlayerDetail/carnet).
+- Hallazgo: la GRAN MAYORÍA del sitio YA seguía el patrón correcto (contenedor con `aspect-*`/altura fija + `overflow-hidden`, img con `w-full h-full object-cover`; logos/escudos con `object-contain` dentro de cajas de tamaño fijo). Esto es resultado de trabajo previo ya bien implementado.
+- Único bug real encontrado y corregido: `FSCHistorySection.jsx` (fotos flotantes del timeline en el layout de mobile/tablet) tenía la altura fija (`h-32`) en la propia etiqueta `<img>` en vez del contenedor. Se movió `h-32 w-full` al `<div>` contenedor (`overflow-hidden`) y el `<img>` quedó en `w-full h-full object-cover object-center`.
+- Verificado: `backgroundImage`/`backgroundSize: cover`/`backgroundPosition: center` en `Cotizar.jsx` (resumen sticky) ya correctamente aplicado. Logos de clubes (Eventos `ClubsSection`, `Bracket.jsx`, `ClubDetail.jsx`, `Teams.jsx`) todos con `object-contain` en cajas de tamaño fijo — correcto.
 - El usuario pidió una auditoría responsive completa. Se corrigieron bugs reales de overflow horizontal encontrados con mediciones (`document.body.scrollWidth`) y confirmados por `testing_agent` (iteration_63.json):
   1. **Navbar tablet roto**: el breakpoint de colapso era `md` (768px) pero el menú horizontal completo no cabía justo en 768px (scrollWidth=1003). Cambiado todo `md:` → `lg:` (1024px) en `Navbar.jsx` para que tablet también use hamburguesa.
   2. **Eventos.jsx overflow mobile**: `TabsBar` (grid-cols-3 sin `min-w-0` causaba que "FESTIVAL"/"PREMIER" expandieran el grid), `EventTitleSection` ("OCTUBRE FESTIVAL" con floor de fuente muy grande), `ScenariosSection`/`PremiacionSection` (floor `3rem` muy grande para "ESCENARIOS"/"PREMIACIÓN" en 375px) — todos ajustados con `min-w-0`, `break-words` y floors de `clamp()` más chicos en mobile. Verificado: `scrollWidth` pasó de 413→375 en mobile.
