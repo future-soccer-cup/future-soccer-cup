@@ -14,6 +14,7 @@ import api, { formatApiError, imgSrc } from "../lib/api";
 import { toast } from "sonner";
 import { Mail, Lock, Eye, EyeOff, X, KeyRound, ArrowLeft, ArrowRight } from "lucide-react";
 import { PLANE_CRASH, AGENCY_FB, CURSIVE, renderPlaneCrash } from "../lib/designSystem";
+import { useAutoFitSideImage } from "../hooks/useAutoFitSideImage";
 
 const RED = "#e31f27";
 const BLUE = "#0640c8";
@@ -34,6 +35,15 @@ export default function LoginModal() {
   const [resetPw2, setResetPw2] = useState("");
   const { login } = useAuth();
   const nav = useNavigate();
+  const [isDesktop, setIsDesktop] = useState(() => typeof window !== "undefined" ? window.innerWidth >= 768 : true);
+  const { wrapRef: imgWrapRef, width: imgColWidth, onImgLoad } = useAutoFitSideImage({ maxWidthRatio: 0.46, minWidth: 200 });
+
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)");
+    const handler = (e) => setIsDesktop(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
 
   // Cargar imagen KOW del CMS solo cuando el modal se abre por primera vez.
   useEffect(() => {
@@ -144,7 +154,7 @@ export default function LoginModal() {
 
       {/* Card */}
       <div
-        className="relative z-10 grid grid-cols-1 md:grid-cols-2 max-w-5xl w-full rounded-3xl overflow-hidden shadow-2xl"
+        className="relative z-10 flex flex-col md:flex-row max-w-5xl w-full rounded-3xl overflow-hidden shadow-2xl"
         style={{ background: RED }}
         onClick={(e) => e.stopPropagation()}
         data-testid="login-modal-card"
@@ -161,7 +171,7 @@ export default function LoginModal() {
         </button>
 
         {/* Columna izquierda — formulario (cambia según `view`) */}
-        <div className="p-10 md:p-12">
+        <div className="p-10 md:p-12 flex-1 min-w-0">
           {view === "login" && (
             <>
               <div className="text-white mb-7">
@@ -387,12 +397,23 @@ export default function LoginModal() {
           )}
         </div>
 
-        {/* Columna derecha — imagen KOW */}
-        <div className="relative min-h-[300px] md:min-h-full bg-slate-900" data-testid="login-modal-image">
+        {/* Columna derecha — imagen KOW: el ancho del panel se calcula en base a la proporción real de la
+            imagen y el alto disponible, así nunca queda espacio vacío ni se recorta ni se estira. */}
+        <div
+          ref={imgWrapRef}
+          className={`overflow-hidden bg-slate-900 flex items-center justify-center ${isDesktop ? "flex-shrink-0" : "w-full"}`}
+          style={isDesktop ? { width: imgColWidth ? `${imgColWidth}px` : 260 } : undefined}
+          data-testid="login-modal-image"
+        >
           {imageUrl ? (
-            <img src={imgSrc(imageUrl)} alt="" className="absolute inset-0 w-full h-full object-cover" />
+            <img
+              src={imgSrc(imageUrl)}
+              alt=""
+              onLoad={onImgLoad}
+              className={isDesktop ? "block h-full w-full object-contain" : "block w-full h-auto"}
+            />
           ) : (
-            <div className="absolute inset-0 flex items-center justify-center text-white/40 text-sm" style={AGENCY_FB}>
+            <div className="w-full min-h-[220px] flex items-center justify-center text-white/40 text-sm" style={AGENCY_FB}>
               Imagen no configurada
             </div>
           )}

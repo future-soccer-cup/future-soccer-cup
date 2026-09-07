@@ -19,6 +19,7 @@ import { toast, Toaster } from "sonner";
 import { Upload, ArrowRight, ArrowLeft, Eye, EyeOff, Check } from "lucide-react";
 import { ConsentBlock } from "./Register";
 import { PLANE_CRASH, AGENCY_FB, CURSIVE, renderPlaneCrash } from "../lib/designSystem";
+import { useAutoFitSideImage } from "../hooks/useAutoFitSideImage";
 
 const RED = "#e31f27";
 const BLUE = "#0640c8";
@@ -49,6 +50,7 @@ export default function TeamRegister() {
   const fileRef = useRef(null);
   const { setUser } = useAuth();
   const nav = useNavigate();
+  const { wrapRef: imgWrapRef, width: imgColWidth, onImgLoad } = useAutoFitSideImage({ maxWidthRatio: 0.42, minWidth: 260 });
 
   // Cargar clubes aprobados + imágenes CMS.
   useEffect(() => {
@@ -137,9 +139,9 @@ export default function TeamRegister() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] grid grid-cols-1 md:grid-cols-[3fr_2fr]" data-testid="team-register-page" style={AGENCY_FB}>
+    <div className="min-h-[calc(100vh-4rem)] flex flex-col md:flex-row" data-testid="team-register-page" style={AGENCY_FB}>
       {/* Columna izquierda — Formulario */}
-      <div className="relative overflow-y-auto" style={{ background: BLUE, maxHeight: "calc(100vh - 4rem)" }}>
+      <div className="relative overflow-y-auto flex-1 min-w-0" style={{ background: BLUE, maxHeight: "calc(100vh - 4rem)" }}>
         {/* Watermark hero opcional */}
         {heroBgUrl && (
           <div className="absolute inset-0 pointer-events-none opacity-20">
@@ -221,12 +223,18 @@ export default function TeamRegister() {
         </div>
       </div>
 
-      {/* Columna derecha — Imagen KOW */}
-      <div className="relative hidden md:block" style={{ background: "#0a1030" }} data-testid="tr-image-side">
+      {/* Columna derecha — Imagen KOW: el ancho del panel se calcula en base a la proporción real de la
+          imagen y el alto disponible, así nunca queda espacio vacío ni se recorta ni se estira. */}
+      <div
+        ref={imgWrapRef}
+        className="hidden md:flex flex-shrink-0 items-center justify-center overflow-hidden"
+        style={{ background: "#0a1030", width: imgColWidth ? `${imgColWidth}px` : 320 }}
+        data-testid="tr-image-side"
+      >
         {imgUrl ? (
-          <img src={imgSrc(imgUrl)} alt="" className="absolute inset-0 w-full h-full object-cover" />
+          <img src={imgSrc(imgUrl)} alt="" onLoad={onImgLoad} className="block h-full w-full object-contain" />
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center text-white/30 text-sm" style={AGENCY_FB}>
+          <div className="w-full h-full flex items-center justify-center text-white/30 text-sm" style={AGENCY_FB}>
             Imagen no configurada
           </div>
         )}
