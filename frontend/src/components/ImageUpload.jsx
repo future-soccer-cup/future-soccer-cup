@@ -32,7 +32,8 @@ export default function ImageUpload({ value, onChange, label = "Imagen", hint = 
       onChange(res.data.url);
       toast.success("Imagen cargada");
     } catch (err) {
-      toast.error("Error al cargar imagen. Inicia sesión e inténtalo de nuevo.");
+      const detail = err?.response?.data?.detail;
+      toast.error(detail || "Error al cargar imagen. Inicia sesión e inténtalo de nuevo.");
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = "";

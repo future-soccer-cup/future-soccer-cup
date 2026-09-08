@@ -37,8 +37,9 @@ export default function ImageListUpload({ values = [], onChange, label = "Imáge
       try {
         const res = await api.post("/upload", fd, { headers: { "Content-Type": "multipart/form-data" } });
         uploaded.push(res.data.url);
-      } catch (_err) {
-        toast.error(`${file.name}: error al cargar`);
+      } catch (err) {
+        const detail = err?.response?.data?.detail;
+        toast.error(`${file.name}: ${detail || "error al cargar"}`);
       }
     }
     setUploading(false);

@@ -5,6 +5,7 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
 import os
+import time
 import logging
 import uuid
 import bcrypt
@@ -173,42 +174,64 @@ def put_object(path: str, data: bytes, content_type: str) -> dict:
     key = init_storage()
     if not key:
         raise HTTPException(status_code=503, detail="Almacenamiento no disponible")
-    resp = requests.put(
-        f"{STORAGE_URL}/objects/{path}",
-        headers={"X-Storage-Key": key, "Content-Type": content_type},
-        data=data, timeout=120,
-    )
-    if resp.status_code == 403:
-        # refresh key
-        global _storage_key
-        _storage_key = None
-        key = init_storage()
-        resp = requests.put(
+
+    def _do_put(k):
+        return requests.put(
             f"{STORAGE_URL}/objects/{path}",
-            headers={"X-Storage-Key": key, "Content-Type": content_type},
+            headers={"X-Storage-Key": k, "Content-Type": content_type},
             data=data, timeout=120,
         )
-    resp.raise_for_status()
-    return resp.json()
+
+    last_exc = None
+    for attempt in range(3):
+        try:
+            resp = _do_put(key)
+            if resp.status_code == 403:
+                global _storage_key
+                _storage_key = None
+                key = init_storage()
+                resp = _do_put(key)
+            if resp.status_code in (500, 502, 503, 504):
+                last_exc = HTTPException(status_code=503, detail="Almacenamiento no disponible, intenta de nuevo")
+                time.sleep(1.5 * (attempt + 1))
+                continue
+            resp.raise_for_status()
+            return resp.json()
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+            last_exc = HTTPException(status_code=503, detail="Almacenamiento no disponible, intenta de nuevo")
+            time.sleep(1.5 * (attempt + 1))
+    raise last_exc
 
 def get_object(path: str):
     key = init_storage()
     if not key:
         raise HTTPException(status_code=503, detail="Almacenamiento no disponible")
-    resp = requests.get(
-        f"{STORAGE_URL}/objects/{path}",
-        headers={"X-Storage-Key": key}, timeout=60,
-    )
-    if resp.status_code == 403:
-        global _storage_key
-        _storage_key = None
-        key = init_storage()
-        resp = requests.get(
+
+    def _do_get(k):
+        return requests.get(
             f"{STORAGE_URL}/objects/{path}",
-            headers={"X-Storage-Key": key}, timeout=60,
+            headers={"X-Storage-Key": k}, timeout=60,
         )
-    resp.raise_for_status()
-    return resp.content, resp.headers.get("Content-Type", "application/octet-stream")
+
+    last_exc = None
+    for attempt in range(3):
+        try:
+            resp = _do_get(key)
+            if resp.status_code == 403:
+                global _storage_key
+                _storage_key = None
+                key = init_storage()
+                resp = _do_get(key)
+            if resp.status_code in (500, 502, 503, 504):
+                last_exc = HTTPException(status_code=503, detail="Almacenamiento no disponible, intenta de nuevo")
+                time.sleep(1 * (attempt + 1))
+                continue
+            resp.raise_for_status()
+            return resp.content, resp.headers.get("Content-Type", "application/octet-stream")
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+            last_exc = HTTPException(status_code=503, detail="Almacenamiento no disponible, intenta de nuevo")
+            time.sleep(1 * (attempt + 1))
+    raise last_exc
 
 MIME = {
     # Bitmap / common

@@ -15,6 +15,12 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Storage: Emergent Object Storage for images/PDFs.
 - Tests: pytest under `/app/backend/tests/`.
 
+### 2026-09-08 — Iter109: Bug real — "error al cargar" al subir fotos a Premiación (y cualquier galería)
+- El usuario reportó `DSC02377.JPG: error al cargar` al subir una foto en la galería de Premiación (Admin).
+- **Causa raíz**: el almacenamiento de objetos (Emergent Object Storage) falla intermitentemente con errores 500/502/503/504 o timeout de conexión (visible en logs históricos del backend) — infraestructura, no algo que se pueda evitar del todo. `put_object`/`get_object` en `server.py` NO reintentaban ante esos errores transitorios, así que la primera falla ya mandaba el error al usuario. Además, el frontend mostraba siempre el mensaje genérico "error al cargar" sin el detalle real del backend.
+- **Fix**: `put_object`/`get_object` ahora reintentan hasta 3 veces (con espera 1-1.5s creciente) ante 500/502/503/504, timeout o error de conexión, antes de fallar definitivamente. `ImageUpload.jsx`/`ImageListUpload.jsx` ahora muestran el `detail` real que devuelve el backend en vez del mensaje genérico (útil si vuelve a fallar tras los 3 intentos).
+- Verificado con `import time` agregado (requerido por los reintentos) + prueba end-to-end vía curl: login → upload de una imagen de prueba → respuesta 200 con URL válida.
+
 ### 2026-09-08 — Iter108: Bug real — las flechas de galería quedaban cortadas (fuera de la pantalla) en pantallas de 1024-1280px
 - El usuario reportó "se pierden las flechas al achicar la página". Reproducido: con el offset del Iter107 (`lg:-left-16`=-64px), en viewports de 1024-1280px el contenedor `max-w-7xl` ocupa el 100% del ancho (sin margen extra de `mx-auto`), y el padding disponible ahí es solo `lg:px-8`=32px — la mitad del botón (32 de 48px) quedaba literalmente fuera del viewport.
 - **Fix**: offsets ahora escalonados y ajustados al padding real de cada breakpoint (`-left-3 sm:-left-5 lg:-left-8 2xl:-left-16`, y espejo en `-right`). La separación extra grande (`2xl:-left-16`) solo se activa a partir de 1536px, donde el contenedor centrado por `mx-auto` sí deja ≥128px de margen real, garantizando cero recorte en cualquier ancho.
