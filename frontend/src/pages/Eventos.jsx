@@ -84,7 +84,7 @@ export default function Eventos() {
       {/* SECCIÓN 7B — Galería de Escenarios Deportivos (sin título, la única galería de esta sección) */}
       {ev.scenarios_gallery_2 && ev.scenarios_gallery_2.length > 0 && (
         <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-0 pb-10 md:pb-14" data-testid="scenarios-gallery-2-section">
-          <GalleryCarousel images={ev.scenarios_gallery_2.map((p) => imgSrc(p))} testIdPrefix="scenarios-gallery-2" accentColor={GOLD} />
+          <GalleryCarousel images={ev.scenarios_gallery_2.map((p) => imgSrc(p))} testIdPrefix="scenarios-gallery-2" accentColor={RED} />
         </section>
       )}
 

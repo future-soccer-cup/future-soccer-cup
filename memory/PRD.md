@@ -15,6 +15,11 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Storage: Emergent Object Storage for images/PDFs.
 - Tests: pytest under `/app/backend/tests/`.
 
+### 2026-09-08 — Iter107: Flechas de galería — color rojo/azul (antes dorado) y más separadas de las fotos
+- `GalleryCarousel.jsx` (Escenarios Deportivos): `accentColor` cambiado de `GOLD` a `RED` para que las flechas combinen con el título rojo de la sección (Premiación ya usaba `BLUE`, sin cambios ahí).
+- Separación de las flechas aumentada en `GalleryCarousel.jsx` y en la galería Finales de `Home.jsx`: de `-left-2 lg:-left-8` a `-left-6 md:-left-10 lg:-left-16` (y su espejo en `-right`).
+- Verificado con screenshot.
+
 ### 2026-09-08 — Iter106: Quitado el fondo/borde amarillo de las galerías (Escenarios Deportivos, Premiación, Finales)
 - Con `object-cover` + `rounded-lg`, las esquinas redondeadas del recuadro dejaban ver el color de fondo (`accentColor`, dorado en Escenarios Deportivos, azul en Premiación/Finales) detrás de la imagen. El usuario pidió quitar ese fondo/borde de color y dejarlo blanco.
 - `GalleryCarousel.jsx` (Escenarios Deportivos, Premiación): `background: accentColor` → `background: "#ffffff"`.

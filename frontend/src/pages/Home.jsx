@@ -309,7 +309,7 @@ export default function Home() {
           <div className="relative">
             <button
               onClick={() => advanceGallery(-1)}
-              className="absolute -left-2 lg:-left-6 top-1/2 -translate-y-1/2 rounded-full p-2 hover:scale-110 transition disabled:opacity-30 z-10"
+              className="absolute -left-6 md:-left-10 lg:-left-16 top-1/2 -translate-y-1/2 rounded-full p-2 hover:scale-110 transition disabled:opacity-30 z-10"
               disabled={gallery.length === 0}
               data-testid="gallery-prev"
               style={{ color: BLUE }}
@@ -353,7 +353,7 @@ export default function Home() {
             </div>
             <button
               onClick={() => advanceGallery(1)}
-              className="absolute -right-2 lg:-right-6 top-1/2 -translate-y-1/2 rounded-full p-2 hover:scale-110 transition disabled:opacity-30 z-10"
+              className="absolute -right-6 md:-right-10 lg:-right-16 top-1/2 -translate-y-1/2 rounded-full p-2 hover:scale-110 transition disabled:opacity-30 z-10"
               disabled={gallery.length === 0}
               data-testid="gallery-next"
               style={{ color: BLUE }}
