@@ -51,7 +51,7 @@ export default function GalleryCarousel({ images = [], testIdPrefix = "gallery",
         type="button"
         onClick={() => advance(-1)}
         disabled={list.length < 2}
-        className="absolute -left-6 md:-left-10 lg:-left-16 top-1/2 -translate-y-1/2 rounded-full p-2 hover:scale-110 transition disabled:opacity-30 z-10"
+        className="absolute -left-3 sm:-left-5 lg:-left-8 2xl:-left-16 top-1/2 -translate-y-1/2 rounded-full p-2 hover:scale-110 transition disabled:opacity-30 z-10"
         aria-label="Anterior"
         data-testid={`${testIdPrefix}-prev`}
         style={{ color: accentColor }}
@@ -96,7 +96,7 @@ export default function GalleryCarousel({ images = [], testIdPrefix = "gallery",
         type="button"
         onClick={() => advance(1)}
         disabled={list.length < 2}
-        className="absolute -right-6 md:-right-10 lg:-right-16 top-1/2 -translate-y-1/2 rounded-full p-2 hover:scale-110 transition disabled:opacity-30 z-10"
+        className="absolute -right-3 sm:-right-5 lg:-right-8 2xl:-right-16 top-1/2 -translate-y-1/2 rounded-full p-2 hover:scale-110 transition disabled:opacity-30 z-10"
         aria-label="Siguiente"
         data-testid={`${testIdPrefix}-next`}
         style={{ color: accentColor }}

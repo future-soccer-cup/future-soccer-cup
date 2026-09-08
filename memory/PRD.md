@@ -15,6 +15,12 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Storage: Emergent Object Storage for images/PDFs.
 - Tests: pytest under `/app/backend/tests/`.
 
+### 2026-09-08 — Iter108: Bug real — las flechas de galería quedaban cortadas (fuera de la pantalla) en pantallas de 1024-1280px
+- El usuario reportó "se pierden las flechas al achicar la página". Reproducido: con el offset del Iter107 (`lg:-left-16`=-64px), en viewports de 1024-1280px el contenedor `max-w-7xl` ocupa el 100% del ancho (sin margen extra de `mx-auto`), y el padding disponible ahí es solo `lg:px-8`=32px — la mitad del botón (32 de 48px) quedaba literalmente fuera del viewport.
+- **Fix**: offsets ahora escalonados y ajustados al padding real de cada breakpoint (`-left-3 sm:-left-5 lg:-left-8 2xl:-left-16`, y espejo en `-right`). La separación extra grande (`2xl:-left-16`) solo se activa a partir de 1536px, donde el contenedor centrado por `mx-auto` sí deja ≥128px de margen real, garantizando cero recorte en cualquier ancho.
+- Verificado programáticamente (bounding box) en 390/768/1024/1280/1536px: `x` de la flecha nunca es negativo en ningún ancho — ya no se cortan en ningún punto intermedio.
+- Aplicado en `GalleryCarousel.jsx` y `Home.jsx` (galería Finales).
+
 ### 2026-09-08 — Iter107: Flechas de galería — color rojo/azul (antes dorado) y más separadas de las fotos
 - `GalleryCarousel.jsx` (Escenarios Deportivos): `accentColor` cambiado de `GOLD` a `RED` para que las flechas combinen con el título rojo de la sección (Premiación ya usaba `BLUE`, sin cambios ahí).
 - Separación de las flechas aumentada en `GalleryCarousel.jsx` y en la galería Finales de `Home.jsx`: de `-left-2 lg:-left-8` a `-left-6 md:-left-10 lg:-left-16` (y su espejo en `-right`).
