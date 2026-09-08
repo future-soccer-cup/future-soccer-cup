@@ -611,7 +611,7 @@ function EventosEditor({ value, onChange }) {
       <SubSection title="7B. Galería Escenarios Deportivos — carrusel de fotos (sin título)">
         <ImageListUpload
           label="Fotos del carrusel"
-          hint="Se muestran 3 a la vez con navegación ← →. JPG horizontal 1200×800 px (4:3). Se muestran completas, sin recortar. Va justo debajo de Escenarios Deportivos, sin título."
+          hint="Se muestran 3 a la vez con navegación ← →. JPG horizontal 1200×800 px (proporción 3:2) — las 3 fotos usan ese mismo marco, así se muestran completas sin franjas. Va justo debajo de Escenarios Deportivos, sin título."
           values={v.scenarios_gallery_2 || []}
           onChange={(arr) => patch({ scenarios_gallery_2: arr })}
           testId="scenarios-gallery-2"
@@ -628,7 +628,7 @@ function EventosEditor({ value, onChange }) {
         <div className="mt-4">
           <ImageListUpload
             label="Galería de fotos de premiación (carrusel automático)"
-            hint="Tamaño recomendado: 1200×700 px horizontal. Se acepta cualquier formato de imagen (JPG, PNG, WEBP, HEIC, etc.). Se muestran completas, sin recortar. Se rota sola cada 4-5 segundos con crossfade; con 1 sola foto se muestra fija."
+            hint="Tamaño recomendado: 1200×800 px horizontal (proporción 3:2) para que se muestren completas sin franjas. Se acepta cualquier formato de imagen (JPG, PNG, WEBP, HEIC, etc.). Se rota sola cada 4-5 segundos con crossfade; con 1 sola foto se muestra fija."
             values={v.premiacion_gallery || []}
             onChange={(arr) => patch({ premiacion_gallery: arr })}
             testId="premiacion-gallery"

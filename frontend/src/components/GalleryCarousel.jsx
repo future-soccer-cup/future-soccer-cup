@@ -63,7 +63,7 @@ export default function GalleryCarousel({ images = [], testIdPrefix = "gallery",
         {visible.map((src, i) => {
           const isMiddle = i === 1;
           const colSpan = isMiddle ? "md:col-span-6" : "md:col-span-3";
-          const aspect = isMiddle ? "aspect-[16/11]" : "aspect-[4/3]";
+          const aspect = "aspect-[3/2]";
           const ringExtra = isMiddle ? "shadow-2xl ring-4" : "shadow-md opacity-70";
           return (
             <div

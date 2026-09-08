@@ -15,6 +15,12 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Storage: Emergent Object Storage for images/PDFs.
 - Tests: pytest under `/app/backend/tests/`.
 
+### 2026-09-08 — Iter104: Bug real encontrado — el hint de tamaño no coincidía con la proporción real del recuadro
+- El usuario subió fotos siguiendo EXACTO el hint del admin (1200×800 px) en "7B. Galería Escenarios Deportivos" y aun así veía franjas amarillas — reportó que "esa no es la medida correcta".
+- **Causa raíz**: error del agente al escribir el hint. 1200×800 es proporción 3:2 (1.5), pero se etiquetó como "(4:3)" — y el recuadro real en `GalleryCarousel.jsx`/`Home.jsx` usaba `aspect-[16/11]` (centro) y `aspect-[4/3]` (costados), ninguno de los dos es 3:2. Por eso object-contain dejaba franjas incluso con la medida "correcta".
+- **Fix**: unificados los 3 recuadros (centro y costados) a `aspect-[3/2]` en `GalleryCarousel.jsx` y `Home.jsx` (galería Finales), coincidiendo exactamente con la medida ya publicada en el hint (1200×800). Hints corregidos para decir "(proporción 3:2)" en vez de "(4:3)".
+- Verificado con captura real: la foto del estadio (subida en 1200×800) ahora llena el recuadro completo sin franjas. Las fotos que no son 1200×800 horizontal siguen mostrando franjas correctamente (comportamiento esperado, no bug).
+
 ### 2026-09-08 — Iter103: "Sin recortar" extendido a TODA la app (heros de portada + galerías + noticias)
 - El usuario pidió aplicar el mismo criterio del fix de Ingreso/Registro a toda la aplicación, señalando Noticias y las galerías como ejemplo concreto de mal recorte. Confirmó que quiere esto también en los banners de portada aunque cambie el alto de la sección según la foto.
 - **Nuevo hook** `/app/frontend/src/hooks/useAutoFitBannerHeight.js`: mide el ancho real del contenedor full-bleed + la proporción real de la imagen (`onLoad` naturalWidth/naturalHeight) y calcula el ALTO exacto de la sección (clamp 260-700px) para banners de ancho fijo.

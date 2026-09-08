@@ -319,7 +319,7 @@ export default function Home() {
                 // En desktop: imagen del medio (i===1) toma 6 columnas; las laterales 3 cada una.
                 const isMiddle = i === 1;
                 const colSpan = isMiddle ? "md:col-span-6" : "md:col-span-3";
-                const aspect = isMiddle ? "aspect-[16/11]" : "aspect-[4/3]";
+                const aspect = "aspect-[3/2]";
                 const ringExtra = isMiddle ? "shadow-2xl ring-4 ring-white" : "shadow-md";
                 const slotKey = img?.id || img?.url || `__empty_${i}`;
                 return (
