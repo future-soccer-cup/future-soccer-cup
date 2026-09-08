@@ -71,7 +71,7 @@ export default function AdminGallery() {
       <div className="bg-white border-2 border-fsc-negro rounded-xl p-5 mb-8 fsc-card-shadow">
         <div className="font-display text-xl tracking-wider mb-4 flex items-center gap-2"><Plus size={20}/> Agregar imagen</div>
         <div className="grid md:grid-cols-2 gap-4">
-          <ImageUpload value={adding.image_url} onChange={(v) => setAdding({ ...adding, image_url: v })} label="Imagen" testId="gallery-upload" />
+          <ImageUpload value={adding.image_url} onChange={(v) => setAdding({ ...adding, image_url: v })} label="Imagen" hint="Recomendado: JPG horizontal 1200×800 px (4:3). Se muestra completa en el carrusel de Inicio, sin recortar." testId="gallery-upload" />
           <div className="space-y-3">
             <label className="block">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Título</span>

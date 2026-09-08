@@ -1,0 +1,32 @@
+{
+  "summary": "Frontend-only visual verification of the new useAutoFitBannerHeight hook and gallery object-fit changes across Eventos, Noticias, Datos-Estadisticas and Home. Tested desktop 1920x1080 and mobile 390x844 on the live preview URL. Auto-fit height logic works and containers resize; however, on desktop the Noticias and Estadisticas hero <img> still uses object-fit:cover — combined with the hook's hard maxHeight=700, this causes visible cropping for portrait images (real prod image is 2787x4181, ratio 0.667). At width 1920 the natural height would be 2880px, clamped to 700, so cover crops the top/bottom heavily. On mobile 390 the ratio fits (585px < 700 cap) so no crop occurs there. This contradicts the user's explicit 'sin recortar' directive; user already accepted letterboxing (side/vertical bars from bg-slate-800) as intentional. Rest of the changes look good: Home 'Finales' carousel, Eventos scenarios-gallery-2 carousel all show object-fit:contain and display images fully. Eventos hero is showing the video (hero_video_url configured) so image-mode of eventos-hero could not be visually verified — code path is analogous to Noticias/Estadisticas and shares the same object-cover bug on line 129.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Noticias.jsx HeroSection", "issue": "Desktop 1920: hero <img> uses object-fit:cover with hook maxHeight=700. Portrait prod image (2787x4181, ratio 0.667) needs 2880px height at 1920 wide; height is clamped to 700 -> significant top/bottom crop (heads/feet cut). User explicitly demanded 'sin recortar' and accepted side/vertical letterboxing (dark bg-slate-800 already present). Fix: change className to 'object-contain' (line 58). Mobile 390 works fine (no clamp, ratios match).", "selector": "[data-testid='noticias-hero'] img", "priority": "HIGH"},
+      {"component": "DatosEstadisticas.jsx HeroSection", "issue": "Same bug as Noticias hero: object-fit:cover + maxHeight=700 -> portrait image cropped on desktop 1920 (image 2787x4181 ratio 0.667, box height 700 vs required 2880). Fix: change className on the <img> to 'object-contain' (line 93).", "selector": "[data-testid='stats-hero'] img", "priority": "HIGH"},
+      {"component": "Eventos.jsx HeroSection (image fallback path)", "issue": "Cannot visually verify because prod has hero_video_url configured (video shows fixed h-80/460/620 as intended, correct). However code path for !heroVideoUrl && heroUrl uses the same object-cover pattern on line 129 -> will exhibit the same crop bug for any portrait image once the video is removed. Recommend also changing to object-contain for consistency.", "selector": "[data-testid='eventos-hero'] img", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Noticias hero mobile 390px", "issues": ["Existing (pre-session) issue: title 'MENTALIDAD' with clamp(3.4rem,10vw,9rem) overflows both sides of viewport; no overflow-hidden clip on the title element. Not caused by this session's changes but visible in current screenshots."]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "In /app/frontend/src/pages/Noticias.jsx line 58: change 'object-cover' to 'object-contain' on the hero <img> so the auto-fit banner never crops when clamped by maxHeight=700.",
+    "In /app/frontend/src/pages/DatosEstadisticas.jsx line 93: change 'object-cover' to 'object-contain' on the hero <img> (same fix).",
+    "In /app/frontend/src/pages/Eventos.jsx line 129: change 'object-cover' to 'object-contain' on the fallback hero <img> for consistency (video path stays object-cover with fixed height, which is correct)."
+  ],
+  "critical_code_review_comments": [
+    "useAutoFitBannerHeight computes height = containerWidth/imgRatio but clamps to [minHeight, maxHeight]. When clamped, the section's aspect ratio no longer matches the image's, so object-fit:cover WILL crop. Using object-contain with the existing bg-slate-800 (Noticias/Estadisticas) or bg-slate-100 (Eventos) achieves the user's 'no crop' rule with acceptable letterboxing.",
+    "Consider raising maxHeight or scaling min/max by viewport width so extreme portraits don't require letterboxing at all — but object-contain covers the safety net."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A", "frontend": "70%"},
+  "seed_data_creation": "None",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Prod hero image for both /noticias and /datos-estadisticas is a portrait 2787x4181 (ratio ~0.667). On desktop the hook clamps height to 700px so object-cover crops; on mobile 390 the required height is ~585px < 700 so it displays fully. Eventos currently shows the video (correct fixed h-620). Home finales carousel and scenarios-gallery-2 already use object-contain and display full images correctly. Category cards on /noticias have no image_url configured — CategoryCard code already uses object-contain (line 158) so that path is correct once images are added. After main agent applies the object-cover -> object-contain fix on the three hero <img> tags, re-test at 1920 to confirm the portrait image now shows entirely with dark letterbox bars on the sides.",
+  "rca of the issue": "Auto-fit hook exposes a computed height for the section but clamps it to [280, 700]. When the natural image aspect exceeds this range (portrait or ultra-wide) the container aspect diverges from the image aspect. With object-fit:cover the browser fills the container by cropping. Solution: use object-contain on the hero <img> so the image is always shown fully; letterboxing is absorbed by the section background (bg-slate-800 in Noticias/Estadisticas, bg-slate-100 in Eventos) and covered by the existing full-section rgba overlays. Reproduction: open https://fixture-stats-pro.preview.emergentagent.com/noticias at 1920x1080 -> hero clearly cuts off subjects' heads/feet; same at /datos-estadisticas."
+}

@@ -83,7 +83,7 @@ export default function GalleryCarousel({ images = [], testIdPrefix = "gallery",
                   animate={{ x: 0, opacity: isMiddle ? 1 : 0.85 }}
                   exit={(d) => ({ x: d > 0 ? "-100%" : "100%", opacity: 0.6 })}
                   transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }}
-                  className="absolute inset-0 w-full h-full object-cover"
+                  className="absolute inset-0 w-full h-full object-contain"
                   style={{ willChange: "transform, opacity" }}
                   draggable={false}
                 />

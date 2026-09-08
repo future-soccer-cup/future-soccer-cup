@@ -18,6 +18,7 @@ import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe, renderPlaneCrash, toTi
 import ChevronStack from "../components/ChevronStack";
 import GalleryCarousel from "../components/GalleryCarousel";
 import AnimateIn from "../components/AnimateIn";
+import { useAutoFitBannerHeight } from "../hooks/useAutoFitBannerHeight";
 
 const RED = "#e31f27";
 const BLUE = "#0640c8";
@@ -103,8 +104,17 @@ export default function Eventos() {
 
 
 function HeroSection({ heroVideoUrl, heroUrl, logoUrl }) {
+  // El video mantiene el alto fijo de siempre; con imagen (sin video) el alto se ajusta
+  // a la proporción real de la foto para mostrarla completa, sin recortar.
+  const { wrapRef, height, onImgLoad } = useAutoFitBannerHeight({ minHeight: 280, maxHeight: 700, fallbackHeight: 460 });
+  const autoHeight = !heroVideoUrl && !!heroUrl;
   return (
-    <section className="relative w-full h-80 md:h-[460px] lg:h-[620px] bg-slate-100 overflow-hidden" data-testid="eventos-hero">
+    <section
+      ref={wrapRef}
+      className={`relative w-full bg-slate-100 overflow-hidden ${autoHeight ? "" : "h-80 md:h-[460px] lg:h-[620px]"}`}
+      style={autoHeight ? { height: `${height}px` } : undefined}
+      data-testid="eventos-hero"
+    >
       {heroVideoUrl ? (
         <video
           src={imgSrc(heroVideoUrl)}
@@ -116,7 +126,7 @@ function HeroSection({ heroVideoUrl, heroUrl, logoUrl }) {
           data-testid="eventos-hero-video"
         />
       ) : heroUrl ? (
-        <img src={imgSrc(heroUrl)} alt="" className="w-full h-full object-cover" />
+        <img src={imgSrc(heroUrl)} alt="" onLoad={onImgLoad} className="w-full h-full object-contain" />
       ) : (
         <div className="w-full h-full flex items-center justify-center text-slate-300" style={AGENCY_FB}>Imagen no configurada</div>
       )}

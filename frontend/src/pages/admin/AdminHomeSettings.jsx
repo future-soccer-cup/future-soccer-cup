@@ -492,7 +492,7 @@ function EventosEditor({ value, onChange }) {
           value={v.hero_url}
           onChange={(url) => patch({ hero_url: url })}
           label="Imagen de respaldo (se usa solo si no hay video)"
-          hint="Recomendado: JPG horizontal 1920×800 px con foto de partido de fútbol infantil. Peso < 1 MB."
+          hint="Recomendado: JPG horizontal 1920×800 px (o proporción similar) con foto de partido de fútbol infantil. Peso < 1 MB. El alto de esta franja se ajusta solo a la foto: se muestra completa, sin recortar."
           testId="eventos-hero-upload"
         />
       </SubSection>
@@ -611,7 +611,7 @@ function EventosEditor({ value, onChange }) {
       <SubSection title="7B. Galería Escenarios Deportivos — carrusel de fotos (sin título)">
         <ImageListUpload
           label="Fotos del carrusel"
-          hint="Se muestran 3 a la vez con navegación ← →. JPG horizontal 1200×800 px. Va justo debajo de Escenarios Deportivos, sin título."
+          hint="Se muestran 3 a la vez con navegación ← →. JPG horizontal 1200×800 px (4:3). Se muestran completas, sin recortar. Va justo debajo de Escenarios Deportivos, sin título."
           values={v.scenarios_gallery_2 || []}
           onChange={(arr) => patch({ scenarios_gallery_2: arr })}
           testId="scenarios-gallery-2"
@@ -628,7 +628,7 @@ function EventosEditor({ value, onChange }) {
         <div className="mt-4">
           <ImageListUpload
             label="Galería de fotos de premiación (carrusel automático)"
-            hint="Tamaño recomendado: 1200×700 px horizontal. Se acepta cualquier formato de imagen (JPG, PNG, WEBP, HEIC, etc.). Se rota sola cada 4-5 segundos con crossfade; con 1 sola foto se muestra fija."
+            hint="Tamaño recomendado: 1200×700 px horizontal. Se acepta cualquier formato de imagen (JPG, PNG, WEBP, HEIC, etc.). Se muestran completas, sin recortar. Se rota sola cada 4-5 segundos con crossfade; con 1 sola foto se muestra fija."
             values={v.premiacion_gallery || []}
             onChange={(arr) => patch({ premiacion_gallery: arr })}
             testId="premiacion-gallery"
@@ -713,7 +713,7 @@ function EstadisticasEditor({ value, onChange, tournaments = [], fixtures = [] }
   return (
     <div className="space-y-6" data-testid="estadisticas-editor">
       <SubSection title="1. Hero — imagen + textos">
-        <ImageUpload value={v.hero_url} onChange={(u) => patch({ hero_url: u })} label="Imagen del Hero (recibe overlay rojo)" hint="JPG horizontal con foto de partido de fútbol infantil. 1920×600 px recomendado." testId="stats-hero" />
+        <ImageUpload value={v.hero_url} onChange={(u) => patch({ hero_url: u })} label="Imagen del Hero (recibe overlay rojo)" hint="JPG horizontal 1920×800 px (o proporción similar) con foto de partido de fútbol infantil. El alto de la franja se ajusta solo a la foto: se muestra completa, sin recortar." testId="stats-hero" />
         <div className="grid md:grid-cols-3 gap-3 mt-3">
           <Field label="Watermark (texto fantasma detrás)" v={v.hero_watermark_text} onChange={(x) => patch({ hero_watermark_text: x })} placeholder="MARCADOR" />
           <Field label="Título línea 1" v={v.hero_title_top} onChange={(x) => patch({ hero_title_top: x })} placeholder="MARCADOR" />
@@ -867,7 +867,7 @@ function NoticiasEditor({ value, onChange }) {
   return (
     <div className="space-y-6" data-testid="noticias-editor">
       <SubSection title="1. Hero — imagen + textos">
-        <ImageUpload value={v.hero_url} onChange={(u) => patch({ hero_url: u })} label="Imagen del Hero (recibe overlay azul)" hint="JPG horizontal con foto de partido de fútbol infantil. 1920×600 px." testId="noticias-hero" />
+        <ImageUpload value={v.hero_url} onChange={(u) => patch({ hero_url: u })} label="Imagen del Hero (recibe overlay azul)" hint="JPG horizontal 1920×800 px (o proporción similar) con foto de partido de fútbol infantil. El alto de la franja se ajusta solo a la foto: se muestra completa, sin recortar." testId="noticias-hero" />
         <div className="grid md:grid-cols-3 gap-3 mt-3">
           <Field label="Watermark (fantasma detrás)" v={v.hero_watermark} onChange={(x) => patch({ hero_watermark: x })} placeholder="MENTALIDAD" />
           <Field label="Título grande" v={v.hero_title} onChange={(x) => patch({ hero_title: x })} placeholder="MENTALIDAD" />
@@ -891,7 +891,7 @@ function NoticiasEditor({ value, onChange }) {
               <Field label="ID interno (único)" v={cat.id} onChange={(x) => updateCat(ci, { id: x })} placeholder="cat-liga" />
             </div>
             <div className="mt-3">
-              <ImageUpload value={cat.image_url} onChange={(u) => updateCat(ci, { image_url: u })} label="Imagen de fondo (con overlay rojo semitransparente)" hint="JPG 800×600 px. Se le aplica overlay rojo automáticamente." testId={`noticias-cat-img-${ci}`} />
+              <ImageUpload value={cat.image_url} onChange={(u) => updateCat(ci, { image_url: u })} label="Imagen de fondo (con overlay rojo semitransparente)" hint="JPG horizontal 4:3 (ej. 800×600 px) para llenar bien la tarjeta. Se muestra completa, sin recortar (si la foto no calza exacto, se ve con un pequeño margen oscuro a los lados)." testId={`noticias-cat-img-${ci}`} />
             </div>
             <div className="mt-4">
               <div className="text-[10px] font-bold uppercase tracking-widest text-blue-700 mb-2">Noticias de esta categoría</div>
@@ -951,7 +951,7 @@ function NewsListEditor({ items, onChange, testId }) {
           <div className="mt-2">
             <ImageListUpload
               label="Imágenes / galería (la primera se usa como portada)"
-              hint="JPG horizontales, máx 6 imágenes recomendado."
+              hint="JPG horizontales, máx 6 imágenes recomendado. Se muestran completas, sin recortar."
               values={n.images || []}
               onChange={(arr) => update(i, { images: arr })}
               testId={`${testId}-imgs-${i}`}

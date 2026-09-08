@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import { X, ChevronLeft, Play } from "lucide-react";
 import api, { imgSrc } from "../lib/api";
 import { PLANE_CRASH, AGENCY_FB, renderPlaneCrash } from "../lib/designSystem";
+import { useAutoFitBannerHeight } from "../hooks/useAutoFitBannerHeight";
 
 const RED = "#e31f27";
 const BLUE = "#0640c8";
@@ -45,11 +46,19 @@ function HeroSection({ heroUrl, watermark, title, subtitle }) {
     fontSize: "clamp(3.4rem, 10vw, 9rem)",
     letterSpacing: "0.01em",
   };
+  const { wrapRef, height, onImgLoad } = useAutoFitBannerHeight({ minHeight: 280, maxHeight: 700, fallbackHeight: 420 });
   return (
-    <section className="relative w-full h-72 md:h-[420px] lg:h-[500px] overflow-hidden bg-slate-800" data-testid="noticias-hero">
+    <section
+      ref={wrapRef}
+      className="relative w-full overflow-hidden bg-slate-800"
+      style={heroUrl ? { height: `${height}px` } : undefined}
+      data-testid="noticias-hero"
+    >
       {heroUrl ? (
-        <img src={imgSrc(heroUrl)} alt="" className="absolute inset-0 w-full h-full object-cover" />
-      ) : null}
+        <img src={imgSrc(heroUrl)} alt="" onLoad={onImgLoad} className="absolute inset-0 w-full h-full object-contain" />
+      ) : (
+        <div className="w-full h-72 md:h-[420px] lg:h-[500px]" />
+      )}
       {/* Overlay azul denso y oscuro (oscurece la foto de fondo) */}
       <div className="absolute inset-0" style={{ background: "rgba(6, 20, 80, 0.82)" }} />
       {/* Título principal + ecos apilados detrás (mismo tamaño, más arriba y desvanecidos) */}
@@ -144,9 +153,9 @@ function CategoryCard({ cat, onClick }) {
         }}
       />
       {/* Tarjeta principal */}
-      <div className="relative aspect-[4/3] overflow-hidden rounded-sm shadow-lg" style={{ zIndex: 1 }}>
+      <div className="relative aspect-[4/3] overflow-hidden rounded-sm shadow-lg bg-slate-900" style={{ zIndex: 1 }}>
         {cat.image_url ? (
-          <img src={imgSrc(cat.image_url)} alt="" className="absolute inset-0 w-full h-full object-cover" />
+          <img src={imgSrc(cat.image_url)} alt="" className="absolute inset-0 w-full h-full object-contain" />
         ) : (
           <div className="absolute inset-0 bg-slate-700" />
         )}
@@ -223,9 +232,9 @@ function CategoryModal({ category, onClose }) {
                   className="text-left border border-slate-200 rounded-md overflow-hidden hover:shadow-lg transition"
                   data-testid={`noticia-item-${i}`}
                 >
-                  <div className={news.length === 1 ? "aspect-[4/3] md:aspect-video bg-slate-100 relative" : "aspect-video bg-slate-100 relative"}>
+                  <div className={news.length === 1 ? "aspect-[4/3] md:aspect-video bg-slate-900 relative" : "aspect-video bg-slate-900 relative"}>
                     {n.images?.[0] ? (
-                      <img src={imgSrc(n.images[0])} alt="" className="w-full h-full object-cover" />
+                      <img src={imgSrc(n.images[0])} alt="" className="w-full h-full object-contain" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs">Sin imagen</div>
                     )}
@@ -269,14 +278,14 @@ function NewsDetail({ news }) {
       )}
       {images.length > 0 && (
         <div className="mb-5">
-          <div className="aspect-video bg-slate-100 rounded-md overflow-hidden mb-2">
-            <img src={imgSrc(images[0])} alt="" className="w-full h-full object-cover" />
+          <div className="aspect-video bg-slate-900 rounded-md overflow-hidden mb-2">
+            <img src={imgSrc(images[0])} alt="" className="w-full h-full object-contain" />
           </div>
           {images.length > 1 && (
             <div className="grid grid-cols-4 gap-2">
               {images.slice(1).map((im, i) => (
-                <div key={i} className="aspect-square bg-slate-100 rounded overflow-hidden">
-                  <img src={imgSrc(im)} alt="" className="w-full h-full object-cover" />
+                <div key={i} className="aspect-square bg-slate-900 rounded overflow-hidden">
+                  <img src={imgSrc(im)} alt="" className="w-full h-full object-contain" />
                 </div>
               ))}
             </div>
