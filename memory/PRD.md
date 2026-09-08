@@ -15,6 +15,21 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Storage: Emergent Object Storage for images/PDFs.
 - Tests: pytest under `/app/backend/tests/`.
 
+### 2026-09-08 — Iter105: Regla GLOBAL de imágenes — aspect-ratio fijo + object-cover (reemplaza el enfoque "sin recorte" del Iter103)
+- El usuario dio una especificación técnica precisa que reemplaza la estrategia anterior: en vez de "nunca recortar" (object-contain + alto dinámico vía JS), pidió el patrón estándar de la industria — contenedor SIEMPRE con `aspect-ratio` fijo (nunca alto en px), imagen `w-full h-full object-cover object-center`, contenedor `overflow-hidden`.
+- Proporciones exactas: Hero (Inicio + páginas internas) = **16/5**, Carrusel Finales/Escenarios Deportivos = **3/2**, Fotos flotantes de Nosotros (línea del tiempo) = **4/3**, Tarjetas de Noticias = **16/9**, Imagen Estadio Centenario = **16/5**.
+- **Excepciones respetadas (object-fit:contain, sin tocar)**: imagen superpuesta del hero de Inicio (los niños), logos de clubes/escudos, mascota KOW (incluye LoginModal/TeamRegister del Iter102, que no se tocaron).
+- Revertido: `useAutoFitBannerHeight.js` (hook del Iter103) — eliminado, quedó sin uso. Eventos/Noticias/DatosEstadisticas heroes ahora usan `aspect-[16/5]` CSS puro (sin JS).
+- `Eventos.jsx`: HeroSection (16/5, video mantiene su alto fijo de siempre sin cambios), StadiumSection/Estadio Centenario (16/5, grayscale + object-cover).
+- `Noticias.jsx`: hero (16/5), CategoryCard (16/9, antes 4/3), miniaturas de modal y detalle de noticia (16/9 principal, aspect-square miniaturas) — todo con object-cover.
+- `DatosEstadisticas.jsx`: hero (16/5).
+- `GalleryCarousel.jsx` (Escenarios Deportivos/Premiación) y galería Finales de `Home.jsx`: aspect-[3/2] + object-cover (revertido de object-contain).
+- `FSCHistorySection.jsx`: las 6 fotos flotantes del modo INTRO ahora usan `aspectRatio: '4/3'` vía JS (antes cada slot tenía una altura % distinta); el modo YEAR (foto expandida a banner completo) NO se tocó, sigue en `height:100%`. Grid mobile cambiado de `h-32` fijo a `aspect-[4/3]`.
+- `HeroVideoBanner.jsx` (usado en `/mi-equipo` y `/cotizar`): `heightClass` default cambiado de vh-based a `aspect-[16/5]`.
+- **Bug real encontrado durante la implementación**: `loading="lazy"` en `GalleryCarousel.jsx` hacía que las imágenes nunca cargaran en contextos con scroll+animación (framer-motion `AnimatePresence` + posicionamiento absoluto) — se quitó el atributo (solo se muestran 3 imágenes a la vez, lazy-load no es necesario aquí).
+- Hints de tamaño en `AdminHomeSettings.jsx`/`AdminGallery.jsx` actualizados con las proporciones exactas y "se recorta tipo cover centrado" en vez de "sin recortar".
+- **Verificado con `testing_agent`** (iteration_65.json): 100% success rate, 0 bugs. Ratios medidos en runtime: Eventos galería 1.497-1.501 (≈3/2), Noticias hero 3.2 (16/5), Noticias categorías 1.78 (16/9), Home Finales 1.50 (3/2), Nosotros fotos flotantes 1.33 (4/3) — todos correctos. Excepciones (KOW, escudos) confirmadas sin cambios. Sin overflow horizontal en mobile 390px.
+
 ### 2026-09-08 — Iter104: Bug real encontrado — el hint de tamaño no coincidía con la proporción real del recuadro
 - El usuario subió fotos siguiendo EXACTO el hint del admin (1200×800 px) en "7B. Galería Escenarios Deportivos" y aun así veía franjas amarillas — reportó que "esa no es la medida correcta".
 - **Causa raíz**: error del agente al escribir el hint. 1200×800 es proporción 3:2 (1.5), pero se etiquetó como "(4:3)" — y el recuadro real en `GalleryCarousel.jsx`/`Home.jsx` usaba `aspect-[16/11]` (centro) y `aspect-[4/3]` (costados), ninguno de los dos es 3:2. Por eso object-contain dejaba franjas incluso con la medida "correcta".

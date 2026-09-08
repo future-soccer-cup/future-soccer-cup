@@ -22,13 +22,14 @@ const BLUE = "#0640c8";
 
 // Slots relativos para las 6 fotos flotantes en modo INTRO.
 // La posición 0 (sup-izq) es la que se expande a banner completo en modo YEAR.
+// El alto ya no se fija aquí: cada foto usa aspect-ratio 4/3 (ver render), solo se define left/top/width/rotate.
 const SLOTS = [
-  { left: "3%",  top: "6%",   width: "22%", height: "24%", rotate: -2 },
-  { left: "34%", top: "0%",   width: "32%", height: "38%", rotate: 1.5 },
-  { left: "76%", top: "8%",   width: "21%", height: "24%", rotate: 2 },
-  { left: "5%",  top: "58%",  width: "22%", height: "26%", rotate: -2 },
-  { left: "36%", top: "62%",  width: "26%", height: "30%", rotate: -1 },
-  { left: "78%", top: "60%",  width: "18%", height: "22%", rotate: 2.5 },
+  { left: "3%",  top: "6%",   width: "22%", rotate: -2 },
+  { left: "34%", top: "0%",   width: "32%", rotate: 1.5 },
+  { left: "76%", top: "8%",   width: "21%", rotate: 2 },
+  { left: "5%",  top: "58%",  width: "22%", rotate: -2 },
+  { left: "36%", top: "62%",  width: "26%", rotate: -1 },
+  { left: "78%", top: "60%",  width: "18%", rotate: 2.5 },
 ];
 
 // Timing de la flotación independiente por foto (duración en s, delay en s, amplitud en px).
@@ -159,7 +160,10 @@ export default function FSCHistorySection({ settings }) {
                     left: target.left,
                     top: target.top,
                     width: target.width,
-                    height: target.height,
+                    // La foto expandida (modo YEAR) llena el 100% del área; las fotos flotantes
+                    // de la línea del tiempo usan aspect-ratio 4/3 en vez de un alto fijo.
+                    height: isCovering ? target.height : undefined,
+                    aspectRatio: isCovering ? undefined : "4 / 3",
                     transform: `rotate(${target.rotate}deg)`,
                     opacity,
                     zIndex,
@@ -306,7 +310,7 @@ export default function FSCHistorySection({ settings }) {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   {introPhotos.map((p, i) => (
-                    <div key={`m-${i}`} className="overflow-hidden h-32 w-full" style={{ border: "2px solid #ffffff", boxShadow: "0 4px 12px rgba(0,0,0,0.18)" }}>
+                    <div key={`m-${i}`} className="overflow-hidden w-full" style={{ aspectRatio: "4 / 3", border: "2px solid #ffffff", boxShadow: "0 4px 12px rgba(0,0,0,0.18)" }}>
                       <img src={imgSrc(p)} alt="" className="w-full h-full object-cover object-center" loading="lazy" />
                     </div>
                   ))}

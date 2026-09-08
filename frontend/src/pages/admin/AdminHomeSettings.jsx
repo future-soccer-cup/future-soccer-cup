@@ -164,8 +164,7 @@ export default function AdminHomeSettings() {
             value={s.dashboard_hero_url}
             onChange={(v) => upd("dashboard_hero_url", v)}
             label="Imagen de respaldo (se usa solo si no hay video)"
-            hint="Recomendado: JPG horizontal 1920×600 px."
-            testId="dashboard-hero-upload"
+            hint="Recomendado: JPG horizontal 1920×600 px (proporción 16:5). Se recorta tipo cover centrado si la proporción no coincide exacto."
           />
         </div>
       </Section>
@@ -183,7 +182,7 @@ export default function AdminHomeSettings() {
             value={s.cotizar_hero_url}
             onChange={(v) => upd("cotizar_hero_url", v)}
             label="Imagen de respaldo (se usa solo si no hay video)"
-            hint="Recomendado: JPG horizontal 1920×600 px."
+            hint="Recomendado: JPG horizontal 1920×600 px (proporción 16:5). Se recorta tipo cover centrado si la proporción no coincide exacto."
             testId="cotizar-hero-upload"
           />
         </div>
@@ -448,7 +447,7 @@ function HistoryTimelineEditor({ value, onChange }) {
             <div className="mt-3">
               <ImageListUpload
                 label="Foto del hito (1 sola)"
-                hint="Esta foto se usa como imagen principal del hito y también aparece en el collage de la introducción (cada foto flotante representa un hito distinto)."
+                hint="Esta foto se usa como imagen principal del hito y también aparece en el collage de la introducción (cada foto flotante representa un hito distinto). Recomendado: proporción 4:3 (ej. 800×600 px). Se recorta tipo cover centrado si la proporción no coincide exacto."
                 values={it.photos || []}
                 onChange={(v) => update(idx, { photos: v || [] })}
                 testId={`timeline-photos-${idx}`}
@@ -492,7 +491,7 @@ function EventosEditor({ value, onChange }) {
           value={v.hero_url}
           onChange={(url) => patch({ hero_url: url })}
           label="Imagen de respaldo (se usa solo si no hay video)"
-          hint="Recomendado: JPG horizontal 1920×800 px (o proporción similar) con foto de partido de fútbol infantil. Peso < 1 MB. El alto de esta franja se ajusta solo a la foto: se muestra completa, sin recortar."
+          hint="Recomendado: JPG horizontal 1920×600 px (proporción 16:5) con foto de partido de fútbol infantil. Peso < 1 MB. Se recorta tipo cover centrado si la proporción no coincide exacto."
           testId="eventos-hero-upload"
         />
       </SubSection>
@@ -569,7 +568,7 @@ function EventosEditor({ value, onChange }) {
 
       {/* Sección 5 — Estadio */}
       <SubSection title="5. Estadio Centenario (solo se muestra en tab PREMIER)">
-        <ImageUpload value={v.stadium?.image_url} onChange={(u) => patchStadium({ image_url: u })} label="Imagen del estadio" hint="Se muestra en escala de grises. JPG horizontal 1920×600 px recomendado." testId="stadium-image" />
+        <ImageUpload value={v.stadium?.image_url} onChange={(u) => patchStadium({ image_url: u })} label="Imagen del estadio" hint="Se muestra en escala de grises. JPG horizontal 1920×600 px (proporción 16:5) recomendado. Se recorta tipo cover centrado." testId="stadium-image" />
         <div className="grid md:grid-cols-2 gap-3 mt-3">
           <Field label="Texto cursivo (línea 1)" v={v.stadium?.cursive} onChange={(x) => patchStadium({ cursive: x })} placeholder="Estadio" />
           <Field label="Título superior" v={v.stadium?.title_top} onChange={(x) => patchStadium({ title_top: x })} placeholder="CENTENARIO" />
@@ -611,7 +610,7 @@ function EventosEditor({ value, onChange }) {
       <SubSection title="7B. Galería Escenarios Deportivos — carrusel de fotos (sin título)">
         <ImageListUpload
           label="Fotos del carrusel"
-          hint="Se muestran 3 a la vez con navegación ← →. JPG horizontal 1200×800 px (proporción 3:2) — las 3 fotos usan ese mismo marco, así se muestran completas sin franjas. Va justo debajo de Escenarios Deportivos, sin título."
+          hint="Se muestran 3 a la vez con navegación ← →. JPG horizontal 1200×800 px (proporción 3:2) — las 3 fotos usan ese mismo marco. Se recorta tipo cover centrado si la proporción no coincide exacto. Va justo debajo de Escenarios Deportivos, sin título."
           values={v.scenarios_gallery_2 || []}
           onChange={(arr) => patch({ scenarios_gallery_2: arr })}
           testId="scenarios-gallery-2"
@@ -628,7 +627,7 @@ function EventosEditor({ value, onChange }) {
         <div className="mt-4">
           <ImageListUpload
             label="Galería de fotos de premiación (carrusel automático)"
-            hint="Tamaño recomendado: 1200×800 px horizontal (proporción 3:2) para que se muestren completas sin franjas. Se acepta cualquier formato de imagen (JPG, PNG, WEBP, HEIC, etc.). Se rota sola cada 4-5 segundos con crossfade; con 1 sola foto se muestra fija."
+            hint="Tamaño recomendado: 1200×800 px horizontal (proporción 3:2). Se acepta cualquier formato de imagen (JPG, PNG, WEBP, HEIC, etc.). Se recorta tipo cover centrado si la proporción no coincide exacto. Se rota sola cada 4-5 segundos con crossfade; con 1 sola foto se muestra fija."
             values={v.premiacion_gallery || []}
             onChange={(arr) => patch({ premiacion_gallery: arr })}
             testId="premiacion-gallery"
@@ -713,7 +712,7 @@ function EstadisticasEditor({ value, onChange, tournaments = [], fixtures = [] }
   return (
     <div className="space-y-6" data-testid="estadisticas-editor">
       <SubSection title="1. Hero — imagen + textos">
-        <ImageUpload value={v.hero_url} onChange={(u) => patch({ hero_url: u })} label="Imagen del Hero (recibe overlay rojo)" hint="JPG horizontal 1920×800 px (o proporción similar) con foto de partido de fútbol infantil. El alto de la franja se ajusta solo a la foto: se muestra completa, sin recortar." testId="stats-hero" />
+        <ImageUpload value={v.hero_url} onChange={(u) => patch({ hero_url: u })} label="Imagen del Hero (recibe overlay rojo)" hint="JPG horizontal 1920×600 px (proporción 16:5) con foto de partido de fútbol infantil. Se recorta tipo cover centrado si la proporción no coincide exacto." testId="stats-hero" />
         <div className="grid md:grid-cols-3 gap-3 mt-3">
           <Field label="Watermark (texto fantasma detrás)" v={v.hero_watermark_text} onChange={(x) => patch({ hero_watermark_text: x })} placeholder="MARCADOR" />
           <Field label="Título línea 1" v={v.hero_title_top} onChange={(x) => patch({ hero_title_top: x })} placeholder="MARCADOR" />
@@ -867,7 +866,7 @@ function NoticiasEditor({ value, onChange }) {
   return (
     <div className="space-y-6" data-testid="noticias-editor">
       <SubSection title="1. Hero — imagen + textos">
-        <ImageUpload value={v.hero_url} onChange={(u) => patch({ hero_url: u })} label="Imagen del Hero (recibe overlay azul)" hint="JPG horizontal 1920×800 px (o proporción similar) con foto de partido de fútbol infantil. El alto de la franja se ajusta solo a la foto: se muestra completa, sin recortar." testId="noticias-hero" />
+        <ImageUpload value={v.hero_url} onChange={(u) => patch({ hero_url: u })} label="Imagen del Hero (recibe overlay azul)" hint="JPG horizontal 1920×600 px (proporción 16:5) con foto de partido de fútbol infantil. Se recorta tipo cover centrado si la proporción no coincide exacto." testId="noticias-hero" />
         <div className="grid md:grid-cols-3 gap-3 mt-3">
           <Field label="Watermark (fantasma detrás)" v={v.hero_watermark} onChange={(x) => patch({ hero_watermark: x })} placeholder="MENTALIDAD" />
           <Field label="Título grande" v={v.hero_title} onChange={(x) => patch({ hero_title: x })} placeholder="MENTALIDAD" />
@@ -891,7 +890,7 @@ function NoticiasEditor({ value, onChange }) {
               <Field label="ID interno (único)" v={cat.id} onChange={(x) => updateCat(ci, { id: x })} placeholder="cat-liga" />
             </div>
             <div className="mt-3">
-              <ImageUpload value={cat.image_url} onChange={(u) => updateCat(ci, { image_url: u })} label="Imagen de fondo (con overlay rojo semitransparente)" hint="JPG horizontal 4:3 (ej. 800×600 px) para llenar bien la tarjeta. Se muestra completa, sin recortar (si la foto no calza exacto, se ve con un pequeño margen oscuro a los lados)." testId={`noticias-cat-img-${ci}`} />
+              <ImageUpload value={cat.image_url} onChange={(u) => updateCat(ci, { image_url: u })} label="Imagen de fondo (con overlay rojo semitransparente)" hint="JPG horizontal 16:9 (ej. 1280×720 px). Se recorta tipo cover centrado si la proporción no coincide exacto." testId={`noticias-cat-img-${ci}`} />
             </div>
             <div className="mt-4">
               <div className="text-[10px] font-bold uppercase tracking-widest text-blue-700 mb-2">Noticias de esta categoría</div>
@@ -951,7 +950,7 @@ function NewsListEditor({ items, onChange, testId }) {
           <div className="mt-2">
             <ImageListUpload
               label="Imágenes / galería (la primera se usa como portada)"
-              hint="JPG horizontales, máx 6 imágenes recomendado. Se muestran completas, sin recortar."
+              hint="JPG horizontales 16:9, máx 6 imágenes recomendado. Se recortan tipo cover centrado si la proporción no coincide exacto."
               values={n.images || []}
               onChange={(arr) => update(i, { images: arr })}
               testId={`${testId}-imgs-${i}`}

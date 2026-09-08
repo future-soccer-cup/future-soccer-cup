@@ -341,7 +341,7 @@ export default function Home() {
                           animate={{ x: 0, opacity: 1 }}
                           exit={(d) => ({ x: d > 0 ? "-100%" : "100%", opacity: 0.6 })}
                           transition={{ duration: 0.7, ease: [0.4, 0, 0.2, 1] }}
-                          className="absolute inset-0 w-full h-full object-contain"
+                          className="absolute inset-0 w-full h-full object-cover object-center"
                           style={{ willChange: "transform, opacity" }}
                           draggable={false}
                         />

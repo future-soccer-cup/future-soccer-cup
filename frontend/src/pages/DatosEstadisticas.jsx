@@ -14,7 +14,6 @@ import { X } from "lucide-react";
 import api, { imgSrc } from "../lib/api";
 import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe, renderPlaneCrash, toTitleCaseForScript } from "../lib/designSystem";
 import AnimateIn from "../components/AnimateIn";
-import { useAutoFitBannerHeight } from "../hooks/useAutoFitBannerHeight";
 
 const RED = "#e31f27";
 const BLUE = "#0640c8";
@@ -81,18 +80,13 @@ function HeroSection({ heroUrl, watermark, titleTop, titleBottom }) {
     fontSize: "clamp(3.5rem, 10vw, 9rem)",
     letterSpacing: "0.01em",
   };
-  const { wrapRef, height, onImgLoad } = useAutoFitBannerHeight({ minHeight: 280, maxHeight: 700, fallbackHeight: 420 });
   return (
     <section
-      ref={wrapRef}
-      className="relative w-full overflow-hidden bg-slate-800"
-      style={heroUrl ? { height: `${height}px` } : undefined}
+      className="relative w-full aspect-[16/5] overflow-hidden bg-slate-800"
       data-testid="stats-hero"
     >
-      {heroUrl ? (
-        <img src={imgSrc(heroUrl)} alt="" onLoad={onImgLoad} className="absolute inset-0 w-full h-full object-contain" />
-      ) : (
-        <div className="w-full h-72 md:h-[420px] lg:h-[500px]" />
+      {heroUrl && (
+        <img src={imgSrc(heroUrl)} alt="" className="absolute inset-0 w-full h-full object-cover object-center" />
       )}
       {/* Overlay rojo denso y oscuro (oscurece la foto de fondo) */}
       <div className="absolute inset-0" style={{ background: "rgba(200, 20, 20, 0.70)" }} />
