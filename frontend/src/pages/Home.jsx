@@ -326,7 +326,7 @@ export default function Home() {
                   <div
                     key={`slot-${i}`}
                     className={`${colSpan} ${aspect} ${ringExtra} rounded-lg overflow-hidden relative`}
-                    style={{ background: BLUE }}
+                    style={{ background: "#ffffff" }}
                     data-testid={`gallery-item-${i}`}
                   >
                     <AnimatePresence initial={false} custom={gDirection} mode="popLayout">

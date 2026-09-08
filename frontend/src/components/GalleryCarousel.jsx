@@ -69,7 +69,7 @@ export default function GalleryCarousel({ images = [], testIdPrefix = "gallery",
             <div
               key={`slot-${i}`}
               className={`${colSpan} ${aspect} ${ringExtra} rounded-lg overflow-hidden relative`}
-              style={{ background: accentColor, ...(isMiddle ? { "--tw-ring-color": "#ffffff" } : {}) }}
+              style={{ background: "#ffffff", ...(isMiddle ? { "--tw-ring-color": "#ffffff" } : {}) }}
               data-testid={`${testIdPrefix}-item-${i}`}
             >
               <AnimatePresence initial={false} custom={direction} mode="popLayout">

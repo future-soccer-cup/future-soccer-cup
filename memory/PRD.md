@@ -15,6 +15,12 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Storage: Emergent Object Storage for images/PDFs.
 - Tests: pytest under `/app/backend/tests/`.
 
+### 2026-09-08 — Iter106: Quitado el fondo/borde amarillo de las galerías (Escenarios Deportivos, Premiación, Finales)
+- Con `object-cover` + `rounded-lg`, las esquinas redondeadas del recuadro dejaban ver el color de fondo (`accentColor`, dorado en Escenarios Deportivos, azul en Premiación/Finales) detrás de la imagen. El usuario pidió quitar ese fondo/borde de color y dejarlo blanco.
+- `GalleryCarousel.jsx` (Escenarios Deportivos, Premiación): `background: accentColor` → `background: "#ffffff"`.
+- `Home.jsx` galería Finales: `background: BLUE` → `background: "#ffffff"`.
+- Verificado con screenshot: ya no se ve amarillo/azul en los bordes redondeados.
+
 ### 2026-09-08 — Iter105: Regla GLOBAL de imágenes — aspect-ratio fijo + object-cover (reemplaza el enfoque "sin recorte" del Iter103)
 - El usuario dio una especificación técnica precisa que reemplaza la estrategia anterior: en vez de "nunca recortar" (object-contain + alto dinámico vía JS), pidió el patrón estándar de la industria — contenedor SIEMPRE con `aspect-ratio` fijo (nunca alto en px), imagen `w-full h-full object-cover object-center`, contenedor `overflow-hidden`.
 - Proporciones exactas: Hero (Inicio + páginas internas) = **16/5**, Carrusel Finales/Escenarios Deportivos = **3/2**, Fotos flotantes de Nosotros (línea del tiempo) = **4/3**, Tarjetas de Noticias = **16/9**, Imagen Estadio Centenario = **16/5**.
