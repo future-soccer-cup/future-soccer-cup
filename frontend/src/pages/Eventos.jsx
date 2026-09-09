@@ -194,12 +194,12 @@ function TabsBar({ tab, onTab, festival, premier, center }) {
   const isFest = tab === "festival";
   const isPrem = tab === "premier";
   return (
-    <section className="max-w-6xl mx-auto px-4 sm:px-10 lg:px-16 py-8" data-testid="eventos-tabs">
+    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" data-testid="eventos-tabs">
       <div className="grid grid-cols-3 gap-2 md:gap-5">
         <button
           type="button"
           onClick={() => onTab("festival")}
-          className={`min-w-0 text-center px-1 md:px-3 py-4 md:py-6 rounded-sm transition-all overflow-x-hidden ${isFest ? "ring-4 ring-red-300 scale-[1.02]" : "opacity-90 hover:opacity-100"}`}
+          className={`min-w-0 text-center px-1 md:px-3 py-4 md:py-6 rounded-sm transition-all ${isFest ? "ring-4 ring-red-300 scale-[1.02]" : "opacity-90 hover:opacity-100"}`}
           style={{ background: RED }}
           data-testid="tab-festival"
         >
@@ -211,7 +211,7 @@ function TabsBar({ tab, onTab, festival, premier, center }) {
           </div>
         </button>
 
-        <div className="min-w-0 text-center px-1 md:px-3 py-4 md:py-6 bg-white flex flex-col items-center justify-center overflow-x-hidden" data-testid="tab-center">
+        <div className="min-w-0 text-center px-1 md:px-3 py-4 md:py-6 bg-white flex flex-col items-center justify-center" data-testid="tab-center">
           <div className="leading-normal" style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(0.68rem, 3.6vw, 3rem)", whiteSpace: "nowrap" }}>
             {renderPlaneCrash(center?.top || "EVENTOS")}
           </div>
@@ -223,7 +223,7 @@ function TabsBar({ tab, onTab, festival, premier, center }) {
         <button
           type="button"
           onClick={() => onTab("premier")}
-          className={`min-w-0 text-center px-1 md:px-3 py-4 md:py-6 rounded-sm transition-all overflow-x-hidden ${isPrem ? "ring-4 ring-blue-300 scale-[1.02]" : "opacity-90 hover:opacity-100"}`}
+          className={`min-w-0 text-center px-1 md:px-3 py-4 md:py-6 rounded-sm transition-all ${isPrem ? "ring-4 ring-blue-300 scale-[1.02]" : "opacity-90 hover:opacity-100"}`}
           style={{ background: BLUE }}
           data-testid="tab-premier"
         >
@@ -256,7 +256,7 @@ const FESTIVAL_LETTER_COLORS = [
 
 function EventTitleSection({ month, word, isFestival }) {
   return (
-    <section className="max-w-6xl mx-auto px-4 sm:px-10 lg:px-16 pt-4 md:pt-8 pb-8" data-testid="eventos-title-section">
+    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 md:pt-8 pb-8" data-testid="eventos-title-section">
       {/* En mobile (<640px) la columna central necesita todo el espacio posible para no chocar
           con las flechas (auto_1fr_auto); desde sm: usamos columnas 1fr/2.2fr/1fr (en vez de
           iguales) para que las flechas queden cerca del título (como el diseño original) pero
@@ -267,7 +267,7 @@ function EventTitleSection({ month, word, isFestival }) {
             <ChevronStack color={RED} size={56} direction="up" count={5} />
           </button>
         </div>
-        <div className="min-w-0 text-center overflow-x-hidden py-1">
+        <div className="min-w-0 text-center py-1">
           <div className="leading-[1.15] whitespace-nowrap" style={{ ...PLANE_CRASH, color: BLUE, fontSize: "clamp(1.6rem, 5vw, 4rem)" }} data-testid="event-title-month">
             {renderPlaneCrash(month || "")}
           </div>
