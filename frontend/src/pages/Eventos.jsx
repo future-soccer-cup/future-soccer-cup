@@ -279,7 +279,7 @@ function EventTitleSection({ month, word, isFestival }) {
               className="leading-[0.9] mt-2 whitespace-nowrap"
               style={{
                 ...PLANE_CRASH,
-                fontSize: "clamp(1.3rem, 6.5vw, 5rem)",
+                fontSize: "clamp(1.15rem, 5.2vw, 4.2rem)",
                 letterSpacing: "0.02em",
               }}
               data-testid="event-title-word"
