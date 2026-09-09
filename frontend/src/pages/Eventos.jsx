@@ -194,7 +194,7 @@ function TabsBar({ tab, onTab, festival, premier, center }) {
   const isFest = tab === "festival";
   const isPrem = tab === "premier";
   return (
-    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" data-testid="eventos-tabs">
+    <section className="max-w-6xl mx-auto px-4 sm:px-10 lg:px-16 py-8" data-testid="eventos-tabs">
       <div className="grid grid-cols-3 gap-2 md:gap-5">
         <button
           type="button"
@@ -256,7 +256,7 @@ const FESTIVAL_LETTER_COLORS = [
 
 function EventTitleSection({ month, word, isFestival }) {
   return (
-    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 md:pt-8 pb-8" data-testid="eventos-title-section">
+    <section className="max-w-6xl mx-auto px-4 sm:px-10 lg:px-16 pt-4 md:pt-8 pb-8" data-testid="eventos-title-section">
       {/* En mobile (<640px) la columna central necesita todo el espacio posible para no chocar
           con las flechas (auto_1fr_auto); desde sm: usamos columnas 1fr/2.2fr/1fr (en vez de
           iguales) para que las flechas queden cerca del título (como el diseño original) pero
