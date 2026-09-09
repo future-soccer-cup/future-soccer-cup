@@ -20,7 +20,7 @@ import tempfile
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional, Literal, Dict, Any
 
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Response, Query, UploadFile, File
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Response, Query, UploadFile, File, Form
 from fastapi.responses import Response as FastAPIResponse, StreamingResponse
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -5150,12 +5150,11 @@ def _maybe_faststart_video(data: bytes, ext: str) -> Optional[bytes]:
         logging.warning(f"[upload] fallo remux faststart: {e}")
         return None
 
-@api.post("/upload")
-async def upload_file(file: UploadFile = File(...), user: dict = Depends(get_current_user)):
-    ext = (file.filename.rsplit(".", 1)[-1] if "." in (file.filename or "") else "bin").lower()
+async def _process_and_store_upload(filename: str, data: bytes, user: dict) -> dict:
+    """Núcleo compartido: valida, optimiza (webp/faststart) y guarda un archivo ya leído en memoria."""
+    ext = (filename.rsplit(".", 1)[-1] if "." in (filename or "") else "bin").lower()
     if ext not in MIME:
         raise HTTPException(status_code=400, detail="Formato no soportado. Acepta: JPG/JPEG/JFIF/JIF/PJPEG, PNG/APNG, GIF, BMP/DIB, TIFF, WebP, HEIC/HEIF/AVIF, SVG, ICO, RAW (CR2/CR3/NEF/ARW/DNG/ORF/RW2/RAF/PEF/SRW), PDF o video (MP4/WebM/MOV/OGV).")
-    data = await file.read()
     max_size = 150 * 1024 * 1024 if ext in VIDEO_EXTS else 25 * 1024 * 1024
     if len(data) > max_size:
         raise HTTPException(status_code=400, detail=f"Archivo mayor a {max_size // (1024 * 1024)}MB")
@@ -5176,21 +5175,65 @@ async def upload_file(file: UploadFile = File(...), user: dict = Depends(get_cur
             data = fixed
 
     storage_path = f"{APP_NAME}/uploads/{user['id']}/{uuid.uuid4()}.{ext}"
-    content_type = MIME[ext] if ext == "webp" else (file.content_type or MIME[ext])
+    content_type = MIME[ext] if ext == "webp" else (MIME[ext])
     result = put_object(storage_path, data, content_type)
     file_id = str(uuid.uuid4())
     await db.files.insert_one({
         "id": file_id,
         "storage_path": result["path"],
-        "original_filename": file.filename,
+        "original_filename": filename,
         "content_type": content_type,
         "size": result.get("size", len(data)),
         "user_id": user["id"],
         "is_deleted": False,
         "created_at": datetime.now(timezone.utc).isoformat(),
     })
-    # Return a URL the frontend can drop directly into <img src>
     return {"id": file_id, "url": f"/api/files/{result['path']}", "path": result["path"]}
+
+@api.post("/upload")
+async def upload_file(file: UploadFile = File(...), user: dict = Depends(get_current_user)):
+    data = await file.read()
+    return await _process_and_store_upload(file.filename, data, user)
+
+# === Subida en fragmentos (chunked) ===
+# Los videos de hasta 150MB en un solo POST pueden ser rechazados por el proxy/ingress de
+# producción (límite de tamaño de body) antes de llegar a este backend. Partiendo el archivo
+# en fragmentos pequeños (~5MB) desde el frontend evitamos ese límite: cada request individual
+# es liviano. Los fragmentos se acumulan en memoria (no en disco: el pod no garantiza storage
+# persistente/compartido) y solo se ensamblan/validan/optimizan al finalizar.
+_chunk_upload_buffers: dict = {}
+
+@api.post("/upload/init")
+async def upload_init(payload: dict, user: dict = Depends(get_current_user)):
+    upload_id = str(uuid.uuid4())
+    _chunk_upload_buffers[upload_id] = bytearray()
+    return {"upload_id": upload_id}
+
+@api.post("/upload/chunk")
+async def upload_chunk(
+    upload_id: str = Form(...),
+    chunk_index: int = Form(...),
+    chunk: UploadFile = File(...),
+    user: dict = Depends(get_current_user),
+):
+    buf = _chunk_upload_buffers.get(upload_id)
+    if buf is None:
+        raise HTTPException(status_code=400, detail="Subida no encontrada o expirada. Vuelve a intentarlo.")
+    data = await chunk.read()
+    buf.extend(data)
+    if len(buf) > 150 * 1024 * 1024:
+        del _chunk_upload_buffers[upload_id]
+        raise HTTPException(status_code=400, detail="Archivo mayor a 150MB")
+    return {"received": chunk_index, "bytes": len(data)}
+
+@api.post("/upload/complete")
+async def upload_complete(payload: dict, user: dict = Depends(get_current_user)):
+    upload_id = payload.get("upload_id") or ""
+    filename = payload.get("filename") or "file"
+    buf = _chunk_upload_buffers.pop(upload_id, None)
+    if buf is None:
+        raise HTTPException(status_code=400, detail="Subida no encontrada o expirada. Vuelve a intentarlo.")
+    return await _process_and_store_upload(filename, bytes(buf), user)
 
 @api.get("/files/{path:path}")
 async def serve_file(path: str, request: Request):
@@ -6328,17 +6371,7 @@ async def seed_admin():
 async def seed_demo_inventory():
     """Seed pricing catalog (paquetes, comidas, transporte, tours) from defaults in this module
     ONLY when the collection is empty. After that, the admin manages prices via /admin/catalog.
-
-    Also drops legacy 'hotels', 'transports', 'tours' demo collections — the catalog is the only
-    source of truth used by /cotizar and /admin/inventario.
     """
-    # Drop legacy inventory collections (replaced by pricing_catalog).
-    for coll in ("hotels", "transports", "tours"):
-        try:
-            await db[coll].drop()
-        except Exception:
-            pass
-
     if await db.pricing_catalog.count_documents({}) > 0:
         return
 

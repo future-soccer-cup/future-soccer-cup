@@ -3,13 +3,17 @@ import api, { API_BASE } from "../lib/api";
 import { Upload, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 
+const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB por fragmento: evita límites de tamaño de body del proxy en producción
+
 /**
- * Video upload component. Posts to /api/upload, stores returned `url` in the form.
+ * Video upload component. Sube el archivo en fragmentos de 5MB (init → chunk* → complete)
+ * para evitar que el proxy/ingress de producción rechace un solo POST de hasta 150MB.
  * Espejo de ImageUpload.jsx pero para video de fondo (hero en loop).
  */
 export default function VideoUpload({ value, onChange, label = "Video", hint = "", testId = "video-upload" }) {
   const inputRef = useRef(null);
   const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
 
   const previewSrc = !value
     ? null
@@ -25,17 +29,30 @@ export default function VideoUpload({ value, onChange, label = "Video", hint = "
       return;
     }
     setUploading(true);
-    const fd = new FormData();
-    fd.append("file", file);
+    setProgress(0);
     try {
-      const res = await api.post("/upload", fd, { headers: { "Content-Type": "multipart/form-data" } });
-      onChange(res.data.url);
+      const initRes = await api.post("/upload/init", { filename: file.name });
+      const { upload_id } = initRes.data;
+      const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+      for (let i = 0; i < totalChunks; i++) {
+        const start = i * CHUNK_SIZE;
+        const slice = file.slice(start, start + CHUNK_SIZE);
+        const fd = new FormData();
+        fd.append("upload_id", upload_id);
+        fd.append("chunk_index", i);
+        fd.append("chunk", slice);
+        await api.post("/upload/chunk", fd, { headers: { "Content-Type": "multipart/form-data" } });
+        setProgress(Math.round(((i + 1) / totalChunks) * 100));
+      }
+      const completeRes = await api.post("/upload/complete", { upload_id, filename: file.name });
+      onChange(completeRes.data.url);
       toast.success("Video cargado");
     } catch (err) {
       const detail = err?.response?.data?.detail;
       toast.error(detail || "Error al cargar video. Inicia sesión e inténtalo de nuevo.");
     } finally {
       setUploading(false);
+      setProgress(0);
       if (inputRef.current) inputRef.current.value = "";
     }
   };
@@ -75,7 +92,7 @@ export default function VideoUpload({ value, onChange, label = "Video", hint = "
           data-testid={`${testId}-btn`}
         >
           {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
-          {uploading ? "Cargando..." : value ? "Cambiar" : "Subir video"}
+          {uploading ? `Cargando... ${progress}%` : value ? "Cambiar" : "Subir video"}
         </button>
         <input
           ref={inputRef}
