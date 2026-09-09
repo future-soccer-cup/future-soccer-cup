@@ -65,10 +65,13 @@ export default function GalleryCarousel({ images = [], testIdPrefix = "gallery",
           const colSpan = isMiddle ? "md:col-span-6" : "md:col-span-3";
           const aspect = "aspect-[3/2]";
           const ringExtra = isMiddle ? "shadow-2xl ring-4" : "shadow-md opacity-70";
+          // En mobile solo se ve la imagen del medio (1 a la vez, avanzando con las flechas);
+          // desde md se ven las 3 lado a lado.
+          const mobileVisibility = isMiddle ? "" : "hidden md:block";
           return (
             <div
               key={`slot-${i}`}
-              className={`${colSpan} ${aspect} ${ringExtra} rounded-lg overflow-hidden relative`}
+              className={`${colSpan} ${aspect} ${ringExtra} ${mobileVisibility} rounded-lg overflow-hidden relative`}
               style={{ background: "#ffffff", ...(isMiddle ? { "--tw-ring-color": "#ffffff" } : {}) }}
               data-testid={`${testIdPrefix}-item-${i}`}
             >

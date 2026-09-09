@@ -321,11 +321,12 @@ export default function Home() {
                 const colSpan = isMiddle ? "md:col-span-6" : "md:col-span-3";
                 const aspect = "aspect-[3/2]";
                 const ringExtra = isMiddle ? "shadow-2xl ring-4 ring-white" : "shadow-md";
+                const mobileVisibility = isMiddle ? "" : "hidden md:block";
                 const slotKey = img?.id || img?.url || `__empty_${i}`;
                 return (
                   <div
                     key={`slot-${i}`}
-                    className={`${colSpan} ${aspect} ${ringExtra} rounded-lg overflow-hidden relative`}
+                    className={`${colSpan} ${aspect} ${ringExtra} ${mobileVisibility} rounded-lg overflow-hidden relative`}
                     style={{ background: "#ffffff" }}
                     data-testid={`gallery-item-${i}`}
                   >

@@ -123,9 +123,9 @@ export default function FSCHistorySection({ settings }) {
 
   return (
     <section className="relative bg-white" data-testid="history-section">
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" style={{ minHeight: "min(88vh, 780px)" }}>
-        {/* Área central con posición relativa */}
-        <div className="relative w-full overflow-hidden" style={{ minHeight: "min(76vh, 680px)" }}>
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 md:min-h-[min(88vh,780px)]">
+        {/* Área central con posición relativa (alto mínimo fijo solo en desktop; en móvil el contenido define el alto) */}
+        <div className="relative w-full overflow-hidden md:min-h-[min(76vh,680px)]">
           {showKow && (
             <KowWelcome
               imageUrl={settings?.nosotros_kow_image_url || settings?.mascot_image_url}
@@ -184,16 +184,16 @@ export default function FSCHistorySection({ settings }) {
                       "--float-amp": `${floatCfg.amp}px`,
                     }}
                   >
-                    <img src={imgSrc(p)} alt="" className="w-full h-full object-cover block" loading="lazy" />
+                    <img src={imgSrc(p)} alt="" className="w-full h-full object-cover block" />
                   </div>
                 </div>
               );
             })}
           </div>
 
-          {/* "FSC" en Plane Crash rojo, SUPERPUESTO sobre la foto central (slot principal) */}
+          {/* "FSC" en Plane Crash rojo, SUPERPUESTO sobre la foto central (slot principal) — solo desktop */}
           <div
-            className="absolute flex items-center justify-center text-center pointer-events-none select-none"
+            className="hidden md:flex absolute items-center justify-center text-center pointer-events-none select-none"
             style={{
               left: FSC_BOX.left,
               top: FSC_BOX.top,
@@ -219,10 +219,10 @@ export default function FSCHistorySection({ settings }) {
             </div>
           </div>
 
-          {/* "EN LA HISTORIA" — debajo de "FSC", sobre el fondo blanco de la sección (sin foto) */}
+          {/* "EN LA HISTORIA" — debajo de "FSC", sobre el fondo blanco de la sección (sin foto) — solo desktop */}
           {bottomWords && (
             <div
-              className="absolute flex items-center justify-center text-center pointer-events-none select-none"
+              className="hidden md:flex absolute items-center justify-center text-center pointer-events-none select-none"
               style={{
                 left: SUBTITLE_BOX.left,
                 top: SUBTITLE_BOX.top,
@@ -311,7 +311,7 @@ export default function FSCHistorySection({ settings }) {
                 <div className="grid grid-cols-2 gap-3">
                   {introPhotos.map((p, i) => (
                     <div key={`m-${i}`} className="overflow-hidden w-full" style={{ aspectRatio: "4 / 3", border: "2px solid #ffffff", boxShadow: "0 4px 12px rgba(0,0,0,0.18)" }}>
-                      <img src={imgSrc(p)} alt="" className="w-full h-full object-cover object-center" loading="lazy" />
+                      <img src={imgSrc(p)} alt="" className="w-full h-full object-cover object-center" />
                     </div>
                   ))}
                 </div>

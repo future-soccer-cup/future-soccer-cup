@@ -42,7 +42,7 @@ export default function Noticias() {
 function HeroSection({ heroUrl, watermark, title, subtitle }) {
   const titleStyle = {
     ...PLANE_CRASH,
-    fontSize: "clamp(3.4rem, 10vw, 9rem)",
+    fontSize: "clamp(2.1rem, 10vw, 9rem)",
     letterSpacing: "0.01em",
   };
   return (

@@ -383,7 +383,7 @@ export default function LoginModal() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="px-6 py-2.5 rounded-md bg-white transition-transform hover:scale-105 disabled:opacity-60 flex items-center gap-2"
+                  className="w-full px-6 py-2.5 rounded-md bg-white transition-transform hover:scale-105 disabled:opacity-60 flex items-center justify-center gap-2 flex-wrap text-center"
                   style={{ ...PLANE_CRASH, color: RED, letterSpacing: "0.05em", fontSize: "0.95rem" }}
                   data-testid="login-modal-reset-submit"
                 >

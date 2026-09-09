@@ -77,7 +77,7 @@ export default function DatosEstadisticas() {
 function HeroSection({ heroUrl, watermark, titleTop, titleBottom }) {
   const titleTopStyle = {
     ...PLANE_CRASH,
-    fontSize: "clamp(3.5rem, 10vw, 9rem)",
+    fontSize: "clamp(2.4rem, 10vw, 9rem)",
     letterSpacing: "0.01em",
   };
   return (

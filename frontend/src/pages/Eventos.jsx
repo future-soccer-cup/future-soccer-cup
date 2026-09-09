@@ -199,11 +199,11 @@ function TabsBar({ tab, onTab, festival, premier, center }) {
         <button
           type="button"
           onClick={() => onTab("festival")}
-          className={`min-w-0 text-center px-2 md:px-3 py-4 md:py-6 rounded-sm transition-all ${isFest ? "ring-4 ring-red-300 scale-[1.02]" : "opacity-90 hover:opacity-100"}`}
+          className={`min-w-0 text-center px-1 md:px-3 py-4 md:py-6 rounded-sm transition-all overflow-hidden ${isFest ? "ring-4 ring-red-300 scale-[1.02]" : "opacity-90 hover:opacity-100"}`}
           style={{ background: RED }}
           data-testid="tab-festival"
         >
-          <div className="leading-none break-words" style={{ ...PLANE_CRASH, color: "#ffffff", fontSize: "clamp(0.95rem, 3.6vw, 3rem)" }}>
+          <div className="leading-none" style={{ ...PLANE_CRASH, color: "#ffffff", fontSize: "clamp(0.68rem, 3.6vw, 3rem)", whiteSpace: "nowrap" }}>
             {renderPlaneCrash(festival.tab_label || "FESTIVAL")}
           </div>
           <div className="text-white text-center mt-2 text-xs sm:text-lg md:text-xl lg:text-2xl" style={AGENCY_FB}>
@@ -211,11 +211,11 @@ function TabsBar({ tab, onTab, festival, premier, center }) {
           </div>
         </button>
 
-        <div className="min-w-0 text-center px-1 md:px-3 py-4 md:py-6 bg-white flex flex-col items-center justify-center" data-testid="tab-center">
-          <div className="leading-none break-words" style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(0.95rem, 3.6vw, 3rem)" }}>
+        <div className="min-w-0 text-center px-1 md:px-3 py-4 md:py-6 bg-white flex flex-col items-center justify-center overflow-hidden" data-testid="tab-center">
+          <div className="leading-none" style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(0.68rem, 3.6vw, 3rem)", whiteSpace: "nowrap" }}>
             {renderPlaneCrash(center?.top || "EVENTOS")}
           </div>
-          <div className="mt-1 break-words" style={{ ...AGENCY_FB, color: RED, fontWeight: 700, fontSize: "clamp(0.68rem, 2vw, 1.7rem)" }}>
+          <div className="mt-1 break-words" style={{ ...AGENCY_FB, color: RED, fontWeight: 700, fontSize: "clamp(0.6rem, 2vw, 1.7rem)" }}>
             {center?.bottom || "Diseñados para ti"}
           </div>
         </div>
@@ -223,11 +223,11 @@ function TabsBar({ tab, onTab, festival, premier, center }) {
         <button
           type="button"
           onClick={() => onTab("premier")}
-          className={`min-w-0 text-center px-1 md:px-3 py-4 md:py-6 rounded-sm transition-all ${isPrem ? "ring-4 ring-blue-300 scale-[1.02]" : "opacity-90 hover:opacity-100"}`}
+          className={`min-w-0 text-center px-1 md:px-3 py-4 md:py-6 rounded-sm transition-all overflow-hidden ${isPrem ? "ring-4 ring-blue-300 scale-[1.02]" : "opacity-90 hover:opacity-100"}`}
           style={{ background: BLUE }}
           data-testid="tab-premier"
         >
-          <div className="leading-none break-words" style={{ ...PLANE_CRASH, color: "#ffffff", fontSize: "clamp(0.95rem, 3.6vw, 3rem)" }}>
+          <div className="leading-none" style={{ ...PLANE_CRASH, color: "#ffffff", fontSize: "clamp(0.68rem, 3.6vw, 3rem)", whiteSpace: "nowrap" }}>
             {renderPlaneCrash(premier.tab_label || "PREMIER")}
           </div>
           <div className="text-white text-center mt-2 text-xs sm:text-base md:text-lg lg:text-xl space-y-0.5" style={AGENCY_FB}>
@@ -259,25 +259,27 @@ function EventTitleSection({ month, word, isFestival }) {
     <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 md:pt-8 pb-8" data-testid="eventos-title-section">
       {/* Mismo grid-cols-3 + gap que TabsBar arriba, para que cada flecha quede centrada
           exactamente respecto al ancho del botón FESTIVAL (col 1) o PREMIER (col 3). */}
-      <div className="grid grid-cols-3 gap-3 md:gap-5 items-center">
-        <div className="flex justify-center">
-          <button type="button" aria-hidden className="fsc-bounce cursor-default bg-transparent border-0" data-testid="event-chevron-left">
+      <div className="grid grid-cols-[auto_1fr_auto] gap-1 md:gap-5 items-center">
+        <div className="flex justify-center shrink-0">
+          <button type="button" aria-hidden className="fsc-bounce cursor-default bg-transparent border-0 scale-[0.5] sm:scale-75 md:scale-100" style={{ transformOrigin: "center" }} data-testid="event-chevron-left">
             <ChevronStack color={RED} size={56} direction="up" count={5} />
           </button>
         </div>
-        <div className="min-w-0 text-center">
+        <div className="min-w-0 text-center overflow-hidden">
           <div className="leading-[0.9]" style={{ ...PLANE_CRASH, color: BLUE, fontSize: "clamp(1.6rem, 5vw, 4rem)" }} data-testid="event-title-month">
             {renderPlaneCrash(month || "")}
           </div>
           {isFestival ? (
             // "FESTIVAL" con cada letra en un color distinto — misma fuente grunge Plane Crash
-            // que usa "EDICIÓN 2026" en el hero de INICIO.
+            // que usa "EDICIÓN 2026" en el hero de INICIO. whiteSpace nowrap evita que una letra
+            // suelta (ej. la "L") quede huérfana en su propia línea al envolver.
             <div
               className="leading-[0.9] mt-2"
               style={{
                 ...PLANE_CRASH,
-                fontSize: "clamp(1.8rem, 6.5vw, 5rem)",
+                fontSize: "clamp(1.3rem, 6.5vw, 5rem)",
                 letterSpacing: "0.02em",
+                whiteSpace: "nowrap",
               }}
               data-testid="event-title-word"
             >
@@ -292,15 +294,15 @@ function EventTitleSection({ month, word, isFestival }) {
             // Premier: cursivo dorado (estilo original).
             <div
               className="italic mt-1"
-              style={{ ...CURSIVE, color: GOLD, fontSize: "clamp(2.2rem, 8.5vw, 6.4rem)", textShadow: "0 2px 0 rgba(0,0,0,0.05)" }}
+              style={{ ...CURSIVE, color: GOLD, fontSize: "clamp(1.6rem, 8.5vw, 6.4rem)", textShadow: "0 2px 0 rgba(0,0,0,0.05)", whiteSpace: "nowrap" }}
               data-testid="event-title-word"
             >
               {toTitleCaseForScript(word)}
             </div>
           )}
         </div>
-        <div className="flex justify-center">
-          <button type="button" aria-hidden className="fsc-bounce cursor-default bg-transparent border-0" data-testid="event-chevron-right">
+        <div className="flex justify-center shrink-0">
+          <button type="button" aria-hidden className="fsc-bounce cursor-default bg-transparent border-0 scale-[0.5] sm:scale-75 md:scale-100" style={{ transformOrigin: "center" }} data-testid="event-chevron-right">
             <ChevronStack color={RED} size={56} direction="up" count={5} />
           </button>
         </div>
@@ -320,17 +322,17 @@ function CategoryBlock({ value, testId }) {
   const bottom = digits.length >= 4 ? digits.slice(-2) : (digits || raw);
   return (
     <div
-      className="bg-white/25 rounded-md px-3 py-2 md:px-4 md:py-3 shadow flex flex-col items-center justify-center leading-none gap-1 transition-transform duration-200 ease-out hover:-translate-y-2 hover:shadow-xl hover:bg-white/35 cursor-default"
+      className="w-full min-w-0 bg-white/25 rounded-md px-1.5 py-1.5 md:px-4 md:py-3 shadow flex flex-col items-center justify-center leading-none gap-0.5 md:gap-1 overflow-hidden transition-transform duration-200 ease-out hover:-translate-y-2 hover:shadow-xl hover:bg-white/35 cursor-default"
       data-testid={testId}
     >
-      <div className="font-black tabular-nums text-white" style={{ ...PLANE_CRASH, fontSize: "clamp(1.6rem, 2.6vw, 2.4rem)" }}>
+      <div className="font-black tabular-nums text-white whitespace-nowrap" style={{ ...PLANE_CRASH, fontSize: "clamp(1.1rem, 2.6vw, 2.4rem)" }}>
         {renderPlaneCrash(top)}
       </div>
-      <div className="flex items-baseline gap-1">
-        <div className="tracking-wider text-white" style={{ ...AGENCY_FB, fontSize: "clamp(0.95rem, 1.4vw, 1.15rem)", opacity: 0.9 }}>
+      <div className="flex items-baseline gap-0.5 md:gap-1 whitespace-nowrap">
+        <div className="tracking-wider text-white" style={{ ...AGENCY_FB, fontSize: "clamp(0.6rem, 1.4vw, 1.15rem)", opacity: 0.9 }}>
           CAT.
         </div>
-        <div className="font-black tabular-nums text-white" style={{ ...PLANE_CRASH, fontSize: "clamp(1.6rem, 2.6vw, 2.4rem)" }}>
+        <div className="font-black tabular-nums text-white" style={{ ...PLANE_CRASH, fontSize: "clamp(1.1rem, 2.6vw, 2.4rem)" }}>
           {renderPlaneCrash(bottom)}
         </div>
       </div>
@@ -346,7 +348,7 @@ function FestivalCategories({ categories }) {
         <h3 className="text-center text-white tracking-widest mb-6" style={{ ...AGENCY_FB, fontSize: "clamp(2.2rem, 4vw, 3.2rem)", fontWeight: 800 }}>
           CAT
         </h3>
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 md:gap-4 place-items-center">
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 md:gap-4 place-items-center">
           {categories.map((c, i) => (
             <CategoryBlock key={`fc-${i}`} value={c} testId={`festival-cat-${i}`} />
           ))}
@@ -361,13 +363,13 @@ function PremierCategories({ evenCats, oddCats }) {
   return (
     <section className="w-full py-8 md:py-12" style={{ background: BLUE }} data-testid="premier-categories">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-2 gap-6 md:gap-10 relative">
-          <div className="absolute left-1/2 top-0 bottom-0 w-px bg-white/40 hidden md:block" aria-hidden />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 sm:gap-6 md:gap-10 relative">
+          <div className="absolute left-1/2 top-0 bottom-0 w-px bg-white/40 hidden sm:block" aria-hidden />
           <div>
             <h3 className="text-center text-white tracking-widest mb-6" style={{ ...PLANE_CRASH, fontSize: "clamp(1.2rem, 2vw, 1.8rem)" }}>
               {renderPlaneCrash("PARES")}
             </h3>
-            <div className="grid grid-cols-3 gap-3 md:gap-4 place-items-center">
+            <div className="grid grid-cols-3 gap-2 md:gap-4 place-items-center">
               {evenCats.map((c, i) => <CategoryBlock key={`pe-${i}`} value={c} testId={`premier-even-${i}`} />)}
             </div>
           </div>
@@ -375,7 +377,7 @@ function PremierCategories({ evenCats, oddCats }) {
             <h3 className="text-center text-white tracking-widest mb-6" style={{ ...PLANE_CRASH, fontSize: "clamp(1.2rem, 2vw, 1.8rem)" }}>
               {renderPlaneCrash("IMPARES")}
             </h3>
-            <div className="grid grid-cols-3 gap-3 md:gap-4 place-items-center">
+            <div className="grid grid-cols-3 gap-2 md:gap-4 place-items-center">
               {oddCats.map((c, i) => <CategoryBlock key={`po-${i}`} value={c} testId={`premier-odd-${i}`} />)}
             </div>
           </div>
