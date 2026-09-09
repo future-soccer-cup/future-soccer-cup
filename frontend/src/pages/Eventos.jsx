@@ -257,11 +257,12 @@ const FESTIVAL_LETTER_COLORS = [
 function EventTitleSection({ month, word, isFestival }) {
   return (
     <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 md:pt-8 pb-8" data-testid="eventos-title-section">
-      {/* Mismo grid-cols-3 + gap que TabsBar arriba, para que cada flecha quede centrada
-          exactamente respecto al ancho del botón FESTIVAL (col 1) o PREMIER (col 3). */}
-      <div className="grid grid-cols-[auto_1fr_auto] gap-1 md:gap-5 items-center">
+      {/* En mobile (<640px) la columna central necesita todo el espacio posible para no chocar
+          con las flechas (auto_1fr_auto); desde sm: se vuelve a las 3 columnas iguales originales
+          para que las flechas queden en su posición clásica, cerca del título, como en desktop. */}
+      <div className="grid grid-cols-[auto_1fr_auto] sm:grid-cols-3 gap-1 sm:gap-3 md:gap-5 items-center">
         <div className="flex justify-center shrink-0">
-          <button type="button" aria-hidden className="fsc-bounce cursor-default bg-transparent border-0 scale-[0.5] sm:scale-75 md:scale-100" style={{ transformOrigin: "center" }} data-testid="event-chevron-left">
+          <button type="button" aria-hidden className="fsc-bounce cursor-default bg-transparent border-0 scale-[0.5] sm:scale-100" style={{ transformOrigin: "center" }} data-testid="event-chevron-left">
             <ChevronStack color={RED} size={56} direction="up" count={5} />
           </button>
         </div>
@@ -274,12 +275,11 @@ function EventTitleSection({ month, word, isFestival }) {
             // que usa "EDICIÓN 2026" en el hero de INICIO. whiteSpace nowrap evita que una letra
             // suelta (ej. la "L") quede huérfana en su propia línea al envolver.
             <div
-              className="leading-[0.9] mt-2"
+              className="leading-[0.9] mt-2 whitespace-nowrap"
               style={{
                 ...PLANE_CRASH,
-                fontSize: "clamp(1.3rem, 6.5vw, 5rem)",
+                fontSize: "clamp(1.3rem, 4.8vw, 3.6rem)",
                 letterSpacing: "0.02em",
-                whiteSpace: "nowrap",
               }}
               data-testid="event-title-word"
             >
@@ -293,8 +293,8 @@ function EventTitleSection({ month, word, isFestival }) {
           ) : (
             // Premier: cursivo dorado (estilo original).
             <div
-              className="italic mt-1"
-              style={{ ...CURSIVE, color: GOLD, fontSize: "clamp(1.6rem, 8.5vw, 6.4rem)", textShadow: "0 2px 0 rgba(0,0,0,0.05)", whiteSpace: "nowrap" }}
+              className="italic mt-1 whitespace-nowrap"
+              style={{ ...CURSIVE, color: GOLD, fontSize: "clamp(1.6rem, 6.2vw, 4.8rem)", textShadow: "0 2px 0 rgba(0,0,0,0.05)" }}
               data-testid="event-title-word"
             >
               {toTitleCaseForScript(word)}
@@ -302,7 +302,7 @@ function EventTitleSection({ month, word, isFestival }) {
           )}
         </div>
         <div className="flex justify-center shrink-0">
-          <button type="button" aria-hidden className="fsc-bounce cursor-default bg-transparent border-0 scale-[0.5] sm:scale-75 md:scale-100" style={{ transformOrigin: "center" }} data-testid="event-chevron-right">
+          <button type="button" aria-hidden className="fsc-bounce cursor-default bg-transparent border-0 scale-[0.5] sm:scale-100" style={{ transformOrigin: "center" }} data-testid="event-chevron-right">
             <ChevronStack color={RED} size={56} direction="up" count={5} />
           </button>
         </div>
