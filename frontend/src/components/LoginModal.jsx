@@ -397,27 +397,29 @@ export default function LoginModal() {
           )}
         </div>
 
-        {/* Columna derecha — imagen KOW: el ancho del panel se calcula en base a la proporción real de la
-            imagen y el alto disponible, así nunca queda espacio vacío ni se recorta ni se estira. */}
-        <div
-          ref={imgWrapRef}
-          className={`overflow-hidden bg-slate-900 flex items-center justify-center ${isDesktop ? "flex-shrink-0" : "w-full"}`}
-          style={isDesktop ? { width: imgColWidth ? `${imgColWidth}px` : 260 } : undefined}
-          data-testid="login-modal-image"
-        >
-          {imageUrl ? (
-            <img
-              src={imgSrc(imageUrl)}
-              alt=""
-              onLoad={onImgLoad}
-              className={isDesktop ? "block h-full w-full object-contain" : "block w-full h-auto"}
-            />
-          ) : (
-            <div className="w-full min-h-[220px] flex items-center justify-center text-white/40 text-sm" style={AGENCY_FB}>
-              Imagen no configurada
-            </div>
-          )}
-        </div>
+        {/* Columna derecha — imagen KOW: solo se muestra en desktop real (≥1024px).
+            En mobile/tablet se oculta por completo para que el formulario no quede empujado hacia abajo. */}
+        {isDesktop && (
+          <div
+            ref={imgWrapRef}
+            className="overflow-hidden bg-slate-900 flex items-center justify-center flex-shrink-0"
+            style={{ width: imgColWidth ? `${imgColWidth}px` : 260 }}
+            data-testid="login-modal-image"
+          >
+            {imageUrl ? (
+              <img
+                src={imgSrc(imageUrl)}
+                alt=""
+                onLoad={onImgLoad}
+                className="block h-full w-full object-contain"
+              />
+            ) : (
+              <div className="w-full min-h-[220px] flex items-center justify-center text-white/40 text-sm" style={AGENCY_FB}>
+                Imagen no configurada
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
