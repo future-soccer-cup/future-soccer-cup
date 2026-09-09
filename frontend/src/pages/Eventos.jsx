@@ -258,16 +258,17 @@ function EventTitleSection({ month, word, isFestival }) {
   return (
     <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 md:pt-8 pb-8" data-testid="eventos-title-section">
       {/* En mobile (<640px) la columna central necesita todo el espacio posible para no chocar
-          con las flechas (auto_1fr_auto); desde sm: se vuelve a las 3 columnas iguales originales
-          para que las flechas queden en su posición clásica, cerca del título, como en desktop. */}
-      <div className="grid grid-cols-[auto_1fr_auto] sm:grid-cols-3 gap-1 sm:gap-3 md:gap-5 items-center">
+          con las flechas (auto_1fr_auto); desde sm: usamos columnas 1fr/2.2fr/1fr (en vez de
+          iguales) para que las flechas queden cerca del título (como el diseño original) pero
+          la columna central tenga suficiente ancho para que "DICIEMBRE"/"FESTIVAL" no se corten. */}
+      <div className="grid grid-cols-[auto_1fr_auto] sm:grid-cols-[1fr_2.2fr_1fr] gap-1 sm:gap-3 md:gap-5 items-center">
         <div className="flex justify-center shrink-0">
           <button type="button" aria-hidden className="fsc-bounce cursor-default bg-transparent border-0 scale-[0.5] sm:scale-100" style={{ transformOrigin: "center" }} data-testid="event-chevron-left">
             <ChevronStack color={RED} size={56} direction="up" count={5} />
           </button>
         </div>
         <div className="min-w-0 text-center overflow-x-hidden py-1">
-          <div className="leading-[1.15]" style={{ ...PLANE_CRASH, color: BLUE, fontSize: "clamp(1.6rem, 5vw, 4rem)" }} data-testid="event-title-month">
+          <div className="leading-[1.15] whitespace-nowrap" style={{ ...PLANE_CRASH, color: BLUE, fontSize: "clamp(1.6rem, 5vw, 4rem)" }} data-testid="event-title-month">
             {renderPlaneCrash(month || "")}
           </div>
           {isFestival ? (
@@ -278,7 +279,7 @@ function EventTitleSection({ month, word, isFestival }) {
               className="leading-[0.9] mt-2 whitespace-nowrap"
               style={{
                 ...PLANE_CRASH,
-                fontSize: "clamp(1.3rem, 4.8vw, 3.6rem)",
+                fontSize: "clamp(1.3rem, 6.5vw, 5rem)",
                 letterSpacing: "0.02em",
               }}
               data-testid="event-title-word"
@@ -294,7 +295,7 @@ function EventTitleSection({ month, word, isFestival }) {
             // Premier: cursivo dorado (estilo original).
             <div
               className="italic mt-1 whitespace-nowrap"
-              style={{ ...CURSIVE, color: GOLD, fontSize: "clamp(1.6rem, 6.2vw, 4.8rem)", textShadow: "0 2px 0 rgba(0,0,0,0.05)" }}
+              style={{ ...CURSIVE, color: GOLD, fontSize: "clamp(1.6rem, 8.5vw, 6.4rem)", textShadow: "0 2px 0 rgba(0,0,0,0.05)" }}
               data-testid="event-title-word"
             >
               {toTitleCaseForScript(word)}
