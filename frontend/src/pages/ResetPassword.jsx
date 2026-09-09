@@ -30,10 +30,10 @@ export default function ResetPassword() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] grid md:grid-cols-2 bg-white" data-testid="reset-password-page">
+    <div className="min-h-[calc(100vh-4rem)] grid lg:grid-cols-2 bg-white" data-testid="reset-password-page">
       <Toaster position="top-right" />
 
-      <div className="flex items-center justify-center p-6 md:p-10 order-2 md:order-1">
+      <div className="flex items-center justify-center p-6 md:p-10 order-2 lg:order-1">
         <div className="w-full max-w-md">
           <Link to="/login" className="text-xs uppercase tracking-widest font-bold text-blue-700">← Volver a Ingresar</Link>
           <span className="block mt-4 text-xs font-bold uppercase tracking-[0.25em] text-blue-700">Restablecer contraseña</span>
@@ -66,7 +66,7 @@ export default function ResetPassword() {
         </div>
       </div>
 
-      <div className="hidden md:flex relative overflow-hidden bg-slate-900 fsc-stripe-blue items-center justify-center order-1 md:order-2">
+      <div className="hidden lg:flex relative overflow-hidden bg-slate-900 fsc-stripe-blue items-center justify-center order-1 lg:order-2">
         <div className="absolute inset-0 bg-gradient-to-tr from-red-900/80 via-blue-900/60 to-transparent" />
         <div className="relative text-center px-12">
           <ShieldCheck size={64} className="text-white mx-auto mb-4 opacity-80"/>

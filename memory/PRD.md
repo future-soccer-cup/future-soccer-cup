@@ -15,6 +15,13 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Storage: Emergent Object Storage for images/PDFs.
 - Tests: pytest under `/app/backend/tests/`.
 
+### 2026-09-08 — Iter111: Formularios en tablet — imagen oculta hasta desktop real, campos ya no se ven desordenados
+- El usuario reportó que en formato tablet (768-1023px) la imagen del login se veía mal y los campos del registro se veían desordenados; pidió ocultar la imagen si no cabe bien, y mencionó que los formularios de "código" (recuperar/restablecer contraseña) tampoco se veían bien.
+- **Causa raíz**: el layout de 2 columnas (formulario + imagen) cambiaba a lado-a-lado desde el breakpoint `md` (768px) — justo el ancho típico de una tablet en portrait, donde no hay espacio suficiente para ambas columnas cómodamente, apretando el formulario y la imagen.
+- **Fix**: el punto donde aparece la imagen lateral se movió de `md:` (768px) a `lg:` (1024px) en `LoginModal.jsx`, `TeamRegister.jsx`, `ForgotPassword.jsx` y `ResetPassword.jsx` (los 2 últimos comparten el mismo patrón "código de recuperación" aunque no fueron señalados explícitamente por nombre). Ahora en tablet el formulario usa el 100% del ancho (como en mobile) y la imagen/panel decorativo solo aparece en pantallas de escritorio reales (≥1024px).
+- Verificado con screenshot en 768px: Login y Registro ya se ven ordenados, sin imagen apretada.
+- Pendiente de confirmar con el usuario: no se localizó ningún formulario llamado literalmente "solicitud de crédito" en el código — se le preguntará cuál es para revisarlo puntualmente si no quedó cubierto por este fix.
+
 ### 2026-09-08 — Iter110: Límites de tamaño aumentados (imágenes 25MB, videos 150MB) + revisión de formatos permitidos
 - El usuario preguntó si es posible subir videos de 150MB y pidió aumentar los límites de imagen/video, además de reportar que "algunas imágenes solo permiten JPG".
 - **Revisión de formatos**: el backend (`MIME` dict en `server.py`) y los componentes `ImageUpload.jsx`/`ImageListUpload.jsx` YA aceptaban una lista amplia (JPG, PNG, GIF, BMP, TIFF, WebP, HEIC/HEIF/AVIF, SVG, ICO, RAW de las principales marcas, PDF). Probado con curl subiendo PNG/BMP/WEBP/GIF directamente al backend: los 4 formatos se aceptaron sin problema. Único hallazgo real: `TeamRegister.jsx` (subida del logo del equipo en el registro público) tenía `accept="image/*"` sin la lista extendida — corregido para incluir HEIC/RAW/etc como los demás campos. No se pudo reproducir una restricción real a "solo JPG" en ningún campo del Admin con las pruebas hechas — si vuelve a aparecer, indicar el campo exacto (captura) para revisar puntualmente.

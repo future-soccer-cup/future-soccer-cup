@@ -139,7 +139,7 @@ export default function TeamRegister() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] flex flex-col md:flex-row" data-testid="team-register-page" style={AGENCY_FB}>
+    <div className="min-h-[calc(100vh-4rem)] flex flex-col lg:flex-row" data-testid="team-register-page" style={AGENCY_FB}>
       {/* Columna izquierda — Formulario */}
       <div className="relative overflow-y-auto flex-1 min-w-0" style={{ background: BLUE, maxHeight: "calc(100vh - 4rem)" }}>
         {/* Watermark hero opcional */}
@@ -227,7 +227,7 @@ export default function TeamRegister() {
           imagen y el alto disponible, así nunca queda espacio vacío ni se recorta ni se estira. */}
       <div
         ref={imgWrapRef}
-        className="hidden md:flex flex-shrink-0 items-center justify-center overflow-hidden"
+        className="hidden lg:flex flex-shrink-0 items-center justify-center overflow-hidden"
         style={{ background: "#0a1030", width: imgColWidth ? `${imgColWidth}px` : 320 }}
         data-testid="tr-image-side"
       >

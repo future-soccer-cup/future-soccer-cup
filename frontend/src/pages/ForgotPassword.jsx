@@ -23,11 +23,11 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] grid md:grid-cols-2 bg-white" data-testid="forgot-password-page">
+    <div className="min-h-[calc(100vh-4rem)] grid lg:grid-cols-2 bg-white" data-testid="forgot-password-page">
       <Toaster position="top-right" />
 
       {/* Left: form */}
-      <div className="flex items-center justify-center p-6 md:p-10 order-2 md:order-1">
+      <div className="flex items-center justify-center p-6 md:p-10 order-2 lg:order-1">
         <div className="w-full max-w-md">
           <Link to="/login" className="text-xs uppercase tracking-widest font-bold text-blue-700">← Volver a Ingresar</Link>
           <span className="block mt-4 text-xs font-bold uppercase tracking-[0.25em] text-blue-700">Recuperar acceso</span>
@@ -67,7 +67,7 @@ export default function ForgotPassword() {
       </div>
 
       {/* Right: hero */}
-      <div className="hidden md:flex relative overflow-hidden bg-slate-900 fsc-stripe-blue items-center justify-center order-1 md:order-2">
+      <div className="hidden lg:flex relative overflow-hidden bg-slate-900 fsc-stripe-blue items-center justify-center order-1 lg:order-2">
         <div className="absolute inset-0 bg-gradient-to-tr from-blue-900/90 via-blue-800/60 to-transparent" />
         <div className="relative text-center px-12">
           <img src={FSC_LOGO} alt="FSC" className="h-24 mx-auto bg-white rounded-2xl p-3 shadow-2xl" />

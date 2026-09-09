@@ -35,11 +35,11 @@ export default function LoginModal() {
   const [resetPw2, setResetPw2] = useState("");
   const { login } = useAuth();
   const nav = useNavigate();
-  const [isDesktop, setIsDesktop] = useState(() => typeof window !== "undefined" ? window.innerWidth >= 768 : true);
+  const [isDesktop, setIsDesktop] = useState(() => typeof window !== "undefined" ? window.innerWidth >= 1024 : true);
   const { wrapRef: imgWrapRef, width: imgColWidth, onImgLoad } = useAutoFitSideImage({ maxWidthRatio: 0.46, minWidth: 200 });
 
   useEffect(() => {
-    const mq = window.matchMedia("(min-width: 768px)");
+    const mq = window.matchMedia("(min-width: 1024px)");
     const handler = (e) => setIsDesktop(e.matches);
     mq.addEventListener("change", handler);
     return () => mq.removeEventListener("change", handler);
@@ -154,7 +154,7 @@ export default function LoginModal() {
 
       {/* Card */}
       <div
-        className="relative z-10 flex flex-col md:flex-row max-w-5xl w-full rounded-3xl overflow-hidden shadow-2xl"
+        className="relative z-10 flex flex-col lg:flex-row max-w-5xl w-full rounded-3xl overflow-hidden shadow-2xl"
         style={{ background: RED }}
         onClick={(e) => e.stopPropagation()}
         data-testid="login-modal-card"
