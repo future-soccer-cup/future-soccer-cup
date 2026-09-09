@@ -15,6 +15,13 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Storage: Emergent Object Storage for images/PDFs.
 - Tests: pytest under `/app/backend/tests/`.
 
+### 2026-09-08 — Iter110: Límites de tamaño aumentados (imágenes 25MB, videos 150MB) + revisión de formatos permitidos
+- El usuario preguntó si es posible subir videos de 150MB y pidió aumentar los límites de imagen/video, además de reportar que "algunas imágenes solo permiten JPG".
+- **Revisión de formatos**: el backend (`MIME` dict en `server.py`) y los componentes `ImageUpload.jsx`/`ImageListUpload.jsx` YA aceptaban una lista amplia (JPG, PNG, GIF, BMP, TIFF, WebP, HEIC/HEIF/AVIF, SVG, ICO, RAW de las principales marcas, PDF). Probado con curl subiendo PNG/BMP/WEBP/GIF directamente al backend: los 4 formatos se aceptaron sin problema. Único hallazgo real: `TeamRegister.jsx` (subida del logo del equipo en el registro público) tenía `accept="image/*"` sin la lista extendida — corregido para incluir HEIC/RAW/etc como los demás campos. No se pudo reproducir una restricción real a "solo JPG" en ningún campo del Admin con las pruebas hechas — si vuelve a aparecer, indicar el campo exacto (captura) para revisar puntualmente.
+- **Límites aumentados**: imágenes de 15MB → **25MB**, videos de 30MB → **150MB** (`server.py`, `ImageUpload.jsx`, `ImageListUpload.jsx`, `VideoUpload.jsx`). Hints del Admin actualizados con el nuevo límite.
+- **Verificado empíricamente que 150MB SÍ funciona de punta a punta** (no solo el límite de la app, sino el proxy/infraestructura completa): subida de prueba de 149MB vía la URL externa completó en ~9s con HTTP 200; 150MB+1 byte correctamente rechazado por el backend con el mensaje "Archivo mayor a 150MB". No hay límite de proxy/ingress bloqueando antes de llegar al backend.
+- `ImageUpload.jsx`/`VideoUpload.jsx`: mensajes de error ahora muestran el `detail` real del backend en vez de un mensaje genérico (ver Iter109).
+
 ### 2026-09-08 — Iter109: Bug real — "error al cargar" al subir fotos a Premiación (y cualquier galería)
 - El usuario reportó `DSC02377.JPG: error al cargar` al subir una foto en la galería de Premiación (Admin).
 - **Causa raíz**: el almacenamiento de objetos (Emergent Object Storage) falla intermitentemente con errores 500/502/503/504 o timeout de conexión (visible en logs históricos del backend) — infraestructura, no algo que se pueda evitar del todo. `put_object`/`get_object` en `server.py` NO reintentaban ante esos errores transitorios, así que la primera falla ya mandaba el error al usuario. Además, el frontend mostraba siempre el mensaje genérico "error al cargar" sin el detalle real del backend.

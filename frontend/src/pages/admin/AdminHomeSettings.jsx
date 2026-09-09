@@ -157,7 +157,7 @@ export default function AdminHomeSettings() {
             value={s.dashboard_hero_video_url}
             onChange={(url) => upd("dashboard_hero_video_url", url)}
             label="Video de fondo (se reproduce en loop automático, sin sonido)"
-            hint="Se muestra arriba de todo cuando un Directivo o Cuerpo Técnico entra a Mi Club. Recomendado: MP4 horizontal, 5-15s, < 30 MB. Si no hay video, se usa la imagen de respaldo."
+            hint="Se muestra arriba de todo cuando un Directivo o Cuerpo Técnico entra a Mi Club. Recomendado: MP4 horizontal, corta duración (5-15s) para que cargue rápido. Máx 150 MB. Si no hay video, se usa la imagen de respaldo."
             testId="dashboard-hero-video-upload"
           />
           <ImageUpload
@@ -175,7 +175,7 @@ export default function AdminHomeSettings() {
             value={s.cotizar_hero_video_url}
             onChange={(url) => upd("cotizar_hero_video_url", url)}
             label="Video de fondo (se reproduce en loop automático, sin sonido)"
-            hint="Se muestra arriba de todo en /cotizar. Recomendado: MP4 horizontal, 5-15s, < 30 MB. Si no hay video, se usa la imagen de respaldo."
+            hint="Se muestra arriba de todo en /cotizar. Recomendado: MP4 horizontal, corta duración (5-15s) para que cargue rápido. Máx 150 MB. Si no hay video, se usa la imagen de respaldo."
             testId="cotizar-hero-video-upload"
           />
           <ImageUpload
@@ -484,7 +484,7 @@ function EventosEditor({ value, onChange }) {
           value={v.hero_video_url}
           onChange={(url) => patch({ hero_video_url: url })}
           label="Video del Hero (se reproduce en loop automático, sin sonido)"
-          hint="Recomendado: MP4 horizontal, corta duración (5-15s), peso < 30 MB. Si no se sube video, se usa la imagen de respaldo abajo."
+          hint="Recomendado: MP4 horizontal, corta duración (5-15s) para que cargue rápido. Máx 150 MB. Si no se sube video, se usa la imagen de respaldo abajo."
           testId="eventos-hero-video-upload"
         />
         <ImageUpload
@@ -959,7 +959,7 @@ function NewsListEditor({ items, onChange, testId }) {
           <div className="mt-2">
             <VideoUpload
               label="Video de la noticia (opcional)"
-              hint="Si cargas un video, el público lo verá al abrir esta noticia (máx 30MB)."
+              hint="Si cargas un video, el público lo verá al abrir esta noticia (máx 150MB)."
               value={n.video_url}
               onChange={(u) => update(i, { video_url: u })}
               testId={`${testId}-video-${i}`}

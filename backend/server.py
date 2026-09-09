@@ -5156,7 +5156,7 @@ async def upload_file(file: UploadFile = File(...), user: dict = Depends(get_cur
     if ext not in MIME:
         raise HTTPException(status_code=400, detail="Formato no soportado. Acepta: JPG/JPEG/JFIF/JIF/PJPEG, PNG/APNG, GIF, BMP/DIB, TIFF, WebP, HEIC/HEIF/AVIF, SVG, ICO, RAW (CR2/CR3/NEF/ARW/DNG/ORF/RW2/RAF/PEF/SRW), PDF o video (MP4/WebM/MOV/OGV).")
     data = await file.read()
-    max_size = 30 * 1024 * 1024 if ext in VIDEO_EXTS else 15 * 1024 * 1024
+    max_size = 150 * 1024 * 1024 if ext in VIDEO_EXTS else 25 * 1024 * 1024
     if len(data) > max_size:
         raise HTTPException(status_code=400, detail=f"Archivo mayor a {max_size // (1024 * 1024)}MB")
 

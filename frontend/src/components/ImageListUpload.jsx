@@ -28,8 +28,8 @@ export default function ImageListUpload({ values = [], onChange, label = "Imáge
     setUploading(true);
     const uploaded = [];
     for (const file of files) {
-      if (file.size > 15 * 1024 * 1024) {
-        toast.error(`${file.name}: supera 15MB, omitida`);
+      if (file.size > 25 * 1024 * 1024) {
+        toast.error(`${file.name}: supera 25MB, omitida`);
         continue;
       }
       const fd = new FormData();

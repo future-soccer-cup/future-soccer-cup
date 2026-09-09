@@ -404,7 +404,7 @@ function StepIdentity({ form, upd, logoFile, setLogoFile, fileRef, isDirectivo }
               <Upload size={20}/>
               {logoFile ? <span className="truncate">{logoFile.name}</span> : <span>Seleccionar imagen (PNG/JPG)</span>}
             </button>
-            <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => setLogoFile(e.target.files?.[0] || null)} data-testid="tr-logo" />
+            <input ref={fileRef} type="file" accept="image/*,.jpg,.jpeg,.jfif,.jif,.jpe,.pjpeg,.pjp,.png,.apng,.gif,.bmp,.dib,.tif,.tiff,.webp,.heic,.heif,.avif,.svg,.ico,.raw,.cr2,.cr3,.nef,.arw,.dng,.orf,.rw2,.raf,.pef,.srw" hidden onChange={(e) => setLogoFile(e.target.files?.[0] || null)} data-testid="tr-logo" />
           </div>
         </>
       )}

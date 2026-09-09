@@ -20,8 +20,8 @@ export default function VideoUpload({ value, onChange, label = "Video", hint = "
   const handleFile = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 30 * 1024 * 1024) {
-      toast.error("El video no puede superar 30MB");
+    if (file.size > 150 * 1024 * 1024) {
+      toast.error("El video no puede superar 150MB");
       return;
     }
     setUploading(true);
@@ -32,7 +32,8 @@ export default function VideoUpload({ value, onChange, label = "Video", hint = "
       onChange(res.data.url);
       toast.success("Video cargado");
     } catch (err) {
-      toast.error("Error al cargar video. Inicia sesión e inténtalo de nuevo.");
+      const detail = err?.response?.data?.detail;
+      toast.error(detail || "Error al cargar video. Inicia sesión e inténtalo de nuevo.");
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = "";
