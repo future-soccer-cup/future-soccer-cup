@@ -199,11 +199,11 @@ function TabsBar({ tab, onTab, festival, premier, center }) {
         <button
           type="button"
           onClick={() => onTab("festival")}
-          className={`min-w-0 text-center px-1 md:px-3 py-4 md:py-6 rounded-sm transition-all overflow-hidden ${isFest ? "ring-4 ring-red-300 scale-[1.02]" : "opacity-90 hover:opacity-100"}`}
+          className={`min-w-0 text-center px-1 md:px-3 py-4 md:py-6 rounded-sm transition-all overflow-x-hidden ${isFest ? "ring-4 ring-red-300 scale-[1.02]" : "opacity-90 hover:opacity-100"}`}
           style={{ background: RED }}
           data-testid="tab-festival"
         >
-          <div className="leading-none" style={{ ...PLANE_CRASH, color: "#ffffff", fontSize: "clamp(0.68rem, 3.6vw, 3rem)", whiteSpace: "nowrap" }}>
+          <div className="leading-normal" style={{ ...PLANE_CRASH, color: "#ffffff", fontSize: "clamp(0.68rem, 3.6vw, 3rem)", whiteSpace: "nowrap" }}>
             {renderPlaneCrash(festival.tab_label || "FESTIVAL")}
           </div>
           <div className="text-white text-center mt-2 text-xs sm:text-lg md:text-xl lg:text-2xl" style={AGENCY_FB}>
@@ -211,8 +211,8 @@ function TabsBar({ tab, onTab, festival, premier, center }) {
           </div>
         </button>
 
-        <div className="min-w-0 text-center px-1 md:px-3 py-4 md:py-6 bg-white flex flex-col items-center justify-center overflow-hidden" data-testid="tab-center">
-          <div className="leading-none" style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(0.68rem, 3.6vw, 3rem)", whiteSpace: "nowrap" }}>
+        <div className="min-w-0 text-center px-1 md:px-3 py-4 md:py-6 bg-white flex flex-col items-center justify-center overflow-x-hidden" data-testid="tab-center">
+          <div className="leading-normal" style={{ ...PLANE_CRASH, color: RED, fontSize: "clamp(0.68rem, 3.6vw, 3rem)", whiteSpace: "nowrap" }}>
             {renderPlaneCrash(center?.top || "EVENTOS")}
           </div>
           <div className="mt-1 break-words" style={{ ...AGENCY_FB, color: RED, fontWeight: 700, fontSize: "clamp(0.6rem, 2vw, 1.7rem)" }}>
@@ -223,11 +223,11 @@ function TabsBar({ tab, onTab, festival, premier, center }) {
         <button
           type="button"
           onClick={() => onTab("premier")}
-          className={`min-w-0 text-center px-1 md:px-3 py-4 md:py-6 rounded-sm transition-all overflow-hidden ${isPrem ? "ring-4 ring-blue-300 scale-[1.02]" : "opacity-90 hover:opacity-100"}`}
+          className={`min-w-0 text-center px-1 md:px-3 py-4 md:py-6 rounded-sm transition-all overflow-x-hidden ${isPrem ? "ring-4 ring-blue-300 scale-[1.02]" : "opacity-90 hover:opacity-100"}`}
           style={{ background: BLUE }}
           data-testid="tab-premier"
         >
-          <div className="leading-none" style={{ ...PLANE_CRASH, color: "#ffffff", fontSize: "clamp(0.68rem, 3.6vw, 3rem)", whiteSpace: "nowrap" }}>
+          <div className="leading-normal" style={{ ...PLANE_CRASH, color: "#ffffff", fontSize: "clamp(0.68rem, 3.6vw, 3rem)", whiteSpace: "nowrap" }}>
             {renderPlaneCrash(premier.tab_label || "PREMIER")}
           </div>
           <div className="text-white text-center mt-2 text-xs sm:text-base md:text-lg lg:text-xl space-y-0.5" style={AGENCY_FB}>
@@ -265,8 +265,8 @@ function EventTitleSection({ month, word, isFestival }) {
             <ChevronStack color={RED} size={56} direction="up" count={5} />
           </button>
         </div>
-        <div className="min-w-0 text-center overflow-hidden">
-          <div className="leading-[0.9]" style={{ ...PLANE_CRASH, color: BLUE, fontSize: "clamp(1.6rem, 5vw, 4rem)" }} data-testid="event-title-month">
+        <div className="min-w-0 text-center overflow-x-hidden py-1">
+          <div className="leading-[1.15]" style={{ ...PLANE_CRASH, color: BLUE, fontSize: "clamp(1.6rem, 5vw, 4rem)" }} data-testid="event-title-month">
             {renderPlaneCrash(month || "")}
           </div>
           {isFestival ? (

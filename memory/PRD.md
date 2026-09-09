@@ -15,6 +15,11 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Storage: Emergent Object Storage for images/PDFs.
 - Tests: pytest under `/app/backend/tests/`.
 
+### 2026-09-09 — Iter113: Regresión del Iter112 — "OCTUBRE"/"DICIEMBRE" se veían recortados arriba (mobile+tablet+desktop)
+- El `overflow-hidden` agregado en Iter112 como "red de seguridad" horizontal en el contenedor del título (`EventTitleSection`) y en los botones/centro de `TabsBar` recortaba la parte superior de las letras de la fuente Plane Crash (sus tildes/textura superan el `line-height` ajustado con `leading-[0.9]`/`leading-none`), visible en TODOS los tamaños de pantalla, no solo mobile.
+- **Fix**: `overflow-hidden` → `overflow-x-hidden` (solo bloquea desborde horizontal, deja la tinta vertical del glyph completa) en los 4 contenedores afectados (`event-title-month`/word wrapper, `tab-festival`, `tab-center`, `tab-premier`); `leading-[0.9]`/`leading-none` del mes → `leading-normal` con `py-1` de aire.
+- Verificado con screenshot en 390px y 1920px: "OCTUBRE"/"FESTIVAL" se renderizan completos sin recorte.
+
 ### 2026-09-09 — Iter112: 4 bugs móviles nuevos en /eventos y /nosotros (reproducidos a 320px, corregidos y verificados)
 - El usuario reportó (todos reproducidos solo en anchos muy angostos ~320px, no visibles a 390px+): (1) flechas decorativas encima de "OCTUBRE FESTIVAL"/"DICIEMBRE Premier", (2) letra "L" de FESTIVAL quedando sola en su propia línea, (3) botones FESTIVAL/PREMIER partiendo la palabra en 2 líneas, (4) cajitas de categoría (2018, CAT.18, etc.) sobrepuestas unas sobre otras, (5) hueco vacío grande entre foto y línea de tiempo al navegar años en la sección Historia de /nosotros (móvil).
 - **Causa raíz**: `EventTitleSection` usaba `grid-cols-3` con 3 columnas IGUALES de ancho, dejando la columna central (título) con el mismo ancho angosto que las columnas de flechas — el texto se desbordaba visualmente sobre las flechas. `CategoryBlock` no tenía `overflow-hidden`/`whitespace-nowrap`, y `PremierCategories` ponía PARES/IMPARES lado a lado (grid-cols-2) incluso en móvil, reduciendo el ancho disponible por caja a la mitad. `FSCHistorySection` forzaba `minHeight: min(88vh,780px)` con estilo inline (pensado para el layout absoluto de desktop) incluso en móvil, donde el contenido real es mucho más corto.
