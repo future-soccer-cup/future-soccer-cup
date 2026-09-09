@@ -197,6 +197,24 @@ html, body {
     50%      { transform: translateY(var(--float-amp, -6px)); }
 }
 
+/* === Eco vertical al caer (título "MARCADOR" en hero de Estadísticas) === */
+@keyframes marcador-drop-main {
+    0%   { opacity: 0; transform: translateY(-50px); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes marcador-drop-echo {
+    0%   { opacity: 0; transform: translateY(-50px); }
+    100% { opacity: var(--echo-opacity, 0.3); transform: translateY(var(--echo-offset, 10px)); }
+}
+.marcador-main {
+    opacity: 0;
+    animation: marcador-drop-main 0.35s ease-out forwards;
+}
+.marcador-echo {
+    opacity: 0;
+    animation: marcador-drop-echo 0.35s ease-out forwards;
+}
+
 /* === Pulse sutil (WhatsApp flotante) === */
 @keyframes fsc-pulse-ring {
     0%   { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.55); }

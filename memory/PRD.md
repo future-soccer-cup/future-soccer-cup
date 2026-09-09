@@ -15,6 +15,10 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Storage: Emergent Object Storage for images/PDFs.
 - Tests: pytest under `/app/backend/tests/`.
 
+### 2026-09-09 — Iter116: Hero de Estadísticas — watermark estático removido, animación "eco/rastro" al cargar
+- Quitado el texto fantasma estático (`stats-hero-watermark-1/2`, dos copias fijas semitransparentes arriba de "MARCADOR") de `DatosEstadisticas.jsx`.
+- Nueva animación (una sola vez al montar, sin loop): "MARCADOR" cae desde arriba (`translateY(-50px)`→`0`, opacity 0→1, 0.35s ease-out) y 4 copias eco lo siguen con delay escalonado (0.06/0.12/0.18/0.24s), quedando por debajo (10/20/30/40px) con opacidad decreciente (0.6/0.4/0.2/0.1). Keyframes `marcador-drop-main`/`marcador-drop-echo` en `index.css` (usa CSS custom properties `--echo-opacity`/`--echo-offset` por copia). "OFICIAL" y el resto de la página sin cambios.
+
 ### 2026-09-09 — Iter115: Subida en fragmentos (chunked) para video, blocker de deployment corregido
 - **Bug reportado**: en la app YA PUBLICADA (producción), subir un video de 140MB fallaba con "Error al cargar video. Inicia sesión e inténtalo de nuevo." aunque el usuario tenía sesión iniciada. Causa probable: el proxy/ingress de producción rechaza un solo POST de ~150MB (límite de tamaño de body) antes de llegar al backend — el código en sí ya permitía hasta 150MB, por eso no fallaba en preview (proxy con límite distinto).
 - **Fix**: subida en fragmentos de 5MB. Backend: nuevos endpoints `/api/upload/init`, `/api/upload/chunk`, `/api/upload/complete` (buffer en memoria por `upload_id`, se ensambla/valida/optimiza — mismo pipeline de conversión WebP/faststart-video que ya existía — solo al completar). `/api/upload` (imágenes) queda intacto. Frontend `VideoUpload.jsx` ahora parte el archivo con `file.slice()` y sube fragmento por fragmento mostrando "Cargando... X%". Probado end-to-end con curl (init→3 chunks→complete, 12MB) exitoso.
