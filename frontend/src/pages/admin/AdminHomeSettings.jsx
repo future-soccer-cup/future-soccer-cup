@@ -56,8 +56,10 @@ const EMPTY = {
   instagram: "",
   facebook: "",
   youtube: "",
+  tiktok: "",
   whatsapp_url: "",
   footer_heading: "¿Y SI NOS TOMAMOS UN CAFECITO JUNTOS?",
+  somos_mas_texto: "Somos más que un Torneo",
 };
 
 // Helpers para convertir entre lista (CSV) y arrays
@@ -280,6 +282,10 @@ export default function AdminHomeSettings() {
           <Field label="Instagram (@usuario o URL)" v={s.instagram} onChange={(v) => upd("instagram", v)} />
           <Field label="Facebook (URL o slug)" v={s.facebook} onChange={(v) => upd("facebook", v)} />
           <Field label="YouTube (URL o slug)" v={s.youtube} onChange={(v) => upd("youtube", v)} />
+          <Field label="TikTok (@usuario o URL)" v={s.tiktok} onChange={(v) => upd("tiktok", v)} placeholder="@futuresoccercup" />
+          <div className="md:col-span-2">
+            <Field label="Frase final (aparece a todo el ancho, debajo de los datos de contacto — en todas las páginas)" v={s.somos_mas_texto} onChange={(v) => upd("somos_mas_texto", v)} placeholder="Somos más que un Torneo" />
+          </div>
         </div>
       </Section>
 
@@ -832,9 +838,9 @@ function EstadisticasEditor({ value, onChange, tournaments = [], fixtures = [] }
         </button>
       </SubSection>
 
-      <SubSection title="4. Frase de cierre (opcional, ya no se muestra — se preserva por compatibilidad)">
+      <SubSection title="4. Frase de cierre de Estadísticas (opcional, legacy — ya no se muestra en esta página)">
         <p className="text-xs text-slate-500 italic">
-          Nota: las secciones SÍGUENOS Y NO TE PIERDAS y Somos mas que un Torneo fueron eliminadas de la página pública (el footer ya las incluye globalmente). Estos campos permanecen guardados por si se necesitan reactivar.
+          Nota: la sección SÍGUENOS Y NO TE PIERDAS fue eliminada de esta página específica. La frase "Somos más que un Torneo" ahora se edita arriba, en "Footer / Contacto", y aparece a todo el ancho en el footer de TODAS las páginas. Estos campos legacy permanecen guardados por si se necesitan reactivar.
         </p>
       </SubSection>
     </div>

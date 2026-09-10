@@ -68,7 +68,7 @@ function PublicLayout() {
       <main className="flex-1">
         <Outlet />
       </main>
-      {!hideChrome && !isHome && <Footer />}
+      {!hideChrome && <Footer />}
       <FloatingWhatsApp />
     </div>
   );

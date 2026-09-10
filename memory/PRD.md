@@ -15,6 +15,12 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - Storage: Emergent Object Storage for images/PDFs.
 - Tests: pytest under `/app/backend/tests/`.
 
+### 2026-09-10 — Iter117: Footer unificado en todas las páginas + TikTok + "Somos más que un Torneo"
+- **Problema**: Home.jsx tenía su PROPIO footer inline (duplicado del componente global `Footer.jsx`), y `App.js` excluía explícitamente `<Footer/>` en Home (`!isHome`). El footer compartido (usado en Nosotros/Eventos/Estadísticas/Noticias/Contacto) no tenía TikTok ni la frase "Somos más que un Torneo" (que un agente anterior había quitado creyendo, incorrectamente, que ya estaba en el footer global — no era cierto).
+- **Fix**: `App.js` ahora siempre renderiza `<Footer/>` (se quitó la excepción `!isHome`); se borró el footer duplicado de `Home.jsx`. `Footer.jsx` (componente único usado en TODAS las páginas) ganó: ícono de TikTok (SVG inline, condicional a `s.tiktok`) y una franja a todo el ancho con "Somos más que un Torneo" (`s.somos_mas_texto`, fuente CURSIVE) debajo de los datos de contacto.
+- Backend: agregados `tiktok: Optional[str] = ""` y `somos_mas_texto: Optional[str] = "Somos más que un Torneo"` al modelo Pydantic `HomeSettings` (server.py). Admin: nuevos campos en `AdminHomeSettings.jsx` → sección "Footer / Contacto".
+- Verificado: mismo footer con TikTok + frase en las 6 páginas públicas (Inicio, Nosotros, Eventos, Estadísticas, Noticias, Contacto), editable 100% desde el admin.
+
 ### 2026-09-09 — Iter116: Hero de Estadísticas — watermark estático removido, animación "eco/rastro" al cargar
 - Quitado el texto fantasma estático (`stats-hero-watermark-1/2`, dos copias fijas semitransparentes arriba de "MARCADOR") de `DatosEstadisticas.jsx`.
 - Nueva animación (una sola vez al montar, sin loop): "MARCADOR" cae desde arriba (`translateY(-50px)`→`0`, opacity 0→1, 0.35s ease-out) y 4 copias eco lo siguen con delay escalonado (0.06/0.12/0.18/0.24s), quedando por debajo (10/20/30/40px) con opacidad decreciente (0.6/0.4/0.2/0.1). Keyframes `marcador-drop-main`/`marcador-drop-echo` en `index.css` (usa CSS custom properties `--echo-opacity`/`--echo-offset` por copia). "OFICIAL" y el resto de la página sin cambios.
