@@ -55,30 +55,35 @@ function HeroSection({ heroUrl, watermark, title, subtitle }) {
       )}
       {/* Overlay azul denso y oscuro (oscurece la foto de fondo) */}
       <div className="absolute inset-0" style={{ background: "rgba(6, 20, 80, 0.82)" }} />
-      {/* Título principal + ecos apilados detrás (mismo tamaño, más arriba y desvanecidos) */}
+      {/* Título principal + rastro de "ecos" hacia arriba (animación única al cargar, sin loop) */}
       <div className="relative z-10 h-full flex flex-col items-center justify-center px-4 text-center">
         <div className="relative leading-[0.9]">
-          {/* Eco 2: más lejano, más desvanecido, más arriba */}
+          {/* Ecos: copias semitransparentes por ENCIMA del texto principal, como un rastro
+              vertical hacia arriba. Mientras más arriba, más tenues. */}
+          {[
+            { opacity: 0.4, offset: -10, delay: 0.06 },
+            { opacity: 0.2, offset: -20, delay: 0.12 },
+            { opacity: 0.1, offset: -30, delay: 0.18 },
+          ].map((echo, i) => (
+            <div
+              key={i}
+              className="absolute inset-x-0 top-0 leading-[0.9] pointer-events-none select-none marcador-echo"
+              style={{
+                ...titleStyle,
+                color: "#ffffff",
+                "--echo-opacity": echo.opacity,
+                "--echo-offset": `${echo.offset}px`,
+                animationDelay: `${echo.delay}s`,
+              }}
+              aria-hidden="true"
+              data-testid={`noticias-hero-echo-${i + 1}`}
+            >
+              {renderPlaneCrash(title)}
+            </div>
+          ))}
+          {/* Principal: entra cayendo desde arriba hasta su posición final */}
           <div
-            className="absolute inset-x-0 -top-7 md:-top-12 leading-[0.9] pointer-events-none select-none"
-            style={{ ...titleStyle, color: "rgba(255,255,255,0.14)" }}
-            aria-hidden="true"
-            data-testid="noticias-hero-watermark-2"
-          >
-            {renderPlaneCrash(title)}
-          </div>
-          {/* Eco 1: intermedio */}
-          <div
-            className="absolute inset-x-0 -top-3.5 md:-top-6 leading-[0.9] pointer-events-none select-none"
-            style={{ ...titleStyle, color: "rgba(255,255,255,0.32)" }}
-            aria-hidden="true"
-            data-testid="noticias-hero-watermark-1"
-          >
-            {renderPlaneCrash(title)}
-          </div>
-          {/* Principal */}
-          <div
-            className="relative leading-[0.9]"
+            className="relative leading-[0.9] marcador-main"
             style={{ ...titleStyle, color: "#ffffff", textShadow: "3px 5px 0 rgba(0,0,0,0.28)" }}
             data-testid="noticias-hero-title"
           >
