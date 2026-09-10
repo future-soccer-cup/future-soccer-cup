@@ -1,0 +1,51 @@
+{
+  "summary": "Frontend-only visual regression test of the global public Footer heading wrap fix. Verified on desktop (1920x900) and mobile (390x900) across public pages. All 4 heading lines render correctly, no overflow, no glyph overlap. All expected footer elements (WhatsApp, email, Instagram, Facebook, YouTube, TikTok, 'Somos más que un Torneo', copyright) render without regressions. Footer conditional rendering (!hideChrome) works as intended.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "verifications": {
+    "desktop_1920x900": {
+      "heading_line_count": 4,
+      "lines": ["¿Y SI NOS", "TOMAMOS UN", "CAFECITO", "JUNTOS?"],
+      "unique_y_positions": [447, 511, 572, 632],
+      "no_horizontal_overflow": true,
+      "no_glyph_overlap": true,
+      "note": "'TOMAMOS UN' stays on a single line thanks to lg:whitespace-nowrap + lg:grid-cols-[3fr_2fr]. '¿' rendered as rotated '?' via renderPlaneCrash with no overlap on following letter."
+    },
+    "mobile_390x900": {
+      "heading_line_count": 4,
+      "lines": ["¿Y SI NOS", "TOMAMOS UN", "CAFECITO", "JUNTOS?"],
+      "page_scroll_width": 390,
+      "page_client_width": 390,
+      "no_horizontal_overflow": true,
+      "heading_within_container": true
+    },
+    "footer_presence_by_route": {
+      "/": true,
+      "/nosotros": true,
+      "/eventos": true,
+      "/estadisticas": true,
+      "/noticias": true,
+      "/contacto": true,
+      "/login": "true (LoginRedirect redirects to '/', so footer is expected on final URL - not a bug)",
+      "/registro": false
+    },
+    "footer_subelements_rendered": ["footer-heading", "footer-whatsapp", "footer-phone-text (+57 312 360 5948)", "footer-email", "footer-email-text (direccion@futuresoccercup.org)", "footer-instagram", "footer-facebook", "footer-youtube", "footer-tiktok", "footer-somos-mas ('Somos más que un Torneo')", "copyright © 2026 Future Soccer Cup"]
+  },
+  "console_errors": "Only 6x 401 (unauthenticated /me endpoint calls) — pre-existing, unrelated to footer fix.",
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Footer.jsx: heading fallback text uses '¿Y SI NOS\\nTOMAMOS UN\\nCAFECITO\\nJUNTOS?' matching the MongoDB stored value — good defensive default.",
+    "The condition `hideChrome = path.startsWith('/login') || path.startsWith('/registro')` correctly hides footer on /registro; /login route is a LoginRedirect that navigates to '/' immediately, so footer appears on Home (expected behavior, not a regression)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (not tested per request)", "frontend": "100%"},
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Footer heading wrap fix is verified working on both desktop and mobile. Uses lg:grid-cols-[3fr_2fr] with fontSize clamp(30px,4.2vw,64px) + lg:whitespace-nowrap on each line span. Rendered as 4 distinct visual lines. No overflow. Fix is stable."
+}

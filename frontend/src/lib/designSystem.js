@@ -95,7 +95,15 @@ export function renderPlaneCrash(str) {
         if (part === "¿") {
           return React.createElement(
             "span",
-            { key: `iq-${i}-${j}`, style: { display: "inline-block", transform: "rotate(180deg)" } },
+            {
+              key: `iq-${i}-${j}`,
+              style: {
+                display: "inline-block",
+                lineHeight: 1,
+                verticalAlign: "baseline",
+                transform: "rotate(180deg) translateY(0.22em)",
+              },
+            },
             "?"
           );
         }

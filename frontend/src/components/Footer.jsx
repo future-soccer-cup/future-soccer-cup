@@ -15,19 +15,19 @@ export default function Footer() {
   const [s, setS] = useState({});
   useEffect(() => { api.get("/home-settings").then((r) => setS(r.data || {})).catch(() => {}); }, []);
 
-  const heading = s.footer_heading || "¿Y SI NOS\nTOMAMOS\nUN\nCAFECITO\nJUNTOS?";
+  const heading = s.footer_heading || "¿Y SI NOS\nTOMAMOS UN\nCAFECITO\nJUNTOS?";
   const phone = s.contact_phone || "+57 324 6134658";
   const email = s.contact_email || "info@futuresoccercup.com";
   const headingLines = heading.split(/\n/).filter(Boolean);
 
   return (
     <footer className="relative overflow-hidden" data-testid="public-footer" style={{ background: RED }}>
-      <div className="max-w-7xl mx-auto px-6 lg:px-10 py-16 grid lg:grid-cols-2 gap-10 items-center">
+      <div className="max-w-7xl mx-auto px-6 lg:px-10 py-16 grid lg:grid-cols-[3fr_2fr] gap-10 items-center">
         {/* Izquierda: heading grunge en 4 líneas */}
-        <h2 className="font-black text-white leading-[0.95] text-left" style={{ ...PLANE_CRASH, fontSize: "clamp(36px, 5vw, 72px)" }} data-testid="footer-heading">
+        <h2 className="font-black text-white leading-[0.95] text-left" style={{ ...PLANE_CRASH, fontSize: "clamp(30px, 4.2vw, 64px)" }} data-testid="footer-heading">
           {headingLines.length ? headingLines.map((l, i) => (
-            <span key={i} className="block">{renderPlaneCrash(l)}</span>
-          )) : <span className="block">{renderPlaneCrash(heading)}</span>}
+            <span key={i} className="block lg:whitespace-nowrap">{renderPlaneCrash(l)}</span>
+          )) : <span className="block lg:whitespace-nowrap">{renderPlaneCrash(heading)}</span>}
         </h2>
 
         {/* Derecha: contacto + redes */}
