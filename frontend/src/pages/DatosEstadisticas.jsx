@@ -93,13 +93,12 @@ function HeroSection({ heroUrl, watermark, titleTop, titleBottom }) {
       {/* Título principal + rastro de "ecos" que caen detrás (animación única al cargar, sin loop) */}
       <div className="relative z-10 h-full flex flex-col items-center justify-center px-4 text-center">
         <div className="relative leading-[0.9]">
-          {/* Ecos: copias semitransparentes que van quedando por debajo del texto principal,
-              como un rastro vertical. Cada una llega con más delay, más abajo y más tenue. */}
+          {/* Ecos: copias semitransparentes que quedan por ENCIMA del texto principal,
+              como un rastro vertical hacia arriba. Mientras más arriba, más tenues. */}
           {[
-            { opacity: 0.6, offset: 10, delay: 0.06 },
-            { opacity: 0.4, offset: 20, delay: 0.12 },
-            { opacity: 0.2, offset: 30, delay: 0.18 },
-            { opacity: 0.1, offset: 40, delay: 0.24 },
+            { opacity: 0.4, offset: -10, delay: 0.06 },
+            { opacity: 0.2, offset: -20, delay: 0.12 },
+            { opacity: 0.1, offset: -30, delay: 0.18 },
           ].map((echo, i) => (
             <div
               key={i}
