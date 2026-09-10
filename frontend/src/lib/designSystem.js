@@ -50,18 +50,18 @@ export function planeCrashSafe(str) {
  */
 export function renderPlaneCrash(str) {
   const lower = String(str || "").toLowerCase();
-  if (!lower.includes("ñ")) {
+  if (!lower.includes("ñ") && !lower.includes("¿")) {
     return lower.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   }
-  // Solo envolvemos en nowrap la(s) palabra(s) que contienen "ñ" (para no partirlas
+  // Solo envolvemos en nowrap la(s) palabra(s) que contienen "ñ"/"¿" (para no partirlas
   // en dos líneas), dejando que el resto del texto siga el wrap normal por espacios.
   // Así una oración larga como "¿En qué año nació...?" sigue ajustándose al ancho
   // del contenedor en vez de desbordarse en una sola línea gigante.
   return lower.split(/(\s+)/).map((token, i) => {
-    if (!token.includes("ñ")) {
+    if (!token.includes("ñ") && !token.includes("¿")) {
       return token.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     }
-    const parts = token.split(/(ñ)/);
+    const parts = token.split(/(ñ|¿)/);
     return React.createElement(
       "span",
       { key: `w-${i}`, style: { whiteSpace: "nowrap" } },
@@ -89,6 +89,15 @@ export function renderPlaneCrash(str) {
               },
               "~"
             )
+          );
+        }
+        // "¿" también es un glifo INVISIBLE en "Plane Crash" (igual que "ñ") — se dibuja
+        // explícitamente con la tipografía de respaldo (Anton), que sí lo tiene.
+        if (part === "¿") {
+          return React.createElement(
+            "span",
+            { key: `iq-${i}-${j}`, style: { fontFamily: "'Anton', 'Barlow Condensed', sans-serif" } },
+            "¿"
           );
         }
         return part.normalize("NFD").replace(/[\u0300-\u036f]/g, "");

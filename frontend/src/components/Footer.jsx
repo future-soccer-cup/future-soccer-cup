@@ -15,10 +15,10 @@ export default function Footer() {
   const [s, setS] = useState({});
   useEffect(() => { api.get("/home-settings").then((r) => setS(r.data || {})).catch(() => {}); }, []);
 
-  const heading = s.footer_heading || "¿Y SI NOS TOMAMOS UN CAFECITO JUNTOS?";
+  const heading = s.footer_heading || "¿Y SI NOS\nTOMAMOS\nUN CAFECITO\nJUNTOS?";
   const phone = s.contact_phone || "+57 324 6134658";
   const email = s.contact_email || "info@futuresoccercup.com";
-  const headingLines = heading.split(/\n|\s{2,}/).filter(Boolean);
+  const headingLines = heading.split(/\n/).filter(Boolean);
 
   return (
     <footer className="relative overflow-hidden" data-testid="public-footer" style={{ background: RED }}>

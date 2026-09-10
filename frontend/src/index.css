@@ -199,11 +199,11 @@ html, body {
 
 /* === Eco vertical al caer (título "MARCADOR" en hero de Estadísticas) === */
 @keyframes marcador-drop-main {
-    0%   { opacity: 0; transform: translateY(-50px); }
+    0%   { opacity: 0; transform: translateY(-90px); }
     100% { opacity: 1; transform: translateY(0); }
 }
 @keyframes marcador-drop-echo {
-    0%   { opacity: 0; transform: translateY(-50px); }
+    0%   { opacity: 0; transform: translateY(-90px); }
     100% { opacity: var(--echo-opacity, 0.3); transform: translateY(var(--echo-offset, 10px)); }
 }
 .marcador-main {

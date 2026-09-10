@@ -5988,7 +5988,7 @@ class HomeSettings(BaseModel):
     youtube: Optional[str] = ""
     tiktok: Optional[str] = ""
     whatsapp_url: Optional[str] = "https://wa.me/573246134658"
-    footer_heading: Optional[str] = "¿Y SI NOS TOMAMOS UN CAFECITO JUNTOS?"
+    footer_heading: Optional[str] = "¿Y SI NOS\nTOMAMOS\nUN CAFECITO\nJUNTOS?"
     somos_mas_texto: Optional[str] = "Somos más que un Torneo"
     # === Legacy (mantener compat con admin existente) ===
     hero_title: Optional[str] = "Future Soccer Cup"

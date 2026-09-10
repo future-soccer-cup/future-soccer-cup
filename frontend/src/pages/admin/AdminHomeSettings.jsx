@@ -58,7 +58,7 @@ const EMPTY = {
   youtube: "",
   tiktok: "",
   whatsapp_url: "",
-  footer_heading: "¿Y SI NOS TOMAMOS UN CAFECITO JUNTOS?",
+  footer_heading: "¿Y SI NOS\nTOMAMOS\nUN CAFECITO\nJUNTOS?",
   somos_mas_texto: "Somos más que un Torneo",
 };
 
@@ -275,7 +275,17 @@ export default function AdminHomeSettings() {
 
       <Section title="Footer / Contacto" icon={<Phone size={18}/>}>
         <div className="grid md:grid-cols-2 gap-4">
-          <Field label="Titular footer (¿Y SI NOS TOMAMOS UN CAFECITO JUNTOS?)" v={s.footer_heading} onChange={(v) => upd("footer_heading", v)} />
+          <div className="md:col-span-2">
+            <label className="text-xs font-semibold text-slate-600">Titular footer (una línea por renglón — así se ven separadas en el diseño)</label>
+            <textarea
+              rows={4}
+              value={s.footer_heading || ""}
+              onChange={(e) => upd("footer_heading", e.target.value)}
+              className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md font-mono text-sm"
+              placeholder={"¿Y SI NOS\nTOMAMOS\nUN CAFECITO\nJUNTOS?"}
+              data-testid="field-footer-heading"
+            />
+          </div>
           <Field label="Email de contacto" v={s.contact_email} onChange={(v) => upd("contact_email", v)} />
           <Field label="Teléfono / WhatsApp (texto)" v={s.contact_phone} onChange={(v) => upd("contact_phone", v)} />
           <Field label="WhatsApp URL (https://wa.me/...)" v={s.whatsapp_url} onChange={(v) => upd("whatsapp_url", v)} />
