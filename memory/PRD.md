@@ -20,6 +20,8 @@ Build a versatile application for FUTRE SOCCER CUP organizing youth football eve
 - **Fix**: `App.js` ahora siempre renderiza `<Footer/>` (se quitó la excepción `!isHome`); se borró el footer duplicado de `Home.jsx`. `Footer.jsx` (componente único usado en TODAS las páginas) ganó: ícono de TikTok (SVG inline, condicional a `s.tiktok`) y una franja a todo el ancho con "Somos más que un Torneo" (`s.somos_mas_texto`, fuente CURSIVE) debajo de los datos de contacto.
 - Backend: agregados `tiktok: Optional[str] = ""` y `somos_mas_texto: Optional[str] = "Somos más que un Torneo"` al modelo Pydantic `HomeSettings` (server.py). Admin: nuevos campos en `AdminHomeSettings.jsx` → sección "Footer / Contacto".
 - Verificado: mismo footer con TikTok + frase en las 6 páginas públicas (Inicio, Nosotros, Eventos, Estadísticas, Noticias, Contacto), editable 100% desde el admin.
+- **Ajuste de tamaño**: "Somos más que un Torneo" agrandado (`clamp(32px,6vw,72px)`, antes 20-30px) y a todo el ancho del footer. Ícono de TikTok confirmado visible (4to ícono, junto a Instagram/Facebook/YouTube) — si no aparece en la app YA PUBLICADA es porque esa base de datos de producción aún no tiene el campo `tiktok` lleno (hay que completarlo en Admin → Home Settings → Footer/Contacto y volver a publicar).
+
 
 ### 2026-09-09 — Iter116: Hero de Estadísticas — watermark estático removido, animación "eco/rastro" al cargar
 - Quitado el texto fantasma estático (`stats-hero-watermark-1/2`, dos copias fijas semitransparentes arriba de "MARCADOR") de `DatosEstadisticas.jsx`.
