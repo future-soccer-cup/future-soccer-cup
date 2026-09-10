@@ -58,7 +58,7 @@ const EMPTY = {
   youtube: "",
   tiktok: "",
   whatsapp_url: "",
-  footer_heading: "¿Y SI NOS\nTOMAMOS\nUN CAFECITO\nJUNTOS?",
+  footer_heading: "¿Y SI NOS\nTOMAMOS\nUN\nCAFECITO\nJUNTOS?",
   somos_mas_texto: "Somos más que un Torneo",
 };
 
@@ -282,7 +282,7 @@ export default function AdminHomeSettings() {
               value={s.footer_heading || ""}
               onChange={(e) => upd("footer_heading", e.target.value)}
               className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md font-mono text-sm"
-              placeholder={"¿Y SI NOS\nTOMAMOS\nUN CAFECITO\nJUNTOS?"}
+              placeholder={"¿Y SI NOS\nTOMAMOS\nUN\nCAFECITO\nJUNTOS?"}
               data-testid="field-footer-heading"
             />
           </div>
