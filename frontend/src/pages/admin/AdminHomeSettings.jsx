@@ -294,7 +294,7 @@ export default function AdminHomeSettings() {
                     value={s.nosotros_kow_image_url}
                     onChange={(v) => upd("nosotros_kow_image_url", v)}
                     label="Imagen de Kow (fondo blanco/transparente)"
-                    hint="Recomendado: PNG con fondo blanco o transparente."
+                    hint="Recomendado: PNG con fondo blanco o transparente, vertical 900×1200 px (proporción 3:4). Se muestra completa sin recortar (object-contain), ancho máx. 384 px en pantallas grandes."
                     testId="kow-welcome-image-upload"
                   />
                   <label className="block">
@@ -663,7 +663,7 @@ function EventosEditor({ value, onChange }) {
           onChange={(arr) => patch({ adventure_blocks: arr })}
           newItem={() => ({ logo_url: "" })}
           renderItem={(it, idx, upd) => (
-            <ImageUpload value={it.logo_url} onChange={(u) => upd({ logo_url: u })} label={`Logo #${idx + 1}`} hint="PNG con transparencia recomendado" testId={`adventure-${idx}`} />
+            <ImageUpload value={it.logo_url} onChange={(u) => upd({ logo_url: u })} label={`Logo #${idx + 1}`} hint="Recomendado: PNG con fondo transparente, horizontal 800×600 px o cuadrado 600×600 px. Peso ideal < 400 KB. Se muestra completo (object-contain, máx. 256 px de alto) sobre fondo rojo." testId={`adventure-${idx}`} />
           )}
           testId="adventure"
           addLabel="+ Agregar actividad"
@@ -829,7 +829,7 @@ function EstadisticasEditor({ value, onChange, tournaments = [], fixtures = [] }
               </select>
             </label>
             <div className="mt-3">
-              <ImageUpload value={ev.logo_url} onChange={(u) => updateEvent(idx, { logo_url: u })} label="Logo del evento (opcional)" hint="PNG con transparencia" testId={`stats-event-logo-${idx}`} />
+              <ImageUpload value={ev.logo_url} onChange={(u) => updateEvent(idx, { logo_url: u })} label="Logo del evento (opcional)" hint="Recomendado: PNG con fondo transparente, horizontal 800×300 px (8:3) o cuadrado 600×600 px. Peso ideal < 300 KB. Se renderiza hasta 128 px de alto (object-contain)." testId={`stats-event-logo-${idx}`} />
             </div>
             <div className="mt-4">
               <div className="text-[10px] font-bold uppercase tracking-widest text-blue-700 mb-2">Categorías (pastillas azules)</div>
@@ -1024,7 +1024,7 @@ function NewsListEditor({ items, onChange, testId }) {
           <div className="mt-2">
             <ImageListUpload
               label="Imágenes / galería (la primera se usa como portada)"
-              hint="JPG horizontales 16:9, máx 6 imágenes recomendado. Se recortan tipo cover centrado si la proporción no coincide exacto."
+              hint="JPG horizontales 16:9 (ej. 1280×720 px), máx 6 imágenes recomendado. Se recortan tipo cover centrado si la proporción no coincide exacto."
               values={n.images || []}
               onChange={(arr) => update(i, { images: arr })}
               testId={`${testId}-imgs-${i}`}
@@ -1067,7 +1067,7 @@ function ContactoEditor({ value, onChange }) {
           value={v.field_url}
           onChange={(u) => patch({ field_url: u })}
           label="Imagen decorativa (cancha + palmeras combinada)"
-          hint="PNG con fondo transparente, cancha con palmeras a los lados. Se superpone sobre el borde inferior del formulario (las palmeras quedan a los costados, la cancha debajo)."
+          hint="Recomendado: PNG con fondo transparente, formato casi cuadrado 1600×1500 px (relación 1:1 aprox.). Peso ideal < 800 KB. Cancha con palmeras a los lados, contenido concentrado en la mitad inferior de la imagen. Se superpone sobre el borde inferior del formulario con recorte tipo cover (las palmeras quedan a los costados, la cancha debajo)."
           testId="contacto-field"
         />
       </SubSection>
