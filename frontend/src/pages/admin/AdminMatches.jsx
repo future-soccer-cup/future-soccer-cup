@@ -844,7 +844,7 @@ function CardsReport({ matches, teams }) {
     if (!teamIds.length) { setPlayers([]); return; }
     Promise.all(teamIds.map((id) => api.get(`/players?team_id=${id}`).catch(() => ({ data: [] }))))
       .then((rs) => setPlayers(rs.flatMap((r) => r.data)));
-  }, [teamIds.join(",")]);
+  }, [teamIds]);
 
   const tmap = Object.fromEntries(teams.map((t) => [t.id, t]));
   const pmap = Object.fromEntries(players.map((p) => [p.id, p]));

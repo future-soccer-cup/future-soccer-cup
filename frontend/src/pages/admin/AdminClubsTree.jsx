@@ -243,7 +243,7 @@ export default function AdminClubsTree() {
 }
 
 function ClubNode({ club, users, expanded, onToggle, onApprove, onReject, onPending, onDelete, onTeamStatus, onDeletePlayer, onEditPlayer, onEditTeamName, onEditStaff, onDeleteStaff }) {
-  const teams = club.teams || [];
+  const teams = useMemo(() => club.teams || [], [club.teams]);
   // Group teams by (event_type, category)
   const byEvent = useMemo(() => {
     const m = {};
