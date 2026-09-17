@@ -223,36 +223,39 @@ function CategoryModal({ category, onClose }) {
             <NewsDetail news={openNews} />
           ) : news.length ? (
             <div className={news.length === 1 ? "grid grid-cols-1 p-4 md:p-6" : "grid grid-cols-1 md:grid-cols-2 gap-4 p-4 md:p-6"}>
-              {news.map((n, i) => (
-                <button
-                  key={n.id || i}
-                  type="button"
-                  onClick={() => setOpenNews(n)}
-                  className="text-left border border-slate-200 rounded-md overflow-hidden hover:shadow-lg transition"
-                  data-testid={`noticia-item-${i}`}
-                >
-                  <div className="aspect-[16/9] bg-slate-900 relative">
-                    {n.images?.[0] ? (
-                      <img src={imgSrc(n.images[0])} alt="" className="w-full h-full object-cover object-center" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs">Sin imagen</div>
-                    )}
-                    {n.video_url && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/30" data-testid={`noticia-item-video-badge-${i}`}>
-                        <span className={news.length === 1 ? "bg-white/90 rounded-full p-5 shadow-lg" : "bg-white/90 rounded-full p-3 shadow-lg"}>
-                          <Play size={news.length === 1 ? 34 : 22} className="text-slate-900" fill="currentColor" />
-                        </span>
+              {news.map((n, i) => {
+                const hasMedia = !!(n.images?.[0] || n.video_url);
+                return (
+                  <button
+                    key={n.id || i}
+                    type="button"
+                    onClick={() => setOpenNews(n)}
+                    className="text-left border border-slate-200 rounded-md overflow-hidden hover:shadow-lg transition"
+                    data-testid={`noticia-item-${i}`}
+                  >
+                    {hasMedia && (
+                      <div className="aspect-[16/9] bg-slate-900 relative">
+                        {n.images?.[0] && (
+                          <img src={imgSrc(n.images[0])} alt="" className="w-full h-full object-cover object-center" />
+                        )}
+                        {n.video_url && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/30" data-testid={`noticia-item-video-badge-${i}`}>
+                            <span className={news.length === 1 ? "bg-white/90 rounded-full p-5 shadow-lg" : "bg-white/90 rounded-full p-3 shadow-lg"}>
+                              <Play size={news.length === 1 ? 34 : 22} className="text-slate-900" fill="currentColor" />
+                            </span>
+                          </div>
+                        )}
                       </div>
                     )}
-                  </div>
-                  <div className="p-4">
-                    <h3 className={news.length === 1 ? "font-black text-slate-800 text-xl md:text-2xl" : "font-black text-slate-800 line-clamp-2"} style={{ color: BLUE }}>{n.title}</h3>
-                    {n.body && (
-                      <p className="text-sm text-slate-600 mt-1.5 line-clamp-3">{n.body}</p>
-                    )}
-                  </div>
-                </button>
-              ))}
+                    <div className="p-4">
+                      <h3 className={news.length === 1 ? "font-black text-slate-800 text-xl md:text-2xl" : "font-black text-slate-800 line-clamp-2"} style={{ color: BLUE }}>{n.title}</h3>
+                      {n.body && (
+                        <p className={hasMedia ? "text-sm text-slate-600 mt-1.5 line-clamp-3" : "text-slate-700 text-lg md:text-xl text-justify mt-3 whitespace-pre-line"}>{n.body}</p>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           ) : (
             <div className="text-center py-16 px-6 text-slate-400 italic">
@@ -268,6 +271,7 @@ function CategoryModal({ category, onClose }) {
 
 function NewsDetail({ news }) {
   const images = news.images || [];
+  const hasMedia = !!news.video_url || images.length > 0;
   return (
     <article className="p-4 md:p-6" data-testid="noticia-detail">
       {news.video_url && (
@@ -295,7 +299,10 @@ function NewsDetail({ news }) {
         {news.title}
       </h2>
       {news.body && (
-        <div className="text-slate-800 leading-relaxed whitespace-pre-line" data-testid="noticia-body">
+        <div
+          className={`text-slate-800 leading-relaxed whitespace-pre-line ${hasMedia ? "" : "text-lg md:text-xl text-justify"}`}
+          data-testid="noticia-body"
+        >
           {news.body}
         </div>
       )}

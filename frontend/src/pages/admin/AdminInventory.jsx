@@ -240,8 +240,8 @@ function MealAddonTab({ rows, onChange, onSave, onDelete, saving, onAdd }) {
         <p className="text-xs text-slate-500">Tabla de alimentación adicional: comida × clasificación × costo (COP por persona).</p>
         <button onClick={onAdd} className="fsc-btn-red px-3 py-1.5 rounded-md text-xs flex items-center gap-2" data-testid="inv-add-meal_addon"><Plus size={12}/> Nueva alimentación</button>
       </div>
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-        <table className="w-full text-sm" data-testid="inv-meal_addon-list">
+      <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
+        <table className="w-full min-w-[600px] text-sm" data-testid="inv-meal_addon-list">
           <thead className="bg-fsc-azul/10 text-xs uppercase tracking-wider">
             <tr>
               <th className="text-left px-3 py-2">Comida</th>
@@ -296,8 +296,8 @@ function SimpleTab({ type, label, rows, onChange, onSave, onDelete, saving, onAd
         <p className="text-xs text-slate-500">Precio por persona en COP y USD. Las modificaciones se reflejan en vivo en /cotizar.</p>
         <button onClick={onAdd} className="fsc-btn-red px-3 py-1.5 rounded-md text-xs flex items-center gap-2" data-testid={`inv-add-${type}`}><Plus size={12}/> Nuevo {label.toLowerCase()}</button>
       </div>
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-        <table className="w-full text-sm" data-testid={`inv-${type}-list`}>
+      <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
+        <table className="w-full min-w-[600px] text-sm" data-testid={`inv-${type}-list`}>
           <thead className="bg-fsc-azul/10 text-xs uppercase tracking-wider">
             <tr>
               <th className="text-left px-3 py-2">Nombre</th>

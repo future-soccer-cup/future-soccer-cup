@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import api from "../lib/api";
+import api, { imgSrc } from "../lib/api";
 import { useLoginModal } from "../context/LoginModalContext";
 import { useAuth } from "../context/AuthContext";
 import { ChevronLeft, ChevronRight, Calendar, Mail, Instagram, Facebook, LogOut, UserCircle2, Shield, Menu, X } from "lucide-react";
@@ -79,7 +79,7 @@ export default function Home() {
         <div className="absolute inset-0 pointer-events-none" style={{ isolation: "isolate", background: BLUE }}>
           {s.hero_image_url && (
             <img
-              src={s.hero_image_url}
+              src={imgSrc(s.hero_image_url)}
               alt=""
               className="absolute inset-0 w-full h-full object-cover"
               style={{ objectPosition: "center 30%" }}
@@ -95,39 +95,11 @@ export default function Home() {
         </div>
 
         {/* (2) CONTENIDO CONSTRINGIDO AL ANCHO DEL NAVBAR (max-w-7xl) — incluye texto + imagen niños */}
-        <div className="relative max-w-7xl mx-auto px-4 md:px-8" style={{ minHeight: "780px" }}>
-          {/* IMAGEN SUPERPUESTA: carrusel de imágenes (niños jugando) — dentro del bloque,
-              alineado al borde derecho del navbar. Crossfade automático cada 4.5s. */}
-          {(() => {
-            const list = (s.hero_foreground_urls && s.hero_foreground_urls.length > 0)
-              ? s.hero_foreground_urls
-              : (s.hero_foreground_url ? [s.hero_foreground_url] : []);
-            if (list.length === 0) return null;
-            // Caso 1 imagen: ImageCarousel renderiza un <img> plano con className+style merged.
-            // Caso 2+ imágenes: ImageCarousel envuelve en un <div> con position:relative;
-            //   en ese caso necesitamos darle un height fijo (top+bottom no funciona con
-            //   parent min-height en todos los browsers). 585px = 75% de 780px (parent minHeight).
-            const isMulti = list.length > 1;
-            return (
-              <ImageCarousel
-                images={list}
-                intervalMs={4500}
-                fadeMs={1000}
-                alt="Future Soccer Cup — niños jugando"
-                className={isMulti
-                  ? "hidden md:block absolute right-4 md:right-8 bottom-0 pointer-events-none drop-shadow-2xl"
-                  : "hidden md:block absolute right-4 md:right-8 bottom-0 pointer-events-none drop-shadow-2xl"}
-                style={isMulti
-                  ? { width: "45%", height: "585px", zIndex: 5 }
-                  : { width: "45%", height: "75%", objectFit: "contain", objectPosition: "bottom right", zIndex: 5 }}
-                imgStyle={isMulti
-                  ? { width: "100%", height: "100%", objectFit: "contain", objectPosition: "bottom right" }
-                  : null}
-                testId="hero-foreground-carousel"
-              />
-            );
-          })()}
-
+        {/* El alto mínimo generoso (clamp) solo aplica en desktop real (`lg:`), donde la
+            imagen es absoluta y necesita espacio reservado. En mobile/tablet el contenido
+            fluye normal (imagen apilada al final) y el contenedor se ajusta a su alto real,
+            sin dejar espacio vacío de sobra antes de que termine el hero. */}
+        <div className="relative max-w-7xl mx-auto px-4 md:px-8 md:min-h-[480px] lg:min-h-[clamp(560px,100vh,780px)]">
           {/* === NAVBAR EMBEBIDA EN EL HERO === */}
           <div className="relative z-30 pt-5">
             <div className="flex items-center justify-between gap-4">
@@ -135,7 +107,7 @@ export default function Home() {
                 {/* Escudo / logo circular del FSC (solo si el admin sube una imagen) */}
                 {s.nav_shield_url && (
                   <img
-                    src={s.nav_shield_url}
+                    src={imgSrc(s.nav_shield_url)}
                     alt="Escudo Future Soccer Cup"
                     className="h-16 md:h-20 w-auto drop-shadow-lg"
                     onError={(e) => { e.currentTarget.style.display = "none"; }}
@@ -145,18 +117,27 @@ export default function Home() {
                 {/* Wordmark / logo en imagen (solo si admin sube una imagen explícita) */}
                 {s.nav_logo_url && (
                   <img
-                    src={s.nav_logo_url}
+                    src={imgSrc(s.nav_logo_url)}
                     alt="Future Soccer Cup"
                     className="h-12 md:h-16 w-auto drop-shadow-lg hidden lg:block"
                     onError={(e) => { e.currentTarget.style.display = "none"; }}
                     data-testid="nav-logo-img"
                   />
                 )}
-                <span className="hidden sm:inline-block font-black leading-[0.85] text-white drop-shadow-md" style={{ ...PLANE_CRASH, fontSize: "clamp(20px, 2.2vw, 32px)" }}>
-                  {renderPlaneCrash("FUTUR")}<br/>{renderPlaneCrash("SOCCER")}<br/>{renderPlaneCrash("CUP")}
+                <span className="inline-block font-black leading-[1.05] text-white drop-shadow-md" style={{ ...PLANE_CRASH, fontSize: "clamp(13px, 2.2vw, 32px)" }}>
+                  {(s.nav_wordmark_text || "FUTURE\nSOCCER\nCUP").split("\n").map((line, i, arr) => (
+                    <span key={i}>{renderPlaneCrash(line)}{i < arr.length - 1 && <br/>}</span>
+                  ))}
                 </span>
               </Link>
-              <StretchedTagline text="Torneo Internacional" color="#ffffff" className="drop-shadow-md" testId="hero-cursive-tagline" />
+              <StretchedTagline text="Torneo Internacional" color="#ffffff" className="hidden md:block drop-shadow-md" testId="hero-cursive-tagline" />
+            </div>
+            {/* Tagline cursivo — en mobile/tablet no cabe junto al logo, así que baja a su
+                propia fila centrada debajo (en vez de desaparecer). */}
+            <div className="md:hidden text-center mt-1">
+              <span className="italic text-white drop-shadow-md" style={{ ...CURSIVE, fontWeight: 100, fontSize: "clamp(16px, 5vw, 22px)" }} data-testid="hero-cursive-tagline-mobile">
+                Torneo Internacional
+              </span>
             </div>
             {/* Barra blanca con links — más padding y tipografía más grande */}
             <div className="mt-5 bg-white rounded-md shadow-md px-3 md:px-5 py-2 md:py-3" data-testid="hero-nav-bar">
@@ -224,14 +205,14 @@ export default function Home() {
           <div className="relative z-10 pt-10 md:pt-14 pb-12">
             <div className="md:w-[50%]">
               <h1
-                className="fsc-needs-plane-crash fsc-anim-hero-edition text-white font-black leading-[0.85]"
+                className="fsc-needs-plane-crash fsc-anim-hero-edition text-white font-black leading-[1.05]"
                 style={{ ...PLANE_CRASH, fontSize: "clamp(56px, 8.5vw, 140px)", textShadow: "3px 3px 0 rgba(0,0,0,0.25)" }}
                 data-testid="hero-edition"
               >
                 {renderPlaneCrash(s.hero_edition_label || "EDICION")}
               </h1>
               <div
-                className="fsc-needs-plane-crash fsc-anim-hero-year text-white font-black leading-[0.85]"
+                className="fsc-needs-plane-crash fsc-anim-hero-year text-white font-black leading-[1.05] mt-2"
                 style={{ ...PLANE_CRASH, fontSize: "clamp(80px, 12vw, 180px)", textShadow: "3px 3px 0 rgba(0,0,0,0.25)" }}
                 data-testid="hero-year"
               >
@@ -272,6 +253,45 @@ export default function Home() {
               </div>
             </div>
           </div>
+
+          {/* IMAGEN SUPERPUESTA: carrusel de imágenes (niños jugando). En mobile Y tablet va
+              en flujo normal, apilada DESPUÉS del texto y la flecha — por eso este bloque
+              está acá, luego del cierre de "TEXTOS DEL HERO", en vez de al principio del
+              contenedor. Solo en desktop real (`lg:`) recupera el layout absoluto, pegado al
+              borde derecho del navbar (ahí el orden en el HTML no importa, `position:
+              absolute` lo saca del flujo). Así el contenedor nunca deja espacio vacío de
+              sobra en mobile/tablet: se ajusta al alto real del contenido apilado. */}
+          {(() => {
+            const rawList = (s.hero_foreground_urls && s.hero_foreground_urls.length > 0)
+              ? s.hero_foreground_urls
+              : (s.hero_foreground_url ? [s.hero_foreground_url] : []);
+            const list = rawList.map(imgSrc).filter(Boolean);
+            if (list.length === 0) return null;
+            // Caso 1 imagen: ImageCarousel renderiza un <img> plano con className+style merged.
+            // Caso 2+ imágenes: ImageCarousel envuelve en un <div> con position:relative;
+            //   en ese caso necesitamos darle un height fijo (top+bottom no funciona con
+            //   parent min-height en todos los browsers). 585px = 75% de 780px (parent minHeight).
+            const isMulti = list.length > 1;
+            return (
+              <ImageCarousel
+                images={list}
+                intervalMs={4500}
+                fadeMs={1000}
+                alt="Future Soccer Cup — niños jugando"
+                className={isMulti
+                  ? "relative md:absolute mx-auto md:mx-0 mt-4 md:mt-0 w-48 sm:w-56 md:w-[38%] md:bottom-0 md:right-6 lg:right-8 lg:w-[45%] h-48 sm:h-56 md:h-72 lg:h-[585px] rounded-xl overflow-hidden lg:rounded-none pointer-events-none drop-shadow-2xl"
+                  : "relative md:absolute mx-auto md:mx-0 mt-4 md:mt-0 w-48 sm:w-56 md:w-[38%] md:bottom-0 md:right-6 lg:right-8 lg:w-[45%] h-48 sm:h-56 md:h-72 lg:h-[75%] rounded-xl overflow-hidden lg:rounded-none pointer-events-none drop-shadow-2xl"}
+                style={isMulti
+                  ? { zIndex: 5 }
+                  : { zIndex: 5 }}
+                imgClassName="object-cover object-center lg:object-contain lg:object-right-bottom"
+                imgStyle={isMulti
+                  ? { width: "100%", height: "100%" }
+                  : { width: "100%", height: "100%" }}
+                testId="hero-foreground-carousel"
+              />
+            );
+          })()}
         </div>
       </section>
 
@@ -334,7 +354,7 @@ export default function Home() {
                       {img && (
                         <motion.img
                           key={slotKey}
-                          src={img.url || img.image_url || ""}
+                          src={imgSrc(img.url || img.image_url || "")}
                           alt={img.title || ""}
                           loading="lazy"
                           custom={gDirection}
@@ -405,9 +425,10 @@ export default function Home() {
           <div className="absolute bottom-0 left-0 right-0 h-5 md:h-10" style={{ background: BLUE }} />
           <div className="relative max-w-7xl mx-auto px-6 pt-6 pb-0 overflow-x-hidden lg:overflow-x-visible" data-testid="home-region-white-panel">
             {/* Layout 3 columnas: Festival - Mascota CENTRADA - Premier */}
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-14 items-start" data-testid="home-categories">
-              {/* FESTIVAL */}
-              <div className="relative z-10">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 lg:gap-14 items-start" data-testid="home-categories">
+              {/* FESTIVAL — a todo el ancho (centrado, con un máximo cómodo de lectura) en mobile/tablet;
+                  vuelve a columna angosta recién en desktop (lg), donde comparte fila con Premier y la mascota. */}
+              <div className="relative z-10 w-full max-w-sm mx-auto lg:max-w-none lg:mx-0">
                 <CategoryColumn
                   title={s.festival_title || "FESTIVAL"}
                   dateBadge={s.festival_date_badge || "2 oct"}
@@ -419,8 +440,8 @@ export default function Home() {
               </div>
               {/* Espaciador — reserva la columna central para que Festival/Premier queden a los lados; la mascota real se posiciona absoluta más abajo para poder crecer sin la restricción de ancho de esta columna */}
               <div className="hidden lg:block" style={{ minHeight: "800px" }} data-testid="mascot-box" />
-              {/* PREMIER */}
-              <div className="relative z-10">
+              {/* PREMIER — mismo tratamiento que Festival en mobile/tablet */}
+              <div className="relative z-10 w-full max-w-sm mx-auto lg:max-w-none lg:mx-0">
                 <CategoryColumn
                   title={s.premier_title || "PREMIER"}
                   dateBadge={s.premier_date_badge || "2 oct"}
@@ -438,14 +459,14 @@ export default function Home() {
             {s.mascot_image_url && (
               <div className="hidden lg:block absolute bottom-0 left-1/2 -translate-x-1/2 pointer-events-none z-0" style={{ height: "820px" }} data-testid="mascot-box-img-wrap">
                 <AnimateIn variant="slide-up" distance={64} duration={0.8} style={{ height: "100%" }}>
-                  <img src={s.mascot_image_url} alt="Mascota Future Soccer Cup" className="h-full w-auto max-w-none object-contain object-bottom" />
+                  <img src={imgSrc(s.mascot_image_url)} alt="Mascota Future Soccer Cup" className="h-full w-auto max-w-none object-contain object-bottom" />
                 </AnimateIn>
               </div>
             )}
             {/* Mascota mobile: debajo */}
             {s.mascot_image_url && (
               <AnimateIn variant="slide-up" distance={64} className="lg:hidden flex justify-center mt-8">
-                <img src={s.mascot_image_url} alt="Mascota Future Soccer Cup" loading="lazy" className="max-h-[640px] w-auto object-contain" />
+                <img src={imgSrc(s.mascot_image_url)} alt="Mascota Future Soccer Cup" loading="lazy" className="max-h-[640px] w-auto object-contain" />
               </AnimateIn>
             )}
           </div>
@@ -467,7 +488,7 @@ function CategoryColumn({ title, dateBadge, logoUrl, ctaUrl, groups, testId }) {
           <span className="absolute inset-0 flex items-center justify-center text-[8px] font-black uppercase pt-1.5" style={{ color: "#0640c8" }}>{dateBadge}</span>
         </div>
         {logoUrl && (
-          <img src={logoUrl} alt={title} className="h-10 w-auto" data-testid={`${testId}-logo`} />
+          <img src={imgSrc(logoUrl)} alt={title} className="h-10 w-auto" data-testid={`${testId}-logo`} />
         )}
         {title && (
           <h3 className="font-black tracking-tight" style={{ ...PLANE_CRASH, color: "#e31f27", fontSize: "clamp(28px, 4vw, 48px)" }} data-testid={`${testId}-title`}>

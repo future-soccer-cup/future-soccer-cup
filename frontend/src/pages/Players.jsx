@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import api from "../lib/api";
+import api, { imgSrc } from "../lib/api";
 
 export default function Players() {
   const [players, setPlayers] = useState([]);
@@ -49,7 +49,7 @@ export default function Players() {
           const t = tmap[p.team_id];
           return (
             <Link key={p.id} to={`/jugadores/${p.id}`} className="bg-white border border-slate-200 rounded-lg p-4 hover:border-blue-700 hover:shadow-md transition-all flex items-center gap-3" data-testid={`player-card-${p.id}`}>
-              {p.photo_url ? <img src={p.photo_url} alt="" className="h-14 w-14 rounded-full object-cover" /> : <div className="h-14 w-14 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold">{p.name[0]}</div>}
+              {p.photo_url ? <img src={imgSrc(p.photo_url)} alt="" className="h-14 w-14 rounded-full object-cover" /> : <div className="h-14 w-14 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold">{p.name[0]}</div>}
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="font-display text-xl font-black text-blue-700">#{p.jersey_number}</span>

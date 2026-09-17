@@ -141,7 +141,7 @@ export default function TeamRegister() {
   return (
     <div className="min-h-[calc(100vh-4rem)] flex flex-col lg:flex-row" data-testid="team-register-page" style={AGENCY_FB}>
       {/* Columna izquierda — Formulario */}
-      <div className="relative overflow-y-auto flex-1 min-w-0" style={{ background: BLUE, maxHeight: "calc(100vh - 4rem)" }}>
+      <div className="relative flex-1 min-w-0" style={{ background: BLUE }}>
         {/* Watermark hero opcional */}
         {heroBgUrl && (
           <div className="absolute inset-0 pointer-events-none opacity-20">
@@ -156,10 +156,10 @@ export default function TeamRegister() {
           </Link>
 
           {/* Título */}
-          <div className="mt-8" style={{ ...AGENCY_FB, fontWeight: 700, color: "#ffffff", fontSize: "clamp(2.7rem, 5.4vw, 4rem)", lineHeight: 1 }}>
+          <div className="mt-8" style={{ ...AGENCY_FB, fontWeight: 700, color: "#ffffff", fontSize: "clamp(1.8rem, 5.4vw, 4rem)", lineHeight: 1 }}>
             Sé parte del
           </div>
-          <div className="italic -mt-1" style={{ ...CURSIVE, color: "#ffffff", fontWeight: 700, fontSize: "clamp(4.4rem, 9vw, 6.6rem)", lineHeight: 1 }} data-testid="tr-title">
+          <div className="italic -mt-1" style={{ ...CURSIVE, color: "#ffffff", fontWeight: 700, fontSize: "clamp(2.8rem, 9vw, 6.6rem)", lineHeight: 1 }} data-testid="tr-title">
             team fsc
           </div>
           <div className="h-1 w-20 bg-fsc-rojo mt-4"/>
@@ -286,7 +286,7 @@ function StepPersonal({ form, upd, showPw, setShowPw, isCuerpoTecnico, clubs }) 
           <select
             value={form.manager_role}
             onChange={(e) => upd("manager_role", e.target.value)}
-            className="mt-2 w-full px-4 py-4 rounded-md text-white text-2xl focus:outline-none focus:ring-2 focus:ring-white"
+            className="mt-2 w-full px-4 py-2.5 sm:py-3 md:py-4 rounded-md text-white text-base sm:text-lg md:text-2xl focus:outline-none focus:ring-2 focus:ring-white"
             style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.35)" }}
             data-testid="tr-manager-role"
           >
@@ -303,7 +303,7 @@ function StepPersonal({ form, upd, showPw, setShowPw, isCuerpoTecnico, clubs }) 
               required
               value={form.password || ""}
               onChange={(e) => upd("password", e.target.value)}
-              className="w-full px-4 py-4 pr-12 rounded-md text-white text-2xl placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white"
+              className="w-full px-4 py-2.5 sm:py-3 md:py-4 pr-12 rounded-md text-white text-base sm:text-lg md:text-2xl placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white"
               style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.35)" }}
               data-testid="tr-password"
             />
@@ -325,7 +325,7 @@ function StepPersonal({ form, upd, showPw, setShowPw, isCuerpoTecnico, clubs }) 
               required
               value={form.existing_club_id}
               onChange={(e) => upd("existing_club_id", e.target.value)}
-              className="mt-2 w-full px-4 py-4 rounded-md text-white text-2xl font-semibold focus:outline-none focus:ring-2 focus:ring-white"
+              className="mt-2 w-full px-4 py-2.5 sm:py-3 md:py-4 rounded-md text-white text-base sm:text-lg md:text-2xl font-semibold focus:outline-none focus:ring-2 focus:ring-white"
               style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.35)" }}
               data-testid="tr-existing-club"
             >
@@ -355,7 +355,7 @@ function StepClub({ form, upd }) {
             required
             value={form.club_country}
             onChange={(e) => upd("club_country", e.target.value)}
-            className="mt-2 w-full px-4 py-4 rounded-md text-white text-2xl focus:outline-none focus:ring-2 focus:ring-white"
+            className="mt-2 w-full px-4 py-2.5 sm:py-3 md:py-4 rounded-md text-white text-base sm:text-lg md:text-2xl focus:outline-none focus:ring-2 focus:ring-white"
             style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.35)" }}
             data-testid="tr-club-country"
           >
@@ -457,7 +457,7 @@ function FieldDark({ label, value, onChange, required, type = "text", placeholde
         placeholder={placeholder}
         value={value || ""}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-2 w-full px-4 py-4 rounded-md text-white text-2xl placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white"
+        className="mt-2 w-full px-4 py-2.5 sm:py-3 md:py-4 rounded-md text-white text-base sm:text-lg md:text-2xl placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white"
         style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.35)" }}
         data-testid={testId}
       />

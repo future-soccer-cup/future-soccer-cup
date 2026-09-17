@@ -568,7 +568,7 @@ function PlayerEditModal({ team, player, onClose, onSaved }) {
           </label>
         </div>
 
-        <ImageUpload value={form.photo_url} onChange={(v) => setForm({ ...form, photo_url: v })} label="Foto del jugador (para el carnet)" testId="player-photo" />
+        <ImageUpload value={form.photo_url} onChange={(v) => setForm({ ...form, photo_url: v })} label="Foto del jugador (para el carnet)" hint="Recomendado: foto vertical (retrato), proporción 3:4, ej. 600×800 px, fondo neutro. Se recorta tipo cover si la proporción no coincide." testId="player-photo" />
 
         <div className="border-t border-slate-200 pt-3 mt-2">
           <h4 className="font-display text-sm font-black uppercase tracking-tight mb-2">Acudiente / Contacto</h4>
@@ -707,7 +707,7 @@ function StaffEditModal({ team, idx, initial, onClose, onSaved }) {
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Número COMET</span>
           <input value={form.comet_number} onChange={(e) => setForm({ ...form, comet_number: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md text-sm" data-testid="staff-comet" />
         </label>
-        <ImageUpload value={form.photo_url} onChange={(v) => setForm({ ...form, photo_url: v })} label="Foto del staff (para el carnet)" testId="staff-photo" />
+        <ImageUpload value={form.photo_url} onChange={(v) => setForm({ ...form, photo_url: v })} label="Foto del staff (para el carnet)" hint="Recomendado: foto vertical (retrato), proporción 3:4, ej. 600×800 px, fondo neutro. Se recorta tipo cover si la proporción no coincide." testId="staff-photo" />
         <div className="flex justify-end gap-2 pt-2">
           <button type="button" onClick={onClose} disabled={saving} className="px-4 py-2 text-xs font-bold uppercase tracking-wide text-slate-600">Cancelar</button>
           <button type="submit" disabled={saving} className="fsc-btn-primary px-4 py-2 rounded-md text-xs disabled:opacity-50" data-testid="staff-save">{saving ? "Guardando..." : (idx != null ? "Guardar" : "Agregar")}</button>

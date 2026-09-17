@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
-import api, { FSC_LOGO } from "../lib/api";
+import api, { FSC_LOGO, imgSrc } from "../lib/api";
 import { QRCodeSVG } from "qrcode.react";
 import { Printer, Download } from "lucide-react";
 
@@ -37,7 +37,7 @@ export default function PlayerDetail() {
       <div className="grid lg:grid-cols-2 gap-10 mt-6">
         <div>
           <div className="flex items-center gap-6 pb-6 border-b border-slate-200">
-            {player.photo_url ? <img src={player.photo_url} alt="" className="h-32 w-32 rounded-2xl object-cover" /> : <div className="h-32 w-32 rounded-2xl bg-blue-100 text-blue-700 flex items-center justify-center text-5xl font-display font-black">{player.name[0]}</div>}
+            {player.photo_url ? <img src={imgSrc(player.photo_url)} alt="" className="h-32 w-32 rounded-2xl object-cover" /> : <div className="h-32 w-32 rounded-2xl bg-blue-100 text-blue-700 flex items-center justify-center text-5xl font-display font-black">{player.name[0]}</div>}
             <div>
               <div className="text-xs uppercase tracking-[0.2em] font-bold text-slate-500">{player.position}</div>
               <h1 className="font-display text-4xl md:text-5xl font-black uppercase tracking-tighter">{player.name}</h1>
@@ -128,7 +128,7 @@ function paletteFor(category, categories = []) {
 export function Carnet({ player, team, qrValue, staffRole, clubLogoUrl, categories = [] }) {
   const isStaff = !!staffRole;
   const p = paletteFor(team?.category, categories);
-  const headerLogo = clubLogoUrl || FSC_LOGO;
+  const headerLogo = clubLogoUrl ? imgSrc(clubLogoUrl) : FSC_LOGO;
   return (
     <div className="carnet-print rounded-2xl border border-white/10 shadow-2xl overflow-hidden relative text-white"
          style={{ width: 380, maxWidth: "100%", background: `linear-gradient(135deg, ${p.from} 0%, ${p.to} 100%)` }}
@@ -145,7 +145,7 @@ export function Carnet({ player, team, qrValue, staffRole, clubLogoUrl, categori
             <div className="font-display text-[10px] tracking-[0.3em] text-white/70">CARNET OFICIAL · {team?.category || "FSC"}</div>
           </div>
           {team?.logo_url && (
-            <img src={team.logo_url} alt={team.name} crossOrigin="anonymous" className="h-12 w-12 bg-white rounded object-contain p-0.5" />
+            <img src={imgSrc(team.logo_url)} alt={team.name} crossOrigin="anonymous" className="h-12 w-12 bg-white rounded object-contain p-0.5" />
           )}
         </div>
       </div>
@@ -153,7 +153,7 @@ export function Carnet({ player, team, qrValue, staffRole, clubLogoUrl, categori
       <div className="relative px-5 py-5 grid grid-cols-3 gap-4">
         <div className="col-span-1">
           {player.photo_url ? (
-            <img src={player.photo_url} alt={player.name} crossOrigin="anonymous" className="w-full aspect-[3/4] object-cover rounded-md border-2" style={{ borderColor: p.accent }} />
+            <img src={imgSrc(player.photo_url)} alt={player.name} crossOrigin="anonymous" className="w-full aspect-[3/4] object-cover rounded-md border-2" style={{ borderColor: p.accent }} />
           ) : (
             <div className="w-full aspect-[3/4] bg-black/30 rounded-md border-2 flex items-center justify-center font-display text-5xl font-black" style={{ borderColor: p.accent }}>{player.name?.[0] || "?"}</div>
           )}

@@ -1,15 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
 import api from "../../lib/api";
-import { Save, Home as HomeIcon, Trophy, Info, Phone, Image as ImageIcon, Hash, MapPin, Flag } from "lucide-react";
+import { Save, Home as HomeIcon, Trophy, Info, Phone, Image as ImageIcon, Hash, MapPin, Flag, Layers, LogIn, Users, Calculator } from "lucide-react";
 import { toast } from "sonner";
 import ImageUpload from "../../components/ImageUpload";
 import ImageListUpload from "../../components/ImageListUpload";
 import VideoUpload from "../../components/VideoUpload";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "../../components/ui/tabs";
 
 const EMPTY = {
   // Navbar
   nav_logo_url: "",
   nav_shield_url: "",
+  nav_wordmark_text: "",
   // Dashboard del club (Directivo / Cuerpo Técnico) — hero video
   dashboard_hero_video_url: "",
   dashboard_hero_url: "",
@@ -139,215 +141,271 @@ export default function AdminHomeSettings() {
         </button>
       </div>
 
-      <Section title="Navbar (logo + escudo)" icon={<ImageIcon size={18}/>}>
-        <div className="grid md:grid-cols-2 gap-4">
-          <ImageUpload value={s.nav_shield_url} onChange={(v) => upd("nav_shield_url", v)} label="Escudo / logo circular (a la izquierda del wordmark)" hint="Recomendado: PNG con fondo transparente, cuadrado 512×512 px (o 1:1). Peso ideal < 300 KB. Se renderiza a 64–80 px de alto." testId="nav-shield-upload" />
-          <ImageUpload value={s.nav_logo_url} onChange={(v) => upd("nav_logo_url", v)} label="Wordmark / logo en imagen (opcional, visible en ≥lg)" hint="Recomendado: PNG con fondo transparente, formato horizontal 1200×400 px (3:1). Peso ideal < 500 KB. Se renderiza a 48–64 px de alto." testId="nav-logo-upload" />
-        </div>
-      </Section>
+      <Tabs defaultValue="general" data-testid="home-settings-tabs">
+        <TabsList className="h-auto flex-wrap justify-start gap-1 mb-6 p-1.5">
+          <TabsTrigger value="general" className="gap-1.5" data-testid="tab-general"><Layers size={14}/> General</TabsTrigger>
+          <TabsTrigger value="inicio" className="gap-1.5" data-testid="tab-inicio"><HomeIcon size={14}/> Inicio</TabsTrigger>
+          <TabsTrigger value="nosotros" className="gap-1.5" data-testid="tab-nosotros"><Info size={14}/> Nosotros</TabsTrigger>
+          <TabsTrigger value="eventos" className="gap-1.5" data-testid="tab-eventos"><Trophy size={14}/> Eventos</TabsTrigger>
+          <TabsTrigger value="estadisticas" className="gap-1.5" data-testid="tab-estadisticas"><Hash size={14}/> Estadísticas</TabsTrigger>
+          <TabsTrigger value="noticias" className="gap-1.5" data-testid="tab-noticias"><Info size={14}/> Noticias</TabsTrigger>
+          <TabsTrigger value="contacto" className="gap-1.5" data-testid="tab-contacto"><Phone size={14}/> Contacto</TabsTrigger>
+          <TabsTrigger value="ingreso" className="gap-1.5" data-testid="tab-ingreso"><LogIn size={14}/> Ingreso / Registro</TabsTrigger>
+          <TabsTrigger value="club" className="gap-1.5" data-testid="tab-club"><Users size={14}/> Panel del Club</TabsTrigger>
+          <TabsTrigger value="cotizador" className="gap-1.5" data-testid="tab-cotizador"><Calculator size={14}/> Cotizador</TabsTrigger>
+        </TabsList>
 
-      <Section title="Ingreso / Registro — Imágenes" icon={<ImageIcon size={18}/>}>
-        <div className="grid md:grid-cols-2 gap-4">
-          <ImageUpload value={s.auth_login_image_url} onChange={(v) => upd("auth_login_image_url", v)} label="Imagen de la página INGRESO (lado derecho de la card roja)" hint="Recomendado: JPG vertical con KOW en el estadio, 800×1000 px. Se muestra completa, sin recortar." testId="auth-login-upload" />
-          <ImageUpload value={s.auth_register_image_url} onChange={(v) => upd("auth_register_image_url", v)} label="Imagen de la página REGISTRO (columna derecha, fondo fijo)" hint="Recomendado: JPG vertical con KOW + jugador, 800×1200 px. Se muestra completa, sin recortar." testId="auth-register-upload" />
-        </div>
-      </Section>
-
-      <Section title="Panel del Club (Directivo / Cuerpo Técnico) — Hero video" icon={<ImageIcon size={18}/>}>
-        <div className="grid md:grid-cols-2 gap-4">
-          <VideoUpload
-            value={s.dashboard_hero_video_url}
-            onChange={(url) => upd("dashboard_hero_video_url", url)}
-            label="Video de fondo (se reproduce en loop automático, sin sonido)"
-            hint="Se muestra arriba de todo cuando un Directivo o Cuerpo Técnico entra a Mi Club. Recomendado: MP4 horizontal, corta duración (5-15s) para que cargue rápido. Máx 150 MB. Si no hay video, se usa la imagen de respaldo."
-            testId="dashboard-hero-video-upload"
-          />
-          <ImageUpload
-            value={s.dashboard_hero_url}
-            onChange={(v) => upd("dashboard_hero_url", v)}
-            label="Imagen de respaldo (se usa solo si no hay video)"
-            hint="Recomendado: JPG horizontal 1920×600 px (proporción 16:5). Se recorta tipo cover centrado si la proporción no coincide exacto."
-          />
-        </div>
-      </Section>
-
-      <Section title="Cotiza tu Evento — Hero video" icon={<ImageIcon size={18}/>}>
-        <div className="grid md:grid-cols-2 gap-4">
-          <VideoUpload
-            value={s.cotizar_hero_video_url}
-            onChange={(url) => upd("cotizar_hero_video_url", url)}
-            label="Video de fondo (se reproduce en loop automático, sin sonido)"
-            hint="Se muestra arriba de todo en /cotizar. Recomendado: MP4 horizontal, corta duración (5-15s) para que cargue rápido. Máx 150 MB. Si no hay video, se usa la imagen de respaldo."
-            testId="cotizar-hero-video-upload"
-          />
-          <ImageUpload
-            value={s.cotizar_hero_url}
-            onChange={(v) => upd("cotizar_hero_url", v)}
-            label="Imagen de respaldo (se usa solo si no hay video)"
-            hint="Recomendado: JPG horizontal 1920×600 px (proporción 16:5). Se recorta tipo cover centrado si la proporción no coincide exacto."
-            testId="cotizar-hero-upload"
-          />
-        </div>
-        <div className="mt-4">
-          <ImageUpload
-            value={s.cotizar_summary_bg_url}
-            onChange={(v) => upd("cotizar_summary_bg_url", v)}
-            label="Imagen de fondo del cuadro 'Resumen en vivo' (mascota u otra imagen con velo azul)"
-            hint="Recomendado: JPG/PNG vertical, 800×1200 px. Se muestra con un velo azul oscuro detrás del resumen de la cotización."
-            testId="cotizar-summary-bg-upload"
-          />
-        </div>
-      </Section>
-
-      <Section title="Hero — Edición & fechas" icon={<HomeIcon size={18}/>}>
-        <div className="grid md:grid-cols-2 gap-4">
-          <Field label="Etiqueta de edición (ej: EDICIÓN)" v={s.hero_edition_label} onChange={(v) => upd("hero_edition_label", v)} />
-          <Field label="Año (ej: 2026)" v={s.hero_edition_year} onChange={(v) => upd("hero_edition_year", v)} />
-          <Field label="Badge fecha 1 (ej: Octubre)" v={s.hero_month_1} onChange={(v) => upd("hero_month_1", v)} />
-          <Field label="Badge fecha 2 (ej: Diciembre)" v={s.hero_month_2} onChange={(v) => upd("hero_month_2", v)} />
-        </div>
-      </Section>
-
-      <Section title="Hero — Imágenes" icon={<ImageIcon size={18}/>}>
-        <div className="grid md:grid-cols-2 gap-4">
-          <ImageUpload value={s.hero_image_url} onChange={(v) => upd("hero_image_url", v)} label="Imagen de fondo (estadio/gradas, se tiñe con overlay)" hint="Recomendado: JPG/WEBP horizontal 1920×1080 px (16:9), alta calidad. Peso ideal < 1 MB. Se recorta tipo cover y recibe overlay azul+rojo." testId="hero-bg-upload" />
-          <div>
-            <ImageListUpload
-              values={(s.hero_foreground_urls && s.hero_foreground_urls.length > 0) ? s.hero_foreground_urls : (s.hero_foreground_url ? [s.hero_foreground_url] : [])}
-              onChange={(arr) => setS(prev => ({ ...prev, hero_foreground_urls: arr, hero_foreground_url: arr[0] || "" }))}
-              label="Imágenes superpuestas (carrusel niños jugando)"
-              hint="Sube 1 o más PNG con fondo transparente (cutout), vertical 1200×1500 px (4:5) o cuadrado 1200×1200 px. Peso ideal < 800 KB c/u. Si hay 2+, rotan automáticamente con crossfade cada 4.5s."
-              testId="hero-fg-list-upload"
-            />
-          </div>
-        </div>
-      </Section>
-
-      <Section title="Estadísticas (4 columnas)" icon={<Hash size={18}/>}>
-        <div className="grid md:grid-cols-4 gap-4">
-          {[1,2,3,4].map(i => (
-            <div key={i} className="space-y-2">
-              <Field label={`Número #${i}`} v={s[`stat_${i}_number`]} onChange={(v) => upd(`stat_${i}_number`, v)} />
-              <Field label={`Etiqueta #${i}`} v={s[`stat_${i}_label`]} onChange={(v) => upd(`stat_${i}_label`, v)} />
-            </div>
-          ))}
-        </div>
-      </Section>
-
-      <Section title="Finales" icon={<Trophy size={18}/>}>
-        <div className="grid md:grid-cols-2 gap-4">
-          <Field label="Subtítulo (sede)" v={s.finales_subtitle} onChange={(v) => upd("finales_subtitle", v)} />
-          <Field label="Texto del botón" v={s.finales_button_label} onChange={(v) => upd("finales_button_label", v)} />
-          <Field label="URL del botón" v={s.finales_button_url} onChange={(v) => upd("finales_button_url", v)} />
-        </div>
-      </Section>
-
-      <Section title="Región / mascota" icon={<MapPin size={18}/>}>
-        <div className="grid md:grid-cols-2 gap-4">
-          <Field label="Título principal" v={s.region_title} onChange={(v) => upd("region_title", v)} />
-          <Field label="Subtítulo (patrocinador / sede)" v={s.region_subtitle} onChange={(v) => upd("region_subtitle", v)} />
-          <div className="md:col-span-2">
-            <ImageUpload value={s.mascot_image_url} onChange={(v) => upd("mascot_image_url", v)} label="Mascota" hint="Recomendado: PNG con fondo transparente, vertical 800×1200 px (2:3) o cuadrado 1000×1000 px. Peso ideal < 500 KB." testId="mascot-upload" />
-          </div>
-        </div>
-      </Section>
-
-      <Section title="Festival" icon={<Flag size={18}/>}>
-        <div className="grid md:grid-cols-2 gap-4">
-          <Field label="Título (texto, se muestra junto al logo si lo subes)" v={s.festival_title} onChange={(v) => upd("festival_title", v)} placeholder="FESTIVAL" />
-          <Field label="Badge fecha" v={s.festival_date_badge} onChange={(v) => upd("festival_date_badge", v)} />
-          <Field label="URL CTA" v={s.festival_cta_url} onChange={(v) => upd("festival_cta_url", v)} />
-          <Field label="Categorías (lista separada por coma)" v={s.festival_categories} onChange={(v) => upd("festival_categories", v)} placeholder="Sub-8, Sub-10, Sub-12, ..." />
-          <ImageUpload value={s.festival_logo_url} onChange={(v) => upd("festival_logo_url", v)} label="Logo Festival (opcional, convive con el título)" hint="Recomendado: PNG transparente, horizontal 800×300 px (8:3) o cuadrado 600×600 px. Peso ideal < 300 KB. Se renderiza a 40 px de alto." testId="festival-logo-upload" />
-        </div>
-      </Section>
-
-      <Section title="Premier" icon={<Flag size={18}/>}>
-        <div className="grid md:grid-cols-2 gap-4">
-          <Field label="Título (texto, se muestra junto al logo si lo subes)" v={s.premier_title} onChange={(v) => upd("premier_title", v)} placeholder="PREMIER" />
-          <Field label="Badge fecha" v={s.premier_date_badge} onChange={(v) => upd("premier_date_badge", v)} />
-          <Field label="URL CTA" v={s.premier_cta_url} onChange={(v) => upd("premier_cta_url", v)} />
-          <Field label="Categorías pares (lista CSV)" v={s.premier_categories_par} onChange={(v) => upd("premier_categories_par", v)} placeholder="Sub-8, Sub-10, Sub-12" />
-          <Field label="Categorías impares (lista CSV)" v={s.premier_categories_imp} onChange={(v) => upd("premier_categories_imp", v)} placeholder="Sub-9, Sub-11, Sub-13" />
-          <ImageUpload value={s.premier_logo_url} onChange={(v) => upd("premier_logo_url", v)} label="Logo Premier (opcional, convive con el título)" hint="Recomendado: PNG transparente, horizontal 800×300 px (8:3) o cuadrado 600×600 px. Peso ideal < 300 KB. Se renderiza a 40 px de alto." testId="premier-logo-upload" />
-        </div>
-      </Section>
-
-      <Section title="Footer / Contacto" icon={<Phone size={18}/>}>
-        <div className="grid md:grid-cols-2 gap-4">
-          <div className="md:col-span-2">
-            <label className="text-xs font-semibold text-slate-600">Titular footer (una línea por renglón — así se ven separadas en el diseño)</label>
-            <textarea
-              rows={4}
-              value={s.footer_heading || ""}
-              onChange={(e) => upd("footer_heading", e.target.value)}
-              className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md font-mono text-sm"
-              placeholder={"¿Y SI NOS\nTOMAMOS\nUN\nCAFECITO\nJUNTOS?"}
-              data-testid="field-footer-heading"
-            />
-          </div>
-          <Field label="Email de contacto" v={s.contact_email} onChange={(v) => upd("contact_email", v)} />
-          <Field label="Teléfono / WhatsApp (texto)" v={s.contact_phone} onChange={(v) => upd("contact_phone", v)} />
-          <Field label="WhatsApp URL (https://wa.me/...)" v={s.whatsapp_url} onChange={(v) => upd("whatsapp_url", v)} />
-          <Field label="Instagram (@usuario o URL)" v={s.instagram} onChange={(v) => upd("instagram", v)} />
-          <Field label="Facebook (URL o slug)" v={s.facebook} onChange={(v) => upd("facebook", v)} />
-          <Field label="YouTube (URL o slug)" v={s.youtube} onChange={(v) => upd("youtube", v)} />
-          <Field label="TikTok (@usuario o URL)" v={s.tiktok} onChange={(v) => upd("tiktok", v)} placeholder="@futuresoccercup" />
-          <div className="md:col-span-2">
-            <Field label="Frase final (aparece a todo el ancho, debajo de los datos de contacto — en todas las páginas)" v={s.somos_mas_texto} onChange={(v) => upd("somos_mas_texto", v)} placeholder="Somos más que un Torneo" />
-          </div>
-        </div>
-      </Section>
-
-      <Section title="Nosotros (página) — Timeline de Hitos" icon={<Info size={18}/>}>
-        <div className="grid md:grid-cols-2 gap-4">
-          {/* FSC en la Historia — Timeline editor (única sección activa en /nosotros) */}
-          <div className="md:col-span-2">
-            <Field label="Título grande (ej: FSC EN LA HISTORIA)" v={s.nosotros_history_title} onChange={(v) => upd("nosotros_history_title", v)} placeholder="FSC EN LA HISTORIA" />
-          </div>
-          <div className="md:col-span-2 border border-slate-200 rounded-md p-3 bg-slate-50">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Pantalla de bienvenida de Kow (aparece al entrar a Nosotros y al hacer clic en "INTRODUCCIÓN")</p>
+        {/* ===== GENERAL — aparece en todas las páginas públicas (navbar + footer) ===== */}
+        <TabsContent value="general" className="space-y-6">
+          <Section title="Navbar (logo + escudo)" icon={<ImageIcon size={18}/>}>
             <div className="grid md:grid-cols-2 gap-4">
-              <ImageUpload
-                value={s.nosotros_kow_image_url}
-                onChange={(v) => upd("nosotros_kow_image_url", v)}
-                label="Imagen de Kow (fondo blanco/transparente)"
-                hint="Recomendado: PNG con fondo blanco o transparente."
-                testId="kow-welcome-image-upload"
-              />
-              <label className="block">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Texto de bienvenida de Kow</span>
+              <ImageUpload value={s.nav_shield_url} onChange={(v) => upd("nav_shield_url", v)} label="Escudo / logo circular (a la izquierda del wordmark)" hint="Recomendado: PNG con fondo transparente, cuadrado 512×512 px (o 1:1). Peso ideal < 300 KB. Se renderiza a 64–80 px de alto." testId="nav-shield-upload" />
+              <ImageUpload value={s.nav_logo_url} onChange={(v) => upd("nav_logo_url", v)} label="Wordmark / logo en imagen (opcional, visible en ≥lg)" hint="Recomendado: PNG con fondo transparente, formato horizontal 1200×400 px (3:1). Peso ideal < 500 KB. Se renderiza a 48–64 px de alto." testId="nav-logo-upload" />
+              <div className="md:col-span-2">
+                <label className="text-xs font-semibold text-slate-600">Texto junto al escudo (una línea por renglón)</label>
                 <textarea
-                  rows={6}
-                  value={s.nosotros_kow_welcome_text || ""}
-                  onChange={(e) => upd("nosotros_kow_welcome_text", e.target.value)}
-                  className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md"
-                  data-testid="kow-welcome-text-input"
+                  rows={3}
+                  value={s.nav_wordmark_text || ""}
+                  onChange={(e) => upd("nav_wordmark_text", e.target.value)}
+                  className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md font-mono text-sm"
+                  placeholder={"FUTUR\nSOCCER\nCUP"}
+                  data-testid="field-nav-wordmark-text"
                 />
-              </label>
+              </div>
             </div>
-          </div>
-          <div className="md:col-span-2">
-            <HistoryTimelineEditor value={s.nosotros_history_timeline || []} onChange={(v) => upd("nosotros_history_timeline", v)} />
-          </div>
-        </div>
-      </Section>
+          </Section>
 
-      <Section title="Eventos (página) — Nueva estructura" icon={<Trophy size={18}/>}>
-        <EventosEditor value={s.eventos || {}} onChange={(v) => upd("eventos", v)} />
-      </Section>
+          <Section title="Footer / Contacto" icon={<Phone size={18}/>}>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="md:col-span-2">
+                <label className="text-xs font-semibold text-slate-600">Titular footer (una línea por renglón — así se ven separadas en el diseño)</label>
+                <textarea
+                  rows={4}
+                  value={s.footer_heading || ""}
+                  onChange={(e) => upd("footer_heading", e.target.value)}
+                  className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md font-mono text-sm"
+                  placeholder={"¿Y SI NOS\nTOMAMOS\nUN\nCAFECITO\nJUNTOS?"}
+                  data-testid="field-footer-heading"
+                />
+              </div>
+              <Field label="Email de contacto" v={s.contact_email} onChange={(v) => upd("contact_email", v)} />
+              <Field label="Teléfono / WhatsApp (texto)" v={s.contact_phone} onChange={(v) => upd("contact_phone", v)} />
+              <Field label="WhatsApp URL (https://wa.me/...)" v={s.whatsapp_url} onChange={(v) => upd("whatsapp_url", v)} />
+              <Field label="Instagram (@usuario o URL)" v={s.instagram} onChange={(v) => upd("instagram", v)} />
+              <Field label="Facebook (URL o slug)" v={s.facebook} onChange={(v) => upd("facebook", v)} />
+              <Field label="YouTube (URL o slug)" v={s.youtube} onChange={(v) => upd("youtube", v)} />
+              <Field label="TikTok (@usuario o URL)" v={s.tiktok} onChange={(v) => upd("tiktok", v)} placeholder="@futuresoccercup" />
+              <div className="md:col-span-2">
+                <Field label="Frase final (aparece a todo el ancho, debajo de los datos de contacto — en todas las páginas)" v={s.somos_mas_texto} onChange={(v) => upd("somos_mas_texto", v)} placeholder="Somos más que un Torneo" />
+              </div>
+            </div>
+          </Section>
+        </TabsContent>
 
-      <Section title="Estadísticas (página) — Nueva estructura" icon={<Hash size={18}/>}>
-        <EstadisticasEditor value={s.estadisticas || {}} onChange={(v) => upd("estadisticas", v)} tournaments={tournaments} fixtures={fixtures} />
-      </Section>
+        {/* ===== INICIO ===== */}
+        <TabsContent value="inicio" className="space-y-6">
+          <Section title="Hero — Edición & fechas" icon={<HomeIcon size={18}/>}>
+            <div className="grid md:grid-cols-2 gap-4">
+              <Field label="Etiqueta de edición (ej: EDICIÓN)" v={s.hero_edition_label} onChange={(v) => upd("hero_edition_label", v)} />
+              <Field label="Año (ej: 2026)" v={s.hero_edition_year} onChange={(v) => upd("hero_edition_year", v)} />
+              <Field label="Badge fecha 1 (ej: Octubre)" v={s.hero_month_1} onChange={(v) => upd("hero_month_1", v)} />
+              <Field label="Badge fecha 2 (ej: Diciembre)" v={s.hero_month_2} onChange={(v) => upd("hero_month_2", v)} />
+            </div>
+          </Section>
 
-      <Section title="Noticias (página) — Nueva estructura" icon={<Info size={18}/>}>
-        <NoticiasEditor value={s.noticias || {}} onChange={(v) => upd("noticias", v)} />
-      </Section>
+          <Section title="Hero — Imágenes" icon={<ImageIcon size={18}/>}>
+            <div className="grid md:grid-cols-2 gap-4">
+              <ImageUpload value={s.hero_image_url} onChange={(v) => upd("hero_image_url", v)} label="Imagen de fondo (estadio/gradas, se tiñe con overlay)" hint="Recomendado: JPG/WEBP horizontal 1920×1080 px (16:9), alta calidad. Peso ideal < 1 MB. Se recorta tipo cover y recibe overlay azul+rojo." testId="hero-bg-upload" />
+              <div>
+                <ImageListUpload
+                  values={(s.hero_foreground_urls && s.hero_foreground_urls.length > 0) ? s.hero_foreground_urls : (s.hero_foreground_url ? [s.hero_foreground_url] : [])}
+                  onChange={(arr) => setS(prev => ({ ...prev, hero_foreground_urls: arr, hero_foreground_url: arr[0] || "" }))}
+                  label="Imágenes superpuestas (carrusel niños jugando)"
+                  hint="Sube 1 o más PNG con fondo transparente (cutout), vertical 1200×1500 px (4:5) o cuadrado 1200×1200 px. Peso ideal < 800 KB c/u. Si hay 2+, rotan automáticamente con crossfade cada 4.5s."
+                  testId="hero-fg-list-upload"
+                />
+              </div>
+            </div>
+          </Section>
 
-      <Section title="Contacto (página) — Nueva estructura" icon={<Phone size={18}/>}>
-        <ContactoEditor value={s.contacto || {}} onChange={(v) => upd("contacto", v)} />
-      </Section>
+          <Section title="Estadísticas (4 columnas)" icon={<Hash size={18}/>}>
+            <div className="grid md:grid-cols-4 gap-4">
+              {[1,2,3,4].map(i => (
+                <div key={i} className="space-y-2">
+                  <Field label={`Número #${i}`} v={s[`stat_${i}_number`]} onChange={(v) => upd(`stat_${i}_number`, v)} />
+                  <Field label={`Etiqueta #${i}`} v={s[`stat_${i}_label`]} onChange={(v) => upd(`stat_${i}_label`, v)} />
+                </div>
+              ))}
+            </div>
+          </Section>
+
+          <Section title="Finales" icon={<Trophy size={18}/>}>
+            <div className="grid md:grid-cols-2 gap-4">
+              <Field label="Subtítulo (sede)" v={s.finales_subtitle} onChange={(v) => upd("finales_subtitle", v)} />
+              <Field label="Texto del botón" v={s.finales_button_label} onChange={(v) => upd("finales_button_label", v)} />
+              <Field label="URL del botón" v={s.finales_button_url} onChange={(v) => upd("finales_button_url", v)} />
+            </div>
+          </Section>
+
+          <Section title="Región / mascota" icon={<MapPin size={18}/>}>
+            <div className="grid md:grid-cols-2 gap-4">
+              <Field label="Título principal" v={s.region_title} onChange={(v) => upd("region_title", v)} />
+              <Field label="Subtítulo (patrocinador / sede)" v={s.region_subtitle} onChange={(v) => upd("region_subtitle", v)} />
+              <div className="md:col-span-2">
+                <ImageUpload value={s.mascot_image_url} onChange={(v) => upd("mascot_image_url", v)} label="Mascota" hint="Recomendado: PNG con fondo transparente, vertical 800×1200 px (2:3) o cuadrado 1000×1000 px. Peso ideal < 500 KB." testId="mascot-upload" />
+              </div>
+            </div>
+          </Section>
+
+          <Section title="Festival" icon={<Flag size={18}/>}>
+            <div className="grid md:grid-cols-2 gap-4">
+              <Field label="Título (texto, se muestra junto al logo si lo subes)" v={s.festival_title} onChange={(v) => upd("festival_title", v)} placeholder="FESTIVAL" />
+              <Field label="Badge fecha" v={s.festival_date_badge} onChange={(v) => upd("festival_date_badge", v)} />
+              <Field label="URL CTA" v={s.festival_cta_url} onChange={(v) => upd("festival_cta_url", v)} />
+              <Field label="Categorías (lista separada por coma)" v={s.festival_categories} onChange={(v) => upd("festival_categories", v)} placeholder="Sub-8, Sub-10, Sub-12, ..." />
+              <ImageUpload value={s.festival_logo_url} onChange={(v) => upd("festival_logo_url", v)} label="Logo Festival (opcional, convive con el título)" hint="Recomendado: PNG transparente, horizontal 800×300 px (8:3) o cuadrado 600×600 px. Peso ideal < 300 KB. Se renderiza a 40 px de alto." testId="festival-logo-upload" />
+            </div>
+          </Section>
+
+          <Section title="Premier" icon={<Flag size={18}/>}>
+            <div className="grid md:grid-cols-2 gap-4">
+              <Field label="Título (texto, se muestra junto al logo si lo subes)" v={s.premier_title} onChange={(v) => upd("premier_title", v)} placeholder="PREMIER" />
+              <Field label="Badge fecha" v={s.premier_date_badge} onChange={(v) => upd("premier_date_badge", v)} />
+              <Field label="URL CTA" v={s.premier_cta_url} onChange={(v) => upd("premier_cta_url", v)} />
+              <Field label="Categorías pares (lista CSV)" v={s.premier_categories_par} onChange={(v) => upd("premier_categories_par", v)} placeholder="Sub-8, Sub-10, Sub-12" />
+              <Field label="Categorías impares (lista CSV)" v={s.premier_categories_imp} onChange={(v) => upd("premier_categories_imp", v)} placeholder="Sub-9, Sub-11, Sub-13" />
+              <ImageUpload value={s.premier_logo_url} onChange={(v) => upd("premier_logo_url", v)} label="Logo Premier (opcional, convive con el título)" hint="Recomendado: PNG transparente, horizontal 800×300 px (8:3) o cuadrado 600×600 px. Peso ideal < 300 KB. Se renderiza a 40 px de alto." testId="premier-logo-upload" />
+            </div>
+          </Section>
+        </TabsContent>
+
+        {/* ===== NOSOTROS ===== */}
+        <TabsContent value="nosotros" className="space-y-6">
+          <Section title="Nosotros (página) — Timeline de Hitos" icon={<Info size={18}/>}>
+            <div className="grid md:grid-cols-2 gap-4">
+              {/* FSC en la Historia — Timeline editor (única sección activa en /nosotros) */}
+              <div className="md:col-span-2">
+                <Field label="Título grande (ej: FSC EN LA HISTORIA)" v={s.nosotros_history_title} onChange={(v) => upd("nosotros_history_title", v)} placeholder="FSC EN LA HISTORIA" />
+              </div>
+              <div className="md:col-span-2 border border-slate-200 rounded-md p-3 bg-slate-50">
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Pantalla de bienvenida de Kow (aparece al entrar a Nosotros y al hacer clic en "INTRODUCCIÓN")</p>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <ImageUpload
+                    value={s.nosotros_kow_image_url}
+                    onChange={(v) => upd("nosotros_kow_image_url", v)}
+                    label="Imagen de Kow (fondo blanco/transparente)"
+                    hint="Recomendado: PNG con fondo blanco o transparente."
+                    testId="kow-welcome-image-upload"
+                  />
+                  <label className="block">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Texto de bienvenida de Kow</span>
+                    <textarea
+                      rows={6}
+                      value={s.nosotros_kow_welcome_text || ""}
+                      onChange={(e) => upd("nosotros_kow_welcome_text", e.target.value)}
+                      className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md"
+                      data-testid="kow-welcome-text-input"
+                    />
+                  </label>
+                </div>
+              </div>
+              <div className="md:col-span-2">
+                <HistoryTimelineEditor value={s.nosotros_history_timeline || []} onChange={(v) => upd("nosotros_history_timeline", v)} />
+              </div>
+            </div>
+          </Section>
+        </TabsContent>
+
+        {/* ===== EVENTOS ===== */}
+        <TabsContent value="eventos" className="space-y-6">
+          <Section title="Eventos (página) — Nueva estructura" icon={<Trophy size={18}/>}>
+            <EventosEditor value={s.eventos || {}} onChange={(v) => upd("eventos", v)} />
+          </Section>
+        </TabsContent>
+
+        {/* ===== ESTADÍSTICAS ===== */}
+        <TabsContent value="estadisticas" className="space-y-6">
+          <Section title="Estadísticas (página) — Nueva estructura" icon={<Hash size={18}/>}>
+            <EstadisticasEditor value={s.estadisticas || {}} onChange={(v) => upd("estadisticas", v)} tournaments={tournaments} fixtures={fixtures} />
+          </Section>
+        </TabsContent>
+
+        {/* ===== NOTICIAS ===== */}
+        <TabsContent value="noticias" className="space-y-6">
+          <Section title="Noticias (página) — Nueva estructura" icon={<Info size={18}/>}>
+            <NoticiasEditor value={s.noticias || {}} onChange={(v) => upd("noticias", v)} />
+          </Section>
+        </TabsContent>
+
+        {/* ===== CONTACTO ===== */}
+        <TabsContent value="contacto" className="space-y-6">
+          <Section title="Contacto (página) — Nueva estructura" icon={<Phone size={18}/>}>
+            <ContactoEditor value={s.contacto || {}} onChange={(v) => upd("contacto", v)} />
+          </Section>
+        </TabsContent>
+
+        {/* ===== INGRESO / REGISTRO ===== */}
+        <TabsContent value="ingreso" className="space-y-6">
+          <Section title="Ingreso / Registro — Imágenes" icon={<ImageIcon size={18}/>}>
+            <div className="grid md:grid-cols-2 gap-4">
+              <ImageUpload value={s.auth_login_image_url} onChange={(v) => upd("auth_login_image_url", v)} label="Imagen de la página INGRESO (lado derecho de la card roja)" hint="Recomendado: JPG vertical con KOW en el estadio, 800×1000 px. Se muestra completa, sin recortar." testId="auth-login-upload" />
+              <ImageUpload value={s.auth_register_image_url} onChange={(v) => upd("auth_register_image_url", v)} label="Imagen de la página REGISTRO (columna derecha, fondo fijo)" hint="Recomendado: JPG vertical con KOW + jugador, 800×1200 px. Se muestra completa, sin recortar." testId="auth-register-upload" />
+            </div>
+          </Section>
+        </TabsContent>
+
+        {/* ===== PANEL DEL CLUB ===== */}
+        <TabsContent value="club" className="space-y-6">
+          <Section title="Panel del Club (Directivo / Cuerpo Técnico) — Hero video" icon={<ImageIcon size={18}/>}>
+            <div className="grid md:grid-cols-2 gap-4">
+              <VideoUpload
+                value={s.dashboard_hero_video_url}
+                onChange={(url) => upd("dashboard_hero_video_url", url)}
+                label="Video de fondo (se reproduce en loop automático, sin sonido)"
+                hint="Se muestra arriba de todo cuando un Directivo o Cuerpo Técnico entra a Mi Club. Recomendado: MP4 horizontal, corta duración (5-15s) para que cargue rápido. Máx 150 MB. Si no hay video, se usa la imagen de respaldo."
+                testId="dashboard-hero-video-upload"
+              />
+              <ImageUpload
+                value={s.dashboard_hero_url}
+                onChange={(v) => upd("dashboard_hero_url", v)}
+                label="Imagen de respaldo (se usa solo si no hay video)"
+                hint="Recomendado: JPG horizontal 1920×600 px (proporción 16:5). Se recorta tipo cover centrado si la proporción no coincide exacto."
+              />
+            </div>
+          </Section>
+        </TabsContent>
+
+        {/* ===== COTIZADOR ===== */}
+        <TabsContent value="cotizador" className="space-y-6">
+          <Section title="Cotiza tu Evento — Hero video" icon={<ImageIcon size={18}/>}>
+            <div className="grid md:grid-cols-2 gap-4">
+              <VideoUpload
+                value={s.cotizar_hero_video_url}
+                onChange={(url) => upd("cotizar_hero_video_url", url)}
+                label="Video de fondo (se reproduce en loop automático, sin sonido)"
+                hint="Se muestra arriba de todo en /cotizar. Recomendado: MP4 horizontal, corta duración (5-15s) para que cargue rápido. Máx 150 MB. Si no hay video, se usa la imagen de respaldo."
+                testId="cotizar-hero-video-upload"
+              />
+              <ImageUpload
+                value={s.cotizar_hero_url}
+                onChange={(v) => upd("cotizar_hero_url", v)}
+                label="Imagen de respaldo (se usa solo si no hay video)"
+                hint="Recomendado: JPG horizontal 1920×600 px (proporción 16:5). Se recorta tipo cover centrado si la proporción no coincide exacto."
+                testId="cotizar-hero-upload"
+              />
+            </div>
+            <div className="mt-4">
+              <ImageUpload
+                value={s.cotizar_summary_bg_url}
+                onChange={(v) => upd("cotizar_summary_bg_url", v)}
+                label="Imagen de fondo del cuadro 'Resumen en vivo' (mascota u otra imagen con velo azul)"
+                hint="Recomendado: JPG/PNG vertical, 800×1200 px. Se muestra con un velo azul oscuro detrás del resumen de la cotización."
+                testId="cotizar-summary-bg-upload"
+              />
+            </div>
+          </Section>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

@@ -164,8 +164,8 @@ export default function AdminTournaments() {
         />
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
+        <table className="w-full min-w-[640px] text-sm">
           <thead className="bg-fsc-azul/10 text-xs uppercase tracking-wider">
             <tr>
               <th className="text-left px-4 py-2">Nombre</th>
@@ -264,7 +264,7 @@ export default function AdminTournaments() {
               <Field label="Ciudad" value={editing.city || ""} onChange={(v) => setEditing({ ...editing, city: v })} />
               <Field label="Sede / Cancha" value={editing.venue || ""} onChange={(v) => setEditing({ ...editing, venue: v })} />
             </div>
-            <ImageUpload value={editing.cover_url || ""} onChange={(v) => setEditing({ ...editing, cover_url: v })} label="Imagen de portada (Home / Eventos)" testId="tour-cover" />
+            <ImageUpload value={editing.cover_url || ""} onChange={(v) => setEditing({ ...editing, cover_url: v })} label="Imagen de portada (Home / Eventos)" hint="Recomendado: JPG horizontal 1200×675 px (16:9)." testId="tour-cover" />
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={!!editing.featured} onChange={(e) => setEditing({ ...editing, featured: e.target.checked })} data-testid="tour-featured" />
               <span>Destacado — aparece como Próximo Evento Premier en el Home</span>

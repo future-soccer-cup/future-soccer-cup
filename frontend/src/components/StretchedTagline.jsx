@@ -51,7 +51,7 @@ export function StretchedTagline({ text, color, className = "", testId }) {
   }, [text]);
 
   return (
-    <div ref={containerRef} className={`hidden md:block flex-1 min-w-0 overflow-hidden ${className}`}>
+    <div ref={containerRef} className={`flex-1 min-w-0 overflow-hidden ${className}`}>
       <span
         ref={textRef}
         data-testid={testId}

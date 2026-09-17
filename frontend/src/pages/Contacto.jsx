@@ -49,8 +49,8 @@ export default function Contacto() {
   const title = cfg.title || "ENVÍANOS TU CONSULTA";
 
   return (
-    <div data-testid="contacto-page" className="relative bg-white min-h-[70vh] pb-40 md:pb-56 overflow-hidden" style={AGENCY_FB}>
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 md:pt-16 relative z-0">
+    <div data-testid="contacto-page" className="relative bg-white min-h-[70vh] pb-48 sm:pb-56 md:pb-[400px] lg:pb-10 overflow-hidden" style={AGENCY_FB}>
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 md:pt-16 lg:py-16 relative z-10">
         <form
           onSubmit={submit}
           className="bg-white rounded-xl shadow-2xl p-6 md:p-10 border border-slate-100"
@@ -171,11 +171,19 @@ function Field({ icon, label, required, className = "", children }) {
 function FieldWithPalms({ decorUrl }) {
   if (!decorUrl) return null;
   return (
-    <div className="absolute inset-x-0 bottom-0 flex justify-center z-10 pointer-events-none" data-testid="contacto-decor">
+    <div
+      className="absolute inset-x-0 bottom-0 lg:inset-0 z-0 pointer-events-none"
+      data-testid="contacto-decor"
+    >
+      {/* Mobile/tablet: franja abajo, debajo del formulario (no hay espacio a los lados,
+          el formulario ya ocupa casi todo el ancho). Desktop (lg): la imagen pasa a ser el
+          fondo de TODA la sección — el formulario queda como tarjeta flotando encima
+          (bg-white + z-10, ver más arriba) y las palmeras, que en la foto están hacia los
+          costados, quedan visibles a los lados de la tarjeta en vez de tapadas por ella. */}
       <img
         src={imgSrc(decorUrl)}
         alt=""
-        className="w-full max-w-5xl h-auto"
+        className="block w-full h-48 sm:h-56 md:h-[400px] lg:h-full object-cover object-bottom"
         data-testid="contacto-field"
       />
     </div>

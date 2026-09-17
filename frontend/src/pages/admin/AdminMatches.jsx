@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import api, { formatApiError } from "../../lib/api";
+import api, { formatApiError, imgSrc } from "../../lib/api";
 import { Plus, Trash2, Edit3, CalendarClock, Shuffle, FileDown, FileText, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import CategorySelect from "../../components/CategorySelect";
@@ -891,7 +891,8 @@ function CardsReport({ matches, teams }) {
       {Object.entries(byTeam).map(([teamName, group]) => (
         <div key={teamName} className="border border-slate-200 rounded-lg overflow-hidden" data-testid={`cards-report-team-${group.team_id}`}>
           <div className="bg-slate-50 px-3 py-2 font-bold text-sm text-fsc-azul">{teamName}</div>
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[560px] text-sm">
             <tbody>
               {group.rows.map((r, i) => (
                 <tr key={i} className="border-t border-slate-100">
@@ -908,6 +909,7 @@ function CardsReport({ matches, teams }) {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       ))}
     </div>
@@ -942,8 +944,8 @@ function MatchesTable({ matches, onEdit, onScore, onRemove }) {
         />
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
+        <table className="w-full min-w-[640px] text-sm">
           <thead className="bg-blue-50 text-xs uppercase tracking-wider">
             <tr>
               <th className="text-left px-4 py-2">FECHA</th>
@@ -1125,7 +1127,7 @@ function StandingsTable({ rows, mode = "full" }) {
   if (mode === "fairplay") {
     return (
       <div className="bg-white border border-slate-200 rounded-lg overflow-x-auto" data-testid="fairplay-table">
-        <table className="w-full text-sm">
+        <table className="w-full min-w-[600px] text-sm">
           <thead className="bg-emerald-700 text-white text-xs uppercase tracking-wider">
             <tr>
               <th className="text-center px-3 py-2">#</th>
@@ -1141,7 +1143,7 @@ function StandingsTable({ rows, mode = "full" }) {
               <tr key={r.team_id} className="border-t border-slate-100">
                 <td className="text-center px-3 py-2 font-display font-black text-emerald-700">{i + 1}</td>
                 <td className="px-3 py-2 font-semibold flex items-center gap-2">
-                  {r.team_logo ? <img src={r.team_logo} alt="" className="h-6 w-6 object-contain" /> : <span className="h-6 w-6 rounded bg-slate-200" />}
+                  {r.team_logo ? <img src={imgSrc(r.team_logo)} alt="" className="h-6 w-6 object-contain" /> : <span className="h-6 w-6 rounded bg-slate-200" />}
                   {r.team_name}
                 </td>
                 <td className="text-center px-3 py-2 tabular-nums">{r.yellow_cards || 0}</td>
@@ -1157,7 +1159,7 @@ function StandingsTable({ rows, mode = "full" }) {
   }
   return (
     <div className="bg-white border border-slate-200 rounded-lg overflow-x-auto" data-testid="standings-table">
-      <table className="w-full text-sm">
+      <table className="w-full min-w-[600px] text-sm">
         <thead className="bg-fsc-azul text-white text-xs uppercase tracking-wider">
           <tr>
             <th className="text-center px-2 py-2">#</th>
@@ -1172,7 +1174,7 @@ function StandingsTable({ rows, mode = "full" }) {
             <tr key={r.team_id} className="border-t border-slate-100">
               <td className="text-center px-2 py-2 font-display font-black text-fsc-azul">{i + 1}</td>
               <td className="px-3 py-2 font-semibold flex items-center gap-2">
-                {r.team_logo ? <img src={r.team_logo} alt="" className="h-6 w-6 object-contain" /> : <span className="h-6 w-6 rounded bg-slate-200" />}
+                {r.team_logo ? <img src={imgSrc(r.team_logo)} alt="" className="h-6 w-6 object-contain" /> : <span className="h-6 w-6 rounded bg-slate-200" />}
                 {r.team_name}
               </td>
               <td className="text-center px-2 py-2 tabular-nums">{r.played}</td>
@@ -1224,7 +1226,7 @@ function BonusMatchesList({ bonusMatches, scopeTeams, maxPerTeam, teamCount, onE
         <p className="text-sm text-slate-500 py-4 text-center">No hay partidos adicionales registrados.</p>
       ) : (
         <div className="overflow-x-auto bg-white rounded-md">
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[560px] text-sm">
             <thead className="bg-amber-100 text-xs uppercase tracking-wider">
               <tr>
                 <th className="text-left px-3 py-2">Equipo</th>

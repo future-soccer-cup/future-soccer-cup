@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import api from "../lib/api";
+import api, { imgSrc } from "../lib/api";
 import { Trophy, Goal } from "lucide-react";
 
 export default function Standings() {
@@ -46,8 +46,8 @@ export default function Standings() {
             <Trophy className="text-blue-700" />
             <h2 className="font-display text-2xl font-black uppercase tracking-tight">Tabla</h2>
           </div>
-          <div className="border border-slate-200 rounded-lg overflow-hidden bg-white">
-            <table className="w-full text-sm" data-testid="standings-table">
+          <div className="border border-slate-200 rounded-lg overflow-x-auto bg-white">
+            <table className="w-full min-w-[600px] text-sm" data-testid="standings-table">
               <thead className="bg-blue-50 text-xs uppercase tracking-wider">
                 <tr>
                   <th className="text-left px-3 py-2 w-8">#</th>
@@ -71,7 +71,7 @@ export default function Standings() {
                     <td className="px-3 py-2 font-display font-black text-slate-400">{i + 1}</td>
                     <td className="px-3 py-2">
                       <div className="flex items-center gap-2">
-                        {r.team_logo ? <img src={r.team_logo} alt="" className="h-6 w-6 object-contain" /> : <div className="h-6 w-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-[10px] font-bold">{r.team_name[0]}</div>}
+                        {r.team_logo ? <img src={imgSrc(r.team_logo)} alt="" className="h-6 w-6 object-contain" /> : <div className="h-6 w-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-[10px] font-bold">{r.team_name[0]}</div>}
                         <div>
                           <span className="font-semibold">{r.team_name}</span>
                           {r.group_name && <span className="ml-2 text-[10px] uppercase tracking-wider text-slate-400">{r.group_name}</span>}
@@ -105,7 +105,7 @@ export default function Standings() {
             {scorers.map((s, i) => (
               <div key={s.player_id} className="px-3 py-3 flex items-center gap-3">
                 <span className="font-display font-black text-slate-400 w-5">{i + 1}</span>
-                {s.photo_url ? <img src={s.photo_url} alt="" className="h-8 w-8 rounded-full object-cover" /> : <div className="h-8 w-8 rounded-full bg-red-100 text-red-700 flex items-center justify-center text-xs font-bold">{s.name[0]}</div>}
+                {s.photo_url ? <img src={imgSrc(s.photo_url)} alt="" className="h-8 w-8 rounded-full object-cover" /> : <div className="h-8 w-8 rounded-full bg-red-100 text-red-700 flex items-center justify-center text-xs font-bold">{s.name[0]}</div>}
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold truncate">{s.name}</div>
                   <div className="text-xs text-slate-500 truncate">{s.team_name}</div>

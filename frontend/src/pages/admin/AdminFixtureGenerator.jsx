@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
-import api, { formatApiError } from "../../lib/api";
+import api, { formatApiError, imgSrc } from "../../lib/api";
 import { toast, Toaster } from "sonner";
 import { Wand2, Save, Plus, X, Trophy, MapPin, Edit2, Trash2, ListChecks, RefreshCw, Shuffle } from "lucide-react";
 import VenuePicker from "../../components/VenuePicker";
@@ -394,7 +394,7 @@ export default function AdminFixtureGenerator() {
                 <label key={t.id} className="flex items-center gap-3 p-2 rounded hover:bg-slate-50 cursor-pointer" data-testid={`fg-team-${t.id}`}>
                   <input type="checkbox" checked={selectedIds.includes(t.id)} onChange={() => toggleTeam(t.id)} />
                   <div className="h-8 w-8 rounded flex items-center justify-center text-xs font-display font-black text-white" style={{ background: t.color || "#1d4ed8" }}>
-                    {t.logo_url ? <img src={t.logo_url} alt="" className="h-full w-full object-contain p-0.5" /> : t.name[0]}
+                    {t.logo_url ? <img src={imgSrc(t.logo_url)} alt="" className="h-full w-full object-contain p-0.5" /> : t.name[0]}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-semibold truncate">{t.name}</div>
@@ -436,8 +436,8 @@ export default function AdminFixtureGenerator() {
       {preview && preview.saved && (
         <div className="mt-8" data-testid="fg-preview-saved">
           <h3 className="font-display text-2xl font-black uppercase tracking-tight mb-3">Partidos generados</h3>
-          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-            <table className="w-full text-sm">
+          <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
+            <table className="w-full min-w-[640px] text-sm">
               <thead className="bg-blue-50 text-xs uppercase tracking-wider">
                 <tr><th className="text-left px-4 py-2">Jornada</th><th className="text-left px-4 py-2">Fecha</th><th className="text-right px-4 py-2">Local</th><th className="text-center px-4 py-2">vs</th><th className="text-left px-4 py-2">Visitante</th><th className="text-left px-4 py-2">Cancha</th></tr>
               </thead>
@@ -471,8 +471,8 @@ export default function AdminFixtureGenerator() {
         {savedFixtures.length === 0 ? (
           <p className="text-sm text-slate-400 py-6 text-center border-2 border-dashed border-slate-200 rounded-xl">Aún no hay fixtures guardados.</p>
         ) : (
-          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-            <table className="w-full text-sm">
+          <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
+            <table className="w-full min-w-[640px] text-sm">
               <thead className="bg-slate-100 text-xs uppercase tracking-wider">
                 <tr>
                   <th className="text-left px-3 py-2">Evento</th>
@@ -561,8 +561,8 @@ export default function AdminFixtureGenerator() {
 
 function PreviewEditableTable({ matches, venues, onChange }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-      <table className="w-full text-sm">
+    <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
+      <table className="w-full min-w-[640px] text-sm">
         <thead className="bg-blue-50 text-xs uppercase tracking-wider">
           <tr>
             <th className="text-left px-2 py-2">FECHAS</th>
@@ -622,7 +622,7 @@ function PreviewEditableTable({ matches, venues, onChange }) {
 function EditableMatchesTable({ matches, venues, onPersist, onLocalChange }) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+      <table className="w-full min-w-[560px] text-sm">
         <thead className="bg-blue-50 text-xs uppercase tracking-wider">
           <tr>
             <th className="text-left px-2 py-2">FECHAS</th>

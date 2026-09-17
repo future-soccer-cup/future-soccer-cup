@@ -341,7 +341,7 @@ function CategoryDataPanel({ category, eventLabel, onClose }) {
 function StandingsTable({ rows }) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-base md:text-lg">
+      <table className="w-full min-w-[600px] text-base md:text-lg">
         <thead className="bg-slate-100 text-slate-700">
           <tr>
             <th className="text-left px-3 py-2.5">#</th>
@@ -377,7 +377,7 @@ function StandingsTable({ rows }) {
 function ScorersTable({ rows }) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-base md:text-lg">
+      <table className="w-full min-w-[600px] text-base md:text-lg">
         <thead className="bg-slate-100 text-slate-700">
           <tr>
             <th className="text-left px-3 py-2.5">#</th>

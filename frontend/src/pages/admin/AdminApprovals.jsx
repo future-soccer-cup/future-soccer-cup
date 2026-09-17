@@ -187,7 +187,7 @@ export default function AdminApprovals() {
           return (
             <div key={p.id} className="bg-white border border-slate-200 rounded-lg p-4 grid md:grid-cols-12 gap-3 items-center" data-testid={`approval-player-${p.id}`}>
               <div className="md:col-span-1">
-                {p.photo_url ? <img src={p.photo_url} alt="" className="h-12 w-12 rounded-full object-cover" /> : <div className="h-12 w-12 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold">{p.name[0]}</div>}
+                {p.photo_url ? <img src={imgSrc(p.photo_url)} alt="" className="h-12 w-12 rounded-full object-cover" /> : <div className="h-12 w-12 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold">{p.name[0]}</div>}
               </div>
               <div className="md:col-span-4">
                 <div className="flex items-center gap-2">

@@ -150,8 +150,8 @@ export default function AdminPlayers() {
         <ExportCsvButton rows={filtered} columns={exportColumns} filename="jugadores" testId="players-export-csv" />
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
+        <table className="w-full min-w-[640px] text-sm">
           <thead className="bg-blue-50 text-xs uppercase tracking-wider">
             <tr>
               <th className="text-left px-4 py-2 w-12">#</th>
@@ -244,7 +244,7 @@ export default function AdminPlayers() {
               <Field label="EPS" value={editing.eps} onChange={(v) => setEditing({ ...editing, eps: v })} testId="admin-player-eps-input" />
               <Field label="Número COMET" value={editing.comet_number} onChange={(v) => setEditing({ ...editing, comet_number: v })} testId="admin-player-comet-input" />
             </div>
-            <ImageUpload value={editing.photo_url} onChange={(v) => setEditing({ ...editing, photo_url: v })} label="Foto del jugador (para el carnet)" testId="admin-player-photo" />
+            <ImageUpload value={editing.photo_url} onChange={(v) => setEditing({ ...editing, photo_url: v })} label="Foto del jugador (para el carnet)" hint="Recomendado: foto vertical (retrato), proporción 3:4, ej. 600×800 px, fondo neutro. Se recorta tipo cover si la proporción no coincide." testId="admin-player-photo" />
 
             <div className="border-t border-slate-200 pt-3 mt-3">
               <h4 className="font-display text-base font-black uppercase tracking-tight mb-2">Acudiente / Contacto</h4>

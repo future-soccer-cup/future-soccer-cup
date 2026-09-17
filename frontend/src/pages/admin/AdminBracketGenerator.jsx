@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import api, { formatApiError } from "../../lib/api";
+import api, { formatApiError, imgSrc } from "../../lib/api";
 import { toast, Toaster } from "sonner";
 import { Plus, X, Eye, Save, Trophy, Trash2, Edit2 } from "lucide-react";
 import { formatDateTime } from "../../lib/dateFormat";
@@ -267,7 +267,7 @@ export default function AdminBracketGenerator() {
               return (
                 <div key={tid} className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-md px-2 py-1.5" data-testid={`seed-row-${i + 1}`}>
                   <span className="font-display text-lg font-black text-blue-700 w-7 text-center tabular-nums">{i + 1}</span>
-                  <div className="h-6 w-6 rounded flex items-center justify-center text-[10px] font-display font-black text-white" style={{ background: t?.color || "#1d4ed8" }}>{t?.logo_url ? <img src={t.logo_url} alt="" className="h-full w-full object-contain" /> : (t?.name?.[0] || "?")}</div>
+                  <div className="h-6 w-6 rounded flex items-center justify-center text-[10px] font-display font-black text-white" style={{ background: t?.color || "#1d4ed8" }}>{t?.logo_url ? <img src={imgSrc(t.logo_url)} alt="" className="h-full w-full object-contain" /> : (t?.name?.[0] || "?")}</div>
                   <span className="text-sm font-semibold flex-1 truncate">{t?.name || tid}</span>
                   <button onClick={() => moveSeed(i, -1)} disabled={i === 0} className="text-slate-500 disabled:opacity-30 px-1 text-xs">▲</button>
                   <button onClick={() => moveSeed(i, 1)} disabled={i === seeds.length - 1} className="text-slate-500 disabled:opacity-30 px-1 text-xs">▼</button>
@@ -348,7 +348,7 @@ export default function AdminBracketGenerator() {
 function BracketMatchesTable({ matches, teams, venues, onPersist, onLocalChange }) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+      <table className="w-full min-w-[600px] text-sm">
         <thead className="bg-blue-50 text-xs uppercase tracking-wider">
           <tr>
             <th className="text-left px-2 py-2">Ronda</th>

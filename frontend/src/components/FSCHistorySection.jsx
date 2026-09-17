@@ -71,6 +71,20 @@ export default function FSCHistorySection({ settings }) {
   const [showOverlay, setShowOverlay] = useState(false);
   // Bienvenida de Kow — visible al montar y cada vez que se vuelve a INTRODUCCIÓN.
   const [showKow, setShowKow] = useState(true);
+  // Alto real (medido) del contenido de Kow (imagen + texto) — SOLO se usa en mobile, que
+  // no tiene un `min-h` de diseño fijo. En desktop/tablet (`md:` en adelante) el diseño ya
+  // reserva un alto fijo y generoso (`md:min-h-[...]`, más abajo) que NUNCA cambia — usar
+  // ahí también el alto medido reintroduce el mismo problema que se quería resolver: el
+  // contenedor cambiaría de tamaño cada vez que la imagen termina de cargar, corriendo el
+  // texto centrado junto a ella.
+  const [kowHeight, setKowHeight] = useState(0);
+  const [isMobile, setIsMobile] = useState(() => typeof window !== "undefined" ? window.innerWidth < 768 : false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const handler = (e) => setIsMobile(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
 
   const active = timeline[activeIdx] || timeline[0];
   const isIntro = !active || (active.key || "").toLowerCase() === "intro" || activeIdx === 0;
@@ -124,12 +138,22 @@ export default function FSCHistorySection({ settings }) {
   return (
     <section className="relative bg-white" data-testid="history-section">
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 md:min-h-[min(88vh,780px)]">
-        {/* Área central con posición relativa (alto mínimo fijo solo en desktop; en móvil el contenido define el alto) */}
-        <div className="relative w-full overflow-hidden md:min-h-[min(76vh,680px)]">
+        {/* Área central con posición relativa. KowWelcome es `position: absolute` (tapa por
+            completo el collage/grid de introducción que está detrás, hasta que se cierra), así
+            que su alto lo define ESTE contenedor. En mobile no hay un `min-h` de diseño fijo
+            (`md:min-h-...` solo aplica desde tablet/desktop), así que mientras se muestra Kow le
+            reservamos como mínimo su alto real medido (`kowHeight`, reportado por KowWelcome vía
+            ResizeObserver) — así nunca se recorta ni se desborda, sea cual sea el tamaño real de
+            la imagen o el largo del texto que configure el admin. */}
+        <div
+          className="relative w-full overflow-hidden md:min-h-[min(76vh,680px)]"
+          style={isMobile && showKow && kowHeight ? { minHeight: `${kowHeight}px` } : undefined}
+        >
           {showKow && (
             <KowWelcome
               imageUrl={settings?.nosotros_kow_image_url || settings?.mascot_image_url}
               text={settings?.nosotros_kow_welcome_text}
+              onHeightChange={setKowHeight}
               onDone={() => setShowKow(false)}
             />
           )}
@@ -184,7 +208,7 @@ export default function FSCHistorySection({ settings }) {
                       "--float-amp": `${floatCfg.amp}px`,
                     }}
                   >
-                    <img src={imgSrc(p)} alt="" className="w-full h-full object-cover block" />
+                    <img src={imgSrc(p)} alt="" className="w-full h-full object-cover block" style={{ objectPosition: "center 25%" }} />
                   </div>
                 </div>
               );
@@ -496,7 +520,7 @@ function HistoryReadModal({ question, body, label, photo, overlayColor = RED, on
           )}
           <div className="w-full overflow-y-auto flex-1 min-h-0" data-testid="history-modal-body-scroll">
           <div
-            className="text-white leading-relaxed whitespace-pre-line max-w-2xl mx-auto font-semibold"
+            className="text-white leading-snug text-justify whitespace-pre-line max-w-2xl mx-auto font-semibold"
             style={{ ...AGENCY_FB, fontSize: "clamp(1.15rem, 2.1vw, 1.6rem)", textShadow: "1px 1px 0 rgba(0,0,0,0.3)" }}
             data-testid="history-modal-body"
           >

@@ -361,7 +361,7 @@ export default function MyTeam() {
             {aggregatedStaff.length === 0 && clubTeams.length > 0 && <p className="col-span-full text-center text-slate-400 py-6">Aún no has agregado al cuerpo técnico.</p>}
             {aggregatedStaff.map((s) => (
               <div key={`${s.team_id}-${s._idx}`} className="bg-white border border-slate-200 rounded-lg p-4 flex items-center gap-3" data-testid={`staff-${s.team_id}-${s._idx}`}>
-                {s.photo_url ? <img src={s.photo_url} alt={s.name} className="h-12 w-12 rounded-full object-cover" /> : <div className="h-12 w-12 rounded-full bg-red-100 text-red-700 flex items-center justify-center font-bold uppercase">{(s.name || "?")[0]}</div>}
+                {s.photo_url ? <img src={imgSrc(s.photo_url)} alt={s.name} className="h-12 w-12 rounded-full object-cover" /> : <div className="h-12 w-12 rounded-full bg-red-100 text-red-700 flex items-center justify-center font-bold uppercase">{(s.name || "?")[0]}</div>}
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold truncate">{s.name}</div>
                   <div className="text-xs text-slate-500 truncate">{s.role}{s.document ? ` · Doc ${s.document}` : ""}{s.phone ? ` · ${s.phone}` : ""}</div>
@@ -392,7 +392,7 @@ export default function MyTeam() {
               return (
                 <div key={p.id} className="bg-white border border-slate-200 rounded-lg p-4" data-testid={`player-${p.id}`}>
                   <div className="flex items-center gap-3">
-                    {p.photo_url ? <img src={p.photo_url} alt={p.name} className="h-12 w-12 rounded-full object-cover" /> : <div className="h-12 w-12 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold uppercase">{(p.name || "?")[0]}</div>}
+                    {p.photo_url ? <img src={imgSrc(p.photo_url)} alt={p.name} className="h-12 w-12 rounded-full object-cover" /> : <div className="h-12 w-12 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold uppercase">{(p.name || "?")[0]}</div>}
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold truncate">#{p.jersey_number} · {p.name}</div>
                       <div className="text-xs text-slate-500 truncate">{p.position}</div>
@@ -467,7 +467,7 @@ export default function MyTeam() {
                 <Field label="EPS" value={editingPlayer.eps} onChange={(v) => setEditingPlayer({ ...editingPlayer, eps: v })} testId="player-eps-input" />
                 <Field label="Número COMET" value={editingPlayer.comet_number} onChange={(v) => setEditingPlayer({ ...editingPlayer, comet_number: v })} testId="player-comet-input" />
               </div>
-              <ImageUpload value={editingPlayer.photo_url} onChange={(v) => setEditingPlayer({ ...editingPlayer, photo_url: v })} label="Foto del jugador (para el carnet)" testId="player-photo-upload" />
+              <ImageUpload value={editingPlayer.photo_url} onChange={(v) => setEditingPlayer({ ...editingPlayer, photo_url: v })} label="Foto del jugador (para el carnet)" hint="Recomendado: foto vertical (retrato), proporción 3:4, ej. 600×800 px, fondo neutro. Se recorta tipo cover si la proporción no coincide." testId="player-photo-upload" />
 
               <div className="border-t border-slate-200 pt-3 mt-3">
                 <h4 className="font-display text-base font-black uppercase tracking-tight mb-2">Acudiente / Contacto</h4>
@@ -505,7 +505,7 @@ export default function MyTeam() {
                 <Field label="Teléfono" value={editingStaff.data.phone} onChange={(v) => setEditingStaff({ ...editingStaff, data: { ...editingStaff.data, phone: v } })} testId="staff-phone-input" />
               </div>
               <Field label="Número COMET" value={editingStaff.data.comet_number} onChange={(v) => setEditingStaff({ ...editingStaff, data: { ...editingStaff.data, comet_number: v } })} testId="staff-comet-input" />
-              <ImageUpload value={editingStaff.data.photo_url} onChange={(v) => setEditingStaff({ ...editingStaff, data: { ...editingStaff.data, photo_url: v } })} label="Foto para el carnet (sin fondo)" testId="staff-photo-upload" />
+              <ImageUpload value={editingStaff.data.photo_url} onChange={(v) => setEditingStaff({ ...editingStaff, data: { ...editingStaff.data, photo_url: v } })} label="Foto para el carnet (sin fondo)" hint="Recomendado: foto vertical (retrato), proporción 3:4, ej. 600×800 px, fondo neutro. Se recorta tipo cover si la proporción no coincide." testId="staff-photo-upload" />
               <button className="fsc-btn-primary w-full py-2 rounded-md" data-testid="save-staff-btn">Guardar</button>
             </form>
           </Modal>
@@ -885,7 +885,7 @@ export default function MyTeam() {
           {staff.length === 0 && clubTeams.length > 0 && <p className="col-span-full text-center text-slate-400 py-6">Aún no has agregado al cuerpo técnico.</p>}
           {staff.map((s) => (
             <div key={`${s.team_id}-${s._idx}`} className="bg-white border border-slate-200 rounded-lg p-4 flex items-center gap-3" data-testid={`staff-${s.team_id}-${s._idx}`}>
-              {s.photo_url ? <img src={s.photo_url} alt={s.name} className="h-12 w-12 rounded-full object-cover" /> : <div className="h-12 w-12 rounded-full bg-red-100 text-red-700 flex items-center justify-center font-bold uppercase">{(s.name || "?")[0]}</div>}
+              {s.photo_url ? <img src={imgSrc(s.photo_url)} alt={s.name} className="h-12 w-12 rounded-full object-cover" /> : <div className="h-12 w-12 rounded-full bg-red-100 text-red-700 flex items-center justify-center font-bold uppercase">{(s.name || "?")[0]}</div>}
               <div className="flex-1 min-w-0">
                 <div className="font-semibold truncate">{s.name}</div>
                 <div className="text-xs text-slate-500 truncate">{s.role}{s.document ? ` · Doc ${s.document}` : ""}{s.phone ? ` · ${s.phone}` : ""}</div>
@@ -1032,7 +1032,7 @@ export default function MyTeam() {
               <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Color</span>
               <input type="color" value={teamForm.color || "#1d4ed8"} onChange={(e) => setTeamForm({ ...teamForm, color: e.target.value })} className="mt-1 w-full h-10 px-1 border border-slate-200 rounded-md" />
             </label>
-            <ImageUpload value={teamForm.logo_url} onChange={(v) => setTeamForm({ ...teamForm, logo_url: v })} label="Escudo" testId="my-team-logo" />
+            <ImageUpload value={teamForm.logo_url} onChange={(v) => setTeamForm({ ...teamForm, logo_url: v })} label="Escudo" hint="Recomendado: PNG con fondo transparente, cuadrado (ej. 512×512 px)." testId="my-team-logo" />
             <button className="fsc-btn-primary w-full py-2 rounded-md" data-testid="save-team-btn">Guardar</button>
           </form>
         </Modal>
@@ -1103,7 +1103,7 @@ export default function MyTeam() {
               <Field label="EPS" value={editingPlayer.eps} onChange={(v) => setEditingPlayer({ ...editingPlayer, eps: v })} />
               <Field label="Número COMET" value={editingPlayer.comet_number} onChange={(v) => setEditingPlayer({ ...editingPlayer, comet_number: v })} testId="player-comet-input-2" />
             </div>
-            <ImageUpload value={editingPlayer.photo_url} onChange={(v) => setEditingPlayer({ ...editingPlayer, photo_url: v })} label="Foto del jugador (sin fondo)" testId="player-photo-upload" />
+            <ImageUpload value={editingPlayer.photo_url} onChange={(v) => setEditingPlayer({ ...editingPlayer, photo_url: v })} label="Foto del jugador (sin fondo)" hint="Recomendado: foto vertical (retrato), proporción 3:4, ej. 600×800 px, fondo neutro. Se recorta tipo cover si la proporción no coincide." testId="player-photo-upload" />
 
             <div className="border-t border-slate-200 pt-3 mt-3">
               <h4 className="font-display text-base font-black uppercase tracking-tight mb-2">Acudiente / Contacto</h4>
@@ -1153,7 +1153,7 @@ export default function MyTeam() {
               <Field label="Teléfono" value={editingStaff.data.phone} onChange={(v) => setEditingStaff({ ...editingStaff, data: { ...editingStaff.data, phone: v } })} testId="staff-phone-input" />
             </div>
             <Field label="Número COMET" value={editingStaff.data.comet_number} onChange={(v) => setEditingStaff({ ...editingStaff, data: { ...editingStaff.data, comet_number: v } })} testId="staff-comet-input-2" />
-            <ImageUpload value={editingStaff.data.photo_url} onChange={(v) => setEditingStaff({ ...editingStaff, data: { ...editingStaff.data, photo_url: v } })} label="Foto para el carnet (sin fondo)" testId="staff-photo-upload" />
+            <ImageUpload value={editingStaff.data.photo_url} onChange={(v) => setEditingStaff({ ...editingStaff, data: { ...editingStaff.data, photo_url: v } })} label="Foto para el carnet (sin fondo)" hint="Recomendado: foto vertical (retrato), proporción 3:4, ej. 600×800 px, fondo neutro. Se recorta tipo cover si la proporción no coincide." testId="staff-photo-upload" />
             <button className="fsc-btn-primary w-full py-2 rounded-md" data-testid="save-staff-btn">Guardar</button>
           </form>
         </Modal>
@@ -1326,7 +1326,7 @@ function ClubLogoEditor({ club, user, compact = false, onUpdated }) {
             <p className="text-xs text-slate-500">
               Sube el logo o escudo oficial de <strong>{club?.name}</strong>. Se mostrará en el panel del club y en los listados del admin.
             </p>
-            <ImageUpload value={draft} onChange={setDraft} label="Logo del club" testId="club-logo-upload" />
+            <ImageUpload value={draft} onChange={setDraft} label="Logo del club" hint="Recomendado: PNG con fondo transparente, cuadrado (ej. 512×512 px)." testId="club-logo-upload" />
             <div className="flex justify-end gap-2 pt-2">
               <button type="button" onClick={() => setOpen(false)} disabled={saving} className="px-4 py-2 text-xs font-bold uppercase tracking-wide text-slate-600">Cancelar</button>
               <button type="button" onClick={save} disabled={saving} className="fsc-btn-primary px-4 py-2 rounded-md text-xs disabled:opacity-50" data-testid="club-logo-save">

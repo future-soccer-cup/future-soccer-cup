@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Menu, X, LogOut, UserCircle2, Shield } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useLoginModal } from "../context/LoginModalContext";
-import api from "../lib/api";
+import api, { imgSrc } from "../lib/api";
 import { PLANE_CRASH, AGENCY_FB, CURSIVE, renderPlaneCrash, RED, BLUE } from "../lib/designSystem";
 import { StretchedTagline } from "./StretchedTagline";
 
@@ -38,20 +38,29 @@ export default function Navbar() {
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-3" data-testid="nav-logo-link">
             {s.nav_shield_url && (
-              <img src={s.nav_shield_url} alt="Escudo Future Soccer Cup" className="h-16 md:h-20 w-auto" onError={(e) => { e.currentTarget.style.display = "none"; }} data-testid="nav-shield" />
+              <img src={imgSrc(s.nav_shield_url)} alt="Escudo Future Soccer Cup" className="h-16 md:h-20 w-auto" onError={(e) => { e.currentTarget.style.display = "none"; }} data-testid="nav-shield" />
             )}
             {s.nav_logo_url && (
-              <img src={s.nav_logo_url} alt="Future Soccer Cup" className="h-12 md:h-16 w-auto hidden lg:block" onError={(e) => { e.currentTarget.style.display = "none"; }} data-testid="nav-logo-img" />
+              <img src={imgSrc(s.nav_logo_url)} alt="Future Soccer Cup" className="h-12 md:h-16 w-auto hidden lg:block" onError={(e) => { e.currentTarget.style.display = "none"; }} data-testid="nav-logo-img" />
             )}
-            <span className="hidden sm:inline-block font-black leading-[0.85]" style={{ ...PLANE_CRASH, color: BLUE, fontSize: "clamp(20px, 2.2vw, 32px)" }} data-testid="nav-wordmark">
-              {renderPlaneCrash("FUTUR")}<br/>{renderPlaneCrash("SOCCER")}<br/>{renderPlaneCrash("CUP")}
+            <span className="inline-block font-black leading-[1.05]" style={{ ...PLANE_CRASH, color: BLUE, fontSize: "clamp(13px, 2.2vw, 32px)" }} data-testid="nav-wordmark">
+              {(s.nav_wordmark_text || "FUTURE\nSOCCER\nCUP").split("\n").map((line, i, arr) => (
+                <span key={i}>{renderPlaneCrash(line)}{i < arr.length - 1 && <br/>}</span>
+              ))}
             </span>
           </Link>
-          <StretchedTagline text="Torneo Internacional" color={BLUE} testId="nav-tagline" />
+          <StretchedTagline text="Torneo Internacional" color={BLUE} className="hidden md:block" testId="nav-tagline" />
           {/* Botón mobile */}
           <button onClick={() => setOpen(!open)} className="lg:hidden text-slate-700 min-w-[44px] min-h-[44px] flex items-center justify-center" aria-label="Menú" data-testid="nav-mobile-toggle">
             {open ? <X size={26} /> : <Menu size={26} />}
           </button>
+        </div>
+        {/* Tagline cursivo — en mobile/tablet no cabe junto al logo, así que baja a su
+            propia fila centrada debajo (en vez de desaparecer). */}
+        <div className="md:hidden text-center pb-3 -mt-1">
+          <span className="italic" style={{ ...CURSIVE, color: BLUE, fontWeight: 100, fontSize: "clamp(16px, 5vw, 22px)" }} data-testid="nav-tagline-mobile">
+            Torneo Internacional
+          </span>
         </div>
       </div>
 

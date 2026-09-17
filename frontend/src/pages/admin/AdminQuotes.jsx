@@ -99,8 +99,8 @@ export default function AdminQuotes() {
         <ExportCsvButton rows={filtered} columns={exportColumns} filename="cotizaciones" testId="quotes-export-csv" />
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
+        <table className="w-full min-w-[640px] text-sm">
           <thead className="bg-blue-50 text-xs uppercase tracking-wider">
             <tr>
               <th className="text-left px-4 py-2">Cliente</th>
@@ -337,7 +337,7 @@ function QuoteDetailModal({ q, onClose, onChanged }) {
                         <div className="font-bold tabular-nums">{fmt(ev.subtotal, q.currency)}</div>
                       </div>
                     </div>
-                    <table className="w-full text-xs">
+                    <table className="w-full min-w-[420px] text-xs">
                       <thead className="text-left text-slate-500 uppercase tracking-widest"><tr>
                         <th className="py-1">Categoría inscrita</th><th className="text-right">Fee</th>
                       </tr></thead>
@@ -392,7 +392,7 @@ function QuoteDetailModal({ q, onClose, onChanged }) {
                     {(b.extra_pax_breakdown || []).length > 0 && (
                       <div className="mt-3 pt-2 border-t border-fsc-azul/20">
                         <div className="text-[10px] uppercase tracking-widest text-fsc-azul-oscuro font-bold mb-1">Personas adicionales</div>
-                        <table className="w-full text-xs">
+                        <table className="w-full min-w-[420px] text-xs">
                           <thead className="text-left text-slate-500 uppercase tracking-widest"><tr>
                             <th className="py-1">Etiqueta</th><th>Cant.</th><th>Noches</th><th>Desde</th><th>Hasta</th><th className="text-right">Subtotal</th>
                           </tr></thead>
@@ -418,7 +418,7 @@ function QuoteDetailModal({ q, onClose, onChanged }) {
           {/* Alimentación (meals_breakdown nuevo) */}
           {(q.meals_breakdown?.length > 0) ? (
             <DetailSection title={`Alimentación adicional (${q.meals_breakdown.length})`}>
-              <table className="w-full text-xs">
+              <table className="w-full min-w-[420px] text-xs">
                 <thead className="text-left text-slate-500 uppercase tracking-widest"><tr>
                   <th className="py-1">Fecha</th><th>Comida</th><th>Personas</th><th>Valor unitario</th><th className="text-right">Subtotal</th>
                 </tr></thead>
@@ -437,7 +437,7 @@ function QuoteDetailModal({ q, onClose, onChanged }) {
             </DetailSection>
           ) : q.meal_entries?.length > 0 && (
             <DetailSection title={`Alimentación adicional (${q.meal_entries.length})`}>
-              <table className="w-full text-xs">
+              <table className="w-full min-w-[420px] text-xs">
                 <thead className="text-left text-slate-500 uppercase tracking-widest"><tr>
                   <th className="py-1">Fecha</th><th>Comida</th><th className="text-right">Personas</th>
                 </tr></thead>
@@ -454,7 +454,7 @@ function QuoteDetailModal({ q, onClose, onChanged }) {
 
           {q.transport_entries_breakdown?.length > 0 && (
             <DetailSection title={`Transporte (${q.transport_entries_breakdown.length})`}>
-              <table className="w-full text-xs">
+              <table className="w-full min-w-[420px] text-xs">
                 <thead className="text-left text-slate-500 uppercase tracking-widest"><tr>
                   <th className="py-1">Ruta</th><th>Personas</th><th>Fecha</th><th className="text-right">Subtotal</th>
                 </tr></thead>
@@ -472,7 +472,7 @@ function QuoteDetailModal({ q, onClose, onChanged }) {
 
           {q.tour_subtotals?.length > 0 && (
             <DetailSection title={`Tours (${q.tour_subtotals.length})`}>
-              <table className="w-full text-xs">
+              <table className="w-full min-w-[420px] text-xs">
                 <thead className="text-left text-slate-500 uppercase tracking-widest"><tr>
                   <th className="py-1">Tour</th><th>Personas</th><th className="text-right">Subtotal</th>
                 </tr></thead>
@@ -516,7 +516,7 @@ function DetailSection({ title, children }) {
   return (
     <div className="border-t border-slate-100 pt-4">
       <div className="font-display text-lg tracking-wider text-fsc-negro mb-2">{title.toUpperCase()}</div>
-      {children}
+      <div className="overflow-x-auto">{children}</div>
     </div>
   );
 }

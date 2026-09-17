@@ -171,7 +171,7 @@ export default function LoginModal() {
         </button>
 
         {/* Columna izquierda — formulario (cambia según `view`) */}
-        <div className="p-10 md:p-12 flex-1 min-w-0">
+        <div ref={imgWrapRef} className="p-10 md:p-12 flex-1 min-w-0">
           {view === "login" && (
             <>
               <div className="text-white mb-7">
@@ -401,8 +401,7 @@ export default function LoginModal() {
             En mobile/tablet se oculta por completo para que el formulario no quede empujado hacia abajo. */}
         {isDesktop && (
           <div
-            ref={imgWrapRef}
-            className="overflow-hidden bg-slate-900 flex items-center justify-center flex-shrink-0"
+            className="self-stretch overflow-hidden bg-slate-900 flex items-center justify-center flex-shrink-0"
             style={{ width: imgColWidth ? `${imgColWidth}px` : 260 }}
             data-testid="login-modal-image"
           >
@@ -411,7 +410,7 @@ export default function LoginModal() {
                 src={imgSrc(imageUrl)}
                 alt=""
                 onLoad={onImgLoad}
-                className="block h-full w-full object-contain"
+                className="block w-full h-full object-cover"
               />
             ) : (
               <div className="w-full min-h-[220px] flex items-center justify-center text-white/40 text-sm" style={AGENCY_FB}>

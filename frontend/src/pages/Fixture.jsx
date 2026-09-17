@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import api from "../lib/api";
+import api, { imgSrc } from "../lib/api";
 import { Calendar, MapPin } from "lucide-react";
 import { formatDateLong, formatTime } from "../lib/dateFormat";
 
@@ -126,7 +126,7 @@ function MatchRow({ m }) {
       </div>
       <div className="col-span-4 flex items-center gap-3 justify-end text-right">
         <span className="font-bold truncate">{m.home_team_name}</span>
-        {m.home_team_logo ? <img src={m.home_team_logo} alt="" className="h-8 w-8 object-contain" /> : <div className="h-8 w-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">{m.home_team_name?.[0]}</div>}
+        {m.home_team_logo ? <img src={imgSrc(m.home_team_logo)} alt="" className="h-8 w-8 object-contain" /> : <div className="h-8 w-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">{m.home_team_name?.[0]}</div>}
       </div>
       <div className="col-span-2 text-center">
         {isFinished ? (
@@ -140,7 +140,7 @@ function MatchRow({ m }) {
         )}
       </div>
       <div className="col-span-4 flex items-center gap-3">
-        {m.away_team_logo ? <img src={m.away_team_logo} alt="" className="h-8 w-8 object-contain" /> : <div className="h-8 w-8 rounded-full bg-red-100 text-red-700 flex items-center justify-center text-xs font-bold">{m.away_team_name?.[0]}</div>}
+        {m.away_team_logo ? <img src={imgSrc(m.away_team_logo)} alt="" className="h-8 w-8 object-contain" /> : <div className="h-8 w-8 rounded-full bg-red-100 text-red-700 flex items-center justify-center text-xs font-bold">{m.away_team_name?.[0]}</div>}
         <span className="font-bold truncate">{m.away_team_name}</span>
       </div>
     </div>

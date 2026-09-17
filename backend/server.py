@@ -26,8 +26,13 @@ from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field, EmailStr
 from openpyxl import load_workbook, Workbook
-from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionRequest
+try:
+    from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionRequest
+except ImportError:
+    StripeCheckout, CheckoutSessionRequest = None, None
 from PIL import Image, ImageSequence
+from pillow_heif import register_heif_opener
+register_heif_opener()  # permite que Image.open() lea HEIC/HEIF (fotos por defecto de iPhone)
 
 # -------------------- Categories --------------------
 CATEGORIES = ["Sub-8", "Sub-10", "Sub-12", "Sub-14", "Sub-16", "Sub-18"]
@@ -149,89 +154,62 @@ ADDON_PRICES = {
 
 CURRENCY = "cop"
 
-# -------------------- Object Storage --------------------
-STORAGE_URL = "https://integrations.emergentagent.com/objstore/api/v1/storage"
+# -------------------- Object Storage (S3-compatible: Cloudflare R2, AWS S3, etc.) --------------------
 APP_NAME = os.environ.get("APP_NAME", "future-soccer-cup")
-_storage_key: Optional[str] = None
+_s3_client = None
 
-def init_storage() -> Optional[str]:
-    global _storage_key
-    if _storage_key:
-        return _storage_key
-    key = os.environ.get("EMERGENT_LLM_KEY")
-    if not key:
+def _get_s3_client():
+    """Cliente S3 perezoso (se crea una sola vez). Funciona con cualquier proveedor
+    S3-compatible: Cloudflare R2, AWS S3, DigitalOcean Spaces, etc. — solo cambia
+    S3_ENDPOINT_URL. Devuelve None si faltan credenciales (en vez de crashear el server)."""
+    global _s3_client
+    if _s3_client is not None:
+        return _s3_client
+    endpoint = os.environ.get("S3_ENDPOINT_URL")
+    access_key = os.environ.get("S3_ACCESS_KEY_ID")
+    secret_key = os.environ.get("S3_SECRET_ACCESS_KEY")
+    bucket = os.environ.get("S3_BUCKET")
+    if not (endpoint and access_key and secret_key and bucket):
         return None
-    try:
-        resp = requests.post(f"{STORAGE_URL}/init", json={"emergent_key": key}, timeout=30)
-        resp.raise_for_status()
-        _storage_key = resp.json()["storage_key"]
-        return _storage_key
-    except Exception as e:
-        logging.error(f"Storage init failed: {e}")
-        return None
+    import boto3
+    from botocore.config import Config
+    _s3_client = boto3.client(
+        "s3",
+        endpoint_url=endpoint,
+        aws_access_key_id=access_key,
+        aws_secret_access_key=secret_key,
+        region_name=os.environ.get("S3_REGION", "auto"),
+        config=Config(retries={"max_attempts": 3, "mode": "standard"}),
+    )
+    return _s3_client
 
 def put_object(path: str, data: bytes, content_type: str) -> dict:
-    key = init_storage()
-    if not key:
-        raise HTTPException(status_code=503, detail="Almacenamiento no disponible")
-
-    def _do_put(k):
-        return requests.put(
-            f"{STORAGE_URL}/objects/{path}",
-            headers={"X-Storage-Key": k, "Content-Type": content_type},
-            data=data, timeout=120,
-        )
-
-    last_exc = None
-    for attempt in range(3):
-        try:
-            resp = _do_put(key)
-            if resp.status_code == 403:
-                global _storage_key
-                _storage_key = None
-                key = init_storage()
-                resp = _do_put(key)
-            if resp.status_code in (500, 502, 503, 504):
-                last_exc = HTTPException(status_code=503, detail="Almacenamiento no disponible, intenta de nuevo")
-                time.sleep(1.5 * (attempt + 1))
-                continue
-            resp.raise_for_status()
-            return resp.json()
-        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
-            last_exc = HTTPException(status_code=503, detail="Almacenamiento no disponible, intenta de nuevo")
-            time.sleep(1.5 * (attempt + 1))
-    raise last_exc
+    client = _get_s3_client()
+    if not client:
+        raise HTTPException(status_code=503, detail="Almacenamiento no disponible (faltan credenciales S3)")
+    bucket = os.environ["S3_BUCKET"]
+    try:
+        client.put_object(Bucket=bucket, Key=path, Body=data, ContentType=content_type)
+    except Exception as e:
+        logging.error(f"[storage] put_object falló ({path}): {e}")
+        raise HTTPException(status_code=503, detail="Almacenamiento no disponible, intenta de nuevo")
+    return {"path": path, "size": len(data)}
 
 def get_object(path: str):
-    key = init_storage()
-    if not key:
-        raise HTTPException(status_code=503, detail="Almacenamiento no disponible")
-
-    def _do_get(k):
-        return requests.get(
-            f"{STORAGE_URL}/objects/{path}",
-            headers={"X-Storage-Key": k}, timeout=60,
-        )
-
-    last_exc = None
-    for attempt in range(3):
-        try:
-            resp = _do_get(key)
-            if resp.status_code == 403:
-                global _storage_key
-                _storage_key = None
-                key = init_storage()
-                resp = _do_get(key)
-            if resp.status_code in (500, 502, 503, 504):
-                last_exc = HTTPException(status_code=503, detail="Almacenamiento no disponible, intenta de nuevo")
-                time.sleep(1 * (attempt + 1))
-                continue
-            resp.raise_for_status()
-            return resp.content, resp.headers.get("Content-Type", "application/octet-stream")
-        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
-            last_exc = HTTPException(status_code=503, detail="Almacenamiento no disponible, intenta de nuevo")
-            time.sleep(1 * (attempt + 1))
-    raise last_exc
+    client = _get_s3_client()
+    if not client:
+        raise HTTPException(status_code=503, detail="Almacenamiento no disponible (faltan credenciales S3)")
+    bucket = os.environ["S3_BUCKET"]
+    try:
+        obj = client.get_object(Bucket=bucket, Key=path)
+        data = obj["Body"].read()
+        content_type = obj.get("ContentType") or "application/octet-stream"
+        return data, content_type
+    except client.exceptions.NoSuchKey:
+        raise HTTPException(status_code=404, detail="Archivo no encontrado")
+    except Exception as e:
+        logging.error(f"[storage] get_object falló ({path}): {e}")
+        raise HTTPException(status_code=503, detail="Almacenamiento no disponible, intenta de nuevo")
 
 MIME = {
     # Bitmap / common
@@ -4869,6 +4847,8 @@ class RegistrationCheckoutIn(BaseModel):
 
 
 def _get_stripe(http_request: Request):
+    if StripeCheckout is None:
+        raise HTTPException(status_code=503, detail="Stripe no disponible (falta el paquete emergentintegrations)")
     api_key = os.environ.get("STRIPE_API_KEY")
     if not api_key:
         raise HTTPException(status_code=503, detail="Stripe no configurado")
@@ -4992,6 +4972,8 @@ async def _apply_paid_transaction(tx: dict):
 
 @api.get("/payments/checkout/status/{session_id}")
 async def get_checkout_status(session_id: str, user: dict = Depends(get_current_user)):
+    if StripeCheckout is None:
+        raise HTTPException(status_code=503, detail="Stripe no disponible (falta el paquete emergentintegrations)")
     api_key = os.environ.get("STRIPE_API_KEY")
     if not api_key:
         raise HTTPException(status_code=503, detail="Stripe no configurado")
@@ -5024,6 +5006,8 @@ async def get_checkout_status(session_id: str, user: dict = Depends(get_current_
 
 @api.post("/webhook/stripe")
 async def stripe_webhook(request: Request):
+    if StripeCheckout is None:
+        raise HTTPException(status_code=503, detail="Stripe no disponible (falta el paquete emergentintegrations)")
     api_key = os.environ.get("STRIPE_API_KEY")
     if not api_key:
         raise HTTPException(status_code=503, detail="Stripe no configurado")
@@ -5049,8 +5033,8 @@ async def stripe_webhook(request: Request):
 
 # -------------------- Uploads --------------------
 # Extensiones que se benefician de la conversión a WebP (ahorro de tamaño significativo
-# preservando calidad). Se excluyen: SVG (vector), PDF, ICO, RAW, HEIC/HEIF/AVIF (Pillow
-# por defecto no decodifica HEIF; AVIF ya está optimizado y no se gana nada).
+# preservando calidad). Se excluyen: SVG (vector), PDF, ICO (formatos que el navegador ya
+# muestra tal cual, o no rasterizables) y AVIF (ya viene optimizado, no se gana nada).
 WEBP_CONVERTIBLE_EXTS = {
     "jpg", "jpeg", "jfif", "jif", "jpe", "pjpeg", "pjp",
     "png", "apng",
@@ -5058,19 +5042,33 @@ WEBP_CONVERTIBLE_EXTS = {
     "bmp", "dib",
     "tif", "tiff",
     "webp",  # re-encode para asegurar compresión consistente
+    "heic", "heif",  # fotos de iPhone — sin convertir, ningún navegador (salvo Safari) las muestra
 }
 
+# RAW de cámara — ningún navegador los renderiza directo; se decodifican con rawpy (LibRaw)
+# antes de pasar por el mismo pipeline de conversión a WebP que el resto de formatos.
+RAW_EXTS = {"raw", "cr2", "cr3", "nef", "arw", "dng", "orf", "rw2", "raf", "pef", "srw"}
+
 def _maybe_convert_to_webp(data: bytes, ext: str) -> Optional[bytes]:
-    """Convierte una imagen raster a WebP. Devuelve los bytes WebP o None si falla / no conviene.
+    """Convierte una imagen raster (o RAW de cámara) a WebP. Devuelve los bytes WebP o None
+    si falla / no conviene.
 
     - Estáticas: re-encode con quality=82, method=6 (mejor relación calidad/tamaño).
     - Animadas (GIF/APNG/WebP): preserva todos los frames y duraciones.
-    - Si el resultado es ≥ al original, devuelve None (no fuerza la conversión).
+    - RAW (CR2/NEF/ARW/etc.): se decodifica primero con rawpy (LibRaw) a RGB de 8 bits.
+    - Si el resultado es ≥ al original, devuelve None (no fuerza la conversión) — excepto RAW,
+      que SIEMPRE se convierte porque el original nunca es visualizable en un navegador.
     - RGBA se preserva; modos exóticos (P, CMYK, LA) se convierten a RGB/RGBA según corresponda.
     """
     try:
-        img = Image.open(io.BytesIO(data))
-        img.load()
+        if ext in RAW_EXTS:
+            import rawpy
+            with rawpy.imread(io.BytesIO(data)) as raw:
+                rgb = raw.postprocess()
+            img = Image.fromarray(rgb)
+        else:
+            img = Image.open(io.BytesIO(data))
+            img.load()
     except Exception as e:
         logging.info(f"[upload] no se pudo abrir como imagen ({ext}): {e}")
         return None
@@ -5115,8 +5113,9 @@ def _maybe_convert_to_webp(data: bytes, ext: str) -> Optional[bytes]:
 
     webp_bytes = out.getvalue()
     # Si la conversión no aporta ahorro (puede pasar con imágenes ya muy comprimidas),
-    # mantenemos el original salvo que sea formato pesado por naturaleza.
-    if ext not in {"bmp", "dib", "tif", "tiff", "png", "apng"} and len(webp_bytes) >= len(data):
+    # mantenemos el original salvo que sea formato pesado por naturaleza, o RAW (el original
+    # nunca es visualizable en un navegador, así que siempre nos quedamos con el WebP).
+    if ext not in {"bmp", "dib", "tif", "tiff", "png", "apng"} | RAW_EXTS and len(webp_bytes) >= len(data):
         return None
     return webp_bytes
 
@@ -5155,14 +5154,22 @@ async def _process_and_store_upload(filename: str, data: bytes, user: dict) -> d
     ext = (filename.rsplit(".", 1)[-1] if "." in (filename or "") else "bin").lower()
     if ext not in MIME:
         raise HTTPException(status_code=400, detail="Formato no soportado. Acepta: JPG/JPEG/JFIF/JIF/PJPEG, PNG/APNG, GIF, BMP/DIB, TIFF, WebP, HEIC/HEIF/AVIF, SVG, ICO, RAW (CR2/CR3/NEF/ARW/DNG/ORF/RW2/RAF/PEF/SRW), PDF o video (MP4/WebM/MOV/OGV).")
-    max_size = 150 * 1024 * 1024 if ext in VIDEO_EXTS else 25 * 1024 * 1024
+    # RAW de cámara pesan bastante más que una foto normal (cámaras modernas: 25-80MB por
+    # disparo) — se les da un límite más generoso, igual que a los videos.
+    if ext in VIDEO_EXTS:
+        max_size = 150 * 1024 * 1024
+    elif ext in RAW_EXTS:
+        max_size = 100 * 1024 * 1024
+    else:
+        max_size = 25 * 1024 * 1024
     if len(data) > max_size:
         raise HTTPException(status_code=400, detail=f"Archivo mayor a {max_size // (1024 * 1024)}MB")
 
-    # === Optimización: convertir imágenes raster a WebP ===
-    # Reduce drásticamente el peso (típicamente 25-50% vs JPG, 70%+ vs PNG) manteniendo calidad visual.
-    # Se omiten formatos que no se benefician: SVG (vector), PDF, RAW, ICO, AVIF/HEIC (ya optimizados).
-    if ext in WEBP_CONVERTIBLE_EXTS:
+    # === Optimización: convertir imágenes raster (o RAW de cámara) a WebP ===
+    # Reduce drásticamente el peso (típicamente 25-50% vs JPG, 70%+ vs PNG) manteniendo calidad
+    # visual. RAW/HEIC se convierten porque ningún navegador los muestra directo. Se omiten:
+    # SVG (vector), PDF, ICO, AVIF (ya optimizado).
+    if ext in WEBP_CONVERTIBLE_EXTS or ext in RAW_EXTS:
         converted = _maybe_convert_to_webp(data, ext)
         if converted is not None:
             data = converted
@@ -5942,7 +5949,8 @@ HOME_SETTINGS_ID = "default"
 class HomeSettings(BaseModel):
     # === NAVBAR (logo + escudo) ===
     nav_logo_url: Optional[str] = ""    # wordmark / logo en imagen (opcional)
-    nav_shield_url: Optional[str] = ""  # escudo/logo circular junto al texto FUTUR SOCCER CUP
+    nav_shield_url: Optional[str] = ""  # escudo/logo circular junto al texto FUTURE SOCCER CUP
+    nav_wordmark_text: Optional[str] = "FUTURE\nSOCCER\nCUP"  # texto junto al escudo (una línea por renglón)
     # === HERO (nuevo wireframe FSC v2) ===
     hero_edition_label: Optional[str] = "EDICIÓN"
     hero_edition_year: Optional[str] = "2026"
@@ -6438,7 +6446,8 @@ async def on_startup():
     await seed_admin()
     await seed_demo_inventory()
     await migrate_teams_to_clubs()
-    init_storage()
+    if not _get_s3_client():
+        logging.warning("[storage] S3_BUCKET/S3_ENDPOINT_URL/S3_ACCESS_KEY_ID/S3_SECRET_ACCESS_KEY no configurados — la subida de archivos devolverá 503 hasta que se configuren.")
 
 
 async def migrate_teams_to_clubs():

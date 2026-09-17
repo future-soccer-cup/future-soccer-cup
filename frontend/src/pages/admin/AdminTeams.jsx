@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import api, { formatApiError } from "../../lib/api";
+import api, { formatApiError, imgSrc } from "../../lib/api";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import ImageUpload from "../../components/ImageUpload";
@@ -88,8 +88,8 @@ export default function AdminTeams() {
         <ExportCsvButton rows={filtered} columns={exportColumns} filename="equipos" testId="teams-export-csv" />
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-white border border-slate-200 rounded-xl overflow-x-auto">
+        <table className="w-full min-w-[640px] text-sm">
           <thead className="bg-blue-50 text-xs uppercase tracking-wider">
             <tr>
               <th className="text-left px-4 py-2">Nombre</th>
@@ -103,7 +103,7 @@ export default function AdminTeams() {
             {pageItems.map((t) => (
               <tr key={t.id} className="border-t border-slate-100" data-testid={`team-row-${t.id}`}>
                 <td className="px-4 py-2 flex items-center gap-2">
-                  <div className="h-8 w-8 rounded flex items-center justify-center text-xs font-display font-black text-white" style={{ background: t.color }}>{t.logo_url ? <img src={t.logo_url} alt="" className="h-full w-full object-contain" /> : t.name[0]}</div>
+                  <div className="h-8 w-8 rounded flex items-center justify-center text-xs font-display font-black text-white" style={{ background: t.color }}>{t.logo_url ? <img src={imgSrc(t.logo_url)} alt="" className="h-full w-full object-contain" /> : t.name[0]}</div>
                   <span className="font-semibold">{t.name}</span>
                 </td>
                 <td className="px-4 py-2">{t.category}</td>
@@ -133,7 +133,7 @@ export default function AdminTeams() {
             </div>
             <Field label="Ciudad" value={editing.city} onChange={(v) => setEditing({ ...editing, city: v })} />
             <Field label="DT" value={editing.coach} onChange={(v) => setEditing({ ...editing, coach: v })} />
-            <ImageUpload value={editing.logo_url} onChange={(v) => setEditing({ ...editing, logo_url: v })} label="Escudo" testId="team-logo-upload" />
+            <ImageUpload value={editing.logo_url} onChange={(v) => setEditing({ ...editing, logo_url: v })} label="Escudo" hint="Recomendado: PNG con fondo transparente, cuadrado (ej. 512×512 px)." testId="team-logo-upload" />
             <Field label="Color (hex)" value={editing.color} onChange={(v) => setEditing({ ...editing, color: v })} />
             <button className="fsc-btn-primary w-full py-2 rounded-md" data-testid="save-team-btn">Guardar</button>
           </form>
