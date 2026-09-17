@@ -2768,12 +2768,12 @@ async def standings(category: Optional[str] = None, group_name: Optional[str] = 
         r["gd"] = r["gf"] - r["ga"]
     # Orden de desempate FSC (spec final):
     #   1) PTOS (mayor)
-    #   2) PG (mayor)
-    #   3) GF (mayor)
-    #   4) GC (menor)
-    #   5) DG (mayor)
-    #   6) J.L (mayor)
-    rows.sort(key=lambda r: (-r["points"], -r["won"], -r["gf"], r["ga"], -r["gd"], -r["fair_play"]))
+    #   2) J.L (mayor) — juego limpio
+    #   3) DG (mayor) — diferencia de gol
+    #   4) PG (mayor)
+    #   5) GF (mayor)
+    #   6) GC (menor)
+    rows.sort(key=lambda r: (-r["points"], -r["fair_play"], -r["gd"], -r["won"], -r["gf"], r["ga"]))
     return rows
 
 @api.get("/stats/top-scorers")
