@@ -24,6 +24,8 @@ from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Respons
 from fastapi.responses import Response as FastAPIResponse, StreamingResponse
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
 from pydantic import BaseModel, Field, EmailStr
 from openpyxl import load_workbook, Workbook
 try:
@@ -211,6 +213,60 @@ def get_object(path: str):
         logging.error(f"[storage] get_object falló ({path}): {e}")
         raise HTTPException(status_code=503, detail="Almacenamiento no disponible, intenta de nuevo")
 
+# -------------------- Backups automáticos (MongoDB -> Cloudflare R2) --------------------
+# No depende de un plan pago de MongoDB Atlas: es un respaldo propio a nivel de aplicación
+# (vuelca todas las colecciones a un JSON comprimido) que se sube al mismo bucket S3/R2
+# que ya usamos para las imágenes, bajo el prefijo "backups/".
+from bson import json_util
+import gzip
+
+BACKUP_PREFIX = "backups/"
+BACKUP_RETENTION = 8  # conservar las últimas 8 copias (~2 meses si corre semanal)
+
+async def create_database_backup() -> dict:
+    if not _get_s3_client():
+        logging.warning("[backup] S3 no configurado, se omite el backup")
+        return {"ok": False, "reason": "S3 no configurado"}
+    collections = await db.list_collection_names()
+    dump: Dict[str, Any] = {}
+    for name in collections:
+        dump[name] = await db[name].find({}).to_list(None)
+    payload = json_util.dumps(dump).encode("utf-8")
+    compressed = gzip.compress(payload)
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H%M%S")
+    path = f"{BACKUP_PREFIX}fsc-backup-{stamp}.json.gz"
+    put_object(path, compressed, "application/gzip")
+    logging.info(f"[backup] respaldo creado: {path} ({len(compressed)} bytes, {len(collections)} colecciones)")
+    _prune_old_backups()
+    return {"ok": True, "path": path, "size": len(compressed), "collections": len(collections)}
+
+def _list_backup_objects() -> list:
+    s3 = _get_s3_client()
+    if not s3:
+        return []
+    resp = s3.list_objects_v2(Bucket=os.environ["S3_BUCKET"], Prefix=BACKUP_PREFIX)
+    items = resp.get("Contents", []) or []
+    items.sort(key=lambda o: o["LastModified"], reverse=True)
+    return items
+
+def _prune_old_backups(keep: int = BACKUP_RETENTION):
+    s3 = _get_s3_client()
+    if not s3:
+        return
+    for old in _list_backup_objects()[keep:]:
+        try:
+            s3.delete_object(Bucket=os.environ["S3_BUCKET"], Key=old["Key"])
+            logging.info(f"[backup] eliminado respaldo antiguo: {old['Key']}")
+        except Exception as e:
+            logging.error(f"[backup] no se pudo eliminar {old['Key']}: {e}")
+
+async def _scheduled_backup_job():
+    try:
+        result = await create_database_backup()
+        logging.info(f"[backup] job programado ejecutado: {result}")
+    except Exception as e:
+        logging.error(f"[backup] job programado falló: {e}")
+
 MIME = {
     # Bitmap / common
     "jpg": "image/jpeg", "jpeg": "image/jpeg",
@@ -357,6 +413,18 @@ async def require_admin_or_team(user: dict = Depends(get_current_user)) -> dict:
     if user.get("role") not in ("admin", "team"):
         raise HTTPException(status_code=403, detail="Solo administradores o equipos")
     return user
+
+@api.post("/admin/backup/run")
+async def admin_run_backup(_: dict = Depends(require_admin)):
+    """Dispara un respaldo manual inmediato (misma lógica que el job semanal)."""
+    return await create_database_backup()
+
+@api.get("/admin/backup/list")
+async def admin_list_backups(_: dict = Depends(require_admin)):
+    return [
+        {"path": it["Key"], "size": it["Size"], "created_at": it["LastModified"].isoformat()}
+        for it in _list_backup_objects()
+    ]
 
 # -------------------- Password Reset --------------------
 class ForgotPasswordIn(BaseModel):
@@ -6419,6 +6487,8 @@ async def seed_demo_inventory():
         })
     await db.pricing_catalog.insert_many(rows)
 
+_scheduler = AsyncIOScheduler(timezone="UTC")
+
 @app.on_event("startup")
 async def on_startup():
     await db.users.create_index("email", unique=True)
@@ -6448,6 +6518,9 @@ async def on_startup():
     await migrate_teams_to_clubs()
     if not _get_s3_client():
         logging.warning("[storage] S3_BUCKET/S3_ENDPOINT_URL/S3_ACCESS_KEY_ID/S3_SECRET_ACCESS_KEY no configurados — la subida de archivos devolverá 503 hasta que se configuren.")
+    # Backup automático semanal: domingo 08:00 UTC (~3am Colombia).
+    _scheduler.add_job(_scheduled_backup_job, CronTrigger(day_of_week="sun", hour=8, minute=0), id="weekly_backup", replace_existing=True)
+    _scheduler.start()
 
 
 async def migrate_teams_to_clubs():
@@ -6505,6 +6578,7 @@ async def migrate_teams_to_clubs():
 
 @app.on_event("shutdown")
 async def shutdown():
+    _scheduler.shutdown(wait=False)
     client.close()
 
 # -------------------- Mount router & CORS --------------------
