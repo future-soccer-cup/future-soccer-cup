@@ -177,7 +177,7 @@ export default function Home() {
                 <div className="flex-1 hidden lg:block" />
                 {user ? (
                   <>
-                    {user.role === "admin" && (
+                    {(user.role === "admin" || user.role === "content_admin") && (
                       <NavLink to="/admin" onClick={() => setNavOpen(false)} className="px-4 md:px-5 py-2 md:py-3 font-black uppercase tracking-wider text-lg md:text-xl flex items-center gap-1.5 hover:opacity-80" style={{ ...AGENCY_FB, color: BLUE }} data-testid="nav-link-admin">
                         <Shield size={16}/> ADMIN
                       </NavLink>
