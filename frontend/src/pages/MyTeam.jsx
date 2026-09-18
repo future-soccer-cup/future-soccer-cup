@@ -962,6 +962,14 @@ export default function MyTeam() {
               <div className="border border-slate-200 rounded-lg p-3">
                 <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Jugadores</div>
                 <div className="font-display text-3xl font-black text-green-600">{bulkPreview.players.ok}<span className="text-sm text-slate-400 font-bold ml-1">/ {bulkPreview.players.total}</span></div>
+                {bulkPreview.players.duplicates?.length > 0 && (
+                  <details className="mt-2">
+                    <summary className="text-xs text-amber-600 cursor-pointer font-semibold">{bulkPreview.players.duplicates.length} duplicados omitidos (ya existían)</summary>
+                    <ul className="text-[11px] text-amber-700 mt-1 space-y-0.5 max-h-32 overflow-auto">
+                      {bulkPreview.players.duplicates.slice(0, 20).map((d, i) => <li key={`pdup-${d.row}-${i}`}>Fila {d.row}: {d.name}</li>)}
+                    </ul>
+                  </details>
+                )}
                 {bulkPreview.players.errors?.length > 0 && (
                   <details className="mt-2">
                     <summary className="text-xs text-red-600 cursor-pointer font-semibold">{bulkPreview.players.errors.length} errores</summary>
@@ -974,6 +982,14 @@ export default function MyTeam() {
               <div className="border border-slate-200 rounded-lg p-3">
                 <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Cuerpo técnico</div>
                 <div className="font-display text-3xl font-black text-green-600">{bulkPreview.staff.ok}<span className="text-sm text-slate-400 font-bold ml-1">/ {bulkPreview.staff.total}</span></div>
+                {bulkPreview.staff.duplicates?.length > 0 && (
+                  <details className="mt-2">
+                    <summary className="text-xs text-amber-600 cursor-pointer font-semibold">{bulkPreview.staff.duplicates.length} duplicados omitidos (ya existían)</summary>
+                    <ul className="text-[11px] text-amber-700 mt-1 space-y-0.5 max-h-32 overflow-auto">
+                      {bulkPreview.staff.duplicates.slice(0, 20).map((d, i) => <li key={`sdup-${d.row}-${i}`}>Fila {d.row}: {d.name}</li>)}
+                    </ul>
+                  </details>
+                )}
                 {bulkPreview.staff.errors?.length > 0 && (
                   <details className="mt-2">
                     <summary className="text-xs text-red-600 cursor-pointer font-semibold">{bulkPreview.staff.errors.length} errores</summary>

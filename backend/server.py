@@ -5642,7 +5642,13 @@ async def import_teams(file: UploadFile = File(...), preview: bool = False, _: d
     clubs_existing = await db.clubs.find({}, {"_id": 0, "id": 1, "name": 1}).to_list(2000)
     club_map = {c["name"].strip().lower(): c["id"] for c in clubs_existing}
 
-    created, errors, clubs_created = [], [], []
+    # Equipos ya existentes (para no duplicar si el archivo se sube más de una vez):
+    # mismo nombre + categoría + club se considera el mismo equipo.
+    teams_existing = await db.teams.find({}, {"_id": 0, "name": 1, "category": 1, "club_id": 1}).to_list(5000)
+    existing_team_keys = {(t.get("name", "").strip().lower(), t.get("category", ""), t.get("club_id") or "") for t in teams_existing}
+    seen_team_keys = set()
+
+    created, errors, clubs_created, duplicates = [], [], [], []
     for idx, r in enumerate(rows, start=2):
         name = r.get("name") or ""
         category = r.get("category") or ""
@@ -5685,6 +5691,12 @@ async def import_teams(file: UploadFile = File(...), preview: bool = False, _: d
                     await db.clubs.insert_one(new_club.copy())
                 clubs_created.append({"id": club_id, "name": club_name})
 
+        team_key = (name.strip().lower(), category, club_id)
+        if team_key in existing_team_keys or team_key in seen_team_keys:
+            duplicates.append({"row": idx, "name": name, "category": category, "club_name": club_name})
+            continue
+        seen_team_keys.add(team_key)
+
         try:
             by_val = r.get("birth_year", "")
             birth_year = int(by_val) if str(by_val).strip().isdigit() else None
@@ -5723,6 +5735,7 @@ async def import_teams(file: UploadFile = File(...), preview: bool = False, _: d
         "total_rows": len(rows),
         "ok": len(created),
         "errors": errors,
+        "duplicates": duplicates,
         "saved": not preview,
         "created": [{"id": d["id"], "name": d["name"], "category": d["category"]} for d in created],
         "clubs_auto_created": clubs_created,
@@ -5738,7 +5751,13 @@ async def import_players(file: UploadFile = File(...), preview: bool = False, _:
     teams = await db.teams.find({}, {"_id": 0, "id": 1, "name": 1}).to_list(2000)
     name_to_id = {t["name"].lower(): t["id"] for t in teams}
 
-    created, errors = [], []
+    # Jugadores ya existentes (para no duplicar si el archivo se sube más de una vez):
+    # mismo nombre en el mismo equipo se considera el mismo jugador.
+    players_existing = await db.players.find({}, {"_id": 0, "name": 1, "team_id": 1}).to_list(10000)
+    existing_player_keys = {(p.get("name", "").strip().lower(), p.get("team_id", "")) for p in players_existing}
+    seen_player_keys = set()
+
+    created, errors, duplicates = [], [], []
     for idx, r in enumerate(rows, start=2):
         team_name = (r.get("team_name") or r.get("equipo") or "").lower()
         team_id = name_to_id.get(team_name)
@@ -5754,6 +5773,11 @@ async def import_players(file: UploadFile = File(...), preview: bool = False, _:
         except ValueError:
             errors.append({"row": idx, "error": "Dorsal inválido"})
             continue
+        player_key = (name.strip().lower(), team_id)
+        if player_key in existing_player_keys or player_key in seen_player_keys:
+            duplicates.append({"row": idx, "name": name, "team_name": r.get("team_name") or r.get("equipo") or ""})
+            continue
+        seen_player_keys.add(player_key)
         doc = {
             "id": str(uuid.uuid4()),
             "team_id": team_id,
@@ -5781,7 +5805,7 @@ async def import_players(file: UploadFile = File(...), preview: bool = False, _:
         for d in created:
             d.pop("_id", None)
 
-    return {"total_rows": len(rows), "ok": len(created), "errors": errors, "saved": not preview, "created": [{"id": d["id"], "name": d["name"], "team_id": d["team_id"]} for d in created]}
+    return {"total_rows": len(rows), "ok": len(created), "errors": errors, "duplicates": duplicates, "saved": not preview, "created": [{"id": d["id"], "name": d["name"], "team_id": d["team_id"]} for d in created]}
 
 # -------------------- Bulk Import (Team Manager - Multi-sheet XLSX) --------------------
 
@@ -5896,7 +5920,11 @@ async def import_team_roster(file: UploadFile = File(...), preview: bool = False
     if not players_sheet:
         raise HTTPException(status_code=400, detail="No se encontró la hoja 'Jugadores' en el archivo")
 
-    players_created, player_errors = [], []
+    existing_players = await db.players.find({"team_id": team_id}, {"_id": 0, "name": 1}).to_list(500)
+    existing_player_names = {p.get("name", "").strip().lower() for p in existing_players}
+    seen_player_names = set()
+
+    players_created, player_errors, player_duplicates = [], [], []
     for idx, r in enumerate(sheets[players_sheet], start=2):
         name = r.get("name") or r.get("nombre") or ""
         if not name:
@@ -5907,6 +5935,11 @@ async def import_team_roster(file: UploadFile = File(...), preview: bool = False
         except ValueError:
             player_errors.append({"row": idx, "error": "Dorsal inválido"})
             continue
+        name_key = name.strip().lower()
+        if name_key in existing_player_names or name_key in seen_player_names:
+            player_duplicates.append({"row": idx, "name": name})
+            continue
+        seen_player_names.add(name_key)
         players_created.append({
             "id": str(uuid.uuid4()),
             "team_id": team_id,
@@ -5927,16 +5960,29 @@ async def import_team_roster(file: UploadFile = File(...), preview: bool = False
             "created_at": datetime.now(timezone.utc).isoformat(),
         })
 
-    staff_created, staff_errors = [], []
+    team_for_staff = await db.teams.find_one({"id": team_id}, {"_id": 0, "cuerpo_tecnico": 1})
+    existing_staff_keys = {
+        (s.get("name", "").strip().lower(), (s.get("role") or "").strip().lower())
+        for s in (team_for_staff.get("cuerpo_tecnico", []) or []) if team_for_staff
+    }
+    seen_staff_keys = set()
+
+    staff_created, staff_errors, staff_duplicates = [], [], []
     if staff_sheet:
         for idx, r in enumerate(sheets[staff_sheet], start=2):
             nm = r.get("name") or r.get("nombre") or ""
             if not nm:
                 staff_errors.append({"row": idx, "error": "Falta nombre"})
                 continue
+            role = r.get("role") or r.get("rol") or "Director técnico"
+            staff_key = (nm.strip().lower(), role.strip().lower())
+            if staff_key in existing_staff_keys or staff_key in seen_staff_keys:
+                staff_duplicates.append({"row": idx, "name": nm})
+                continue
+            seen_staff_keys.add(staff_key)
             staff_created.append({
                 "name": nm,
-                "role": r.get("role") or r.get("rol") or "Director técnico",
+                "role": role,
                 "document": r.get("document") or r.get("documento") or "",
                 "phone": r.get("phone") or r.get("telefono") or r.get("teléfono") or "",
             })
@@ -5953,8 +5999,8 @@ async def import_team_roster(file: UploadFile = File(...), preview: bool = False
             await db.teams.update_one({"id": team_id}, {"$set": {"cuerpo_tecnico": current + staff_created}})
 
     return {
-        "players": {"total": len(sheets[players_sheet]), "ok": len(players_created), "errors": player_errors},
-        "staff": {"total": len(sheets.get(staff_sheet, [])) if staff_sheet else 0, "ok": len(staff_created), "errors": staff_errors},
+        "players": {"total": len(sheets[players_sheet]), "ok": len(players_created), "errors": player_errors, "duplicates": player_duplicates},
+        "staff": {"total": len(sheets.get(staff_sheet, [])) if staff_sheet else 0, "ok": len(staff_created), "errors": staff_errors, "duplicates": staff_duplicates},
         "saved": not preview,
     }
 

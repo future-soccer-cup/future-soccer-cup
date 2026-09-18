@@ -112,11 +112,27 @@ export default function AdminBulkUpload() {
             <p className="text-sm text-slate-400 mt-4">Carga un archivo y obten una vista previa para validar.</p>
           ) : (
             <div className="mt-4 space-y-3 text-sm">
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-4 gap-3">
                 <Stat label="Filas" value={result.total_rows} />
                 <Stat label="OK" value={result.ok} color="text-green-400" />
+                <Stat label="Duplicados" value={result.duplicates?.length || 0} color={result.duplicates?.length ? "text-amber-400" : "text-slate-400"} />
                 <Stat label="Errores" value={result.errors.length} color={result.errors.length ? "text-red-400" : "text-slate-400"} />
               </div>
+
+              {result.duplicates?.length > 0 && (
+                <div className="border-t border-white/10 pt-3">
+                  <div className="text-xs uppercase tracking-widest text-amber-400 mb-2 flex items-center gap-1">
+                    <AlertTriangle size={14}/> Duplicados omitidos (ya existían)
+                  </div>
+                  <div className="max-h-32 overflow-y-auto space-y-1 text-xs">
+                    {result.duplicates.map((d, i) => (
+                      <div key={i} className="bg-amber-500/10 rounded px-2 py-1 text-amber-100">
+                        Fila {d.row}: {d.name} {d.category && <span className="text-amber-200/70">· {d.category}</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {result.saved && (
                 <div className="px-3 py-2 bg-green-500/20 text-green-300 rounded text-xs font-bold uppercase tracking-wider flex items-center gap-2">
