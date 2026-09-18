@@ -84,6 +84,7 @@ export default function LoginModal() {
       closeLogin();
       setEmail(""); setPassword("");
       if (u.role === "admin") nav("/admin");
+      else if (u.role === "content_admin") nav("/admin/home");
       else if (u.role === "team") nav("/mi-equipo");
       else nav("/mis-cotizaciones");
     } catch (err) {

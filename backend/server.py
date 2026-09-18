@@ -380,6 +380,46 @@ async def require_admin(user: dict = Depends(get_current_user)) -> dict:
         raise HTTPException(status_code=403, detail="Solo administradores")
     return user
 
+async def require_admin_or_content(user: dict = Depends(get_current_user)) -> dict:
+    """Admin o el rol restringido 'content_admin' (solo Inicio y Galería)."""
+    if user.get("role") not in ("admin", "content_admin"):
+        raise HTTPException(status_code=403, detail="No autorizado")
+    return user
+
+class ConfigUserIn(BaseModel):
+    name: str = Field(min_length=1)
+    email: EmailStr
+    password: str = Field(min_length=6)
+
+@api.post("/admin/config-users")
+async def create_config_user(payload: ConfigUserIn, _: dict = Depends(require_admin)):
+    """Admin crea un usuario de rol 'content_admin': solo puede ver/editar Home y Galería."""
+    email = payload.email.lower()
+    if await db.users.find_one({"email": email}):
+        raise HTTPException(status_code=400, detail="El correo ya está registrado")
+    user_id = str(uuid.uuid4())
+    doc = {
+        "id": user_id,
+        "email": email,
+        "name": payload.name,
+        "role": "content_admin",
+        "password_hash": hash_password(payload.password),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.users.insert_one(doc)
+    return {"id": user_id, "email": email, "name": payload.name, "role": "content_admin"}
+
+@api.get("/admin/config-users")
+async def list_config_users(_: dict = Depends(require_admin)):
+    return await db.users.find({"role": "content_admin"}, {"_id": 0, "password_hash": 0}).to_list(200)
+
+@api.delete("/admin/config-users/{uid}")
+async def delete_config_user(uid: str, _: dict = Depends(require_admin)):
+    res = await db.users.delete_one({"id": uid, "role": "content_admin"})
+    if res.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    return {"ok": True}
+
 
 async def _record_audit(entity_type: str, entity_id: str, action: str, prev_status: Optional[str], new_status: Optional[str], user: dict, note: str = "") -> dict:
     """Persist an audit-trail entry (Ley 1581) and return the metadata to merge into the target doc."""
@@ -6028,7 +6068,7 @@ async def list_gallery():
 
 
 @api.post("/gallery", response_model=GalleryImageOut)
-async def add_gallery_image(payload: GalleryImageIn, _: dict = Depends(require_admin)):
+async def add_gallery_image(payload: GalleryImageIn, _: dict = Depends(require_admin_or_content)):
     if not payload.image_url:
         raise HTTPException(status_code=400, detail="image_url es requerido")
     doc = payload.model_dump()
@@ -6040,7 +6080,7 @@ async def add_gallery_image(payload: GalleryImageIn, _: dict = Depends(require_a
 
 
 @api.put("/gallery/{gid}", response_model=GalleryImageOut)
-async def update_gallery_image(gid: str, payload: GalleryImageIn, _: dict = Depends(require_admin)):
+async def update_gallery_image(gid: str, payload: GalleryImageIn, _: dict = Depends(require_admin_or_content)):
     res = await db.gallery_images.update_one({"id": gid}, {"$set": payload.model_dump()})
     if res.matched_count == 0:
         raise HTTPException(status_code=404, detail="Imagen no encontrada")
@@ -6049,7 +6089,7 @@ async def update_gallery_image(gid: str, payload: GalleryImageIn, _: dict = Depe
 
 
 @api.delete("/gallery/{gid}")
-async def delete_gallery_image(gid: str, _: dict = Depends(require_admin)):
+async def delete_gallery_image(gid: str, _: dict = Depends(require_admin_or_content)):
     res = await db.gallery_images.delete_one({"id": gid})
     if res.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Imagen no encontrada")
@@ -6405,7 +6445,7 @@ async def get_home_settings():
 
 
 @api.put("/home-settings", response_model=HomeSettings)
-async def update_home_settings(payload: HomeSettings, _: dict = Depends(require_admin)):
+async def update_home_settings(payload: HomeSettings, _: dict = Depends(require_admin_or_content)):
     data = payload.model_dump()
     data["id"] = HOME_SETTINGS_ID
     await db.home_settings.update_one(

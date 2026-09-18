@@ -41,6 +41,7 @@ import AdminTeams from "./pages/admin/AdminTeams";
 import AdminPlayers from "./pages/admin/AdminPlayers";
 import AdminMatches from "./pages/admin/AdminMatches";
 import AdminCarnets from "./pages/admin/AdminCarnets";
+import AdminConfigUsers from "./pages/admin/AdminConfigUsers";
 import AdminFixtureGenerator from "./pages/admin/AdminFixtureGenerator";
 import AdminBracketGenerator from "./pages/admin/AdminBracketGenerator";
 import AdminApprovals from "./pages/admin/AdminApprovals";
@@ -117,7 +118,7 @@ function App() {
 
           <Route
             path="/admin"
-            element={<ProtectedRoute role="admin"><AdminLayout /></ProtectedRoute>}
+            element={<ProtectedRoute role={["admin", "content_admin"]}><AdminLayout /></ProtectedRoute>}
           >
             <Route index element={<AdminDashboard />} />
             <Route path="equipos" element={<AdminTeams />} />
@@ -139,6 +140,7 @@ function App() {
             <Route path="tipos-evento" element={<AdminEventTypes />} />
             <Route path="recuperaciones" element={<AdminPasswordResets />} />
             <Route path="carnets" element={<AdminCarnets />} />
+            <Route path="usuarios-config" element={<AdminConfigUsers />} />
           </Route>
         </Routes>
         </LoginModalProvider>

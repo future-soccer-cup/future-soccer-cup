@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, NavLink, Outlet } from "react-router-dom";
+import { Link, NavLink, Navigate, Outlet, useLocation } from "react-router-dom";
 import { Toaster } from "sonner";
 import {
   LayoutDashboard,
@@ -21,6 +21,7 @@ import {
   Inbox,
   Tag,
   Menu,
+  Settings,
 } from "lucide-react";
 import Logo from "../../components/Logo";
 import { useAuth } from "../../context/AuthContext";
@@ -46,14 +47,19 @@ const NAV = [
   { to: "/admin/generador-fixture", label: "Generar Fixture", icon: Wand2 },
   { to: "/admin/bracket", label: "Bracket", icon: Trophy },
   { to: "/admin/recuperaciones", label: "Recuperar clave", icon: KeyRound },
+  { to: "/admin/usuarios-config", label: "Usuarios Config.", icon: Settings, adminOnly: true },
 ];
+
+// El rol "content_admin" solo puede ver/editar Home y Galería — se filtra el menú y se
+// bloquea la navegación directa a cualquier otra ruta de /admin.
+const CONTENT_ADMIN_ALLOWED_PATHS = ["/admin/home", "/admin/galeria"];
 
 // Lista de navegación reutilizada tanto en el sidebar fijo (desktop, ≥lg) como en el
 // drawer deslizable (mobile/tablet, <lg). `onNavigate` cierra el drawer al elegir un link.
-function AdminNavList({ onNavigate }) {
+function AdminNavList({ onNavigate, items }) {
   return (
     <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-      {NAV.map((n) => (
+      {items.map((n) => (
         <NavLink
           key={n.to}
           to={n.to}
@@ -76,6 +82,16 @@ function AdminNavList({ onNavigate }) {
 export default function AdminLayout() {
   const { user, logout } = useAuth();
   const [navOpen, setNavOpen] = useState(false);
+  const location = useLocation();
+  const isContentAdmin = user?.role === "content_admin";
+  const visibleNav = isContentAdmin
+    ? NAV.filter((n) => CONTENT_ADMIN_ALLOWED_PATHS.includes(n.to))
+    : NAV.filter((n) => !n.adminOnly || user?.role === "admin");
+
+  if (isContentAdmin && !CONTENT_ADMIN_ALLOWED_PATHS.includes(location.pathname)) {
+    return <Navigate to="/admin/home" replace />;
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 flex" data-testid="admin-layout">
       <Toaster position="top-right" />
@@ -84,10 +100,10 @@ export default function AdminLayout() {
           <Logo className="h-9 w-9" />
           <div>
             <div className="font-display text-sm font-black text-slate-900">FSC ADMIN</div>
-            <div className="text-[10px] text-slate-500 tracking-widest uppercase">Panel</div>
+            <div className="text-[10px] text-slate-500 tracking-widest uppercase">{isContentAdmin ? "Configuración" : "Panel"}</div>
           </div>
         </Link>
-        <AdminNavList />
+        <AdminNavList items={visibleNav} />
         <div className="p-3 border-t border-slate-800 text-xs">
           <div className="text-slate-400">Sesión</div>
           <div className="text-white truncate">{user?.email}</div>
@@ -117,7 +133,7 @@ export default function AdminLayout() {
                     <div className="text-[10px] text-slate-500 tracking-widest uppercase">Panel</div>
                   </div>
                 </Link>
-                <AdminNavList onNavigate={() => setNavOpen(false)} />
+                <AdminNavList onNavigate={() => setNavOpen(false)} items={visibleNav} />
                 <div className="p-3 border-t border-slate-800 text-xs">
                   <div className="text-slate-400">Sesión</div>
                   <div className="text-white truncate">{user?.email}</div>
