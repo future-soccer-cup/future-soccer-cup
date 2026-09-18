@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, NavLink, Navigate, Outlet, useLocation } from "react-router-dom";
-import { Toaster } from "sonner";
+import { Toaster, toast } from "sonner";
 import {
   LayoutDashboard,
   Users,
@@ -84,11 +84,18 @@ export default function AdminLayout() {
   const [navOpen, setNavOpen] = useState(false);
   const location = useLocation();
   const isContentAdmin = user?.role === "content_admin";
-  const visibleNav = isContentAdmin
-    ? NAV.filter((n) => CONTENT_ADMIN_ALLOWED_PATHS.includes(n.to))
-    : NAV.filter((n) => !n.adminOnly || user?.role === "admin");
+  // El menú se ve igual al del Admin (mismas opciones visibles); lo que restringe el
+  // acceso real es el guard de abajo, que redirige a Home si intenta entrar a otra ruta.
+  const visibleNav = NAV.filter((n) => !n.adminOnly || user?.role === "admin");
 
-  if (isContentAdmin && !CONTENT_ADMIN_ALLOWED_PATHS.includes(location.pathname)) {
+  const isBlocked = isContentAdmin && !CONTENT_ADMIN_ALLOWED_PATHS.includes(location.pathname);
+
+  useEffect(() => {
+    if (isBlocked) toast.error("No tienes permiso para acceder a esa sección");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
+
+  if (isBlocked) {
     return <Navigate to="/admin/home" replace />;
   }
 
