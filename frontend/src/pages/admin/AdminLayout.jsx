@@ -84,9 +84,11 @@ export default function AdminLayout() {
   const [navOpen, setNavOpen] = useState(false);
   const location = useLocation();
   const isContentAdmin = user?.role === "content_admin";
-  // El menú se ve igual al del Admin (mismas opciones visibles); lo que restringe el
-  // acceso real es el guard de abajo, que redirige a Home si intenta entrar a otra ruta.
-  const visibleNav = NAV.filter((n) => !n.adminOnly || user?.role === "admin");
+  // El rol Configuración solo ve Home y Galería en el menú; el Admin ve todo. El guard
+  // de abajo además bloquea el acceso real si de algún modo llega a otra ruta (ej. bookmark viejo).
+  const visibleNav = isContentAdmin
+    ? NAV.filter((n) => CONTENT_ADMIN_ALLOWED_PATHS.includes(n.to))
+    : NAV.filter((n) => !n.adminOnly || user?.role === "admin");
 
   const isBlocked = isContentAdmin && !CONTENT_ADMIN_ALLOWED_PATHS.includes(location.pathname);
 
