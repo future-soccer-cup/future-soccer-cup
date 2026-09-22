@@ -579,30 +579,30 @@ function MatchesList({ rows, testPrefix, showDate }) {
 function StandingsTable({ rows }) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[600px] text-base md:text-lg">
+      <table className="w-full text-[13px] sm:text-base md:text-lg">
         <thead className="bg-slate-100 text-slate-700">
           <tr>
-            <th className="text-left px-3 py-2.5">#</th>
-            <th className="text-left px-3 py-2.5">Equipo</th>
-            <th className="text-center px-3 py-2.5">PJ</th>
-            <th className="text-center px-3 py-2.5">G</th>
-            <th className="text-center px-3 py-2.5">E</th>
-            <th className="text-center px-3 py-2.5">P</th>
-            <th className="text-center px-3 py-2.5">DG</th>
-            <th className="text-center px-3 py-2.5">Pts</th>
+            <th className="text-left px-1.5 sm:px-3 py-2 sm:py-2.5">#</th>
+            <th className="text-left px-1.5 sm:px-3 py-2 sm:py-2.5">Equipo</th>
+            <th className="text-center px-1 sm:px-3 py-2 sm:py-2.5">PJ</th>
+            <th className="text-center px-1 sm:px-3 py-2 sm:py-2.5">G</th>
+            <th className="text-center px-1 sm:px-3 py-2 sm:py-2.5">E</th>
+            <th className="text-center px-1 sm:px-3 py-2 sm:py-2.5">P</th>
+            <th className="text-center px-1 sm:px-3 py-2 sm:py-2.5">DG</th>
+            <th className="text-center px-1.5 sm:px-3 py-2 sm:py-2.5">Pts</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((r, i) => (
             <tr key={r.team_id} className="border-t border-slate-100" data-testid={`stats-row-${i}`}>
-              <td className="px-3 py-2.5 font-bold">{i + 1}</td>
-              <td className="px-3 py-2.5">{r.team_name}</td>
-              <td className="text-center tabular-nums">{r.played}</td>
-              <td className="text-center tabular-nums">{r.won}</td>
-              <td className="text-center tabular-nums">{r.drawn}</td>
-              <td className="text-center tabular-nums">{r.lost}</td>
-              <td className="text-center tabular-nums">{r.gd}</td>
-              <td className="text-center font-black text-lg md:text-xl" style={{ color: BLUE }}>{r.points}</td>
+              <td className="px-1.5 sm:px-3 py-2 sm:py-2.5 font-bold">{i + 1}</td>
+              <td className="px-1.5 sm:px-3 py-2 sm:py-2.5 max-w-[92px] sm:max-w-none truncate">{r.team_name}</td>
+              <td className="text-center tabular-nums px-1 sm:px-3">{r.played}</td>
+              <td className="text-center tabular-nums px-1 sm:px-3">{r.won}</td>
+              <td className="text-center tabular-nums px-1 sm:px-3">{r.drawn}</td>
+              <td className="text-center tabular-nums px-1 sm:px-3">{r.lost}</td>
+              <td className="text-center tabular-nums px-1 sm:px-3">{r.gd}</td>
+              <td className="text-center font-black text-base sm:text-lg md:text-xl px-1.5 sm:px-3" style={{ color: BLUE }}>{r.points}</td>
             </tr>
           ))}
         </tbody>
@@ -615,21 +615,21 @@ function StandingsTable({ rows }) {
 function ScorersTable({ rows }) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[600px] text-base md:text-lg">
+      <table className="w-full text-[13px] sm:text-base md:text-lg">
         <thead className="bg-slate-100 text-slate-700">
           <tr>
-            <th className="text-left px-3 py-2.5">#</th>
-            <th className="text-left px-3 py-2.5">Jugador</th>
-            <th className="text-left px-3 py-2.5">Equipo</th>
-            <th className="text-center px-3 py-2.5">Goles</th>
+            <th className="text-left px-1.5 sm:px-3 py-2 sm:py-2.5">#</th>
+            <th className="text-left px-1.5 sm:px-3 py-2 sm:py-2.5">Jugador</th>
+            <th className="text-left px-1.5 sm:px-3 py-2 sm:py-2.5">Equipo</th>
+            <th className="text-center px-1.5 sm:px-3 py-2 sm:py-2.5">Goles</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((r, i) => (
             <tr key={`sc-${i}`} className="border-t border-slate-100" data-testid={`stats-scorer-row-${i}`}>
-              <td className="px-3 py-2.5 font-bold">{i + 1}</td>
-              <td className="px-3 py-2.5">{r.name || r.player_name || "—"}</td>
-              <td className="px-3 py-2.5 text-slate-500">{r.team_name || ""}</td>
+              <td className="px-1.5 sm:px-3 py-2 sm:py-2.5 font-bold">{i + 1}</td>
+              <td className="px-1.5 sm:px-3 py-2 sm:py-2.5 max-w-[100px] sm:max-w-none truncate">{r.name || r.player_name || "—"}</td>
+              <td className="px-1.5 sm:px-3 py-2 sm:py-2.5 text-slate-500 max-w-[90px] sm:max-w-none truncate">{r.team_name || ""}</td>
               <td className="text-center font-black text-lg md:text-xl" style={{ color: RED }}>{r.goals}</td>
             </tr>
           ))}

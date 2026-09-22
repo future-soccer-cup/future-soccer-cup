@@ -17,13 +17,13 @@ function MatchCard({ m }) {
   const homeFinal = m.status === "finalizado" && (m.winner_team_id === m.home_team_id || (m.home_score > m.away_score));
   const awayFinal = m.status === "finalizado" && (m.winner_team_id === m.away_team_id || (m.away_score > m.home_score));
   return (
-    <div className="bg-white border border-slate-200 rounded-md p-2 min-w-[220px] shadow-sm" data-testid={`bracket-match-${m.id}`}>
+    <div className="bg-white border border-slate-200 rounded-md p-2.5 min-w-[240px] shadow-sm" data-testid={`bracket-match-${m.id}`}>
       <Side name={m.home_team_name} logo={m.home_team_logo} color={m.home_team_color} score={m.home_score} winner={homeFinal} pending={!m.home_team_id} />
-      <div className="border-t border-slate-100 my-1"></div>
+      <div className="border-t border-slate-100 my-1.5"></div>
       <Side name={m.away_team_name} logo={m.away_team_logo} color={m.away_team_color} score={m.away_score} winner={awayFinal} pending={!m.away_team_id} />
-      <div className="text-[10px] text-slate-400 mt-1 flex items-center gap-1 truncate">
-        <Calendar size={10}/> {formatDate(m.match_date)}
-        {m.venue && <><MapPin size={10} className="ml-1"/> {m.venue}</>}
+      <div className="text-xs text-slate-400 mt-1.5 flex items-center gap-1 truncate">
+        <Calendar size={12}/> {formatDate(m.match_date)}
+        {m.venue && <><MapPin size={12} className="ml-1"/> {m.venue}</>}
       </div>
     </div>
   );
@@ -32,11 +32,11 @@ function MatchCard({ m }) {
 function Side({ name, logo, color, score, winner, pending }) {
   return (
     <div className={`flex items-center gap-2 px-1 py-1 rounded ${winner ? "bg-green-50" : ""}`}>
-      <div className="h-6 w-6 rounded flex items-center justify-center text-[10px] font-display font-black text-white shrink-0" style={{ background: color || "#1d4ed8" }}>
+      <div className="h-7 w-7 rounded flex items-center justify-center text-xs font-display font-black text-white shrink-0" style={{ background: color || "#1d4ed8" }}>
         {logo ? <img src={imgSrc(logo)} alt="" className="h-full w-full object-contain" /> : (pending ? "?" : (name?.[0] || "?"))}
       </div>
-      <span className={`text-xs flex-1 truncate ${pending ? "text-slate-400 italic" : winner ? "font-black text-green-700" : "font-semibold"}`}>{name}</span>
-      <span className={`text-sm font-display font-black tabular-nums w-6 text-right ${winner ? "text-green-700" : "text-slate-700"}`}>{score ?? "—"}</span>
+      <span className={`text-sm flex-1 truncate ${pending ? "text-slate-400 italic" : winner ? "font-black text-green-700" : "font-semibold"}`}>{name}</span>
+      <span className={`text-base font-display font-black tabular-nums w-7 text-right ${winner ? "text-green-700" : "text-slate-700"}`}>{score ?? "—"}</span>
     </div>
   );
 }
