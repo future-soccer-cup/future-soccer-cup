@@ -87,16 +87,16 @@ export default function PlayerDetail() {
 // Defaults to "blue/red" branding when category doesn't match a known one.
 // Si el admin asigna `color` en /admin/categorias, ese color SOBREESCRIBE este fallback.
 const CATEGORY_PALETTE = {
-  "Sub-9":  { from: "#0ea5e9", to: "#0369a1", accent: "#fde047" },   // sky → blue
-  "Sub-10": { from: "#10b981", to: "#065f46", accent: "#fde047" },   // emerald
-  "Sub-11": { from: "#f59e0b", to: "#b45309", accent: "#fff" },      // amber
-  "Sub-12": { from: "#ef4444", to: "#7f1d1d", accent: "#fde047" },   // red (default-ish)
-  "Sub-13": { from: "#8b5cf6", to: "#4c1d95", accent: "#fde047" },   // violet
-  "Sub-14": { from: "#ec4899", to: "#831843", accent: "#fde047" },   // pink
-  "Sub-15": { from: "#06b6d4", to: "#155e75", accent: "#fde047" },   // cyan
-  "Sub-16": { from: "#f97316", to: "#7c2d12", accent: "#fff" },      // orange
-  "Sub-17": { from: "#14b8a6", to: "#134e4a", accent: "#fde047" },   // teal
-  "Sub-18": { from: "#1d4ed8", to: "#0c1b54", accent: "#fde047" },   // FSC blue (default)
+  "2017": { from: "#0ea5e9", to: "#0369a1", accent: "#fde047" },   // sky → blue
+  "2016": { from: "#10b981", to: "#065f46", accent: "#fde047" },   // emerald
+  "2015": { from: "#f59e0b", to: "#b45309", accent: "#fff" },      // amber
+  "2014": { from: "#ef4444", to: "#7f1d1d", accent: "#fde047" },   // red (default-ish)
+  "2013": { from: "#8b5cf6", to: "#4c1d95", accent: "#fde047" },   // violet
+  "2012": { from: "#ec4899", to: "#831843", accent: "#fde047" },   // pink
+  "2011": { from: "#06b6d4", to: "#155e75", accent: "#fde047" },   // cyan
+  "2010": { from: "#f97316", to: "#7c2d12", accent: "#fff" },      // orange
+  "2009": { from: "#14b8a6", to: "#134e4a", accent: "#fde047" },   // teal
+  "2008": { from: "#1d4ed8", to: "#0c1b54", accent: "#fde047" },   // FSC blue (default)
 };
 const DEFAULT_PALETTE = { from: "#1d4ed8", to: "#0c1b54", accent: "#dc2626" };
 

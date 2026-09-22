@@ -37,7 +37,7 @@ from pillow_heif import register_heif_opener
 register_heif_opener()  # permite que Image.open() lea HEIC/HEIF (fotos por defecto de iPhone)
 
 # -------------------- Categories --------------------
-CATEGORIES = ["Sub-8", "Sub-10", "Sub-12", "Sub-14", "Sub-16", "Sub-18"]
+CATEGORIES = ["2018", "2016", "2014", "2012", "2010", "2008"]
 
 # -------------------- Event Types & Lodging Tiers --------------------
 # Precios en COP (Pesos Colombianos)
@@ -2313,7 +2313,7 @@ async def download_matches_template(_: dict = Depends(require_admin)):
         "cancha",
     ]
     ws.append(headers)
-    ws.append(["2025-12-15", "10:00", "Sub-12", "Grupo A", 1, "grupos", "regular", "JAGUARES", "FORTALEZA", 3, 1, 200, 180, "Cancha 1"])
+    ws.append(["2025-12-15", "10:00", "2014", "Grupo A", 1, "grupos", "regular", "JAGUARES", "FORTALEZA", 3, 1, 200, 180, "Cancha 1"])
     # Style header
     from openpyxl.styles import Font, PatternFill
     bold = Font(bold=True, color="FFFFFF")
@@ -5405,7 +5405,7 @@ TEAM_HEADERS_ES = [
     ("delegate_phone",  "Teléfono delegado"),
     ("color",           "Color (HEX)"),
 ]
-TEAM_SAMPLE_ES = ["Leones FC", "Leones FC 2014 Único", "festival", "Sub-12", 2014, "Único", "Grupo A", "Pedro Coach", "Bogotá", "Colombia", "María Pdta.", "+57 310 123 4567", "#1d4ed8"]
+TEAM_SAMPLE_ES = ["Leones FC", "Leones FC 2014 Único", "festival", "2014", 2014, "Único", "Grupo A", "Pedro Coach", "Bogotá", "Colombia", "María Pdta.", "+57 310 123 4567", "#1d4ed8"]
 
 PLAYER_HEADERS_ES = [
     ("team_name",         "Equipo"),
@@ -6134,7 +6134,7 @@ class HomeSettings(BaseModel):
     festival_title: Optional[str] = "FESTIVAL"
     festival_logo_url: Optional[str] = ""
     festival_date_badge: Optional[str] = "2 OCT"
-    festival_categories: Optional[List[str]] = []  # ["Sub-8", "Sub-10", ...]
+    festival_categories: Optional[List[str]] = []  # ["2018", "2016", ...]
     festival_cta_url: Optional[str] = "/registro-equipo"
     premier_title: Optional[str] = "PREMIER"
     premier_logo_url: Optional[str] = ""

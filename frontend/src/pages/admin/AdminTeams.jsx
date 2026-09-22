@@ -7,7 +7,7 @@ import CategorySelect from "../../components/CategorySelect";
 import { usePagedSearch, SearchBar, Pagination } from "../../components/PagedTable";
 import ExportCsvButton from "../../components/ExportCsvButton";
 
-const EMPTY = { name: "", category: "Sub-12", birth_year: null, coach: "", city: "", logo_url: "", color: "#1d4ed8", group_name: "" };
+const EMPTY = { name: "", category: "", birth_year: null, coach: "", city: "", logo_url: "", color: "#1d4ed8", group_name: "" };
 
 export default function AdminTeams() {
   const [teams, setTeams] = useState([]);

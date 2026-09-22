@@ -61,9 +61,9 @@ export default function AdminTournaments() {
       // Compat: el backend exige `category` (single). Tomamos la 1ª de la lista o vacía.
       const body = { ...editing };
       if (body.categories && body.categories.length > 0) {
-        body.category = body.categories[0].name || body.category || "Sub-12";
+        body.category = body.categories[0].name || body.category || "";
       } else if (!body.category) {
-        body.category = "Sub-12";
+        body.category = "";
       }
       if (editing.id) {
         await api.put(`/tournaments/${editing.id}`, body);

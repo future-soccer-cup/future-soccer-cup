@@ -16,7 +16,7 @@ export default function AdminBracketGenerator() {
   const [brackets, setBrackets] = useState([]);
   const [form, setForm] = useState({
     name: "",
-    category: "Sub-12",
+    category: "",
     size: 8,
     include_third_place: true,
     start_date: new Date().toISOString().slice(0, 10),

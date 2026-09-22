@@ -124,7 +124,7 @@ export default function AdminCategories() {
             <h2 className="font-display text-2xl font-black uppercase tracking-tight">Nueva categoría</h2>
             <label className="block">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Nombre</span>
-              <input required value={creating.name} onChange={(e) => setCreating({ ...creating, name: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" placeholder="Ej: Sub-12, Femenino, Libre" data-testid="cat-new-name" />
+              <input required value={creating.name} onChange={(e) => setCreating({ ...creating, name: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" placeholder="Ej: 2014, Femenino, Libre" data-testid="cat-new-name" />
             </label>
             <label className="block">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Orden (opcional)</span>
