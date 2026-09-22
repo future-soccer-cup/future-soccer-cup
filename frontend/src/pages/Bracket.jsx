@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { useSearchParams, Link } from "react-router-dom";
+import { useSearchParams, useNavigate, Link } from "react-router-dom";
 import api, { imgSrc } from "../lib/api";
-import { Trophy, Calendar, MapPin } from "lucide-react";
+import { Trophy, Calendar, MapPin, ArrowLeft } from "lucide-react";
 import { formatDate } from "../lib/dateFormat";
 
 const STAGE_LABEL = {
@@ -42,6 +42,7 @@ function Side({ name, logo, color, score, winner, pending }) {
 }
 
 export default function Bracket() {
+  const navigate = useNavigate();
   const [sp] = useSearchParams();
   const [brackets, setBrackets] = useState([]);
   const [selectedId, setSelectedId] = useState(sp.get("id") || "");
@@ -80,6 +81,11 @@ export default function Bracket() {
 
   if (!bracket) return null;
 
+  const goBack = () => {
+    if (window.history.length > 2) navigate(-1);
+    else navigate("/estadisticas");
+  };
+
   // Group regular bracket matches by round
   const regular = bracket.matches.filter((m) => !m.is_third_place);
   const thirdMatch = bracket.matches.find((m) => m.is_third_place);
@@ -99,6 +105,14 @@ export default function Bracket() {
 
   return (
     <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-12" data-testid="bracket-page">
+      <button
+        type="button"
+        onClick={goBack}
+        className="mb-4 inline-flex items-center gap-1.5 text-sm font-bold text-blue-700 hover:text-blue-900"
+        data-testid="bracket-back-btn"
+      >
+        <ArrowLeft size={16} /> Volver
+      </button>
       <div className="flex flex-wrap items-end justify-between gap-4 mb-6">
         <div>
           <span className="text-xs tracking-[0.25em] uppercase font-bold text-blue-700">Eliminación directa</span>
