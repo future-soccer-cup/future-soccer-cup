@@ -51,6 +51,7 @@ export default function AdminClubsTree() {
   const [clubUsers, setClubUsers] = useState({}); // {club_id: [users]}
   const [editingPlayer, setEditingPlayer] = useState(null); // {team_id, player|null}
   const [editingTeamName, setEditingTeamName] = useState(null); // {id, name, category, ...}
+  const [editingClubName, setEditingClubName] = useState(null); // {id, name}
   const [editingStaff, setEditingStaff] = useState(null); // {team, idx, data}
 
   const load = useCallback(async () => {
@@ -204,6 +205,7 @@ export default function AdminClubsTree() {
             onDeletePlayer={deletePlayer}
             onEditPlayer={(team, player) => setEditingPlayer({ team, player })}
             onEditTeamName={(team) => setEditingTeamName(team)}
+            onEditClubName={() => setEditingClubName(c)}
             onEditStaff={(team, idx) => setEditingStaff({ team, idx, data: idx != null ? (team.cuerpo_tecnico || [])[idx] : { name: "", role: "Director técnico", document: "", phone: "", photo_url: "" } })}
             onDeleteStaff={deleteStaff}
           />
@@ -229,6 +231,14 @@ export default function AdminClubsTree() {
         />
       )}
 
+      {editingClubName && (
+        <ClubNameEditModal
+          club={editingClubName}
+          onClose={() => setEditingClubName(null)}
+          onSaved={() => { setEditingClubName(null); load(); }}
+        />
+      )}
+
       {editingStaff && (
         <StaffEditModal
           team={editingStaff.team}
@@ -242,7 +252,7 @@ export default function AdminClubsTree() {
   );
 }
 
-function ClubNode({ club, users, expanded, onToggle, onApprove, onReject, onPending, onDelete, onTeamStatus, onDeletePlayer, onEditPlayer, onEditTeamName, onEditStaff, onDeleteStaff }) {
+function ClubNode({ club, users, expanded, onToggle, onApprove, onReject, onPending, onDelete, onTeamStatus, onDeletePlayer, onEditPlayer, onEditTeamName, onEditClubName, onEditStaff, onDeleteStaff }) {
   const teams = useMemo(() => club.teams || [], [club.teams]);
   // Group teams by (event_type, category)
   const byEvent = useMemo(() => {
@@ -271,6 +281,9 @@ function ClubNode({ club, users, expanded, onToggle, onApprove, onReject, onPend
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="font-display text-xl font-black tracking-tight">{club.name}</h3>
+            <button onClick={onEditClubName} className="text-slate-400 hover:text-fsc-azul p-1 rounded" title={`Editar nombre del club "${club.name}"`} data-testid={`club-edit-name-${club.id}`}>
+              <Edit3 size={14}/>
+            </button>
             <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${STATUS_BADGE[status] || "bg-slate-100 text-slate-600"}`} data-testid={`club-status-${club.id}`}>{status}</span>
             <span className="text-xs text-slate-500">· {teams.length} equipo(s)</span>
           </div>
@@ -636,6 +649,51 @@ function TeamNameEditModal({ team, onClose, onSaved }) {
         <div className="flex justify-end gap-2 pt-2">
           <button type="button" onClick={onClose} disabled={saving} className="px-4 py-2 text-xs font-bold uppercase tracking-wide text-slate-600">Cancelar</button>
           <button type="submit" disabled={saving} className="fsc-btn-primary px-4 py-2 rounded-md text-xs disabled:opacity-50" data-testid="admin-save-team-name-btn">
+            {saving ? "Guardando..." : "Guardar"}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function ClubNameEditModal({ club, onClose, onSaved }) {
+  const [name, setName] = useState(club?.name || "");
+  const [saving, setSaving] = useState(false);
+
+  const save = async (e) => {
+    e.preventDefault();
+    const trimmed = (name || "").trim();
+    if (!trimmed) { toast.error("El nombre es obligatorio"); return; }
+    setSaving(true);
+    try {
+      await api.patch(`/clubs/${club.id}/name`, { name: trimmed });
+      toast.success("Nombre del club actualizado");
+      onSaved?.();
+    } catch (err) {
+      toast.error(formatApiError(err.response?.data?.detail) || "No se pudo actualizar");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4" onClick={() => !saving && onClose()} data-testid="club-name-edit-modal">
+      <form onClick={(e) => e.stopPropagation()} onSubmit={save} className="bg-white rounded-2xl max-w-md w-full p-6 space-y-3">
+        <h3 className="font-display text-xl font-black uppercase tracking-tight">Editar nombre del club</h3>
+        <label className="block">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Nombre del club</span>
+          <input
+            autoFocus required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md"
+            data-testid="admin-club-name-input"
+          />
+        </label>
+        <div className="flex justify-end gap-2 pt-2">
+          <button type="button" onClick={onClose} disabled={saving} className="px-4 py-2 text-xs font-bold uppercase tracking-wide text-slate-600">Cancelar</button>
+          <button type="submit" disabled={saving} className="fsc-btn-primary px-4 py-2 rounded-md text-xs disabled:opacity-50" data-testid="admin-save-club-name-btn">
             {saving ? "Guardando..." : "Guardar"}
           </button>
         </div>

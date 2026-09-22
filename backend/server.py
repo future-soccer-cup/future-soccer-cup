@@ -3589,6 +3589,22 @@ async def delete_club(cid: str, _: dict = Depends(require_admin)):
         "payments_deleted": payments_deleted.deleted_count,
     }
 
+@api.patch("/clubs/{cid}/name")
+async def update_club_name(cid: str, payload: dict, user: dict = Depends(get_current_user)):
+    """Edición parcial — actualiza SOLO el nombre del club sin afectar logo_url, manager_user_id
+    ni demás campos. Admin o el Director (manager_user_id) del club."""
+    club = await db.clubs.find_one({"id": cid}, {"_id": 0})
+    if not club:
+        raise HTTPException(status_code=404, detail="Club no encontrado")
+    if user.get("role") != "admin" and club.get("manager_user_id") != user["id"]:
+        raise HTTPException(status_code=403, detail="No autorizado")
+    new_name = (payload.get("name") or "").strip()
+    if not new_name:
+        raise HTTPException(status_code=400, detail="El nombre del club es obligatorio")
+    await db.clubs.update_one({"id": cid}, {"$set": {"name": new_name}})
+    return {**club, "name": new_name}
+
+
 @api.patch("/clubs/{cid}/logo")
 async def update_club_logo(cid: str, payload: dict, user: dict = Depends(get_current_user)):
     """Solo admin o el Director (manager_user_id del club) pueden actualizar el logo.
