@@ -3669,9 +3669,6 @@ async def add_team_to_club(cid: str, payload: TeamAddIn, user: dict = Depends(ge
         t = await db.tournaments.find_one({"id": payload.tournament_id}, {"_id": 0})
         if not t:
             raise HTTPException(status_code=404, detail="Evento no encontrado")
-        name = (payload.team_name or "").strip()
-        if not name:
-            raise HTTPException(status_code=400, detail="El nombre del equipo es obligatorio")
         cat_name = (payload.category_name or "").strip()
         if not cat_name:
             raise HTTPException(status_code=400, detail="Debes seleccionar una categoría")
@@ -3679,6 +3676,9 @@ async def add_team_to_club(cid: str, payload: TeamAddIn, user: dict = Depends(ge
         cat_match = next((c for c in cats if (c.get("name") or "").strip() == cat_name), None)
         if not cat_match:
             raise HTTPException(status_code=400, detail=f"La categoría '{cat_name}' no pertenece al evento '{t.get('name','')}'")
+        # Si el Directivo/Cuerpo Técnico no escribe un nombre, se genera solo con
+        # club + categoría (igual que ya hacía el flujo legacy de abajo).
+        name = (payload.team_name or "").strip() or f"{club['name']} {cat_name}".strip()
         existing = await db.teams.find_one({
             "club_id": cid,
             "tournament_id": payload.tournament_id,

@@ -632,7 +632,6 @@ export default function MyTeam() {
     if (!team.club_id) return toast.error("Tu equipo aún no está vinculado a un club");
     if (!newTeam.tournament_id) return toast.error("Selecciona un evento");
     if (!newTeam.category_name) return toast.error("Selecciona una categoría");
-    if (!newTeam.team_name.trim()) return toast.error("Escribe el nombre del equipo");
     try {
       await api.post(`/clubs/${team.club_id}/teams`, newTeam);
       toast.success("Equipo agregado al club");
@@ -822,8 +821,8 @@ export default function MyTeam() {
                 </select>
               </label>
               <label className="block">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Nombre del equipo</span>
-                <input value={newTeam.team_name} onChange={(e) => setNewTeam({ ...newTeam, team_name: e.target.value })} placeholder="Ej: Halcones FC A" className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="add-team-name" />
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Nombre del equipo (opcional)</span>
+                <input value={newTeam.team_name} onChange={(e) => setNewTeam({ ...newTeam, team_name: e.target.value })} placeholder="Si lo dejas vacío, se usa el nombre del club + la categoría" className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="add-team-name" />
               </label>
             </div>
             {quoteTournaments.length === 0 && (
@@ -1223,7 +1222,6 @@ function FirstTeamCreator({ clubId, tournaments, onCreated }) {
   const submit = async () => {
     if (!form.tournament_id) return toast.error("Selecciona un evento");
     if (!form.category_name) return toast.error("Selecciona una categoría");
-    if (!form.team_name.trim()) return toast.error("Escribe el nombre del equipo");
     setSaving(true);
     try {
       await api.post(`/clubs/${clubId}/teams`, form);
@@ -1269,8 +1267,8 @@ function FirstTeamCreator({ clubId, tournaments, onCreated }) {
           </select>
         </label>
         <label className="block">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Nombre del equipo</span>
-          <input value={form.team_name} onChange={(e) => setForm({ ...form, team_name: e.target.value })} placeholder="Ej: Halcones FC Sub-12 A" className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="first-team-name" />
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Nombre del equipo (opcional)</span>
+          <input value={form.team_name} onChange={(e) => setForm({ ...form, team_name: e.target.value })} placeholder="Si lo dejas vacío, se usa el nombre del club + la categoría" className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="first-team-name" />
         </label>
       </div>
       <div className="mt-4 flex gap-2">
