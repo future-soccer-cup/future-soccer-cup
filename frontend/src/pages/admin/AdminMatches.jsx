@@ -38,13 +38,14 @@ export default function AdminMatches() {
   const [tab, setTab] = useState("partidos"); // partidos | clasificacion | juego_limpio
   const [standings, setStandings] = useState([]);
   const [fixtures, setFixtures] = useState([]);
+  const [brackets, setBrackets] = useState([]);
   // Iter53: Partidos adicionales (bonus matches). Aplican SOLO en fixtures de 3 o 4 equipos.
   const [bonusMatches, setBonusMatches] = useState([]);
   const [bonusEdit, setBonusEdit] = useState(null); // {id?, team_id, result, goals_for, ...}
 
   const load = useCallback(() => Promise.all([
-    api.get("/matches"), api.get("/teams"), api.get("/tournaments"), api.get("/fixtures")
-  ]).then(([m, t, tr, fx]) => { setMatches(m.data); setTeams(t.data); setTournaments(tr.data); setFixtures(fx.data || []); }), []);
+    api.get("/matches"), api.get("/teams"), api.get("/tournaments"), api.get("/fixtures"), api.get("/brackets")
+  ]).then(([m, t, tr, fx, br]) => { setMatches(m.data); setTeams(t.data); setTournaments(tr.data); setFixtures(fx.data || []); setBrackets(br.data || []); }), []);
   useEffect(() => { load(); }, [load]);
 
   // Cargar clasificación cuando hay filtros suficientes y se cambia a tabs de stats
@@ -81,10 +82,19 @@ export default function AdminMatches() {
     return acc;
   }, {});
 
+  // Iter76: el filtro de "grupo" también admite un bracket (llave de eliminación directa),
+  // codificado como "bracket:<id>" — esos partidos no tienen group_name (viven aparte, atados
+  // a bracket_id), así que se filtran por ese campo en vez de comparar group_name.
+  const filterBracketId = filterGrp.startsWith("bracket:") ? filterGrp.slice("bracket:".length) : null;
+
   // Filtrar la lista de partidos visible
   const filteredMatches = matches.filter((m) => {
     if (filterTid && m.tournament_id !== filterTid) return false;
-    if (filterGrp && (m.group_name || "") !== filterGrp) return false;
+    if (filterBracketId) {
+      if (m.bracket_id !== filterBracketId) return false;
+    } else if (filterGrp && (m.group_name || "") !== filterGrp) {
+      return false;
+    }
     if (filterCat) {
       // Necesitamos atar partido a categoría vía el equipo local o visitante.
       // En partidos DESCANSA (BYE) uno de los ids es "__BYE__" y no está en `teams`,
@@ -266,7 +276,7 @@ export default function AdminMatches() {
       </div>
 
       <FilterAndExportBar
-        tournaments={tournaments} teams={teams} fixtures={fixtures}
+        tournaments={tournaments} teams={teams} fixtures={fixtures} brackets={brackets}
         tid={filterTid} setTid={setFilterTid}
         cat={filterCat} setCat={setFilterCat}
         grp={filterGrp} setGrp={setFilterGrp}
@@ -1163,7 +1173,7 @@ function hasFixtureForFilters(fixtures, tid, cat, grp) {
   });
 }
 
-function FilterAndExportBar({ tournaments, teams, fixtures = [], tid, setTid, cat, setCat, grp, setGrp }) {
+function FilterAndExportBar({ tournaments, teams, fixtures = [], brackets = [], tid, setTid, cat, setCat, grp, setGrp }) {
   const activeTournaments = (tournaments || []).filter((t) => !t.archived);
   const tournament = activeTournaments.find((t) => t.id === tid);
   const declaredCats = tournament
@@ -1184,11 +1194,16 @@ function FilterAndExportBar({ tournaments, teams, fixtures = [], tid, setTid, ca
       .map((f) => f.group_name)
       .filter(Boolean)
   )).sort();
+  // Iter76: los brackets (llaves de eliminación directa) no tienen group_name — se ofrecen
+  // como opciones aparte en el mismo selector, codificadas como "bracket:<id>".
+  const bracketsAvail = (brackets || []).filter((b) => (!tid || b.tournament_id === tid) && (!cat || b.category === cat));
 
   const params = () => {
     const p = new URLSearchParams();
     if (cat) p.set("category", cat);
-    if (grp) p.set("group", grp);
+    // Los PDFs de fixture/clasificación/juego limpio son por grupo de todos-contra-todos;
+    // un bracket no aplica ahí, así que se ignora si el filtro activo es un bracket.
+    if (grp && !grp.startsWith("bracket:")) p.set("group", grp);
     const q = p.toString();
     return q ? `?${q}` : "";
   };
@@ -1208,6 +1223,7 @@ function FilterAndExportBar({ tournaments, teams, fixtures = [], tid, setTid, ca
         <select value={grp} onChange={(e) => setGrp(e.target.value)} className="px-2 py-1.5 border border-slate-200 rounded text-xs disabled:bg-slate-50" disabled={!tid || !cat} data-testid="pdf-export-group">
           <option value="">Todos los grupos</option>
           {groupsAvail.map((g) => <option key={g} value={g}>{g}</option>)}
+          {bracketsAvail.map((b) => <option key={b.id} value={`bracket:${b.id}`}>🏆 {b.name}</option>)}
         </select>
         {(tid || cat || grp) && (
           <button onClick={() => { setTid(""); setCat(""); setGrp(""); }} className="px-2 py-1.5 text-xs text-slate-500 hover:text-fsc-rojo" data-testid="pdf-export-clear">Limpiar</button>
