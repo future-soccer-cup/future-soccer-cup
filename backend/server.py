@@ -2714,7 +2714,11 @@ async def standings(category: Optional[str] = None, group_name: Optional[str] = 
     teams = await db.teams.find(q_team, {"_id": 0}).to_list(500)
     team_ids = [t["id"] for t in teams]
 
-    q_match = {"status": "finalizado", "home_team_id": {"$in": team_ids}}
+    # Iter75: no exigir que AMBOS equipos pertenezcan a este grupo — un partido
+    # intergrupos (1°A vs 1°B) debe sumarle al equipo de este grupo su lado del
+    # resultado aunque el rival juegue en otro grupo. Por eso el query busca por
+    # cualquiera de los dos lados, y el conteo de abajo es por equipo, no por partido.
+    q_match = {"status": "finalizado", "$or": [{"home_team_id": {"$in": team_ids}}, {"away_team_id": {"$in": team_ids}}]}
     if tournament_id:
         q_match["tournament_id"] = tournament_id
     matches = await db.matches.find(q_match, {"_id": 0}).to_list(2000)
@@ -2737,37 +2741,35 @@ async def standings(category: Optional[str] = None, group_name: Optional[str] = 
     for m in matches:
         h, a = m["home_team_id"], m["away_team_id"]
         hs, as_ = m.get("home_score") or 0, m.get("away_score") or 0
-        if h not in table or a not in table:
-            continue
-        table[h]["played"] += 1
-        table[a]["played"] += 1
-        table[h]["gf"] += hs; table[h]["ga"] += as_
-        table[a]["gf"] += as_; table[a]["ga"] += hs
-        # Tarjetas por equipo en este partido → descontar J.L.
-        for c in (m.get("cards") or []):
-            tid = c.get("team_id")
-            if tid not in table:
+        # Cada lado del partido se acredita por separado a SU equipo si pertenece a
+        # este grupo — así un intergrupos (rival de otro grupo, que no está en `table`)
+        # sigue sumando para el lado que sí pertenece aquí.
+        for team_id, gf, ga in ((h, hs, as_), (a, as_, hs)):
+            if team_id not in table:
                 continue
-            ctype = c.get("type")
-            if ctype == "yellow":
-                table[tid]["yellow_cards"] += 1
-                table[tid]["fair_play"] -= cfg["fairplay_yellow"]
-            elif ctype == "red":
-                table[tid]["red_cards"] += 1
-                table[tid]["fair_play"] -= cfg["fairplay_red"]
-            elif ctype == "other":
-                table[tid]["other_cards"] += 1
-                table[tid]["fair_play"] -= cfg["fairplay_other"]
-        # Puntos
-        if hs > as_:
-            table[h]["won"] += 1; table[h]["points"] += cfg["points_win"]
-            table[a]["lost"] += 1; table[a]["points"] += cfg["points_loss"]
-        elif hs < as_:
-            table[a]["won"] += 1; table[a]["points"] += cfg["points_win"]
-            table[h]["lost"] += 1; table[h]["points"] += cfg["points_loss"]
-        else:
-            table[h]["drawn"] += 1; table[h]["points"] += cfg["points_draw"]
-            table[a]["drawn"] += 1; table[a]["points"] += cfg["points_draw"]
+            row = table[team_id]
+            row["played"] += 1
+            row["gf"] += gf
+            row["ga"] += ga
+            for c in (m.get("cards") or []):
+                if c.get("team_id") != team_id:
+                    continue
+                ctype = c.get("type")
+                if ctype == "yellow":
+                    row["yellow_cards"] += 1
+                    row["fair_play"] -= cfg["fairplay_yellow"]
+                elif ctype == "red":
+                    row["red_cards"] += 1
+                    row["fair_play"] -= cfg["fairplay_red"]
+                elif ctype == "other":
+                    row["other_cards"] += 1
+                    row["fair_play"] -= cfg["fairplay_other"]
+            if gf > ga:
+                row["won"] += 1; row["points"] += cfg["points_win"]
+            elif gf < ga:
+                row["lost"] += 1; row["points"] += cfg["points_loss"]
+            else:
+                row["drawn"] += 1; row["points"] += cfg["points_draw"]
 
     # Iter53: sumar los partidos adicionales (bonus) del scope. Cada bonus suma directo
     # al equipo indicado como PJ + G/E/P + goles + tarjetas + fair play — sin oponente.

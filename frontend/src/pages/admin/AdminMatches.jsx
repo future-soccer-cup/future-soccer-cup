@@ -443,6 +443,8 @@ export default function AdminMatches() {
       {intergroupOpen && (
         <IntergroupModal
           tournaments={tournaments}
+          fixtures={fixtures}
+          teams={teams}
           onClose={() => setIntergroupOpen(false)}
           onDone={() => { setIntergroupOpen(false); load(); }}
         />
@@ -464,34 +466,108 @@ export default function AdminMatches() {
   );
 }
 
-function IntergroupModal({ tournaments, onClose, onDone }) {
+function IntergroupModal({ tournaments, fixtures = [], teams = [], onClose, onDone }) {
   const [form, setForm] = useState({
     tournament_id: tournaments[0]?.id || "",
     category: "",
-    group_a: "Grupo A",
-    group_b: "Grupo B",
+    group_a: "",
+    group_b: "",
     match_date: "",
     pairing: "standings",
     venues: ["Cancha 1"],
     time_slots: ["10:00"],
   });
+  const [manualPairs, setManualPairs] = useState({}); // { [teamAId]: teamBId }
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  // Iter75: los grupos se leen de los fixtures reales del torneo × categoría elegidos
+  // (evita typos como "Grupo a" vs "Grupo A" que antes rompían el cruce).
+  const groupOptions = Array.from(new Set(
+    fixtures
+      .filter((f) => f.tournament_id === form.tournament_id && f.category === form.category)
+      .map((f) => f.group_name || "")
+      .filter(Boolean)
+  ));
+
+  const teamsInGroup = (g) => teams.filter((t) =>
+    t.category === form.category && (t.group_name || "") === g && (t.status || "aprobado") === "aprobado"
+  );
+  const teamsA = form.group_a ? teamsInGroup(form.group_a) : [];
+  const teamsB = form.group_b ? teamsInGroup(form.group_b) : [];
+
+  const onFieldChange = (patch) => {
+    setForm((f) => ({ ...f, ...patch }));
+    setPreview(null);
+    setManualPairs({});
+  };
+
+  const setManualOpponent = (teamAId, teamBId) => {
+    setManualPairs((p) => ({ ...p, [teamAId]: teamBId || undefined }));
+  };
+
   const submit = async (saveIt) => {
-    if (!form.tournament_id || !form.category || !form.match_date) {
-      toast.error("Completa torneo, categoría y fecha");
+    if (!form.tournament_id || !form.category || !form.match_date || !form.group_a || !form.group_b) {
+      toast.error("Completa torneo, categoría, grupos y fecha");
+      return;
+    }
+    if (form.group_a === form.group_b) {
+      toast.error("Los grupos A y B deben ser distintos");
       return;
     }
     setLoading(true);
     try {
-      const res = await api.post("/fixtures/intergroup", { ...form, preview: !saveIt });
-      setPreview(res.data);
-      if (saveIt) {
-        toast.success(`Intergrupos guardados (${res.data.count} partidos)`);
-        onDone();
+      if (form.pairing === "manual") {
+        const pairs = teamsA
+          .map((ta) => ({ ta, tbId: manualPairs[ta.id] }))
+          .filter((p) => p.tbId);
+        if (!pairs.length) {
+          toast.error("Selecciona al menos un cruce");
+          setLoading(false);
+          return;
+        }
+        const venues = form.venues.length ? form.venues : [""];
+        const slots = form.time_slots.length ? form.time_slots : ["10:00"];
+        const built = pairs.map(({ ta, tbId }, i) => {
+          const tb = teamsB.find((t) => t.id === tbId);
+          const slot = slots[i % slots.length];
+          const [hh, mm] = slot.split(":");
+          const dt = new Date(`${form.match_date}T00:00:00`);
+          if (hh) dt.setHours(Number(hh) || 0, Number(mm) || 0, 0, 0);
+          return {
+            tournament_id: form.tournament_id,
+            home_team_id: ta.id,
+            away_team_id: tbId,
+            match_date: dt.toISOString(),
+            venue: venues[i % venues.length],
+            group_name: `${form.group_a} vs ${form.group_b}`,
+            stage: "grupos",
+            match_type: "intergrupo",
+            status: "programado",
+            home_team_name: ta.name,
+            away_team_name: tb?.name || "",
+          };
+        });
+        if (!saveIt) {
+          setPreview({ count: built.length, matches: built });
+          toast.success("Vista previa generada");
+        } else {
+          await Promise.all(built.map((m) => {
+            const { home_team_name, away_team_name, ...body } = m;
+            return api.post("/matches", body);
+          }));
+          toast.success(`Intergrupos guardados (${built.length} partidos)`);
+          onDone();
+        }
       } else {
-        toast.success("Vista previa generada");
+        const res = await api.post("/fixtures/intergroup", { ...form, preview: !saveIt });
+        setPreview(res.data);
+        if (saveIt) {
+          toast.success(`Intergrupos guardados (${res.data.count} partidos)`);
+          onDone();
+        } else {
+          toast.success("Vista previa generada");
+        }
       }
     } catch (err) {
       toast.error(formatApiError(err.response?.data?.detail));
@@ -507,7 +583,7 @@ function IntergroupModal({ tournaments, onClose, onDone }) {
           <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Torneo</span>
           <select
             value={form.tournament_id}
-            onChange={(e) => setForm({ ...form, tournament_id: e.target.value })}
+            onChange={(e) => onFieldChange({ tournament_id: e.target.value, category: "", group_a: "", group_b: "" })}
             className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md"
             data-testid="ig-tournament"
           >
@@ -516,25 +592,50 @@ function IntergroupModal({ tournaments, onClose, onDone }) {
         </label>
         <CategorySelect
           value={form.category}
-          onChange={(v) => setForm({ ...form, category: v })}
+          onChange={(v) => onFieldChange({ category: v, group_a: "", group_b: "" })}
           testId="ig-category"
         />
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Grupo A" value={form.group_a} onChange={(v) => setForm({ ...form, group_a: v })} />
-          <Field label="Grupo B" value={form.group_b} onChange={(v) => setForm({ ...form, group_b: v })} />
+          <label className="block">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Grupo A</span>
+            <select
+              value={form.group_a}
+              onChange={(e) => onFieldChange({ group_a: e.target.value })}
+              disabled={!form.category}
+              className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md disabled:bg-slate-50"
+              data-testid="ig-group-a"
+            >
+              <option value="">Seleccionar...</option>
+              {groupOptions.map((g) => <option key={g} value={g} disabled={g === form.group_b}>{g}</option>)}
+            </select>
+          </label>
+          <label className="block">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Grupo B</span>
+            <select
+              value={form.group_b}
+              onChange={(e) => onFieldChange({ group_b: e.target.value })}
+              disabled={!form.category}
+              className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md disabled:bg-slate-50"
+              data-testid="ig-group-b"
+            >
+              <option value="">Seleccionar...</option>
+              {groupOptions.map((g) => <option key={g} value={g} disabled={g === form.group_a}>{g}</option>)}
+            </select>
+          </label>
         </div>
-        <Field label="Fecha del intergrupo" type="date" required value={form.match_date} onChange={(v) => setForm({ ...form, match_date: v })} />
+        <Field label="Fecha del intergrupo" type="date" required value={form.match_date} onChange={(v) => onFieldChange({ match_date: v })} />
         <label className="block">
           <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Emparejamiento</span>
           <select
             value={form.pairing}
-            onChange={(e) => setForm({ ...form, pairing: e.target.value })}
+            onChange={(e) => onFieldChange({ pairing: e.target.value })}
             className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md"
             data-testid="ig-pairing"
           >
             <option value="standings">Por posición en la tabla (1°A vs 1°B, 2°A vs 2°B...)</option>
             <option value="seed">Por orden de inscripción</option>
             <option value="random">Aleatorio (sorteo)</option>
+            <option value="manual">Manual (yo elijo cada cruce)</option>
           </select>
         </label>
         <div className="grid grid-cols-2 gap-3">
@@ -555,6 +656,44 @@ function IntergroupModal({ tournaments, onClose, onDone }) {
             />
           </label>
         </div>
+
+        {form.pairing === "manual" && form.group_a && form.group_b && (
+          <div className="border-t border-slate-200 pt-3">
+            <div className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+              Elige el rival de cada equipo de {form.group_a}
+            </div>
+            {teamsA.length === 0 || teamsB.length === 0 ? (
+              <p className="text-sm text-slate-400 italic">Uno de los dos grupos no tiene equipos aprobados.</p>
+            ) : (
+              <div className="space-y-2">
+                {teamsA.map((ta) => (
+                  <div key={ta.id} className="flex items-center gap-2" data-testid={`ig-manual-row-${ta.id}`}>
+                    <span className="flex-1 text-sm font-semibold truncate">{ta.name}</span>
+                    <span className="text-slate-400 text-xs">vs</span>
+                    <select
+                      value={manualPairs[ta.id] || ""}
+                      onChange={(e) => setManualOpponent(ta.id, e.target.value)}
+                      className="flex-1 px-2 py-1.5 border border-slate-200 rounded-md text-sm"
+                      data-testid={`ig-manual-select-${ta.id}`}
+                    >
+                      <option value="">— Sin rival —</option>
+                      {teamsB.map((tb) => (
+                        <option
+                          key={tb.id}
+                          value={tb.id}
+                          disabled={Object.entries(manualPairs).some(([otherA, bId]) => bId === tb.id && otherA !== ta.id)}
+                        >
+                          {tb.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="flex gap-2 pt-2">
           <button onClick={() => submit(false)} disabled={loading} className="flex-1 fsc-btn-primary py-2 rounded-md text-sm disabled:opacity-50" data-testid="ig-preview-btn">
             {loading ? "..." : "Vista previa"}
@@ -567,8 +706,8 @@ function IntergroupModal({ tournaments, onClose, onDone }) {
           <div className="mt-3 border-t border-slate-200 pt-3">
             <div className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Cruces ({preview.count})</div>
             <div className="space-y-1.5 max-h-64 overflow-y-auto">
-              {preview.matches.map((m) => (
-                <div key={m.id} className="flex items-center justify-between text-sm border-l-4 border-red-500 pl-3 py-1.5 bg-red-50">
+              {preview.matches.map((m, i) => (
+                <div key={m.id || i} className="flex items-center justify-between text-sm border-l-4 border-red-500 pl-3 py-1.5 bg-red-50">
                   <span className="font-semibold">{m.home_team_name}</span>
                   <span className="text-slate-400 text-xs">vs</span>
                   <span className="font-semibold">{m.away_team_name}</span>
