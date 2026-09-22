@@ -2879,12 +2879,14 @@ def _enrich_match_teams(items, tmap):
 
 
 @api.get("/stats/matches")
-async def stats_matches(tournament_id: str, category: str, group_name: Optional[str] = None, bracket_id: Optional[str] = None):
+async def stats_matches(tournament_id: Optional[str] = None, category: Optional[str] = None, group_name: Optional[str] = None, bracket_id: Optional[str] = None):
     """Partidos (resultados + pendientes) de un torneo × categoría, ya sea de un grupo
     todos-contra-todos (+ grupo opcional) o de un bracket puntual, para estadísticas públicas."""
     if bracket_id:
-        items = await db.matches.find({"tournament_id": tournament_id, "bracket_id": bracket_id}, {"_id": 0}).sort([("bracket_round", 1), ("match_date", 1)]).to_list(500)
+        items = await db.matches.find({"bracket_id": bracket_id}, {"_id": 0}).sort([("bracket_round", 1), ("match_date", 1)]).to_list(500)
     else:
+        if not tournament_id or not category:
+            return []
         fx_q = {"tournament_id": tournament_id, "category": category}
         if group_name:
             fx_q["group_name"] = {"$regex": f"^{re.escape(group_name)}$", "$options": "i"}
