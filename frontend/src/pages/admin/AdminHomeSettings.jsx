@@ -887,7 +887,7 @@ function EstadisticasEditor({ value, onChange, tournaments = [], fixtures = [] }
                           className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md text-sm"
                           data-testid={`stats-cats-${idx}-group-${ci}`}
                         >
-                          <option value="">Todos los grupos</option>
+                          <option value="">Todos los grupos (el visitante elige cuál ver)</option>
                           {hasLegacyGroup && <option value={it.group_name}>{it.group_name} (valor guardado, no coincide con ningún fixture)</option>}
                           {groupOptions.map((g) => <option key={g} value={g}>{g}</option>)}
                         </select>

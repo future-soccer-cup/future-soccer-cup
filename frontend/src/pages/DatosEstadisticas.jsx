@@ -263,62 +263,48 @@ function CategoriesGrid({ event, onSelectCat }) {
 
 
 function CategoryDataPanel({ category, eventLabel, onClose }) {
-  const [groups, setGroups] = useState([]);
-  const [standingsByGroup, setStandingsByGroup] = useState({});
-  const [matches, setMatches] = useState([]);
-  const [scorers, setScorers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const noConfig = !category.tournament_id || !category.category;
+  // null = aún sin resolver qué grupo ver; "" = combinar todo (categoría sin grupos); string = grupo elegido.
+  const [availableGroups, setAvailableGroups] = useState([]);
+  const [selectedGroup, setSelectedGroup] = useState(null);
+  const [groupsLoading, setGroupsLoading] = useState(true);
 
   useEffect(() => {
-    const hasIds = category.tournament_id && category.category;
-    if (!hasIds) {
-      setLoading(false);
+    setSelectedGroup(null);
+    setAvailableGroups([]);
+    if (noConfig) {
+      setGroupsLoading(false);
+      return;
+    }
+    // Si el admin ya fijó un grupo específico para esta categoría (CMS), saltamos el
+    // paso de elegir grupo y vamos directo a sus estadísticas.
+    if (category.group_name) {
+      setAvailableGroups([category.group_name]);
+      setSelectedGroup(category.group_name);
+      setGroupsLoading(false);
       return;
     }
     let cancelled = false;
-    setLoading(true);
-    const base = { tournament_id: category.tournament_id, category: category.category };
-
-    (async () => {
-      let gs = [];
-      try {
-        const r = await api.get("/stats/groups", { params: base });
-        gs = r.data || [];
-      } catch {
-        gs = [];
-      }
-      if (!gs.length && category.group_name) gs = [category.group_name];
-
-      const standingsPairs = await Promise.all(
-        (gs.length ? gs : [""]).map((g) =>
-          api.get("/stats/standings", { params: g ? { ...base, group_name: g } : base })
-            .then((r) => [g, r.data || []])
-            .catch(() => [g, []])
-        )
-      );
-      const [ms, sc] = await Promise.all([
-        api.get("/stats/matches", { params: base }).then((r) => r.data || []).catch(() => []),
-        api.get("/stats/top-scorers", { params: { ...base, limit: 10 } }).then((r) => r.data || []).catch(() => []),
-      ]);
-      if (cancelled) return;
-      const map = {};
-      standingsPairs.forEach(([g, rows]) => { map[g] = rows; });
-      const nonEmptyGroups = (gs.length ? gs : [""]).filter((g) => (map[g] || []).length > 0);
-      setGroups(nonEmptyGroups.length ? nonEmptyGroups : (gs.length ? gs : []));
-      setStandingsByGroup(map);
-      setMatches(ms);
-      setScorers(sc);
-      setLoading(false);
-    })();
-
+    setGroupsLoading(true);
+    api.get("/stats/groups", { params: { tournament_id: category.tournament_id, category: category.category } })
+      .then((r) => {
+        if (cancelled) return;
+        const gs = r.data || [];
+        setAvailableGroups(gs);
+        if (gs.length <= 1) setSelectedGroup(gs[0] || "");
+        setGroupsLoading(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setAvailableGroups([]);
+        setSelectedGroup("");
+        setGroupsLoading(false);
+      });
     return () => { cancelled = true; };
-  }, [category]);
+  }, [category, noConfig]);
 
-  const noConfig = !category.tournament_id || !category.category;
-  const results = useMemo(() => matches.filter((m) => m.status === "finalizado").slice().reverse(), [matches]);
-  const pending = useMemo(() => matches.filter((m) => m.status !== "finalizado"), [matches]);
-  const totalStandingsRows = Object.values(standingsByGroup).reduce((acc, rows) => acc + (rows?.length || 0), 0);
-  const empty = !loading && totalStandingsRows === 0 && matches.length === 0 && scorers.length === 0;
+  const showGroupPicker = !noConfig && !groupsLoading && selectedGroup === null && availableGroups.length > 1;
+  const showBackToGroups = availableGroups.length > 1 && !category.group_name;
 
   return (
     <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-10" data-testid="stats-category-panel">
@@ -336,69 +322,130 @@ function CategoryDataPanel({ category, eventLabel, onClose }) {
         </div>
 
         <div className="p-5 md:p-8">
-          {loading ? (
-            <div className="text-center py-6 text-slate-500 text-lg" style={AGENCY_FB}>Cargando...</div>
-          ) : noConfig || empty ? (
+          {noConfig ? (
             <div className="text-center py-10">
               <div className="text-slate-500 italic text-lg" style={AGENCY_FB}>Próximamente</div>
-              {noConfig && (
-                <div className="text-sm text-slate-400 mt-1">
-                  Esta categoría aún no está vinculada a un torneo desde el CMS.
-                </div>
-              )}
+              <div className="text-sm text-slate-400 mt-1">
+                Esta categoría aún no está vinculada a un torneo desde el CMS.
+              </div>
+            </div>
+          ) : groupsLoading ? (
+            <div className="text-center py-6 text-slate-500 text-lg" style={AGENCY_FB}>Cargando...</div>
+          ) : showGroupPicker ? (
+            <div>
+              <h3 className="text-lg md:text-xl font-black uppercase tracking-widest mb-4" style={{ color: BLUE }}>
+                Elige un grupo
+              </h3>
+              <div className="flex flex-wrap gap-3" data-testid="stats-group-picker">
+                {availableGroups.map((g) => (
+                  <button
+                    key={g}
+                    type="button"
+                    onClick={() => setSelectedGroup(g)}
+                    className="rounded-full px-5 py-2.5 text-white transition-transform hover:scale-105 shadow-md"
+                    style={{ background: BLUE, ...PLANE_CRASH, fontSize: "clamp(0.9rem, 1.6vw, 1.2rem)", letterSpacing: "0.05em" }}
+                    data-testid={`stats-group-btn-${g}`}
+                  >
+                    {renderPlaneCrash(g)}
+                  </button>
+                ))}
+              </div>
             </div>
           ) : (
-            <div className="space-y-10">
-              <div>
-                <h3 className="text-lg md:text-xl font-black uppercase tracking-widest mb-4" style={{ color: BLUE }}>
-                  Tabla de posiciones
-                </h3>
-                {groups.length > 0 ? (
-                  <div className={`grid gap-6 ${groups.length > 1 ? "sm:grid-cols-2" : ""} ${groups.length > 2 ? "lg:grid-cols-3" : ""}`}>
-                    {groups.map((g) => (
-                      <div key={g || "unico"}>
-                        {g && (
-                          <div className="font-black uppercase tracking-wider text-sm mb-2" style={{ color: BLUE }}>{g}</div>
-                        )}
-                        {(standingsByGroup[g] || []).length ? (
-                          <StandingsTable rows={standingsByGroup[g]} />
-                        ) : (
-                          <p className="text-slate-400 italic text-base">Sin datos aún.</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-slate-400 italic text-base">Sin datos aún.</p>
-                )}
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-8">
-                <div>
-                  <h3 className="text-lg md:text-xl font-black uppercase tracking-widest mb-4" style={{ color: BLUE }}>
-                    Resultados
-                  </h3>
-                  {results.length ? <MatchesList rows={results} testPrefix="stats-result" /> : <p className="text-slate-400 italic text-base">Aún no hay resultados.</p>}
-                </div>
-                <div>
-                  <h3 className="text-lg md:text-xl font-black uppercase tracking-widest mb-4" style={{ color: BLUE }}>
-                    Partidos pendientes
-                  </h3>
-                  {pending.length ? <MatchesList rows={pending} testPrefix="stats-pending" showDate /> : <p className="text-slate-400 italic text-base">No hay partidos pendientes.</p>}
-                </div>
-              </div>
-
-              <div>
-                <h3 className="text-lg md:text-xl font-black uppercase tracking-widest mb-4" style={{ color: BLUE }}>
-                  Goleadores
-                </h3>
-                {scorers?.length ? <ScorersTable rows={scorers} /> : <p className="text-slate-400 italic text-base">Sin goles registrados.</p>}
-              </div>
-            </div>
+            <GroupStatsView
+              tournamentId={category.tournament_id}
+              categoryValue={category.category}
+              groupName={selectedGroup || ""}
+              showBackToGroups={showBackToGroups}
+              onBack={() => setSelectedGroup(null)}
+            />
           )}
         </div>
       </div>
     </section>
+  );
+}
+
+
+function GroupStatsView({ tournamentId, categoryValue, groupName, showBackToGroups, onBack }) {
+  const [standings, setStandings] = useState([]);
+  const [matches, setMatches] = useState([]);
+  const [scorers, setScorers] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    const params = { tournament_id: tournamentId, category: categoryValue };
+    if (groupName) params.group_name = groupName;
+    Promise.all([
+      api.get("/stats/standings", { params }).then((r) => r.data || []).catch(() => []),
+      api.get("/stats/matches", { params }).then((r) => r.data || []).catch(() => []),
+      api.get("/stats/top-scorers", { params: { ...params, limit: 10 } }).then((r) => r.data || []).catch(() => []),
+    ]).then(([st, ms, sc]) => {
+      if (cancelled) return;
+      setStandings(st);
+      setMatches(ms);
+      setScorers(sc);
+      setLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [tournamentId, categoryValue, groupName]);
+
+  const results = useMemo(() => matches.filter((m) => m.status === "finalizado").slice().reverse(), [matches]);
+  const pending = useMemo(() => matches.filter((m) => m.status !== "finalizado"), [matches]);
+  const empty = !loading && standings.length === 0 && matches.length === 0 && scorers.length === 0;
+
+  return (
+    <div className="space-y-8" data-testid="stats-group-view">
+      {showBackToGroups && (
+        <button type="button" onClick={onBack} className="text-sm font-bold" style={{ color: BLUE }} data-testid="stats-group-back">
+          ← Elegir otro grupo
+        </button>
+      )}
+      {groupName && (
+        <div className="font-black uppercase tracking-wider text-sm" style={{ color: BLUE }}>{groupName}</div>
+      )}
+
+      {loading ? (
+        <div className="text-center py-6 text-slate-500 text-lg" style={AGENCY_FB}>Cargando...</div>
+      ) : empty ? (
+        <div className="text-center py-10">
+          <div className="text-slate-500 italic text-lg" style={AGENCY_FB}>Próximamente</div>
+        </div>
+      ) : (
+        <>
+          <div>
+            <h3 className="text-lg md:text-xl font-black uppercase tracking-widest mb-4" style={{ color: BLUE }}>
+              Tabla de posiciones
+            </h3>
+            {standings.length ? <StandingsTable rows={standings} /> : <p className="text-slate-400 italic text-base">Sin datos aún.</p>}
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8">
+            <div>
+              <h3 className="text-lg md:text-xl font-black uppercase tracking-widest mb-4" style={{ color: BLUE }}>
+                Resultados
+              </h3>
+              {results.length ? <MatchesList rows={results} testPrefix="stats-result" /> : <p className="text-slate-400 italic text-base">Aún no hay resultados.</p>}
+            </div>
+            <div>
+              <h3 className="text-lg md:text-xl font-black uppercase tracking-widest mb-4" style={{ color: BLUE }}>
+                Partidos pendientes
+              </h3>
+              {pending.length ? <MatchesList rows={pending} testPrefix="stats-pending" showDate /> : <p className="text-slate-400 italic text-base">No hay partidos pendientes.</p>}
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-lg md:text-xl font-black uppercase tracking-widest mb-4" style={{ color: BLUE }}>
+              Goleadores
+            </h3>
+            {scorers?.length ? <ScorersTable rows={scorers} /> : <p className="text-slate-400 italic text-base">Sin goles registrados.</p>}
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 
