@@ -2852,6 +2852,44 @@ async def top_scorers(category: Optional[str] = None, group_name: Optional[str] 
     rows.sort(key=lambda r: -r["goals"])
     return rows[:limit]
 
+@api.get("/stats/groups")
+async def stats_groups(tournament_id: str, category: str):
+    """Devuelve los grupos con fixture generado para un torneo × categoría (estadísticas públicas)."""
+    fixtures = await db.fixtures.find({"tournament_id": tournament_id, "category": category}, {"_id": 0, "group_name": 1}).to_list(200)
+    groups = sorted({(f.get("group_name") or "").strip() for f in fixtures if (f.get("group_name") or "").strip()})
+    return groups
+
+
+@api.get("/stats/matches")
+async def stats_matches(tournament_id: str, category: str, group_name: Optional[str] = None):
+    """Partidos (resultados + pendientes) de un torneo × categoría (+ grupo opcional), para estadísticas públicas."""
+    fx_q = {"tournament_id": tournament_id, "category": category}
+    if group_name:
+        fx_q["group_name"] = {"$regex": f"^{re.escape(group_name)}$", "$options": "i"}
+    fixtures_docs = await db.fixtures.find(fx_q, {"_id": 0, "team_ids": 1}).to_list(200)
+    team_ids = set()
+    for fx in fixtures_docs:
+        for tid in (fx.get("team_ids") or []):
+            team_ids.add(tid)
+    if not team_ids:
+        return []
+    items = await db.matches.find({
+        "tournament_id": tournament_id,
+        "$or": [{"home_team_id": {"$in": list(team_ids)}}, {"away_team_id": {"$in": list(team_ids)}}],
+    }, {"_id": 0}).sort("match_date", 1).to_list(2000)
+    all_team_ids = list({m["home_team_id"] for m in items} | {m["away_team_id"] for m in items})
+    teams = await db.teams.find({"id": {"$in": all_team_ids}}, {"_id": 0}).to_list(1000)
+    tmap = {t["id"]: t for t in teams}
+    for m in items:
+        ht = tmap.get(m["home_team_id"], {})
+        at = tmap.get(m["away_team_id"], {})
+        m["home_team_name"] = "DESCANSA" if m["home_team_id"] == "__BYE__" else ht.get("name", "—")
+        m["home_team_logo"] = ht.get("logo_url", "")
+        m["away_team_name"] = "DESCANSA" if m["away_team_id"] == "__BYE__" else at.get("name", "—")
+        m["away_team_logo"] = at.get("logo_url", "")
+    return items
+
+
 @api.get("/stats/discipline")
 async def discipline(category: Optional[str] = None, limit: int = 50):
     matches = await db.matches.find({"status": "finalizado"}, {"_id": 0}).to_list(2000)

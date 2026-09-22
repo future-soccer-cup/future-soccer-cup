@@ -13,6 +13,7 @@ import { useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
 import api, { imgSrc } from "../lib/api";
 import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe, renderPlaneCrash, toTitleCaseForScript } from "../lib/designSystem";
+import { formatDateTime } from "../lib/dateFormat";
 import AnimateIn from "../components/AnimateIn";
 
 const RED = "#e31f27";
@@ -262,8 +263,10 @@ function CategoriesGrid({ event, onSelectCat }) {
 
 
 function CategoryDataPanel({ category, eventLabel, onClose }) {
-  const [standings, setStandings] = useState(null);
-  const [scorers, setScorers] = useState(null);
+  const [groups, setGroups] = useState([]);
+  const [standingsByGroup, setStandingsByGroup] = useState({});
+  const [matches, setMatches] = useState([]);
+  const [scorers, setScorers] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -272,21 +275,50 @@ function CategoryDataPanel({ category, eventLabel, onClose }) {
       setLoading(false);
       return;
     }
-    const params = new URLSearchParams({ tournament_id: category.tournament_id, category: category.category });
-    if (category.group_name) params.set("group_name", category.group_name);
+    let cancelled = false;
     setLoading(true);
-    Promise.all([
-      api.get(`/stats/standings?${params.toString()}`).then((r) => r.data || []).catch(() => []),
-      api.get(`/stats/top-scorers?${params.toString()}&limit=10`).then((r) => r.data || []).catch(() => []),
-    ]).then(([st, sc]) => {
-      setStandings(st);
+    const base = { tournament_id: category.tournament_id, category: category.category };
+
+    (async () => {
+      let gs = [];
+      try {
+        const r = await api.get("/stats/groups", { params: base });
+        gs = r.data || [];
+      } catch {
+        gs = [];
+      }
+      if (!gs.length && category.group_name) gs = [category.group_name];
+
+      const standingsPairs = await Promise.all(
+        (gs.length ? gs : [""]).map((g) =>
+          api.get("/stats/standings", { params: g ? { ...base, group_name: g } : base })
+            .then((r) => [g, r.data || []])
+            .catch(() => [g, []])
+        )
+      );
+      const [ms, sc] = await Promise.all([
+        api.get("/stats/matches", { params: base }).then((r) => r.data || []).catch(() => []),
+        api.get("/stats/top-scorers", { params: { ...base, limit: 10 } }).then((r) => r.data || []).catch(() => []),
+      ]);
+      if (cancelled) return;
+      const map = {};
+      standingsPairs.forEach(([g, rows]) => { map[g] = rows; });
+      const nonEmptyGroups = (gs.length ? gs : [""]).filter((g) => (map[g] || []).length > 0);
+      setGroups(nonEmptyGroups.length ? nonEmptyGroups : (gs.length ? gs : []));
+      setStandingsByGroup(map);
+      setMatches(ms);
       setScorers(sc);
       setLoading(false);
-    });
+    })();
+
+    return () => { cancelled = true; };
   }, [category]);
 
   const noConfig = !category.tournament_id || !category.category;
-  const empty = !loading && (standings || []).length === 0 && (scorers || []).length === 0;
+  const results = useMemo(() => matches.filter((m) => m.status === "finalizado").slice().reverse(), [matches]);
+  const pending = useMemo(() => matches.filter((m) => m.status !== "finalizado"), [matches]);
+  const totalStandingsRows = Object.values(standingsByGroup).reduce((acc, rows) => acc + (rows?.length || 0), 0);
+  const empty = !loading && totalStandingsRows === 0 && matches.length === 0 && scorers.length === 0;
 
   return (
     <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-10" data-testid="stats-category-panel">
@@ -316,13 +348,46 @@ function CategoryDataPanel({ category, eventLabel, onClose }) {
               )}
             </div>
           ) : (
-            <div className="grid md:grid-cols-2 gap-8">
+            <div className="space-y-10">
               <div>
                 <h3 className="text-lg md:text-xl font-black uppercase tracking-widest mb-4" style={{ color: BLUE }}>
                   Tabla de posiciones
                 </h3>
-                {standings?.length ? <StandingsTable rows={standings} /> : <p className="text-slate-400 italic text-base">Sin datos aún.</p>}
+                {groups.length > 0 ? (
+                  <div className={`grid gap-6 ${groups.length > 1 ? "sm:grid-cols-2" : ""} ${groups.length > 2 ? "lg:grid-cols-3" : ""}`}>
+                    {groups.map((g) => (
+                      <div key={g || "unico"}>
+                        {g && (
+                          <div className="font-black uppercase tracking-wider text-sm mb-2" style={{ color: BLUE }}>{g}</div>
+                        )}
+                        {(standingsByGroup[g] || []).length ? (
+                          <StandingsTable rows={standingsByGroup[g]} />
+                        ) : (
+                          <p className="text-slate-400 italic text-base">Sin datos aún.</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-slate-400 italic text-base">Sin datos aún.</p>
+                )}
               </div>
+
+              <div className="grid md:grid-cols-2 gap-8">
+                <div>
+                  <h3 className="text-lg md:text-xl font-black uppercase tracking-widest mb-4" style={{ color: BLUE }}>
+                    Resultados
+                  </h3>
+                  {results.length ? <MatchesList rows={results} testPrefix="stats-result" /> : <p className="text-slate-400 italic text-base">Aún no hay resultados.</p>}
+                </div>
+                <div>
+                  <h3 className="text-lg md:text-xl font-black uppercase tracking-widest mb-4" style={{ color: BLUE }}>
+                    Partidos pendientes
+                  </h3>
+                  {pending.length ? <MatchesList rows={pending} testPrefix="stats-pending" showDate /> : <p className="text-slate-400 italic text-base">No hay partidos pendientes.</p>}
+                </div>
+              </div>
+
               <div>
                 <h3 className="text-lg md:text-xl font-black uppercase tracking-widest mb-4" style={{ color: BLUE }}>
                   Goleadores
@@ -334,6 +399,30 @@ function CategoryDataPanel({ category, eventLabel, onClose }) {
         </div>
       </div>
     </section>
+  );
+}
+
+
+function MatchesList({ rows, testPrefix, showDate }) {
+  return (
+    <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
+      {rows.map((m, i) => (
+        <div key={m.id || i} className="flex items-center justify-between gap-3 bg-slate-50 rounded-md px-3 py-2 text-sm md:text-base" data-testid={`${testPrefix}-${i}`}>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <span className="truncate font-semibold">{m.home_team_name}</span>
+              <span className="tabular-nums font-black shrink-0" style={{ color: BLUE }}>
+                {m.status === "finalizado" ? `${m.home_score ?? 0} - ${m.away_score ?? 0}` : "vs"}
+              </span>
+              <span className="truncate font-semibold text-right">{m.away_team_name}</span>
+            </div>
+            {(showDate || m.status !== "finalizado") && (
+              <div className="text-xs text-slate-400 mt-0.5">{formatDateTime(m.match_date)}{m.venue ? ` · ${m.venue}` : ""}</div>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 
