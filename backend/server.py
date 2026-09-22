@@ -2856,40 +2856,53 @@ async def top_scorers(category: Optional[str] = None, group_name: Optional[str] 
 
 @api.get("/stats/groups")
 async def stats_groups(tournament_id: str, category: str):
-    """Devuelve los grupos con fixture generado para un torneo × categoría (estadísticas públicas)."""
+    """Devuelve los grupos (todos-contra-todos) y brackets de un torneo × categoría,
+    para el selector público de Estadísticas. Cada item: {type:"group", name} o
+    {type:"bracket", id, name}."""
     fixtures = await db.fixtures.find({"tournament_id": tournament_id, "category": category}, {"_id": 0, "group_name": 1}).to_list(200)
     groups = sorted({(f.get("group_name") or "").strip() for f in fixtures if (f.get("group_name") or "").strip()})
-    return groups
+    brackets = await db.brackets.find({"tournament_id": tournament_id, "category": category}, {"_id": 0, "id": 1, "name": 1}).sort("created_at", -1).to_list(50)
+    out = [{"type": "group", "name": g} for g in groups]
+    out += [{"type": "bracket", "id": b["id"], "name": b.get("name") or "Bracket"} for b in brackets]
+    return out
 
 
-@api.get("/stats/matches")
-async def stats_matches(tournament_id: str, category: str, group_name: Optional[str] = None):
-    """Partidos (resultados + pendientes) de un torneo × categoría (+ grupo opcional), para estadísticas públicas."""
-    fx_q = {"tournament_id": tournament_id, "category": category}
-    if group_name:
-        fx_q["group_name"] = {"$regex": f"^{re.escape(group_name)}$", "$options": "i"}
-    fixtures_docs = await db.fixtures.find(fx_q, {"_id": 0, "team_ids": 1}).to_list(200)
-    team_ids = set()
-    for fx in fixtures_docs:
-        for tid in (fx.get("team_ids") or []):
-            team_ids.add(tid)
-    if not team_ids:
-        return []
-    items = await db.matches.find({
-        "tournament_id": tournament_id,
-        "$or": [{"home_team_id": {"$in": list(team_ids)}}, {"away_team_id": {"$in": list(team_ids)}}],
-    }, {"_id": 0}).sort("match_date", 1).to_list(2000)
-    all_team_ids = list({m["home_team_id"] for m in items} | {m["away_team_id"] for m in items})
-    teams = await db.teams.find({"id": {"$in": all_team_ids}}, {"_id": 0}).to_list(1000)
-    tmap = {t["id"]: t for t in teams}
+def _enrich_match_teams(items, tmap):
     for m in items:
         ht = tmap.get(m["home_team_id"], {})
         at = tmap.get(m["away_team_id"], {})
-        m["home_team_name"] = "DESCANSA" if m["home_team_id"] == "__BYE__" else ht.get("name", "—")
+        m["home_team_name"] = "DESCANSA" if m["home_team_id"] == "__BYE__" else (ht.get("name") or "Por definir")
         m["home_team_logo"] = ht.get("logo_url", "")
-        m["away_team_name"] = "DESCANSA" if m["away_team_id"] == "__BYE__" else at.get("name", "—")
+        m["away_team_name"] = "DESCANSA" if m["away_team_id"] == "__BYE__" else (at.get("name") or "Por definir")
         m["away_team_logo"] = at.get("logo_url", "")
     return items
+
+
+@api.get("/stats/matches")
+async def stats_matches(tournament_id: str, category: str, group_name: Optional[str] = None, bracket_id: Optional[str] = None):
+    """Partidos (resultados + pendientes) de un torneo × categoría, ya sea de un grupo
+    todos-contra-todos (+ grupo opcional) o de un bracket puntual, para estadísticas públicas."""
+    if bracket_id:
+        items = await db.matches.find({"tournament_id": tournament_id, "bracket_id": bracket_id}, {"_id": 0}).sort([("bracket_round", 1), ("match_date", 1)]).to_list(500)
+    else:
+        fx_q = {"tournament_id": tournament_id, "category": category}
+        if group_name:
+            fx_q["group_name"] = {"$regex": f"^{re.escape(group_name)}$", "$options": "i"}
+        fixtures_docs = await db.fixtures.find(fx_q, {"_id": 0, "team_ids": 1}).to_list(200)
+        team_ids = set()
+        for fx in fixtures_docs:
+            for tid in (fx.get("team_ids") or []):
+                team_ids.add(tid)
+        if not team_ids:
+            return []
+        items = await db.matches.find({
+            "tournament_id": tournament_id,
+            "$or": [{"home_team_id": {"$in": list(team_ids)}}, {"away_team_id": {"$in": list(team_ids)}}],
+        }, {"_id": 0}).sort("match_date", 1).to_list(2000)
+    all_team_ids = list({m["home_team_id"] for m in items if m.get("home_team_id")} | {m["away_team_id"] for m in items if m.get("away_team_id")})
+    teams = await db.teams.find({"id": {"$in": all_team_ids}}, {"_id": 0}).to_list(1000)
+    tmap = {t["id"]: t for t in teams}
+    return _enrich_match_teams(items, tmap)
 
 
 @api.get("/stats/discipline")

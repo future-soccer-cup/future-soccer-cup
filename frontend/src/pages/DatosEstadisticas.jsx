@@ -10,7 +10,8 @@
  * al backend existente (`/api/stats/standings`, `/api/stats/top-scorers`).
  */
 import { useEffect, useMemo, useState } from "react";
-import { X } from "lucide-react";
+import { Link } from "react-router-dom";
+import { X, Trophy } from "lucide-react";
 import api, { imgSrc } from "../lib/api";
 import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe, renderPlaneCrash, toTitleCaseForScript } from "../lib/designSystem";
 import { formatDateTime } from "../lib/dateFormat";
@@ -18,6 +19,14 @@ import AnimateIn from "../components/AnimateIn";
 
 const RED = "#e31f27";
 const BLUE = "#0640c8";
+const STAGE_LABEL = {
+  treintaidosavos: "32avos",
+  octavos: "Octavos",
+  cuartos: "Cuartos",
+  semis: "Semifinal",
+  final: "Final",
+  tercer_puesto: "3er puesto",
+};
 const GOLD = "#f5c542";
 
 const FESTIVAL_LETTER_COLORS = [
@@ -264,23 +273,24 @@ function CategoriesGrid({ event, onSelectCat }) {
 
 function CategoryDataPanel({ category, eventLabel, onClose }) {
   const noConfig = !category.tournament_id || !category.category;
-  // null = aún sin resolver qué grupo ver; "" = combinar todo (categoría sin grupos); string = grupo elegido.
-  const [availableGroups, setAvailableGroups] = useState([]);
-  const [selectedGroup, setSelectedGroup] = useState(null);
+  // null = aún sin resolver qué ver; { type: "group", name } o { type: "bracket", id, name } = ya elegido.
+  const [availableItems, setAvailableItems] = useState([]);
+  const [selectedItem, setSelectedItem] = useState(null);
   const [groupsLoading, setGroupsLoading] = useState(true);
 
   useEffect(() => {
-    setSelectedGroup(null);
-    setAvailableGroups([]);
+    setSelectedItem(null);
+    setAvailableItems([]);
     if (noConfig) {
       setGroupsLoading(false);
       return;
     }
     // Si el admin ya fijó un grupo específico para esta categoría (CMS), saltamos el
-    // paso de elegir grupo y vamos directo a sus estadísticas.
+    // paso de elegir grupo/bracket y vamos directo a sus estadísticas.
     if (category.group_name) {
-      setAvailableGroups([category.group_name]);
-      setSelectedGroup(category.group_name);
+      const fixed = { type: "group", name: category.group_name };
+      setAvailableItems([fixed]);
+      setSelectedItem(fixed);
       setGroupsLoading(false);
       return;
     }
@@ -289,22 +299,23 @@ function CategoryDataPanel({ category, eventLabel, onClose }) {
     api.get("/stats/groups", { params: { tournament_id: category.tournament_id, category: category.category } })
       .then((r) => {
         if (cancelled) return;
-        const gs = r.data || [];
-        setAvailableGroups(gs);
-        if (gs.length <= 1) setSelectedGroup(gs[0] || "");
+        const items = r.data || [];
+        setAvailableItems(items);
+        if (items.length <= 1) setSelectedItem(items[0] || { type: "group", name: "" });
         setGroupsLoading(false);
       })
       .catch(() => {
         if (cancelled) return;
-        setAvailableGroups([]);
-        setSelectedGroup("");
+        setAvailableItems([]);
+        setSelectedItem({ type: "group", name: "" });
         setGroupsLoading(false);
       });
     return () => { cancelled = true; };
   }, [category, noConfig]);
 
-  const showGroupPicker = !noConfig && !groupsLoading && selectedGroup === null && availableGroups.length > 1;
-  const showBackToGroups = availableGroups.length > 1 && !category.group_name;
+  const showGroupPicker = !noConfig && !groupsLoading && selectedItem === null && availableItems.length > 1;
+  const showBackToGroups = availableItems.length > 1 && !category.group_name;
+  const itemKey = (it) => `${it.type}-${it.id || it.name}`;
 
   return (
     <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-10" data-testid="stats-category-panel">
@@ -337,27 +348,35 @@ function CategoryDataPanel({ category, eventLabel, onClose }) {
                 Elige un grupo
               </h3>
               <div className="flex flex-wrap gap-3" data-testid="stats-group-picker">
-                {availableGroups.map((g) => (
+                {availableItems.map((it) => (
                   <button
-                    key={g}
+                    key={itemKey(it)}
                     type="button"
-                    onClick={() => setSelectedGroup(g)}
-                    className="rounded-full px-5 py-2.5 text-white transition-transform hover:scale-105 shadow-md"
+                    onClick={() => setSelectedItem(it)}
+                    className="rounded-full px-5 py-2.5 text-white transition-transform hover:scale-105 shadow-md flex items-center gap-1.5"
                     style={{ background: BLUE, ...PLANE_CRASH, fontSize: "clamp(0.9rem, 1.6vw, 1.2rem)", letterSpacing: "0.05em" }}
-                    data-testid={`stats-group-btn-${g}`}
+                    data-testid={`stats-group-btn-${it.name}`}
                   >
-                    {renderPlaneCrash(g)}
+                    {it.type === "bracket" && <Trophy size={16} />}
+                    {renderPlaneCrash(it.name)}
                   </button>
                 ))}
               </div>
             </div>
+          ) : selectedItem?.type === "bracket" ? (
+            <BracketStatsView
+              bracketId={selectedItem.id}
+              bracketName={selectedItem.name}
+              showBackToGroups={showBackToGroups}
+              onBack={() => setSelectedItem(null)}
+            />
           ) : (
             <GroupStatsView
               tournamentId={category.tournament_id}
               categoryValue={category.category}
-              groupName={selectedGroup || ""}
+              groupName={selectedItem?.name || ""}
               showBackToGroups={showBackToGroups}
-              onBack={() => setSelectedGroup(null)}
+              onBack={() => setSelectedItem(null)}
             />
           )}
         </div>
@@ -444,6 +463,89 @@ function GroupStatsView({ tournamentId, categoryValue, groupName, showBackToGrou
             {scorers?.length ? <ScorersTable rows={scorers} /> : <p className="text-slate-400 italic text-base">Sin goles registrados.</p>}
           </div>
         </>
+      )}
+    </div>
+  );
+}
+
+
+function BracketStatsView({ bracketId, bracketName, showBackToGroups, onBack }) {
+  const [matches, setMatches] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    api.get("/stats/matches", { params: { bracket_id: bracketId } })
+      .then((r) => { if (!cancelled) setMatches(r.data || []); })
+      .catch(() => { if (!cancelled) setMatches([]); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [bracketId]);
+
+  // Agrupar por ronda en el orden real del bracket (cuartos → semis → final).
+  const byStage = useMemo(() => {
+    const map = {};
+    matches.forEach((m) => {
+      const key = m.stage || "otros";
+      (map[key] = map[key] || []).push(m);
+    });
+    return map;
+  }, [matches]);
+  const stageOrder = useMemo(() => {
+    const known = ["treintaidosavos", "octavos", "cuartos", "semis", "tercer_puesto", "final"];
+    return Object.keys(byStage).sort((a, b) => known.indexOf(a) - known.indexOf(b));
+  }, [byStage]);
+
+  return (
+    <div className="space-y-8" data-testid="stats-bracket-view">
+      {showBackToGroups && (
+        <button type="button" onClick={onBack} className="text-sm font-bold" style={{ color: BLUE }} data-testid="stats-group-back">
+          ← Elegir otro grupo
+        </button>
+      )}
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="font-black uppercase tracking-wider text-sm flex items-center gap-1.5" style={{ color: BLUE }}>
+          <Trophy size={16} /> {bracketName}
+        </div>
+        <Link
+          to={`/bracket?id=${bracketId}`}
+          className="text-xs font-bold uppercase tracking-wider px-3 py-1.5 rounded-full text-white"
+          style={{ background: RED }}
+          data-testid="stats-bracket-full-link"
+        >
+          Ver bracket completo →
+        </Link>
+      </div>
+
+      {loading ? (
+        <div className="text-center py-6 text-slate-500 text-lg" style={AGENCY_FB}>Cargando...</div>
+      ) : matches.length === 0 ? (
+        <div className="text-center py-10">
+          <div className="text-slate-500 italic text-lg" style={AGENCY_FB}>Próximamente</div>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {stageOrder.map((stage) => {
+            const rows = byStage[stage];
+            const label = STAGE_LABEL[stage] || stage;
+            const stageResults = rows.filter((m) => m.status === "finalizado");
+            const stagePending = rows.filter((m) => m.status !== "finalizado");
+            return (
+              <div key={stage}>
+                <div className="text-sm font-black uppercase tracking-widest mb-2 text-slate-500">{label}</div>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    {stageResults.length ? <MatchesList rows={stageResults} testPrefix={`stats-bracket-result-${stage}`} /> : <p className="text-slate-400 italic text-sm">Sin resultados aún.</p>}
+                  </div>
+                  <div>
+                    {stagePending.length ? <MatchesList rows={stagePending} testPrefix={`stats-bracket-pending-${stage}`} showDate /> : <p className="text-slate-400 italic text-sm">Sin partidos pendientes.</p>}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );
