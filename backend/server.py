@@ -3600,6 +3600,20 @@ async def delete_club(cid: str, _: dict = Depends(require_admin)):
         "payments_deleted": payments_deleted.deleted_count,
     }
 
+@api.patch("/clubs/{cid}/manager")
+async def update_club_manager(cid: str, payload: dict, _: dict = Depends(require_admin)):
+    """Asigna (o reemplaza) el usuario Director/Directivo del club. Solo admin."""
+    club = await db.clubs.find_one({"id": cid}, {"_id": 0})
+    if not club:
+        raise HTTPException(status_code=404, detail="Club no encontrado")
+    user_id = (payload.get("manager_user_id") or "").strip()
+    if user_id:
+        target = await db.users.find_one({"id": user_id}, {"_id": 0, "id": 1})
+        if not target:
+            raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    await db.clubs.update_one({"id": cid}, {"$set": {"manager_user_id": user_id}})
+    return {"ok": True, "manager_user_id": user_id}
+
 @api.patch("/clubs/{cid}/name")
 async def update_club_name(cid: str, payload: dict, user: dict = Depends(get_current_user)):
     """Edición parcial — actualiza SOLO el nombre del club sin afectar logo_url, manager_user_id

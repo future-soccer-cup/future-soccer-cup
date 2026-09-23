@@ -1,10 +1,11 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { imgSrc } from "../lib/api";
 import { Carnet } from "../pages/PlayerDetail";
 import { Download, Search, FileText, Loader2, Users, ShieldUser, CheckSquare, Square, RefreshCw } from "lucide-react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import { toast } from "sonner";
+import { usePagedSearch, Pagination } from "./PagedTable";
 
 /**
  * Componente reutilizable de hoja de carnets con selección por checkbox y descarga individual/lote.
@@ -125,6 +126,13 @@ export default function CarnetSheet({ players, teams, clubs: clubsProp = null, t
   [visibleTeams, effectiveTeamFilter, q, tmap]);
 
   const items = tab === "players" ? filteredPlayers : staffList;
+  const noopMatch = () => true;
+  const { page, setPage, totalPages, pageItems } = usePagedSearch(items, noopMatch, 15);
+  // Volver a la página 1 cuando cambian filtros/pestaña, para no quedar "varado" en una
+  // página que ya no tiene sentido para el nuevo conjunto filtrado.
+  useEffect(() => { setPage(1); }, [tab, q, club, tournament, category, team, setPage]);
+  const pagePlayers = tab === "players" ? pageItems : [];
+  const pageStaff = tab === "staff" ? pageItems : [];
   const getUid = (it) => it._staff_uid || it.id;
   const visibleUids = items.map(getUid);
   const allSelected = visibleUids.length > 0 && visibleUids.every((u) => selected.has(u));
@@ -231,6 +239,9 @@ export default function CarnetSheet({ players, teams, clubs: clubsProp = null, t
         .map((uid) => sheetRef.current?.querySelector(`[data-carnet-uid="${uid}"] [data-carnet-card]`))
         .filter(Boolean);
       if (cards.length === 0) { toast.error("No se encontraron carnets seleccionados en pantalla"); setGenerating(false); return; }
+      if (cards.length < sel.length) {
+        toast.warning(`${sel.length - cards.length} de tu selección están en otra página y no se incluyeron. Ve a esa página para descargarlos.`);
+      }
       await buildBatchPdf(cards, `seleccion-${sel.length}`);
       toast.success(`PDF generado con ${cards.length} carnets seleccionados`);
     } catch (e) {
@@ -272,9 +283,9 @@ export default function CarnetSheet({ players, teams, clubs: clubsProp = null, t
                 {generating ? <Loader2 size={16} className="animate-spin"/> : <Download size={16}/>}
                 Descargar selección {selectedCount > 0 && `(${selectedCount})`}
               </button>
-              <button onClick={downloadAll} disabled={generating || items.length === 0} className="fsc-btn-red px-4 py-2 rounded-md text-sm flex items-center gap-2 disabled:opacity-50" data-testid={`${testIdPrefix}-pdf-btn`}>
+              <button onClick={downloadAll} disabled={generating || items.length === 0} className="fsc-btn-red px-4 py-2 rounded-md text-sm flex items-center gap-2 disabled:opacity-50" data-testid={`${testIdPrefix}-pdf-btn`} title={totalPages > 1 ? "Descarga solo los carnets de la página actual — usa los filtros o la selección para abarcar más" : undefined}>
                 {generating ? <Loader2 size={16} className="animate-spin"/> : <Download size={16}/>}
-                {generating ? "Generando..." : "Descargar todos"}
+                {generating ? "Generando..." : totalPages > 1 ? "Descargar esta página" : "Descargar todos"}
               </button>
             </>
           )}
@@ -359,7 +370,7 @@ export default function CarnetSheet({ players, teams, clubs: clubsProp = null, t
       )}
 
       <div ref={sheetRef} className="grid md:grid-cols-2 xl:grid-cols-3 gap-6 carnet-print">
-        {tab === "players" && filteredPlayers.map((p) => {
+        {tab === "players" && pagePlayers.map((p) => {
           const uid = p.id;
           const t = tmap[p.team_id];
           const clubLogoUrl = (t && (clubLogoById[t.club_id] || clubLogoByName[t.club_name])) || "";
@@ -380,7 +391,7 @@ export default function CarnetSheet({ players, teams, clubs: clubsProp = null, t
             </div>
           );
         })}
-        {tab === "staff" && staffList.map((s) => {
+        {tab === "staff" && pageStaff.map((s) => {
           const uid = s._staff_uid;
           const t = tmap[s.team_id];
           const clubLogoUrl = (t && (clubLogoById[t.club_id] || clubLogoByName[t.club_name])) || "";
@@ -403,6 +414,8 @@ export default function CarnetSheet({ players, teams, clubs: clubsProp = null, t
           );
         })}
       </div>
+
+      <Pagination page={page} totalPages={totalPages} onPage={setPage} testIdPrefix={testIdPrefix} />
     </div>
   );
 }
