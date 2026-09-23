@@ -7,6 +7,7 @@ import { formatDateTime } from "../../lib/dateFormat";
 import CategorySelect from "../../components/CategorySelect";
 import VenuePicker from "../../components/VenuePicker";
 import ConfirmDeleteDialog from "../../components/ConfirmDeleteDialog";
+import { usePagedSearch, Pagination } from "../../components/PagedTable";
 
 const SIZES = [4, 8, 16, 32];
 
@@ -14,8 +15,10 @@ export default function AdminBracketGenerator() {
   const navigate = useNavigate();
   const [teams, setTeams] = useState([]);
   const [brackets, setBrackets] = useState([]);
+  const [tournaments, setTournaments] = useState([]);
   const [form, setForm] = useState({
     name: "",
+    tournament_id: "",
     category: "",
     size: 8,
     include_third_place: true,
@@ -35,7 +38,10 @@ export default function AdminBracketGenerator() {
 
   const loadTeams = () => api.get("/teams").then((r) => setTeams(r.data.filter((t) => (t.status || "aprobado") === "aprobado")));
   const loadBrackets = () => api.get("/brackets").then((r) => setBrackets(r.data));
-  useEffect(() => { loadTeams(); loadBrackets(); }, []);
+  const loadTournaments = () => api.get("/tournaments").then((r) => setTournaments((r.data || []).filter((t) => !t.archived)));
+  useEffect(() => { loadTeams(); loadBrackets(); loadTournaments(); }, []);
+
+  const bracketsPaged = usePagedSearch(brackets, () => true, 10);
 
   const filteredTeams = teams.filter((t) => t.category === form.category && !seeds.includes(t.id));
 
@@ -66,6 +72,7 @@ export default function AdminBracketGenerator() {
 
   const buildPayload = (asPreview) => ({
     name: form.name || `Copa ${form.category}`,
+    tournament_id: form.tournament_id,
     category: form.category,
     size: Number(form.size),
     team_ids: seeds,
@@ -78,6 +85,7 @@ export default function AdminBracketGenerator() {
   });
 
   const doPreview = async () => {
+    if (!form.tournament_id) { toast.error("Selecciona un Evento"); return; }
     if (seeds.length !== Number(form.size)) { toast.error(`Selecciona exactamente ${form.size} equipos`); return; }
     try {
       const r = await api.post("/brackets", buildPayload(true));
@@ -89,6 +97,7 @@ export default function AdminBracketGenerator() {
   };
 
   const doSave = async () => {
+    if (!form.tournament_id) { toast.error("Selecciona un Evento"); return; }
     if (seeds.length !== Number(form.size)) { toast.error(`Selecciona exactamente ${form.size} equipos`); return; }
     setSaving(true);
     try {
@@ -162,13 +171,21 @@ export default function AdminBracketGenerator() {
       {/* Brackets existentes */}
       {brackets.length > 0 && (
         <div className="mt-6 bg-white border border-slate-200 rounded-xl p-4">
-          <h3 className="text-xs uppercase tracking-widest font-bold text-slate-500 mb-3">Brackets existentes</h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-xs uppercase tracking-widest font-bold text-slate-500">Brackets existentes</h3>
+            <span className="text-xs text-slate-400">{brackets.length} en total</span>
+          </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {brackets.map((b) => (
+            {bracketsPaged.pageItems.map((b) => (
               <div key={b.id} className="border border-slate-200 rounded-lg p-3 flex items-center justify-between gap-2" data-testid={`bracket-card-${b.id}`}>
                 <div>
                   <div className="font-display text-lg font-black uppercase tracking-tight">{b.name}</div>
                   <div className="text-xs text-slate-500">{b.category} · {b.size} equipos {b.include_third_place ? "· con 3er puesto" : ""}</div>
+                  <div className="text-[10px] uppercase tracking-wide mt-0.5">
+                    {tournaments.find((t) => t.id === b.tournament_id)
+                      ? <span className="text-slate-400">{tournaments.find((t) => t.id === b.tournament_id).name}</span>
+                      : <span className="text-amber-600 font-bold">⚠ Sin evento asociado</span>}
+                  </div>
                 </div>
                 <div className="flex gap-2">
                   <button onClick={() => openBracketEditor(b)} className="px-2 py-1 text-xs font-bold rounded bg-blue-50 text-blue-700 hover:bg-blue-100" data-testid={`edit-bracket-${b.id}`}><Edit2 size={12} className="inline -mt-0.5 mr-1"/>Editar</button>
@@ -188,6 +205,7 @@ export default function AdminBracketGenerator() {
               </div>
             ))}
           </div>
+          <Pagination page={bracketsPaged.page} totalPages={bracketsPaged.totalPages} onPage={bracketsPaged.setPage} testIdPrefix="brackets-list" />
         </div>
       )}
 
@@ -198,6 +216,13 @@ export default function AdminBracketGenerator() {
           <label className="block">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Nombre del bracket</span>
             <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Ej. Copa Sub-12 Premier" className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="bracket-name-input" />
+          </label>
+          <label className="block">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Evento (torneo)</span>
+            <select value={form.tournament_id} onChange={(e) => setForm({ ...form, tournament_id: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md bg-white" data-testid="bracket-tournament-select">
+              <option value="">Seleccionar evento...</option>
+              {tournaments.map((t) => <option key={t.id} value={t.id}>{t.name} · {t.season}</option>)}
+            </select>
           </label>
           <CategorySelect value={form.category} onChange={(v) => { setForm({ ...form, category: v }); setSeeds([]); }} />
           <label className="block">

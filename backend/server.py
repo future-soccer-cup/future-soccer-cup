@@ -2561,6 +2561,23 @@ async def delete_bracket(bid: str, _: dict = Depends(require_admin)):
         raise HTTPException(status_code=404, detail="Bracket no encontrado")
     return {"ok": True}
 
+@api.patch("/brackets/{bid}/tournament")
+async def update_bracket_tournament(bid: str, payload: dict, _: dict = Depends(require_admin)):
+    """Corrige a qué Evento (torneo real) pertenece un bracket ya creado, y propaga el
+    cambio a sus partidos (cada uno guarda su propia copia de tournament_id)."""
+    bracket = await db.brackets.find_one({"id": bid}, {"_id": 0})
+    if not bracket:
+        raise HTTPException(status_code=404, detail="Bracket no encontrado")
+    tournament_id = (payload.get("tournament_id") or "").strip()
+    if not tournament_id:
+        raise HTTPException(status_code=400, detail="tournament_id es obligatorio")
+    tournament = await db.tournaments.find_one({"id": tournament_id}, {"_id": 0, "id": 1})
+    if not tournament:
+        raise HTTPException(status_code=404, detail="Evento no encontrado")
+    await db.brackets.update_one({"id": bid}, {"$set": {"tournament_id": tournament_id}})
+    await db.matches.update_many({"bracket_id": bid}, {"$set": {"tournament_id": tournament_id}})
+    return {"ok": True, "tournament_id": tournament_id}
+
 
 async def _advance_bracket_winner(match_doc: dict, home_score: int, away_score: int, winner_team_id: Optional[str] = None):
     """If the match is part of a bracket, propagate winner (and loser → third place if applicable)."""
