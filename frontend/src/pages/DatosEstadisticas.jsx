@@ -419,12 +419,12 @@ function GroupStatsView({ tournamentId, categoryValue, groupName, showBackToGrou
   return (
     <div className="space-y-8" data-testid="stats-group-view">
       {showBackToGroups && (
-        <button type="button" onClick={onBack} className="text-sm font-bold" style={{ color: BLUE }} data-testid="stats-group-back">
+        <button type="button" onClick={onBack} className="text-base md:text-lg font-bold" style={{ color: BLUE }} data-testid="stats-group-back">
           ← Elegir otro grupo
         </button>
       )}
       {groupName && (
-        <div className="font-black uppercase tracking-wider text-sm" style={{ color: BLUE }}>{groupName}</div>
+        <div className="font-black uppercase tracking-wider text-base md:text-lg" style={{ color: BLUE }}>{groupName}</div>
       )}
 
       {loading ? (
@@ -436,7 +436,7 @@ function GroupStatsView({ tournamentId, categoryValue, groupName, showBackToGrou
       ) : (
         <>
           <div>
-            <h3 className="text-lg md:text-xl font-black uppercase tracking-widest mb-4" style={{ color: BLUE }}>
+            <h3 className="text-xl md:text-2xl font-black uppercase tracking-widest mb-4" style={{ color: BLUE }}>
               Tabla de posiciones
             </h3>
             {standings.length ? <StandingsTable rows={standings} /> : <p className="text-slate-400 italic text-base">Sin datos aún.</p>}
@@ -515,12 +515,12 @@ function BracketStatsView({ bracketId, bracketName, showBackToGroups, onBack }) 
   return (
     <div className="space-y-8" data-testid="stats-bracket-view">
       {showBackToGroups && (
-        <button type="button" onClick={onBack} className="text-sm font-bold" style={{ color: BLUE }} data-testid="stats-group-back">
+        <button type="button" onClick={onBack} className="text-base md:text-lg font-bold" style={{ color: BLUE }} data-testid="stats-group-back">
           ← Elegir otro grupo
         </button>
       )}
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <div className="font-black uppercase tracking-wider text-sm flex items-center gap-1.5" style={{ color: BLUE }}>
+        <div className="font-black uppercase tracking-wider text-base md:text-lg flex items-center gap-1.5" style={{ color: BLUE }}>
           <Trophy size={16} /> {bracketName}
         </div>
         <Link
@@ -602,7 +602,7 @@ function MatchesList({ rows, testPrefix, showDate }) {
           )}
           {m.match_type === "intergrupo" && (
             <div className="text-center mt-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 bg-amber-100 rounded px-1.5 py-0.5">Partido intergrupos</span>
+              <span className="text-xs md:text-sm font-bold uppercase tracking-wider text-amber-700 bg-amber-100 rounded px-2 py-1">Partido intergrupos</span>
             </div>
           )}
         </div>
