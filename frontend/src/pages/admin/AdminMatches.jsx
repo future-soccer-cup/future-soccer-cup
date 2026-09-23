@@ -788,7 +788,7 @@ function ScorersEditor({ scoring, setScoring, teams }) {
           <select
             value={s.team_id || ""}
             onChange={(e) => updateScorer(i, { team_id: e.target.value, player_id: "" })}
-            className="col-span-4 px-2 py-1 border border-slate-200 rounded text-sm"
+            className="col-span-4 min-w-0 px-2 py-1 border border-slate-200 rounded text-sm"
             data-testid={`scorer-team-${i}`}
           >
             <option value="">Equipo...</option>
@@ -798,7 +798,7 @@ function ScorersEditor({ scoring, setScoring, teams }) {
             value={s.player_id}
             onChange={(e) => updateScorer(i, { player_id: e.target.value })}
             disabled={!s.team_id}
-            className="col-span-4 px-2 py-1 border border-slate-200 rounded text-sm disabled:bg-slate-50"
+            className="col-span-4 min-w-0 px-2 py-1 border border-slate-200 rounded text-sm disabled:bg-slate-50"
             data-testid={`scorer-player-${i}`}
           >
             <option value="">Jugador...</option>
@@ -927,11 +927,11 @@ function CardsEditor({ scoring, setScoring, teams = [] }) {
             {/* Fila principal: Jugador/CT (grande) + Min (angosto) + eliminar — alineadas horizontalmente */}
             <div className="grid grid-cols-12 gap-2 items-center pl-5">
               {kind === "player" ? (
-                <div className="col-span-12 sm:col-span-8 flex flex-col sm:flex-row gap-1">
+                <div className="col-span-12 sm:col-span-8 flex flex-col sm:flex-row gap-1 min-w-0">
                   <select
                     value={c.team_id || ""}
                     onChange={(e) => updateCard(i, { team_id: e.target.value, player_id: "" })}
-                    className="flex-1 px-2 py-1 border border-slate-200 rounded text-sm"
+                    className="flex-1 min-w-0 px-2 py-1 border border-slate-200 rounded text-sm"
                     data-testid={`card-player-team-${i}`}
                   >
                     <option value="">Equipo...</option>
@@ -941,7 +941,7 @@ function CardsEditor({ scoring, setScoring, teams = [] }) {
                     value={c.player_id || ""}
                     onChange={(e) => updateCard(i, { player_id: e.target.value })}
                     disabled={!c.team_id}
-                    className="flex-1 px-2 py-1 border border-slate-200 rounded text-sm disabled:bg-slate-50"
+                    className="flex-1 min-w-0 px-2 py-1 border border-slate-200 rounded text-sm disabled:bg-slate-50"
                     data-testid={`card-player-${i}`}
                   >
                     <option value="">Jugador...</option>
@@ -949,11 +949,11 @@ function CardsEditor({ scoring, setScoring, teams = [] }) {
                   </select>
                 </div>
               ) : (
-                <div className="col-span-12 sm:col-span-8 flex flex-col sm:flex-row gap-1">
+                <div className="col-span-12 sm:col-span-8 flex flex-col sm:flex-row gap-1 min-w-0">
                   <select
                     value={c.team_id || ""}
                     onChange={(e) => updateCard(i, { team_id: e.target.value, staff_name: "" })}
-                    className="flex-1 px-2 py-1 border border-slate-200 rounded text-sm"
+                    className="flex-1 min-w-0 px-2 py-1 border border-slate-200 rounded text-sm"
                     data-testid={`card-staff-team-${i}`}
                   >
                     <option value="">Equipo...</option>
@@ -963,7 +963,7 @@ function CardsEditor({ scoring, setScoring, teams = [] }) {
                     value={c.staff_name || ""}
                     onChange={(e) => updateCard(i, { staff_name: e.target.value })}
                     disabled={!c.team_id}
-                    className="flex-1 px-2 py-1 border border-slate-200 rounded text-sm disabled:bg-slate-50"
+                    className="flex-1 min-w-0 px-2 py-1 border border-slate-200 rounded text-sm disabled:bg-slate-50"
                     data-testid={`card-staff-name-${i}`}
                   >
                     <option value="">Cuerpo técnico...</option>

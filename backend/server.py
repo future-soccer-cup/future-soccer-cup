@@ -1287,14 +1287,15 @@ async def team_roster_pdf(team_id: str, user: dict = Depends(get_current_user)):
     # === Cuerpo Técnico ===
     story.append(Paragraph(f"CUERPO TÉCNICO ({len(staff)})", H2))
     if staff:
+        STAFF_CELL = ParagraphStyle("STAFF_CELL", parent=N, fontSize=8, leading=9.5)
         data = [["Nombre", "Rol", "Documento", "N° COMET", "Teléfono"]]
         for s in staff:
             data.append([
-                s.get("name") or "—",
-                s.get("role") or "—",
-                s.get("document") or "—",
-                s.get("comet_number") or "—",
-                s.get("phone") or "—",
+                Paragraph(s.get("name") or "—", STAFF_CELL),
+                Paragraph(s.get("role") or "—", STAFF_CELL),
+                Paragraph(s.get("document") or "—", STAFF_CELL),
+                Paragraph(s.get("comet_number") or "—", STAFF_CELL),
+                Paragraph(s.get("phone") or "—", STAFF_CELL),
             ])
         t = Table(data, colWidths=[2.2 * inch, 1.6 * inch, 1.4 * inch, 1.1 * inch, 1.2 * inch], repeatRows=1)
         t.setStyle(TableStyle([
@@ -1862,6 +1863,20 @@ async def generate_fixture(payload: FixtureGenerateIn, _: dict = Depends(require
         raise HTTPException(status_code=404, detail="Evento no encontrado")
     if tournament.get("archived"):
         raise HTTPException(status_code=400, detail="No se puede generar fixture sobre un evento archivado/histórico")
+    # Evitar 2 fixtures con el mismo torneo × categoría × grupo (ej. "Grupo A" repetido) -
+    # antes se podía crear sin aviso y quedaban partidos duplicados/confusos.
+    group_name_clean = (payload.group_name or "").strip()
+    if group_name_clean:
+        existing_fixture = await db.fixtures.find_one({
+            "tournament_id": payload.tournament_id,
+            "category": payload.category,
+            "group_name": {"$regex": f"^{re.escape(group_name_clean)}$", "$options": "i"},
+        }, {"_id": 0, "id": 1})
+        if existing_fixture:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Ya existe un fixture para '{group_name_clean}' en esta categoría de este evento. Usa otro nombre de grupo o elimina el existente primero.",
+            )
     teams = await db.teams.find({"id": {"$in": payload.team_ids}}, {"_id": 0}).to_list(500)
     if len(teams) != len(payload.team_ids):
         raise HTTPException(status_code=400, detail="Algunos equipos no existen")
@@ -3014,6 +3029,12 @@ async def _build_fixture_pdf(tournament_id: str, category: Optional[str], group:
     H2 = ParagraphStyle("H2", parent=styles["Heading2"], fontSize=11, leading=14, textColor=colors.HexColor("#1d4ed8"), spaceAfter=4)
     SUB = ParagraphStyle("SUB", parent=N, fontSize=9, textColor=colors.HexColor("#475569"), leading=11)
 
+    from xml.sax.saxutils import escape as _esc
+    CELL = ParagraphStyle("CELL", parent=N, fontSize=8, leading=9.5)
+
+    def cell(text):
+        return Paragraph(_esc(str(text if text is not None else "—")), CELL)
+
     story = []
     logo_img = _pdf_header_logo(None, _get_fsc_logo_bytes())
     head_cell = [Paragraph(f"<b>FIXTURE</b>", H1),
@@ -3051,9 +3072,9 @@ async def _build_fixture_pdf(tournament_id: str, category: Optional[str], group:
                 score = f"{m.get('home_score', 0)} - {m.get('away_score', 0)}"
             else:
                 score = "—"
-            data.append([fecha, m.get("venue", "") or "—",
-                         ht.get("name", "—"), "vs", at.get("name", "—"),
-                         m.get("group_name", "") or "—", score])
+            data.append([cell(fecha), cell(m.get("venue") or "—"),
+                         cell(ht.get("name", "—")), "vs", cell(at.get("name", "—")),
+                         cell(m.get("group_name") or "—"), score])
         col_widths = [1.05 * inch, 1.1 * inch, 1.6 * inch, 0.25 * inch, 1.6 * inch, 0.7 * inch, 0.7 * inch]
         t = Table(data, colWidths=col_widths, repeatRows=1)
         t.setStyle(TableStyle([
@@ -3100,6 +3121,12 @@ async def _build_standings_pdf(tournament_id: str, category: Optional[str], grou
     H2 = ParagraphStyle("H2", parent=styles["Heading2"], fontSize=11, leading=14, textColor=colors.HexColor("#1d4ed8"), spaceAfter=4)
     SUB = ParagraphStyle("SUB", parent=N, fontSize=9, textColor=colors.HexColor("#475569"), leading=11)
 
+    from xml.sax.saxutils import escape as _esc
+    CELL = ParagraphStyle("CELL", parent=N, fontSize=9, leading=10.5)
+
+    def cell(text):
+        return Paragraph(_esc(str(text if text is not None else "—")), CELL)
+
     story = []
     logo_img = _pdf_header_logo(None, _get_fsc_logo_bytes())
     title_text = "REPORTE DE JUEGO LIMPIO" if fairplay_only else "TABLA DE CLASIFICACIÓN"
@@ -3117,13 +3144,13 @@ async def _build_standings_pdf(tournament_id: str, category: Optional[str], grou
     if fairplay_only:
         data = [["#", "Equipo", "Amarillas", "Rojas", "Otras", "J.L"]]
         for i, r in enumerate(rows, start=1):
-            data.append([str(i), r["team_name"], str(r.get("yellow_cards", 0)), str(r.get("red_cards", 0)), str(r.get("other_cards", 0)), str(r.get("fair_play", 0))])
+            data.append([str(i), cell(r["team_name"]), str(r.get("yellow_cards", 0)), str(r.get("red_cards", 0)), str(r.get("other_cards", 0)), str(r.get("fair_play", 0))])
         col_widths = [0.4*inch, 3.0*inch, 0.9*inch, 0.9*inch, 0.9*inch, 1.0*inch]
     else:
         data = [["#", "Equipo", "PJ", "PG", "PE", "PP", "GF", "GC", "DG", "J.L", "PTOS"]]
         for i, r in enumerate(rows, start=1):
             dg = r.get("gd", 0)
-            data.append([str(i), r["team_name"], str(r["played"]), str(r["won"]), str(r["drawn"]), str(r["lost"]),
+            data.append([str(i), cell(r["team_name"]), str(r["played"]), str(r["won"]), str(r["drawn"]), str(r["lost"]),
                          str(r["gf"]), str(r["ga"]), (f"+{dg}" if dg > 0 else str(dg)), str(r.get("fair_play", 0)), str(r["points"])])
         col_widths = [0.35*inch, 2.0*inch, 0.45*inch, 0.45*inch, 0.45*inch, 0.45*inch, 0.5*inch, 0.5*inch, 0.55*inch, 0.6*inch, 0.65*inch]
 
