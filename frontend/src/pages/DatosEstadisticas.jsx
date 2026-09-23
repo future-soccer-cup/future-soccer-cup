@@ -600,6 +600,11 @@ function MatchesList({ rows, testPrefix, showDate }) {
           {(showDate || m.status !== "finalizado") && (
             <div className="text-xs text-slate-400 mt-0.5 text-center">{formatDateTime(m.match_date)}{m.venue ? ` · ${m.venue}` : ""}</div>
           )}
+          {m.match_type === "intergrupo" && (
+            <div className="text-center mt-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 bg-amber-100 rounded px-1.5 py-0.5">Partido intergrupos</span>
+            </div>
+          )}
         </div>
       ))}
     </div>
@@ -620,6 +625,7 @@ function StandingsTable({ rows }) {
             <th className="text-center px-1 sm:px-3 py-2 sm:py-2.5">E</th>
             <th className="text-center px-1 sm:px-3 py-2 sm:py-2.5">P</th>
             <th className="text-center px-1 sm:px-3 py-2 sm:py-2.5">DG</th>
+            <th className="text-center px-1 sm:px-3 py-2 sm:py-2.5">J.L</th>
             <th className="text-center px-1.5 sm:px-3 py-2 sm:py-2.5">Pts</th>
           </tr>
         </thead>
@@ -633,6 +639,7 @@ function StandingsTable({ rows }) {
               <td className="text-center tabular-nums px-1 sm:px-3">{r.drawn}</td>
               <td className="text-center tabular-nums px-1 sm:px-3">{r.lost}</td>
               <td className="text-center tabular-nums px-1 sm:px-3">{r.gd}</td>
+              <td className="text-center tabular-nums px-1 sm:px-3 text-emerald-700 font-bold">{r.fair_play ?? 0}</td>
               <td className="text-center font-black text-base sm:text-lg md:text-xl px-1.5 sm:px-3" style={{ color: BLUE }}>{r.points}</td>
             </tr>
           ))}

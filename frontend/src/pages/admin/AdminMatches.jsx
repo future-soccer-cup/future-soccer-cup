@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import api, { formatApiError, imgSrc } from "../../lib/api";
 import { Plus, Trash2, Edit3, CalendarClock, Shuffle, FileDown, FileText, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
-import CategorySelect from "../../components/CategorySelect";
 import { formatDateTime } from "../../lib/dateFormat";
 import VenuePicker from "../../components/VenuePicker";
 import { Modal, Field } from "./AdminTeams";
@@ -39,9 +38,6 @@ export default function AdminMatches() {
   const [standings, setStandings] = useState([]);
   const [fixtures, setFixtures] = useState([]);
   const [brackets, setBrackets] = useState([]);
-  // Iter53: Partidos adicionales (bonus matches). Aplican SOLO en fixtures de 3 o 4 equipos.
-  const [bonusMatches, setBonusMatches] = useState([]);
-  const [bonusEdit, setBonusEdit] = useState(null); // {id?, team_id, result, goals_for, ...}
 
   const load = useCallback(() => Promise.all([
     api.get("/matches"), api.get("/teams"), api.get("/tournaments"), api.get("/fixtures"), api.get("/brackets")
@@ -57,17 +53,8 @@ export default function AdminMatches() {
     api.get(`/stats/standings?${params.toString()}`).then((r) => setStandings(r.data || []));
   }, [tab, filterTid, filterCat, filterGrp]);
 
-  // Iter53: cargar partidos adicionales (bonus) del scope filtrado.
-  const loadBonus = useCallback(() => {
-    if (!filterTid || !filterCat) { setBonusMatches([]); return; }
-    const params = new URLSearchParams({ tournament_id: filterTid, category: filterCat });
-    if (filterGrp) params.set("group_name", filterGrp);
-    api.get(`/bonus-matches?${params.toString()}`).then((r) => setBonusMatches(r.data || []));
-  }, [filterTid, filterCat, filterGrp]);
-  useEffect(() => { loadBonus(); }, [loadBonus]);
-
   // Fixture del scope filtrado (torneo × categoría × grupo). Se usa para decidir
-  // si aplican partidos adicionales y qué equipos.
+  // si aplica el botón de Partidos Intergrupos (fixtures chicos de 3 o 4 equipos).
   const scopeFixture = fixtures.find((f) =>
     f.tournament_id === filterTid &&
     f.category === filterCat &&
@@ -75,12 +62,7 @@ export default function AdminMatches() {
   );
   const scopeTeamIds = (scopeFixture?.team_ids || []).filter((id) => id && id !== "__BYE__");
   const scopeTeamCount = scopeTeamIds.length;
-  const bonusEnabled = scopeTeamCount === 3 || scopeTeamCount === 4;
-  const maxBonusPerTeam = scopeTeamCount === 3 ? 2 : (scopeTeamCount === 4 ? 1 : 0);
-  const bonusCountByTeam = bonusMatches.reduce((acc, b) => {
-    acc[b.team_id] = (acc[b.team_id] || 0) + 1;
-    return acc;
-  }, {});
+  const intergroupEnabled = scopeTeamCount === 3 || scopeTeamCount === 4;
 
   // Iter76: el filtro de "grupo" también admite un bracket (llave de eliminación directa),
   // codificado como "bracket:<id>" — esos partidos no tienen group_name (viven aparte, atados
@@ -92,8 +74,18 @@ export default function AdminMatches() {
     if (filterTid && m.tournament_id !== filterTid) return false;
     if (filterBracketId) {
       if (m.bracket_id !== filterBracketId) return false;
-    } else if (filterGrp && (m.group_name || "") !== filterGrp) {
-      return false;
+    } else if (filterGrp) {
+      if (m.match_type === "intergrupo") {
+        // Un partido intergrupos cruza dos grupos distintos y no tiene un
+        // group_name que coincida exactamente con ninguno de los dos — debe
+        // verse al filtrar por CUALQUIERA de los dos grupos involucrados.
+        const hTeam = teams.find((t) => t.id === m.home_team_id);
+        const aTeam = teams.find((t) => t.id === m.away_team_id);
+        const inGroup = (t) => t && (t.group_name || "") === filterGrp;
+        if (!inGroup(hTeam) && !inGroup(aTeam)) return false;
+      } else if ((m.group_name || "") !== filterGrp) {
+        return false;
+      }
     }
     if (filterCat) {
       // Necesitamos atar partido a categoría vía el equipo local o visitante.
@@ -174,101 +166,21 @@ export default function AdminMatches() {
     }
   };
 
-  // Iter53: crear/editar/borrar partido adicional (bonus match).
-  const openNewBonus = () => {
-    if (!bonusEnabled) return;
-    setBonusEdit({
-      id: null,
-      tournament_id: filterTid,
-      category: filterCat,
-      group_name: filterGrp || (scopeFixture?.group_name || ""),
-      team_id: "",
-      result: "won",
-      goals_for: 0,
-      goals_against: 0,
-      yellow_cards: 0,
-      red_cards: 0,
-      other_cards: 0,
-      note: "",
-    });
-  };
-  const saveBonus = async (e) => {
-    e.preventDefault();
-    try {
-      const body = {
-        tournament_id: bonusEdit.tournament_id,
-        category: bonusEdit.category,
-        group_name: bonusEdit.group_name || "",
-        team_id: bonusEdit.team_id,
-        result: bonusEdit.result,
-        goals_for: Number(bonusEdit.goals_for) || 0,
-        goals_against: Number(bonusEdit.goals_against) || 0,
-        yellow_cards: Number(bonusEdit.yellow_cards) || 0,
-        red_cards: Number(bonusEdit.red_cards) || 0,
-        other_cards: Number(bonusEdit.other_cards) || 0,
-        note: bonusEdit.note || "",
-      };
-      if (!body.team_id) { toast.error("Selecciona un equipo"); return; }
-      if (bonusEdit.id) {
-        await api.put(`/bonus-matches/${bonusEdit.id}`, body);
-        toast.success("Partido adicional actualizado");
-      } else {
-        await api.post("/bonus-matches", body);
-        toast.success("Partido adicional creado");
-      }
-      setBonusEdit(null);
-      loadBonus();
-      // También recargar standings si estamos en tab clasificación/JL
-      if (tab !== "partidos") {
-        const params = new URLSearchParams({ tournament_id: filterTid, category: filterCat });
-        if (filterGrp) params.set("group_name", filterGrp);
-        const r = await api.get(`/stats/standings?${params.toString()}`);
-        setStandings(r.data || []);
-      }
-    } catch (err) {
-      toast.error(formatApiError(err.response?.data?.detail));
-    }
-  };
-  const removeBonus = async (id) => {
-    if (!window.confirm("¿Eliminar este partido adicional? Se descontará de la tabla de clasificación y juego limpio.")) return;
-    try {
-      await api.delete(`/bonus-matches/${id}`);
-      toast.success("Partido adicional eliminado");
-      loadBonus();
-      if (tab !== "partidos") {
-        const params = new URLSearchParams({ tournament_id: filterTid, category: filterCat });
-        if (filterGrp) params.set("group_name", filterGrp);
-        const r = await api.get(`/stats/standings?${params.toString()}`);
-        setStandings(r.data || []);
-      }
-    } catch (err) {
-      toast.error(formatApiError(err.response?.data?.detail));
-    }
-  };
-
   return (
     <div data-testid="admin-matches">
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <h1 className="font-display text-4xl font-black uppercase tracking-tighter">Partidos</h1>
         <div className="flex items-center gap-2 flex-wrap">
-          {bonusEnabled && (
+          {intergroupEnabled && (
             <button
-              onClick={openNewBonus}
+              onClick={() => setIntergroupOpen(true)}
               className="px-4 py-2 rounded-md text-sm flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-bold"
-              data-testid="add-bonus-btn"
-              title={`Partido adicional (fixture de ${scopeTeamCount} equipos · máx ${maxBonusPerTeam} por equipo)`}
+              data-testid="open-intergroup-btn"
+              title={`Partidos intergrupos (fixture de ${scopeTeamCount} equipos)`}
             >
-              <Plus size={16}/> Partido adicional
+              <Shuffle size={16}/> Partidos Intergrupos
             </button>
           )}
-          <button
-            onClick={() => setIntergroupOpen(true)}
-            className="fsc-btn-primary px-4 py-2 rounded-md text-sm flex items-center gap-2"
-            data-testid="open-intergroup-btn"
-            title="Sortear intergrupos (cuadrangulares x2)"
-          >
-            <Shuffle size={16}/> Sortear intergrupos
-          </button>
           <button onClick={() => setEditing({ ...EMPTY })} className="fsc-btn-red px-4 py-2 rounded-md text-sm flex items-center gap-2" data-testid="add-match-btn">
             <Plus size={16}/> Programar
           </button>
@@ -305,24 +217,12 @@ export default function AdminMatches() {
       </div>
 
       {tab === "partidos" && (
-        <>
-          <MatchesTable
-            matches={filteredMatches}
-            onEdit={(m) => setManualEdit({ ...m, match_date: toLocalInput(m.match_date) })}
-            onScore={(m) => setScoring({ ...m, scorers: m.scorers || [] })}
-            onRemove={remove}
-          />
-          {bonusEnabled && (
-            <BonusMatchesList
-              bonusMatches={bonusMatches}
-              scopeTeams={teams.filter((t) => scopeTeamIds.includes(t.id))}
-              maxPerTeam={maxBonusPerTeam}
-              teamCount={scopeTeamCount}
-              onEdit={(b) => setBonusEdit({ ...b })}
-              onDelete={removeBonus}
-            />
-          )}
-        </>
+        <MatchesTable
+          matches={filteredMatches}
+          onEdit={(m) => setManualEdit({ ...m, match_date: toLocalInput(m.match_date) })}
+          onScore={(m) => setScoring({ ...m, scorers: m.scorers || [] })}
+          onRemove={remove}
+        />
       )}
       {tab === "clasificacion" && (
         <StandingsTable rows={standings} mode="full" />
@@ -451,283 +351,149 @@ export default function AdminMatches() {
       )}
 
       {intergroupOpen && (
-        <IntergroupModal
+        <IntergroupMatchModal
           tournaments={tournaments}
           fixtures={fixtures}
           teams={teams}
+          tournamentId={filterTid}
+          category={filterCat}
+          defaultGroup={scopeFixture?.group_name || filterGrp}
           onClose={() => setIntergroupOpen(false)}
           onDone={() => { setIntergroupOpen(false); load(); }}
-        />
-      )}
-
-      {bonusEdit && (
-        <BonusMatchModal
-          bonus={bonusEdit}
-          setBonus={setBonusEdit}
-          onClose={() => setBonusEdit(null)}
-          onSubmit={saveBonus}
-          scopeTeams={teams.filter((t) => scopeTeamIds.includes(t.id))}
-          maxPerTeam={maxBonusPerTeam}
-          bonusCountByTeam={bonusCountByTeam}
-          teamCount={scopeTeamCount}
         />
       )}
     </div>
   );
 }
 
-function IntergroupModal({ tournaments, fixtures = [], teams = [], onClose, onDone }) {
-  const [form, setForm] = useState({
-    tournament_id: tournaments[0]?.id || "",
-    category: "",
-    group_a: "",
-    group_b: "",
-    match_date: "",
-    pairing: "standings",
-    venues: ["Cancha 1"],
-    time_slots: ["10:00"],
-  });
-  const [manualPairs, setManualPairs] = useState({}); // { [teamAId]: teamBId }
-  const [preview, setPreview] = useState(null);
-  const [loading, setLoading] = useState(false);
-
-  // Iter75: los grupos se leen de los fixtures reales del torneo × categoría elegidos
-  // (evita typos como "Grupo a" vs "Grupo A" que antes rompían el cruce).
+function IntergroupMatchModal({ tournaments = [], fixtures = [], teams = [], tournamentId, category, defaultGroup, onClose, onDone }) {
+  // Los grupos se leen de los fixtures reales del torneo × categoría (evita typos
+  // como "Grupo a" vs "Grupo A" que antes rompían el cruce).
   const groupOptions = Array.from(new Set(
     fixtures
-      .filter((f) => f.tournament_id === form.tournament_id && f.category === form.category)
+      .filter((f) => f.tournament_id === tournamentId && f.category === category)
       .map((f) => f.group_name || "")
       .filter(Boolean)
-  ));
+  )).sort();
+
+  const [groupA, setGroupA] = useState(defaultGroup && groupOptions.includes(defaultGroup) ? defaultGroup : (groupOptions[0] || ""));
+  const [groupB, setGroupB] = useState("");
+  const [teamAId, setTeamAId] = useState("");
+  const [teamBId, setTeamBId] = useState("");
+  const [matchDate, setMatchDate] = useState("");
+  const [venue, setVenue] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const teamsInGroup = (g) => teams.filter((t) =>
-    t.category === form.category && (t.group_name || "") === g && (t.status || "aprobado") === "aprobado"
+    t.category === category && (t.group_name || "") === g && (t.status || "aprobado") === "aprobado"
   );
-  const teamsA = form.group_a ? teamsInGroup(form.group_a) : [];
-  const teamsB = form.group_b ? teamsInGroup(form.group_b) : [];
+  const teamsA = groupA ? teamsInGroup(groupA) : [];
+  const teamsB = groupB ? teamsInGroup(groupB) : [];
+  const tournament = tournaments.find((t) => t.id === tournamentId);
 
-  const onFieldChange = (patch) => {
-    setForm((f) => ({ ...f, ...patch }));
-    setPreview(null);
-    setManualPairs({});
-  };
-
-  const setManualOpponent = (teamAId, teamBId) => {
-    setManualPairs((p) => ({ ...p, [teamAId]: teamBId || undefined }));
-  };
-
-  const submit = async (saveIt) => {
-    if (!form.tournament_id || !form.category || !form.match_date || !form.group_a || !form.group_b) {
-      toast.error("Completa torneo, categoría, grupos y fecha");
-      return;
-    }
-    if (form.group_a === form.group_b) {
-      toast.error("Los grupos A y B deben ser distintos");
-      return;
-    }
-    setLoading(true);
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!groupA || !groupB) { toast.error("Selecciona ambos grupos"); return; }
+    if (groupA === groupB) { toast.error("Los grupos deben ser distintos"); return; }
+    if (!teamAId || !teamBId) { toast.error("Selecciona los dos equipos que se enfrentan"); return; }
+    if (!matchDate) { toast.error("Selecciona fecha y hora"); return; }
+    setSaving(true);
     try {
-      if (form.pairing === "manual") {
-        const pairs = teamsA
-          .map((ta) => ({ ta, tbId: manualPairs[ta.id] }))
-          .filter((p) => p.tbId);
-        if (!pairs.length) {
-          toast.error("Selecciona al menos un cruce");
-          setLoading(false);
-          return;
-        }
-        const venues = form.venues.length ? form.venues : [""];
-        const slots = form.time_slots.length ? form.time_slots : ["10:00"];
-        const built = pairs.map(({ ta, tbId }, i) => {
-          const tb = teamsB.find((t) => t.id === tbId);
-          const slot = slots[i % slots.length];
-          const [hh, mm] = slot.split(":");
-          const dt = new Date(`${form.match_date}T00:00:00`);
-          if (hh) dt.setHours(Number(hh) || 0, Number(mm) || 0, 0, 0);
-          return {
-            tournament_id: form.tournament_id,
-            home_team_id: ta.id,
-            away_team_id: tbId,
-            match_date: dt.toISOString(),
-            venue: venues[i % venues.length],
-            group_name: `${form.group_a} vs ${form.group_b}`,
-            stage: "grupos",
-            match_type: "intergrupo",
-            status: "programado",
-            home_team_name: ta.name,
-            away_team_name: tb?.name || "",
-          };
-        });
-        if (!saveIt) {
-          setPreview({ count: built.length, matches: built });
-          toast.success("Vista previa generada");
-        } else {
-          await Promise.all(built.map((m) => {
-            const { home_team_name, away_team_name, ...body } = m;
-            return api.post("/matches", body);
-          }));
-          toast.success(`Intergrupos guardados (${built.length} partidos)`);
-          onDone();
-        }
-      } else {
-        const res = await api.post("/fixtures/intergroup", { ...form, preview: !saveIt });
-        setPreview(res.data);
-        if (saveIt) {
-          toast.success(`Intergrupos guardados (${res.data.count} partidos)`);
-          onDone();
-        } else {
-          toast.success("Vista previa generada");
-        }
-      }
+      await api.post("/matches", {
+        tournament_id: tournamentId,
+        home_team_id: teamAId,
+        away_team_id: teamBId,
+        match_date: new Date(matchDate).toISOString(),
+        venue: venue || "",
+        group_name: `${groupA} vs ${groupB}`,
+        stage: "grupos",
+        match_type: "intergrupo",
+        status: "programado",
+      });
+      toast.success("Partido intergrupos creado");
+      onDone();
     } catch (err) {
       toast.error(formatApiError(err.response?.data?.detail));
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
   return (
-    <Modal onClose={onClose} title="Sortear intergrupos (cuadrangulares × 2)">
-      <div className="space-y-3" data-testid="intergroup-form">
-        <label className="block">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Torneo</span>
-          <select
-            value={form.tournament_id}
-            onChange={(e) => onFieldChange({ tournament_id: e.target.value, category: "", group_a: "", group_b: "" })}
-            className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md"
-            data-testid="ig-tournament"
-          >
-            {tournaments.map((t) => <option key={t.id} value={t.id}>{t.name} · {t.season}</option>)}
-          </select>
-        </label>
-        <CategorySelect
-          value={form.category}
-          onChange={(v) => onFieldChange({ category: v, group_a: "", group_b: "" })}
-          testId="ig-category"
-        />
+    <Modal onClose={onClose} title="Nuevo partido intergrupos">
+      <form onSubmit={submit} className="space-y-3" data-testid="intergroup-form">
+        <div className="text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded p-2">
+          <b>Evento:</b> {tournament ? `${tournament.name} · ${tournament.season}` : "—"} &nbsp;·&nbsp; <b>Categoría:</b> {category || "—"}
+        </div>
+        <p className="text-xs text-slate-500">
+          Para fixtures pequeños (3 o 4 equipos): elige los dos grupos y los equipos que se enfrentan.
+          El resultado sumará puntos, goles y tarjetas a la clasificación de ambos grupos.
+        </p>
         <div className="grid grid-cols-2 gap-3">
           <label className="block">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Grupo A</span>
             <select
-              value={form.group_a}
-              onChange={(e) => onFieldChange({ group_a: e.target.value })}
-              disabled={!form.category}
-              className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md disabled:bg-slate-50"
+              value={groupA}
+              onChange={(e) => { setGroupA(e.target.value); setTeamAId(""); }}
+              className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md"
               data-testid="ig-group-a"
             >
               <option value="">Seleccionar...</option>
-              {groupOptions.map((g) => <option key={g} value={g} disabled={g === form.group_b}>{g}</option>)}
+              {groupOptions.map((g) => <option key={g} value={g} disabled={g === groupB}>{g}</option>)}
             </select>
           </label>
           <label className="block">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Grupo B</span>
             <select
-              value={form.group_b}
-              onChange={(e) => onFieldChange({ group_b: e.target.value })}
-              disabled={!form.category}
-              className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md disabled:bg-slate-50"
+              value={groupB}
+              onChange={(e) => { setGroupB(e.target.value); setTeamBId(""); }}
+              className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md"
               data-testid="ig-group-b"
             >
               <option value="">Seleccionar...</option>
-              {groupOptions.map((g) => <option key={g} value={g} disabled={g === form.group_a}>{g}</option>)}
+              {groupOptions.map((g) => <option key={g} value={g} disabled={g === groupA}>{g}</option>)}
             </select>
           </label>
         </div>
-        <Field label="Fecha del intergrupo" type="date" required value={form.match_date} onChange={(v) => onFieldChange({ match_date: v })} />
-        <label className="block">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Emparejamiento</span>
-          <select
-            value={form.pairing}
-            onChange={(e) => onFieldChange({ pairing: e.target.value })}
-            className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md"
-            data-testid="ig-pairing"
-          >
-            <option value="standings">Por posición en la tabla (1°A vs 1°B, 2°A vs 2°B...)</option>
-            <option value="seed">Por orden de inscripción</option>
-            <option value="random">Aleatorio (sorteo)</option>
-            <option value="manual">Manual (yo elijo cada cruce)</option>
-          </select>
-        </label>
         <div className="grid grid-cols-2 gap-3">
           <label className="block">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Canchas (sep. coma)</span>
-            <input
-              value={form.venues.join(", ")}
-              onChange={(e) => setForm({ ...form, venues: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
-              className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md"
-            />
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Equipo ({groupA || "Grupo A"})</span>
+            <select
+              required
+              value={teamAId}
+              onChange={(e) => setTeamAId(e.target.value)}
+              disabled={!groupA}
+              className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md disabled:bg-slate-50"
+              data-testid="ig-team-a"
+            >
+              <option value="">Seleccionar...</option>
+              {teamsA.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
           </label>
           <label className="block">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Horarios (sep. coma)</span>
-            <input
-              value={form.time_slots.join(", ")}
-              onChange={(e) => setForm({ ...form, time_slots: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })}
-              className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md"
-            />
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Equipo ({groupB || "Grupo B"})</span>
+            <select
+              required
+              value={teamBId}
+              onChange={(e) => setTeamBId(e.target.value)}
+              disabled={!groupB}
+              className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md disabled:bg-slate-50"
+              data-testid="ig-team-b"
+            >
+              <option value="">Seleccionar...</option>
+              {teamsB.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
           </label>
         </div>
-
-        {form.pairing === "manual" && form.group_a && form.group_b && (
-          <div className="border-t border-slate-200 pt-3">
-            <div className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
-              Elige el rival de cada equipo de {form.group_a}
-            </div>
-            {teamsA.length === 0 || teamsB.length === 0 ? (
-              <p className="text-sm text-slate-400 italic">Uno de los dos grupos no tiene equipos aprobados.</p>
-            ) : (
-              <div className="space-y-2">
-                {teamsA.map((ta) => (
-                  <div key={ta.id} className="flex items-center gap-2" data-testid={`ig-manual-row-${ta.id}`}>
-                    <span className="flex-1 text-sm font-semibold truncate">{ta.name}</span>
-                    <span className="text-slate-400 text-xs">vs</span>
-                    <select
-                      value={manualPairs[ta.id] || ""}
-                      onChange={(e) => setManualOpponent(ta.id, e.target.value)}
-                      className="flex-1 px-2 py-1.5 border border-slate-200 rounded-md text-sm"
-                      data-testid={`ig-manual-select-${ta.id}`}
-                    >
-                      <option value="">— Sin rival —</option>
-                      {teamsB.map((tb) => (
-                        <option
-                          key={tb.id}
-                          value={tb.id}
-                          disabled={Object.entries(manualPairs).some(([otherA, bId]) => bId === tb.id && otherA !== ta.id)}
-                        >
-                          {tb.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        <div className="flex gap-2 pt-2">
-          <button onClick={() => submit(false)} disabled={loading} className="flex-1 fsc-btn-primary py-2 rounded-md text-sm disabled:opacity-50" data-testid="ig-preview-btn">
-            {loading ? "..." : "Vista previa"}
-          </button>
-          <button onClick={() => submit(true)} disabled={loading || !preview} className="flex-1 fsc-btn-red py-2 rounded-md text-sm disabled:opacity-50" data-testid="ig-save-btn">
-            Guardar partidos
-          </button>
-        </div>
-        {preview && (
-          <div className="mt-3 border-t border-slate-200 pt-3">
-            <div className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Cruces ({preview.count})</div>
-            <div className="space-y-1.5 max-h-64 overflow-y-auto">
-              {preview.matches.map((m, i) => (
-                <div key={m.id || i} className="flex items-center justify-between text-sm border-l-4 border-red-500 pl-3 py-1.5 bg-red-50">
-                  <span className="font-semibold">{m.home_team_name}</span>
-                  <span className="text-slate-400 text-xs">vs</span>
-                  <span className="font-semibold">{m.away_team_name}</span>
-                  <span className="text-xs text-slate-500">{m.venue || "—"} · {(m.match_date || "").slice(11, 16)}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+        <Field label="Fecha y hora" type="datetime-local" required value={matchDate} onChange={setMatchDate} />
+        <label className="block">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Cancha</span>
+          <VenuePicker value={venue} onChange={setVenue} testId="ig-venue" />
+        </label>
+        <button disabled={saving} className="fsc-btn-primary w-full py-2 rounded-md text-sm disabled:opacity-50" data-testid="ig-save-btn">
+          {saving ? "Guardando..." : "Crear partido intergrupos"}
+        </button>
+      </form>
     </Modal>
   );
 }
@@ -1113,7 +879,12 @@ function MatchesTable({ matches, onEdit, onScore, onRemove }) {
               const isBye = m.is_bye || m.status === "descansa" || m.home_team_id === "__BYE__" || m.away_team_id === "__BYE__";
               return (
               <tr key={m.id} className={`border-t border-slate-100 ${isBye ? "bg-amber-50/60" : ""}`} data-testid={`match-row-${m.id}`}>
-                <td className="px-4 py-2 font-display font-black text-blue-700">FECHA {m.matchday || "?"}</td>
+                <td className="px-4 py-2 font-display font-black text-blue-700">
+                  FECHA {m.matchday || "?"}
+                  {m.match_type === "intergrupo" && (
+                    <span className="block mt-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-700 bg-amber-100 rounded px-1 py-0.5 w-fit" data-testid={`intergroup-badge-${m.id}`}>Intergrupos</span>
+                  )}
+                </td>
                 <td className="px-4 py-2">{isBye ? (m.match_date ? formatDateTime(m.match_date).split(" ")[0] : "—") : (m.match_date ? formatDateTime(m.match_date) : "—")}</td>
                 <td className="px-4 py-2 font-semibold">{m.home_team_name}</td>
                 <td className="px-4 py-2 text-center font-display font-black tabular-nums">
@@ -1347,162 +1118,5 @@ function StandingsTable({ rows, mode = "full" }) {
         </tbody>
       </table>
     </div>
-  );
-}
-
-
-
-// Iter53: Lista de partidos adicionales (bonus) debajo de la tabla de partidos.
-function BonusMatchesList({ bonusMatches, scopeTeams, maxPerTeam, teamCount, onEdit, onDelete }) {
-  const RESULT_LABEL = { won: "Ganado", drawn: "Empatado", lost: "Perdido" };
-  const RESULT_BADGE = { won: "bg-emerald-100 text-emerald-800", drawn: "bg-slate-100 text-slate-700", lost: "bg-red-100 text-red-800" };
-  const usedByTeam = bonusMatches.reduce((acc, b) => { acc[b.team_id] = (acc[b.team_id] || 0) + 1; return acc; }, {});
-  return (
-    <div className="mt-6 border border-amber-200 bg-amber-50/40 rounded-lg p-4" data-testid="bonus-matches-section">
-      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-        <div>
-          <h3 className="font-display text-lg font-black uppercase tracking-tight text-amber-800">Partidos adicionales</h3>
-          <p className="text-xs text-slate-600 mt-0.5">
-            Fixture de {teamCount} equipos · máx <b>{maxPerTeam}</b> por equipo · suman directo a Clasificación y Juego Limpio.
-          </p>
-        </div>
-        <div className="flex gap-3 text-[11px] text-slate-600">
-          {scopeTeams.map((t) => {
-            const used = usedByTeam[t.id] || 0;
-            const remaining = Math.max(0, maxPerTeam - used);
-            return (
-              <span key={t.id} className={`px-2 py-1 rounded ${remaining === 0 ? "bg-slate-200 text-slate-500" : "bg-white text-slate-700 border border-slate-200"}`} data-testid={`bonus-quota-${t.id}`}>
-                {t.name}: <b>{used}/{maxPerTeam}</b>
-              </span>
-            );
-          })}
-        </div>
-      </div>
-      {bonusMatches.length === 0 ? (
-        <p className="text-sm text-slate-500 py-4 text-center">No hay partidos adicionales registrados.</p>
-      ) : (
-        <div className="overflow-x-auto bg-white rounded-md">
-          <table className="w-full min-w-[560px] text-sm">
-            <thead className="bg-amber-100 text-xs uppercase tracking-wider">
-              <tr>
-                <th className="text-left px-3 py-2">Equipo</th>
-                <th className="text-left px-3 py-2">Resultado</th>
-                <th className="text-center px-3 py-2">GF</th>
-                <th className="text-center px-3 py-2">GC</th>
-                <th className="text-center px-3 py-2" title="Amarillas"><span className="inline-block w-3 h-4 bg-yellow-400 rounded-sm" /></th>
-                <th className="text-center px-3 py-2" title="Rojas"><span className="inline-block w-3 h-4 bg-red-600 rounded-sm" /></th>
-                <th className="text-center px-3 py-2" title="Otras"><span className="inline-block w-3 h-4 bg-slate-400 rounded-sm" /></th>
-                <th className="text-left px-3 py-2">Nota</th>
-                <th className="text-right px-3 py-2">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {bonusMatches.map((b) => (
-                <tr key={b.id} className="border-t border-slate-100" data-testid={`bonus-row-${b.id}`}>
-                  <td className="px-3 py-2 font-semibold">{b.team_name || b.team_id}</td>
-                  <td className="px-3 py-2">
-                    <span className={`px-2 py-0.5 rounded text-[11px] font-bold uppercase ${RESULT_BADGE[b.result]}`}>{RESULT_LABEL[b.result]}</span>
-                  </td>
-                  <td className="px-3 py-2 text-center tabular-nums">{b.goals_for}</td>
-                  <td className="px-3 py-2 text-center tabular-nums">{b.goals_against}</td>
-                  <td className="px-3 py-2 text-center tabular-nums">{b.yellow_cards}</td>
-                  <td className="px-3 py-2 text-center tabular-nums">{b.red_cards}</td>
-                  <td className="px-3 py-2 text-center tabular-nums">{b.other_cards}</td>
-                  <td className="px-3 py-2 text-slate-600 text-xs italic">{b.note || "—"}</td>
-                  <td className="px-3 py-2 text-right space-x-2">
-                    <button onClick={() => onEdit(b)} className="text-blue-700" title="Editar" data-testid={`bonus-edit-${b.id}`}><Edit3 size={16}/></button>
-                    <button onClick={() => onDelete(b.id)} className="text-red-600" title="Eliminar" data-testid={`bonus-delete-${b.id}`}><Trash2 size={16}/></button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
-}
-
-
-function BonusMatchModal({ bonus, setBonus, onClose, onSubmit, scopeTeams, maxPerTeam, bonusCountByTeam, teamCount }) {
-  const title = bonus.id ? "Editar partido adicional" : "Nuevo partido adicional";
-  return (
-    <Modal onClose={onClose} title={title}>
-      <form onSubmit={onSubmit} className="space-y-3" data-testid="bonus-modal">
-        <p className="text-xs text-slate-500 -mt-1">
-          Fixture de {teamCount} equipos · máximo <b>{maxPerTeam}</b> por equipo.
-        </p>
-        <label className="block">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Equipo</span>
-          <select
-            required
-            value={bonus.team_id}
-            onChange={(e) => setBonus({ ...bonus, team_id: e.target.value })}
-            className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md"
-            data-testid="bonus-team"
-          >
-            <option value="">Seleccionar equipo...</option>
-            {scopeTeams.map((t) => {
-              const used = bonusCountByTeam[t.id] || 0;
-              const disabled = !bonus.id && used >= maxPerTeam;
-              return (
-                <option key={t.id} value={t.id} disabled={disabled}>
-                  {t.name} {disabled ? `(sin cupos — ${used}/${maxPerTeam})` : `(${used}/${maxPerTeam})`}
-                </option>
-              );
-            })}
-          </select>
-        </label>
-        <label className="block">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Resultado</span>
-          <div className="mt-1 grid grid-cols-3 gap-2">
-            {[
-              { v: "won", label: "Ganado", cls: "border-emerald-500 bg-emerald-50 text-emerald-800" },
-              { v: "drawn", label: "Empatado", cls: "border-slate-400 bg-slate-50 text-slate-700" },
-              { v: "lost", label: "Perdido", cls: "border-red-500 bg-red-50 text-red-800" },
-            ].map((o) => (
-              <button
-                type="button"
-                key={o.v}
-                onClick={() => setBonus({ ...bonus, result: o.v })}
-                className={`px-3 py-2 rounded border-2 text-sm font-bold uppercase tracking-wider ${bonus.result === o.v ? o.cls : "border-slate-200 text-slate-400"}`}
-                data-testid={`bonus-result-${o.v}`}
-              >{o.label}</button>
-            ))}
-          </div>
-        </label>
-        <div className="grid grid-cols-2 gap-3">
-          <label className="block">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Goles a favor</span>
-            <input type="number" min="0" value={bonus.goals_for} onChange={(e) => setBonus({ ...bonus, goals_for: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md tabular-nums" data-testid="bonus-gf" />
-          </label>
-          <label className="block">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Goles en contra</span>
-            <input type="number" min="0" value={bonus.goals_against} onChange={(e) => setBonus({ ...bonus, goals_against: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md tabular-nums" data-testid="bonus-ga" />
-          </label>
-        </div>
-        <div className="grid grid-cols-3 gap-3">
-          <label className="block">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1"><span className="inline-block w-3 h-4 bg-yellow-400 rounded-sm" /> Amarillas</span>
-            <input type="number" min="0" value={bonus.yellow_cards} onChange={(e) => setBonus({ ...bonus, yellow_cards: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md tabular-nums" data-testid="bonus-yc" />
-          </label>
-          <label className="block">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1"><span className="inline-block w-3 h-4 bg-red-600 rounded-sm" /> Rojas</span>
-            <input type="number" min="0" value={bonus.red_cards} onChange={(e) => setBonus({ ...bonus, red_cards: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md tabular-nums" data-testid="bonus-rc" />
-          </label>
-          <label className="block">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1"><span className="inline-block w-3 h-4 bg-slate-400 rounded-sm" /> Otras</span>
-            <input type="number" min="0" value={bonus.other_cards} onChange={(e) => setBonus({ ...bonus, other_cards: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md tabular-nums" data-testid="bonus-oc" />
-          </label>
-        </div>
-        <label className="block">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Nota (opcional)</span>
-          <input type="text" value={bonus.note || ""} onChange={(e) => setBonus({ ...bonus, note: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" placeholder="Ej: Partido amistoso reglamentario" data-testid="bonus-note" />
-        </label>
-        <button className="fsc-btn-primary w-full py-2 rounded-md" data-testid="bonus-save-btn">
-          {bonus.id ? "Guardar cambios" : "Crear partido adicional"}
-        </button>
-      </form>
-    </Modal>
   );
 }
