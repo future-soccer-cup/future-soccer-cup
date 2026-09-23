@@ -466,6 +466,15 @@ async def admin_list_backups(_: dict = Depends(require_admin)):
         for it in _list_backup_objects()
     ]
 
+@api.get("/admin/backup/download")
+async def admin_download_backup(path: str, _: dict = Depends(require_admin)):
+    """Descarga un respaldo puntual (.json.gz) para inspeccionar o restaurar manualmente."""
+    if not path.startswith(BACKUP_PREFIX):
+        raise HTTPException(status_code=400, detail="Ruta inválida")
+    data, _ct = get_object(path)
+    fname = path.split("/")[-1]
+    return Response(content=data, media_type="application/gzip", headers={"Content-Disposition": f"attachment; filename={fname}"})
+
 # -------------------- Password Reset --------------------
 class ForgotPasswordIn(BaseModel):
     email: EmailStr
