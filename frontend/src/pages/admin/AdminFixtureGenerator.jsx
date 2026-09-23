@@ -100,6 +100,16 @@ export default function AdminFixtureGenerator() {
     setSelectedIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
   };
 
+  const allFilteredSelected = filtered.length > 0 && filtered.every((t) => selectedIds.includes(t.id));
+  const toggleAllTeams = () => {
+    if (allFilteredSelected) {
+      const filteredIds = new Set(filtered.map((t) => t.id));
+      setSelectedIds((prev) => prev.filter((id) => !filteredIds.has(id)));
+    } else {
+      setSelectedIds((prev) => [...new Set([...prev, ...filtered.map((t) => t.id)])]);
+    }
+  };
+
   // Iter45: abrir el sorteo/asignación manual antes de generar.
   const openSeeding = () => {
     if (!tournamentId) { toast.error("Selecciona un Evento"); return; }
@@ -384,6 +394,16 @@ export default function AdminFixtureGenerator() {
             <h3 className="font-display text-lg font-black uppercase tracking-tight">Equipos {category && `(${category})`}</h3>
             <span className="text-xs font-bold text-blue-700">{selectedIds.length} seleccionados</span>
           </div>
+          {filtered.length > 0 && (
+            <button
+              type="button"
+              onClick={toggleAllTeams}
+              className="mb-2 text-xs font-bold uppercase tracking-wide text-blue-700 hover:underline"
+              data-testid="fg-select-all-teams"
+            >
+              {allFilteredSelected ? "Quitar selección" : `Seleccionar todos (${filtered.length})`}
+            </button>
+          )}
           {(!tournamentId || !category) ? (
             <p className="text-sm text-slate-400 py-6 text-center">Selecciona Evento y Categoría primero.</p>
           ) : filtered.length === 0 ? (
