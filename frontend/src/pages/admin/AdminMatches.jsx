@@ -761,19 +761,15 @@ function ScorersEditor({ scoring, setScoring, teams }) {
   ];
 
   const addScorer = () => {
-    setScoring({ ...scoring, scorers: [...(scoring.scorers || []), { _uid: crypto.randomUUID(), player_id: "", team_id: "", minute: 0 }] });
+    setScoring((prev) => ({ ...prev, scorers: [...(prev.scorers || []), { _uid: crypto.randomUUID(), player_id: "", team_id: "", minute: 0 }] }));
   };
 
-  const updateScorer = (i, patch) => {
-    const next = [...(scoring.scorers || [])];
-    next[i] = { ...next[i], ...patch };
-    setScoring({ ...scoring, scorers: next });
+  const updateScorerByUid = (uid, patch) => {
+    setScoring((prev) => ({ ...prev, scorers: (prev.scorers || []).map((s) => s._uid === uid ? { ...s, ...patch } : s) }));
   };
 
-  const removeScorer = (i) => {
-    const next = [...(scoring.scorers || [])];
-    next.splice(i, 1);
-    setScoring({ ...scoring, scorers: next });
+  const removeScorerByUid = (uid) => {
+    setScoring((prev) => ({ ...prev, scorers: (prev.scorers || []).filter((s) => s._uid !== uid) }));
   };
 
   return (
@@ -787,7 +783,7 @@ function ScorersEditor({ scoring, setScoring, teams }) {
         <div key={s._uid || `scorer-${i}`} className="grid grid-cols-12 gap-2 mb-2 items-center" data-testid={`scorer-row-${i}`}>
           <select
             value={s.team_id || ""}
-            onChange={(e) => updateScorer(i, { team_id: e.target.value, player_id: "" })}
+            onChange={(e) => updateScorerByUid(s._uid, { team_id: e.target.value, player_id: "" })}
             className="col-span-4 min-w-0 px-2 py-1 border border-slate-200 rounded text-sm"
             data-testid={`scorer-team-${i}`}
           >
@@ -796,7 +792,7 @@ function ScorersEditor({ scoring, setScoring, teams }) {
           </select>
           <select
             value={s.player_id}
-            onChange={(e) => updateScorer(i, { player_id: e.target.value })}
+            onChange={(e) => updateScorerByUid(s._uid, { player_id: e.target.value })}
             disabled={!s.team_id}
             className="col-span-4 min-w-0 px-2 py-1 border border-slate-200 rounded text-sm disabled:bg-slate-50"
             data-testid={`scorer-player-${i}`}
@@ -804,8 +800,8 @@ function ScorersEditor({ scoring, setScoring, teams }) {
             <option value="">Jugador...</option>
             {players.filter((p) => p.team_id === s.team_id).map((p) => <option key={p.id} value={p.id}>{p.name} (#{p.jersey_number})</option>)}
           </select>
-          <input type="number" placeholder="Min" value={s.minute || ""} onChange={(e) => updateScorer(i, { minute: Number(e.target.value) })} className="col-span-3 px-2 py-1 border border-slate-200 rounded text-sm" />
-          <button type="button" onClick={() => removeScorer(i)} className="col-span-1 text-red-600" data-testid={`scorer-remove-${i}`}>✕</button>
+          <input type="number" placeholder="Min" value={s.minute || ""} onChange={(e) => updateScorerByUid(s._uid, { minute: Number(e.target.value) })} className="col-span-3 px-2 py-1 border border-slate-200 rounded text-sm" />
+          <button type="button" onClick={() => removeScorerByUid(s._uid)} className="col-span-1 text-red-600" data-testid={`scorer-remove-${i}`}>✕</button>
         </div>
       ))}
     </div>
@@ -842,22 +838,27 @@ function CardsEditor({ scoring, setScoring, teams = [] }) {
       base.player_id = "";
       base.staff_name = "";
     }
-    setScoring({ ...scoring, cards: [...cards, base] });
+    setScoring((prev) => ({ ...prev, cards: [...(prev.cards || []), base] }));
   };
-  const updateCard = (i, patch) => {
-    const next = [...cards];
-    next[i] = { ...next[i], ...patch };
-    // Si cambia el jugador → derivar team_id automáticamente.
-    if ("player_id" in patch) {
-      const p = players.find((x) => x.id === patch.player_id);
-      if (p) next[i].team_id = p.team_id;
-    }
-    setScoring({ ...scoring, cards: next });
+  // Actualiza por _uid (no por índice de array) para evitar que un cambio
+  // termine aplicándose a la tarjeta equivocada si el listado se re-renderiza
+  // entre el click y la actualización de estado.
+  const updateCardByUid = (uid, patch) => {
+    setScoring((prev) => {
+      const next = (prev.cards || []).map((c) => {
+        if (c._uid !== uid) return c;
+        const updated = { ...c, ...patch };
+        if ("player_id" in patch) {
+          const p = players.find((x) => x.id === patch.player_id);
+          if (p) updated.team_id = p.team_id;
+        }
+        return updated;
+      });
+      return { ...prev, cards: next };
+    });
   };
-  const removeCard = (i) => {
-    const next = [...cards];
-    next.splice(i, 1);
-    setScoring({ ...scoring, cards: next });
+  const removeCardByUid = (uid) => {
+    setScoring((prev) => ({ ...prev, cards: (prev.cards || []).filter((c) => c._uid !== uid) }));
   };
 
   return (
@@ -881,7 +882,7 @@ function CardsEditor({ scoring, setScoring, teams = [] }) {
               <div className="col-span-10 space-y-1">
                 <select
                   value={c.team_id || ""}
-                  onChange={(e) => updateCard(i, { team_id: e.target.value })}
+                  onChange={(e) => updateCardByUid(c._uid, { team_id: e.target.value })}
                   className="w-full px-2 py-1 border border-slate-200 rounded text-sm"
                   data-testid={`card-team-${i}`}
                 >
@@ -891,13 +892,13 @@ function CardsEditor({ scoring, setScoring, teams = [] }) {
                 <textarea
                   rows={2}
                   value={c.description || ""}
-                  onChange={(e) => updateCard(i, { description: e.target.value })}
+                  onChange={(e) => updateCardByUid(c._uid, { description: e.target.value })}
                   placeholder="Descripción (ej. Conducta antideportiva del banco / protesta grupal)..."
                   className="w-full px-2 py-1 border border-slate-200 rounded text-sm"
                   data-testid={`card-description-${i}`}
                 />
               </div>
-              <button type="button" onClick={() => removeCard(i)} className="col-span-1 text-red-600 mt-2">✕</button>
+              <button type="button" onClick={() => removeCardByUid(c._uid)} className="col-span-1 text-red-600 mt-2">✕</button>
             </div>
           );
         }
@@ -912,13 +913,13 @@ function CardsEditor({ scoring, setScoring, teams = [] }) {
               <div className="flex gap-1 text-[10px] font-bold uppercase tracking-wider">
                 <button
                   type="button"
-                  onClick={() => updateCard(i, { target_kind: "player", staff_name: "" })}
+                  onClick={() => updateCardByUid(c._uid, { target_kind: "player", staff_name: "" })}
                   className={`px-2 py-0.5 rounded ${kind === "player" ? "bg-fsc-azul text-white" : "bg-slate-100 text-slate-500"}`}
                   data-testid={`card-kind-player-${i}`}
                 >Jugador</button>
                 <button
                   type="button"
-                  onClick={() => updateCard(i, { target_kind: "staff", player_id: "" })}
+                  onClick={() => updateCardByUid(c._uid, { target_kind: "staff", player_id: "" })}
                   className={`px-2 py-0.5 rounded ${kind === "staff" ? "bg-fsc-azul text-white" : "bg-slate-100 text-slate-500"}`}
                   data-testid={`card-kind-staff-${i}`}
                 >Cuerpo Técnico</button>
@@ -930,7 +931,7 @@ function CardsEditor({ scoring, setScoring, teams = [] }) {
                 <div className="col-span-12 sm:col-span-8 flex flex-col sm:flex-row gap-1 min-w-0">
                   <select
                     value={c.team_id || ""}
-                    onChange={(e) => updateCard(i, { team_id: e.target.value, player_id: "" })}
+                    onChange={(e) => updateCardByUid(c._uid, { team_id: e.target.value, player_id: "" })}
                     className="flex-1 min-w-0 px-2 py-1 border border-slate-200 rounded text-sm"
                     data-testid={`card-player-team-${i}`}
                   >
@@ -939,7 +940,7 @@ function CardsEditor({ scoring, setScoring, teams = [] }) {
                   </select>
                   <select
                     value={c.player_id || ""}
-                    onChange={(e) => updateCard(i, { player_id: e.target.value })}
+                    onChange={(e) => updateCardByUid(c._uid, { player_id: e.target.value })}
                     disabled={!c.team_id}
                     className="flex-1 min-w-0 px-2 py-1 border border-slate-200 rounded text-sm disabled:bg-slate-50"
                     data-testid={`card-player-${i}`}
@@ -952,7 +953,7 @@ function CardsEditor({ scoring, setScoring, teams = [] }) {
                 <div className="col-span-12 sm:col-span-8 flex flex-col sm:flex-row gap-1 min-w-0">
                   <select
                     value={c.team_id || ""}
-                    onChange={(e) => updateCard(i, { team_id: e.target.value, staff_name: "" })}
+                    onChange={(e) => updateCardByUid(c._uid, { team_id: e.target.value, staff_name: "" })}
                     className="flex-1 min-w-0 px-2 py-1 border border-slate-200 rounded text-sm"
                     data-testid={`card-staff-team-${i}`}
                   >
@@ -961,7 +962,7 @@ function CardsEditor({ scoring, setScoring, teams = [] }) {
                   </select>
                   <select
                     value={c.staff_name || ""}
-                    onChange={(e) => updateCard(i, { staff_name: e.target.value })}
+                    onChange={(e) => updateCardByUid(c._uid, { staff_name: e.target.value })}
                     disabled={!c.team_id}
                     className="flex-1 min-w-0 px-2 py-1 border border-slate-200 rounded text-sm disabled:bg-slate-50"
                     data-testid={`card-staff-name-${i}`}
@@ -973,8 +974,8 @@ function CardsEditor({ scoring, setScoring, teams = [] }) {
                   </select>
                 </div>
               )}
-              <input type="number" placeholder="Min" value={c.minute || ""} onChange={(e) => updateCard(i, { minute: Number(e.target.value) })} className="col-span-8 sm:col-span-3 px-2 py-1 border border-slate-200 rounded text-sm" />
-              <button type="button" onClick={() => removeCard(i)} className="col-span-4 sm:col-span-1 text-red-600">✕</button>
+              <input type="number" placeholder="Min" value={c.minute || ""} onChange={(e) => updateCardByUid(c._uid, { minute: Number(e.target.value) })} className="col-span-8 sm:col-span-3 px-2 py-1 border border-slate-200 rounded text-sm" />
+              <button type="button" onClick={() => removeCardByUid(c._uid)} className="col-span-4 sm:col-span-1 text-red-600">✕</button>
             </div>
           </div>
         );

@@ -412,8 +412,8 @@ function GroupStatsView({ tournamentId, categoryValue, groupName, showBackToGrou
     return () => { cancelled = true; };
   }, [tournamentId, categoryValue, groupName]);
 
-  const results = useMemo(() => matches.filter((m) => m.status === "finalizado").slice().reverse(), [matches]);
-  const pending = useMemo(() => matches.filter((m) => m.status !== "finalizado"), [matches]);
+  const results = useMemo(() => matches.filter((m) => m.status === "finalizado" || m.status === "descansa").slice().reverse(), [matches]);
+  const pending = useMemo(() => matches.filter((m) => m.status !== "finalizado" && m.status !== "descansa"), [matches]);
   const empty = !loading && standings.length === 0 && matches.length === 0 && scorers.length === 0;
 
   return (
@@ -565,7 +565,7 @@ function BracketStatsView({ bracketId, bracketName, showBackToGroups, onBack }) 
             {stageOrder.map((stage) => {
               const rows = byStage[stage];
               const label = STAGE_LABEL[stage] || stage;
-              const visible = rows.filter((m) => matchesTab === "results" ? m.status === "finalizado" : m.status !== "finalizado");
+              const visible = rows.filter((m) => matchesTab === "results" ? (m.status === "finalizado" || m.status === "descansa") : (m.status !== "finalizado" && m.status !== "descansa"));
               if (visible.length === 0) return null;
               return (
                 <div key={stage}>
@@ -574,7 +574,7 @@ function BracketStatsView({ bracketId, bracketName, showBackToGroups, onBack }) 
                 </div>
               );
             })}
-            {stageOrder.every((stage) => byStage[stage].filter((m) => matchesTab === "results" ? m.status === "finalizado" : m.status !== "finalizado").length === 0) && (
+            {stageOrder.every((stage) => byStage[stage].filter((m) => matchesTab === "results" ? (m.status === "finalizado" || m.status === "descansa") : (m.status !== "finalizado" && m.status !== "descansa")).length === 0) && (
               <p className="text-slate-400 italic text-base">{matchesTab === "results" ? "Aún no hay resultados." : "No hay partidos pendientes."}</p>
             )}
           </div>
@@ -593,7 +593,7 @@ function MatchesList({ rows, testPrefix, showDate }) {
           <div className="flex items-center gap-2">
             <span className="flex-1 min-w-0 truncate font-semibold text-right">{m.home_team_name}</span>
             <span className="tabular-nums font-black shrink-0 px-1" style={{ color: BLUE }}>
-              {m.status === "finalizado" ? `${m.home_score ?? 0} - ${m.away_score ?? 0}` : "vs"}
+              {m.status === "finalizado" ? `${m.home_score ?? 0} - ${m.away_score ?? 0}` : m.status === "descansa" ? "—" : "vs"}
             </span>
             <span className="flex-1 min-w-0 truncate font-semibold">{m.away_team_name}</span>
           </div>
