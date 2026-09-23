@@ -35,8 +35,8 @@ function Side({ name, logo, color, score, winner, pending }) {
       <div className="h-7 w-7 rounded flex items-center justify-center text-xs font-display font-black text-white shrink-0" style={{ background: color || "#1d4ed8" }}>
         {logo ? <img src={imgSrc(logo)} alt="" className="h-full w-full object-contain" /> : (pending ? "?" : (name?.[0] || "?"))}
       </div>
-      <span className={`text-sm flex-1 truncate ${pending ? "text-slate-400 italic" : winner ? "font-black text-green-700" : "font-semibold"}`}>{name}</span>
-      <span className={`text-base font-display font-black tabular-nums w-7 text-right ${winner ? "text-green-700" : "text-slate-700"}`}>{score ?? "—"}</span>
+      <span className={`text-sm flex-1 min-w-0 truncate ${pending ? "text-slate-400 italic" : winner ? "font-black text-green-700" : "font-semibold"}`}>{name}</span>
+      <span className={`text-base font-display font-black tabular-nums w-7 text-right shrink-0 ${winner ? "text-green-700" : "text-slate-700"}`}>{score ?? "—"}</span>
     </div>
   );
 }

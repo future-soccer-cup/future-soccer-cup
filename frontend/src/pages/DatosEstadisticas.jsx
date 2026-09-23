@@ -391,6 +391,7 @@ function GroupStatsView({ tournamentId, categoryValue, groupName, showBackToGrou
   const [matches, setMatches] = useState([]);
   const [scorers, setScorers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [matchesTab, setMatchesTab] = useState("results"); // "results" | "pending"
 
   useEffect(() => {
     let cancelled = false;
@@ -441,19 +442,32 @@ function GroupStatsView({ tournamentId, categoryValue, groupName, showBackToGrou
             {standings.length ? <StandingsTable rows={standings} /> : <p className="text-slate-400 italic text-base">Sin datos aún.</p>}
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8">
-            <div>
-              <h3 className="text-lg md:text-xl font-black uppercase tracking-widest mb-4" style={{ color: BLUE }}>
-                Resultados
-              </h3>
-              {results.length ? <MatchesList rows={results} testPrefix="stats-result" /> : <p className="text-slate-400 italic text-base">Aún no hay resultados.</p>}
+          <div>
+            <div className="flex gap-2 mb-4">
+              <button
+                type="button"
+                onClick={() => setMatchesTab("results")}
+                className="px-4 py-2 rounded-full text-xs md:text-sm font-black uppercase tracking-widest transition-colors"
+                style={matchesTab === "results" ? { background: BLUE, color: "#fff" } : { background: "#f1f5f9", color: BLUE }}
+                data-testid="stats-tab-results"
+              >
+                Resultados {results.length > 0 && `(${results.length})`}
+              </button>
+              <button
+                type="button"
+                onClick={() => setMatchesTab("pending")}
+                className="px-4 py-2 rounded-full text-xs md:text-sm font-black uppercase tracking-widest transition-colors"
+                style={matchesTab === "pending" ? { background: BLUE, color: "#fff" } : { background: "#f1f5f9", color: BLUE }}
+                data-testid="stats-tab-pending"
+              >
+                Próximos partidos {pending.length > 0 && `(${pending.length})`}
+              </button>
             </div>
-            <div>
-              <h3 className="text-lg md:text-xl font-black uppercase tracking-widest mb-4" style={{ color: BLUE }}>
-                Partidos pendientes
-              </h3>
-              {pending.length ? <MatchesList rows={pending} testPrefix="stats-pending" showDate /> : <p className="text-slate-400 italic text-base">No hay partidos pendientes.</p>}
-            </div>
+            {matchesTab === "results" ? (
+              results.length ? <MatchesList rows={results} testPrefix="stats-result" /> : <p className="text-slate-400 italic text-base">Aún no hay resultados.</p>
+            ) : (
+              pending.length ? <MatchesList rows={pending} testPrefix="stats-pending" showDate /> : <p className="text-slate-400 italic text-base">No hay partidos pendientes.</p>
+            )}
           </div>
 
           <div>
@@ -472,6 +486,7 @@ function GroupStatsView({ tournamentId, categoryValue, groupName, showBackToGrou
 function BracketStatsView({ bracketId, bracketName, showBackToGroups, onBack }) {
   const [matches, setMatches] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [matchesTab, setMatchesTab] = useState("results"); // "results" | "pending"
 
   useEffect(() => {
     let cancelled = false;
@@ -525,26 +540,44 @@ function BracketStatsView({ bracketId, bracketName, showBackToGroups, onBack }) 
           <div className="text-slate-500 italic text-lg" style={AGENCY_FB}>Próximamente</div>
         </div>
       ) : (
-        <div className="space-y-6">
-          {stageOrder.map((stage) => {
-            const rows = byStage[stage];
-            const label = STAGE_LABEL[stage] || stage;
-            const stageResults = rows.filter((m) => m.status === "finalizado");
-            const stagePending = rows.filter((m) => m.status !== "finalizado");
-            return (
-              <div key={stage}>
-                <div className="text-sm font-black uppercase tracking-widest mb-2 text-slate-500">{label}</div>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div>
-                    {stageResults.length ? <MatchesList rows={stageResults} testPrefix={`stats-bracket-result-${stage}`} /> : <p className="text-slate-400 italic text-sm">Sin resultados aún.</p>}
-                  </div>
-                  <div>
-                    {stagePending.length ? <MatchesList rows={stagePending} testPrefix={`stats-bracket-pending-${stage}`} showDate /> : <p className="text-slate-400 italic text-sm">Sin partidos pendientes.</p>}
-                  </div>
+        <div>
+          <div className="flex gap-2 mb-4">
+            <button
+              type="button"
+              onClick={() => setMatchesTab("results")}
+              className="px-4 py-2 rounded-full text-xs md:text-sm font-black uppercase tracking-widest transition-colors"
+              style={matchesTab === "results" ? { background: BLUE, color: "#fff" } : { background: "#f1f5f9", color: BLUE }}
+              data-testid="stats-bracket-tab-results"
+            >
+              Resultados
+            </button>
+            <button
+              type="button"
+              onClick={() => setMatchesTab("pending")}
+              className="px-4 py-2 rounded-full text-xs md:text-sm font-black uppercase tracking-widest transition-colors"
+              style={matchesTab === "pending" ? { background: BLUE, color: "#fff" } : { background: "#f1f5f9", color: BLUE }}
+              data-testid="stats-bracket-tab-pending"
+            >
+              Próximos partidos
+            </button>
+          </div>
+          <div className="space-y-6">
+            {stageOrder.map((stage) => {
+              const rows = byStage[stage];
+              const label = STAGE_LABEL[stage] || stage;
+              const visible = rows.filter((m) => matchesTab === "results" ? m.status === "finalizado" : m.status !== "finalizado");
+              if (visible.length === 0) return null;
+              return (
+                <div key={stage}>
+                  <div className="text-sm font-black uppercase tracking-widest mb-2 text-slate-500">{label}</div>
+                  <MatchesList rows={visible} testPrefix={`stats-bracket-${matchesTab}-${stage}`} showDate={matchesTab === "pending"} />
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+            {stageOrder.every((stage) => byStage[stage].filter((m) => matchesTab === "results" ? m.status === "finalizado" : m.status !== "finalizado").length === 0) && (
+              <p className="text-slate-400 italic text-base">{matchesTab === "results" ? "Aún no hay resultados." : "No hay partidos pendientes."}</p>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -556,19 +589,17 @@ function MatchesList({ rows, testPrefix, showDate }) {
   return (
     <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
       {rows.map((m, i) => (
-        <div key={m.id || i} className="flex items-center justify-between gap-3 bg-slate-50 rounded-md px-3 py-2 text-sm md:text-base" data-testid={`${testPrefix}-${i}`}>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between gap-2">
-              <span className="truncate font-semibold">{m.home_team_name}</span>
-              <span className="tabular-nums font-black shrink-0" style={{ color: BLUE }}>
-                {m.status === "finalizado" ? `${m.home_score ?? 0} - ${m.away_score ?? 0}` : "vs"}
-              </span>
-              <span className="truncate font-semibold text-right">{m.away_team_name}</span>
-            </div>
-            {(showDate || m.status !== "finalizado") && (
-              <div className="text-xs text-slate-400 mt-0.5">{formatDateTime(m.match_date)}{m.venue ? ` · ${m.venue}` : ""}</div>
-            )}
+        <div key={m.id || i} className="bg-slate-50 rounded-md px-3 py-2 text-sm md:text-base" data-testid={`${testPrefix}-${i}`}>
+          <div className="flex items-center gap-2">
+            <span className="flex-1 min-w-0 truncate font-semibold text-right">{m.home_team_name}</span>
+            <span className="tabular-nums font-black shrink-0 px-1" style={{ color: BLUE }}>
+              {m.status === "finalizado" ? `${m.home_score ?? 0} - ${m.away_score ?? 0}` : "vs"}
+            </span>
+            <span className="flex-1 min-w-0 truncate font-semibold">{m.away_team_name}</span>
           </div>
+          {(showDate || m.status !== "finalizado") && (
+            <div className="text-xs text-slate-400 mt-0.5 text-center">{formatDateTime(m.match_date)}{m.venue ? ` · ${m.venue}` : ""}</div>
+          )}
         </div>
       ))}
     </div>
