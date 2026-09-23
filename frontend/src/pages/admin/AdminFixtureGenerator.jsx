@@ -163,19 +163,23 @@ export default function AdminFixtureGenerator() {
       // con ids nuevos, así que hacemos match por (matchday + home_team_id + away_team_id)
       // y aplicamos PUT sobre los partidos recién creados que hayan cambiado.
       if (saveIt && preview && Array.isArray(preview.matches)) {
+        // Clave SIN matchday: el admin puede haber cambiado la jornada en la vista previa,
+        // asi que emparejar por jornada rompería el match. El par local/visitante es único
+        // dentro del fixture recién generado (round-robin no repite el mismo cruce).
         const editedMap = new Map();
         preview.matches.forEach((pm) => {
-          const key = `${pm.matchday}|${pm.home_team_id}|${pm.away_team_id}`;
-          editedMap.set(key, { match_date: pm.match_date, venue: pm.venue });
+          const key = `${pm.home_team_id}|${pm.away_team_id}`;
+          editedMap.set(key, { match_date: pm.match_date, venue: pm.venue, matchday: pm.matchday });
         });
         const patches = [];
         (res.data.matches || []).forEach((nm) => {
-          const key = `${nm.matchday}|${nm.home_team_id}|${nm.away_team_id}`;
+          const key = `${nm.home_team_id}|${nm.away_team_id}`;
           const ed = editedMap.get(key);
           if (!ed) return;
           const patch = {};
           if (ed.match_date && ed.match_date !== nm.match_date) patch.match_date = ed.match_date;
           if ((ed.venue || "") !== (nm.venue || "")) patch.venue = ed.venue || "";
+          if (ed.matchday != null && ed.matchday !== nm.matchday) patch.matchday = ed.matchday;
           if (Object.keys(patch).length > 0) patches.push(api.put(`/matches/${nm.id}`, patch));
         });
         if (patches.length > 0) await Promise.allSettled(patches);
@@ -600,7 +604,19 @@ function PreviewEditableTable({ matches, venues, onChange }) {
             const dateOnly = (m.match_date || "").slice(0, 10);
             return (
               <tr key={m.id} className={`border-t border-slate-100 ${isBye ? "bg-amber-50/60" : ""}`} data-testid={`fg-preview-row-${m.id}`}>
-                <td className="px-2 py-2 font-display font-black text-blue-700">FECHA {m.matchday}</td>
+                <td className="px-2 py-2">
+                  <div className="flex items-center gap-1">
+                    <span className="font-display font-black text-blue-700 text-xs uppercase">FECHA</span>
+                    <input
+                      type="number"
+                      min="1"
+                      value={m.matchday ?? ""}
+                      onChange={(e) => onChange(m.id, { matchday: e.target.value ? Number(e.target.value) : null })}
+                      className="w-14 px-1.5 py-1 border border-slate-200 rounded text-xs font-display font-black text-blue-700"
+                      data-testid={`fg-preview-matchday-${m.id}`}
+                    />
+                  </div>
+                </td>
                 <td className="px-2 py-2">
                   {isBye ? (
                     <input type="date" value={dateOnly} onChange={(e) => onChange(m.id, { match_date: `${e.target.value}T00:00` })} className="w-full px-2 py-1 border border-slate-200 rounded text-xs bg-amber-50" data-testid={`fg-preview-date-${m.id}`} />
@@ -661,7 +677,19 @@ function EditableMatchesTable({ matches, venues, onPersist, onLocalChange }) {
             const dateOnly = (m.match_date || "").slice(0, 10);
             return (
               <tr key={m.id} className={`border-t border-slate-100 ${isBye ? "bg-amber-50/60" : ""}`} data-testid={`editor-row-${m.id}`}>
-                <td className="px-2 py-2 font-display font-black text-blue-700">FECHA {m.matchday}</td>
+                <td className="px-2 py-2">
+                  <div className="flex items-center gap-1">
+                    <span className="font-display font-black text-blue-700 text-xs uppercase">FECHA</span>
+                    <input
+                      type="number"
+                      min="1"
+                      value={m.matchday ?? ""}
+                      onChange={(e) => onLocalChange(m.id, { matchday: e.target.value ? Number(e.target.value) : null })}
+                      className="w-14 px-1.5 py-1 border border-slate-200 rounded text-xs font-display font-black text-blue-700"
+                      data-testid={`editor-matchday-${m.id}`}
+                    />
+                  </div>
+                </td>
                 <td className="px-2 py-2">
                   {isBye ? (
                     <input type="date" value={dateOnly} onChange={(e) => onLocalChange(m.id, { match_date: `${e.target.value}T00:00` })} className="w-full px-2 py-1 border border-slate-200 rounded text-xs bg-amber-50" data-testid={`editor-date-${m.id}`} />
@@ -691,7 +719,7 @@ function EditableMatchesTable({ matches, venues, onPersist, onLocalChange }) {
                   )}
                 </td>
                 <td className="px-2 py-2 text-right">
-                  <button onClick={() => onPersist(m.id, { match_date: m.match_date, venue: m.venue })} className="px-2 py-1 text-xs font-bold rounded bg-blue-600 text-white hover:bg-blue-700" data-testid={`editor-save-${m.id}`}>Guardar</button>
+                  <button onClick={() => onPersist(m.id, { match_date: m.match_date, venue: m.venue, matchday: m.matchday })} className="px-2 py-1 text-xs font-bold rounded bg-blue-600 text-white hover:bg-blue-700" data-testid={`editor-save-${m.id}`}>Guardar</button>
                 </td>
               </tr>
             );
