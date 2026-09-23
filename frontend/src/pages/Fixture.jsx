@@ -72,7 +72,7 @@ export default function Fixture() {
           <button onClick={() => setMatchdayFilter("")} data-testid="matchday-all" className={`px-3 py-1 text-xs font-bold uppercase tracking-wide rounded border ${!matchdayFilter ? "bg-red-600 text-white border-red-600" : "bg-white text-slate-600 border-slate-200"}`}>Todas</button>
           {matchdays.map((md) => (
             <button key={md} onClick={() => setMatchdayFilter(String(md))} data-testid={`matchday-${md}`} className={`px-3 py-1 text-xs font-bold uppercase tracking-wide rounded border ${matchdayFilter === String(md) ? "bg-red-600 text-white border-red-600" : "bg-white text-slate-600 border-slate-200"}`}>
-              F{md}
+              FECHA {md}
             </button>
           ))}
         </div>

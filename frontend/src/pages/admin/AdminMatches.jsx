@@ -398,7 +398,7 @@ export default function AdminMatches() {
           <form onSubmit={saveManual} className="space-y-3" data-testid="manual-edit-form">
             <div className="text-xs text-slate-500 border border-slate-200 rounded p-2 bg-slate-50">
               <div className="font-semibold text-slate-700">{manualEdit.home_team_name} vs {manualEdit.away_team_name}</div>
-              <div>Jornada actual: F{manualEdit.matchday ?? "—"}</div>
+              <div>Jornada actual: FECHA {manualEdit.matchday ?? "—"}</div>
             </div>
             <Field
               label="Fecha y hora"
