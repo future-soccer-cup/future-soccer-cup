@@ -382,6 +382,7 @@ function IntergroupMatchModal({ tournaments = [], fixtures = [], teams = [], tou
   const [teamBId, setTeamBId] = useState("");
   const [matchDate, setMatchDate] = useState("");
   const [venue, setVenue] = useState("");
+  const [matchday, setMatchday] = useState("");
   const [saving, setSaving] = useState(false);
 
   const teamsInGroup = (g) => teams.filter((t) =>
@@ -406,6 +407,7 @@ function IntergroupMatchModal({ tournaments = [], fixtures = [], teams = [], tou
         match_date: new Date(matchDate).toISOString(),
         venue: venue || "",
         group_name: `${groupA} vs ${groupB}`,
+        matchday: matchday !== "" ? Number(matchday) : null,
         stage: "grupos",
         match_type: "intergrupo",
         status: "programado",
@@ -485,7 +487,21 @@ function IntergroupMatchModal({ tournaments = [], fixtures = [], teams = [], tou
             </select>
           </label>
         </div>
-        <Field label="Fecha y hora" type="datetime-local" required value={matchDate} onChange={setMatchDate} />
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Fecha y hora" type="datetime-local" required value={matchDate} onChange={setMatchDate} />
+          <label className="block">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Jornada (FECHA)</span>
+            <input
+              type="number"
+              min="1"
+              value={matchday}
+              onChange={(e) => setMatchday(e.target.value)}
+              placeholder="Ej: 3"
+              className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md"
+              data-testid="ig-matchday"
+            />
+          </label>
+        </div>
         <label className="block">
           <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Cancha</span>
           <VenuePicker value={venue} onChange={setVenue} testId="ig-venue" />
