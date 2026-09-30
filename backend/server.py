@@ -1725,9 +1725,58 @@ async def list_matches(tournament_id: Optional[str] = None, status: Optional[str
         m["away_team_logo"] = at.get("logo_url", "")
     return items
 
+def _naive_dt(dt: datetime) -> datetime:
+    return dt.replace(tzinfo=None) if dt.tzinfo else dt
+
+
+def _parse_iso_flexible(s: str) -> datetime:
+    """Parsea ISO 8601 tolerando el sufijo 'Z' (UTC), que `datetime.fromisoformat`
+    solo soporta nativamente desde Python 3.11 — así funciona en cualquier entorno."""
+    s = (s or "").strip()
+    if s.endswith("Z"):
+        s = s[:-1] + "+00:00"
+    return datetime.fromisoformat(s)
+
+
+async def _check_schedule_conflict(tournament_id: str, venue: str, match_date_iso: str, exclude_id: Optional[str] = None):
+    """Bloquea programar/editar un partido si ya existe otro del MISMO evento en la
+    MISMA cancha a la MISMA fecha y hora — un choque físicamente imposible."""
+    venue_clean = (venue or "").strip()
+    if not venue_clean or not match_date_iso:
+        return
+    try:
+        target_dt = _naive_dt(_parse_iso_flexible(match_date_iso))
+    except Exception:
+        return
+    q = {
+        "tournament_id": tournament_id,
+        "venue": {"$regex": f"^{re.escape(venue_clean)}$", "$options": "i"},
+        "status": {"$ne": "cancelado"},
+    }
+    if exclude_id:
+        q["id"] = {"$ne": exclude_id}
+    candidates = await db.matches.find(q, {"_id": 0, "id": 1, "match_date": 1}).to_list(500)
+    for c in candidates:
+        try:
+            c_dt = _naive_dt(_parse_iso_flexible(c["match_date"]))
+        except Exception:
+            continue
+        if c_dt == target_dt:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Ya hay un partido programado en '{venue_clean}' a esa misma fecha y hora. Cambia la cancha o el horario.",
+            )
+
+
 @api.post("/matches", response_model=MatchOut)
 async def create_match(payload: MatchIn, _: dict = Depends(require_admin)):
     doc = payload.model_dump()
+    try:
+        doc["match_date"] = _parse_iso_flexible(doc["match_date"]).isoformat()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Formato de fecha/hora inválido")
+    if doc.get("status") != "descansa":
+        await _check_schedule_conflict(doc["tournament_id"], doc.get("venue", ""), doc["match_date"])
     doc["id"] = str(uuid.uuid4())
     await db.matches.insert_one(doc)
     doc.pop("_id", None)
@@ -1739,22 +1788,28 @@ async def update_match(mid: str, payload: MatchUpdateIn, _: dict = Depends(requi
     updates = {k: v for k, v in payload.model_dump(exclude_unset=True).items() if v is not None}
     if not updates:
         raise HTTPException(status_code=400, detail="Nada que actualizar")
+    current = await db.matches.find_one({"id": mid}, {"_id": 0})
+    if not current:
+        raise HTTPException(status_code=404, detail="Partido no encontrado")
     if "match_date" in updates and updates["match_date"]:
         # Normalizamos: aceptamos "YYYY-MM-DDTHH:MM" o ISO completo.
         try:
-            dt = datetime.fromisoformat(updates["match_date"])
+            dt = _parse_iso_flexible(updates["match_date"])
             updates["match_date"] = dt.isoformat()
         except Exception:
             raise HTTPException(status_code=400, detail="Formato de fecha/hora inválido")
     # Validar home != away comparando contra el doc final (mezcla DB + updates).
     if "home_team_id" in updates or "away_team_id" in updates:
-        current = await db.matches.find_one({"id": mid}, {"_id": 0})
-        if not current:
-            raise HTTPException(status_code=404, detail="Partido no encontrado")
         final_home = updates.get("home_team_id", current.get("home_team_id"))
         final_away = updates.get("away_team_id", current.get("away_team_id"))
         if final_home == final_away:
             raise HTTPException(status_code=400, detail="Local y visitante deben ser distintos")
+    if "match_date" in updates or "venue" in updates:
+        final_venue = updates.get("venue", current.get("venue", ""))
+        final_date = updates.get("match_date", current.get("match_date", ""))
+        final_status = updates.get("status", current.get("status"))
+        if final_status != "descansa":
+            await _check_schedule_conflict(current.get("tournament_id"), final_venue, final_date, exclude_id=mid)
     res = await db.matches.update_one({"id": mid}, {"$set": updates})
     if res.matched_count == 0:
         raise HTTPException(status_code=404, detail="Partido no encontrado")

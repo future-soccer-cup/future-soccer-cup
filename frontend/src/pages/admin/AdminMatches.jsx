@@ -7,7 +7,9 @@ import VenuePicker from "../../components/VenuePicker";
 import { Modal, Field } from "./AdminTeams";
 import { usePagedSearch, SearchBar, Pagination } from "../../components/PagedTable";
 
-const EMPTY = { tournament_id: "", home_team_id: "", away_team_id: "", match_date: "", venue: "", group_name: "", stage: "grupos", status: "programado", home_score: null, away_score: null };
+// Cuando un partido no tiene jornada (matchday) asignada — típico de partidos
+// eliminatorios creados a mano — se muestra la fase en vez de "FECHA ?".
+const STAGE_LABEL_SHORT = { octavos: "Octavos", cuartos: "Cuartos", semis: "Semifinal", final: "Final" };
 
 // Convierte ISO con zona a "YYYY-MM-DDTHH:MM" para inputs datetime-local sin desplazar horas.
 const toLocalInput = (iso) => {
@@ -99,29 +101,6 @@ export default function AdminMatches() {
     return true;
   });
 
-  const save = async (e) => {
-    e.preventDefault();
-    try {
-      const payload = { ...editing };
-      // Ensure tournament exists - create default if none
-      if (!payload.tournament_id) {
-        if (tournaments.length === 0) {
-          const tr = await api.post("/tournaments", { name: "FSC 2025", season: "2025", category: "General", start_date: "2025-01-01", end_date: "2025-12-31" });
-          payload.tournament_id = tr.data.id;
-          setTournaments([tr.data]);
-        } else {
-          payload.tournament_id = tournaments[0].id;
-        }
-      }
-      await api.post("/matches", payload);
-      toast.success("Partido programado");
-      setEditing(null);
-      load();
-    } catch (err) {
-      toast.error(formatApiError(err.response?.data?.detail));
-    }
-  };
-
   const submitResult = async (e) => {
     e.preventDefault();
     try {
@@ -181,7 +160,7 @@ export default function AdminMatches() {
               <Shuffle size={16}/> Partidos Intergrupos
             </button>
           )}
-          <button onClick={() => setEditing({ ...EMPTY })} className="fsc-btn-red px-4 py-2 rounded-md text-sm flex items-center gap-2" data-testid="add-match-btn">
+          <button onClick={() => setEditing(true)} className="fsc-btn-red px-4 py-2 rounded-md text-sm flex items-center gap-2" data-testid="add-match-btn">
             <Plus size={16}/> Programar
           </button>
         </div>
@@ -235,39 +214,13 @@ export default function AdminMatches() {
       )}
 
       {editing && (
-        <Modal onClose={() => setEditing(null)} title="Programar partido">
-          <form onSubmit={save} className="space-y-3">
-            <label className="block">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Local</span>
-              <select required value={editing.home_team_id} onChange={(e) => setEditing({ ...editing, home_team_id: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md">
-                <option value="">Seleccionar...</option>
-                {teams.map((t) => <option key={t.id} value={t.id}>{t.name} ({t.category})</option>)}
-              </select>
-            </label>
-            <label className="block">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Visitante</span>
-              <select required value={editing.away_team_id} onChange={(e) => setEditing({ ...editing, away_team_id: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md">
-                <option value="">Seleccionar...</option>
-                {teams.map((t) => <option key={t.id} value={t.id}>{t.name} ({t.category})</option>)}
-              </select>
-            </label>
-            <Field label="Fecha y hora" type="datetime-local" required value={editing.match_date} onChange={(v) => setEditing({ ...editing, match_date: v })} />
-            <label className="block">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Cancha</span>
-              <VenuePicker value={editing.venue || ""} onChange={(v) => setEditing({ ...editing, venue: v })} testId="new-match-venue" />
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Grupo" value={editing.group_name} onChange={(v) => setEditing({ ...editing, group_name: v })} />
-              <label className="block">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Fase</span>
-                <select value={editing.stage} onChange={(e) => setEditing({ ...editing, stage: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md">
-                  <option value="grupos">Grupos</option><option value="octavos">Octavos</option><option value="cuartos">Cuartos</option><option value="semis">Semifinal</option><option value="final">Final</option>
-                </select>
-              </label>
-            </div>
-            <button className="fsc-btn-primary w-full py-2 rounded-md">Guardar</button>
-          </form>
-        </Modal>
+        <NewMatchModal
+          tournaments={tournaments}
+          teams={teams}
+          fixtures={fixtures}
+          onClose={() => setEditing(null)}
+          onSaved={() => { setEditing(null); load(); }}
+        />
       )}
 
       {scoring && (
@@ -363,6 +316,153 @@ export default function AdminMatches() {
         />
       )}
     </div>
+  );
+}
+
+function NewMatchModal({ tournaments = [], teams = [], fixtures = [], onClose, onSaved }) {
+  const activeTournaments = (tournaments || []).filter((t) => !t.archived);
+  const [tournamentId, setTournamentId] = useState(activeTournaments[0]?.id || "");
+  const [category, setCategory] = useState("");
+  const [groupName, setGroupName] = useState("");
+  const [stage, setStage] = useState("grupos");
+  const [homeId, setHomeId] = useState("");
+  const [awayId, setAwayId] = useState("");
+  const [matchDate, setMatchDate] = useState("");
+  const [venue, setVenue] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const tournament = activeTournaments.find((t) => t.id === tournamentId);
+  // Iter78: igual que en la barra de filtros — categorías declaradas en el torneo +
+  // categorías reales de los equipos inscritos, para no dejar categorías huérfanas fuera.
+  const declaredCats = tournament ? (tournament.categories || []).map((c) => c.name).filter(Boolean) : [];
+  const teamCats = tournamentId ? Array.from(new Set(teams.filter((t) => t.tournament_id === tournamentId).map((t) => t.category).filter(Boolean))) : [];
+  const cats = Array.from(new Set([...declaredCats, ...teamCats]));
+
+  const groupOptions = Array.from(new Set(
+    fixtures.filter((f) => f.tournament_id === tournamentId && f.category === category).map((f) => f.group_name || "").filter(Boolean)
+  )).sort();
+
+  // Iter78 (fix): antes mostraba TODOS los equipos inscritos sin filtrar por categoría —
+  // al programar una semifinal/final de 2015 aparecían equipos de todas las categorías.
+  const teamOptions = teams.filter((t) => category && t.category === category && (t.status || "aprobado") === "aprobado");
+
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!tournamentId) { toast.error("Selecciona el evento"); return; }
+    if (!category) { toast.error("Selecciona la categoría"); return; }
+    if (!homeId || !awayId) { toast.error("Selecciona los dos equipos"); return; }
+    if (homeId === awayId) { toast.error("Local y visitante deben ser distintos"); return; }
+    if (!matchDate) { toast.error("Selecciona fecha y hora"); return; }
+    setSaving(true);
+    try {
+      await api.post("/matches", {
+        tournament_id: tournamentId,
+        home_team_id: homeId,
+        away_team_id: awayId,
+        match_date: matchDate,
+        venue: venue || "",
+        group_name: groupName || "",
+        stage,
+        status: "programado",
+      });
+      toast.success("Partido programado");
+      onSaved();
+    } catch (err) {
+      toast.error(formatApiError(err.response?.data?.detail));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal onClose={onClose} title="Programar partido">
+      <form onSubmit={submit} className="space-y-3">
+        <label className="block">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Evento</span>
+          <select
+            required
+            value={tournamentId}
+            onChange={(e) => { setTournamentId(e.target.value); setCategory(""); setGroupName(""); setHomeId(""); setAwayId(""); }}
+            className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md"
+            data-testid="new-match-tournament"
+          >
+            <option value="">Seleccionar...</option>
+            {activeTournaments.map((t) => <option key={t.id} value={t.id}>{t.name} · {t.season}</option>)}
+          </select>
+        </label>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="block">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Categoría</span>
+            <select
+              required
+              value={category}
+              onChange={(e) => { setCategory(e.target.value); setGroupName(""); setHomeId(""); setAwayId(""); }}
+              disabled={!tournamentId}
+              className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md disabled:bg-slate-50"
+              data-testid="new-match-category"
+            >
+              <option value="">Seleccionar...</option>
+              {cats.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </label>
+          <label className="block">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Grupo (fixture)</span>
+            <select
+              value={groupName}
+              onChange={(e) => setGroupName(e.target.value)}
+              disabled={!category}
+              className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md disabled:bg-slate-50"
+              data-testid="new-match-group"
+            >
+              <option value="">Sin grupo (fase eliminatoria)</option>
+              {groupOptions.map((g) => <option key={g} value={g}>{g}</option>)}
+            </select>
+          </label>
+        </div>
+        <label className="block">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Fase</span>
+          <select value={stage} onChange={(e) => setStage(e.target.value)} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md">
+            <option value="grupos">Grupos</option><option value="octavos">Octavos</option><option value="cuartos">Cuartos</option><option value="semis">Semifinal</option><option value="final">Final</option>
+          </select>
+        </label>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="block">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Local</span>
+            <select
+              required
+              value={homeId}
+              onChange={(e) => setHomeId(e.target.value)}
+              disabled={!category}
+              className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md disabled:bg-slate-50"
+              data-testid="new-match-home"
+            >
+              <option value="">Seleccionar...</option>
+              {teamOptions.map((t) => <option key={t.id} value={t.id} disabled={t.id === awayId}>{t.name}</option>)}
+            </select>
+          </label>
+          <label className="block">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Visitante</span>
+            <select
+              required
+              value={awayId}
+              onChange={(e) => setAwayId(e.target.value)}
+              disabled={!category}
+              className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md disabled:bg-slate-50"
+              data-testid="new-match-away"
+            >
+              <option value="">Seleccionar...</option>
+              {teamOptions.map((t) => <option key={t.id} value={t.id} disabled={t.id === homeId}>{t.name}</option>)}
+            </select>
+          </label>
+        </div>
+        <Field label="Fecha y hora" type="datetime-local" required value={matchDate} onChange={setMatchDate} />
+        <label className="block">
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Cancha</span>
+          <VenuePicker value={venue} onChange={setVenue} testId="new-match-venue" />
+        </label>
+        <button disabled={saving} className="fsc-btn-primary w-full py-2 rounded-md disabled:opacity-50">{saving ? "Guardando..." : "Guardar"}</button>
+      </form>
+    </Modal>
   );
 }
 
@@ -896,7 +996,7 @@ function MatchesTable({ matches, onEdit, onScore, onRemove }) {
               return (
               <tr key={m.id} className={`border-t border-slate-100 ${isBye ? "bg-amber-50/60" : ""}`} data-testid={`match-row-${m.id}`}>
                 <td className="px-4 py-2 font-display font-black text-blue-700">
-                  FECHA {m.matchday || "?"}
+                  {m.matchday ? `FECHA ${m.matchday}` : (STAGE_LABEL_SHORT[m.stage] || "FECHA ?")}
                   {m.match_type === "intergrupo" && (
                     <span className="block mt-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-700 bg-amber-100 rounded px-1 py-0.5 w-fit" data-testid={`intergroup-badge-${m.id}`}>Intergrupos</span>
                   )}
