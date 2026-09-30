@@ -1956,7 +1956,18 @@ async def generate_fixture(payload: FixtureGenerateIn, _: dict = Depends(require
     # Fallback compat: si el admin no indicó matchdays_per_day pero sí un `days_between_rounds`
     # distinto del default de 7 y >= 1, seguimos usando la vieja semántica "un día entre jornadas".
     use_legacy_gap = (mpd == 1 and payload.days_between_rounds and payload.days_between_rounds > 1)
-    slots_per_md = max(1, len(slots) // mpd) if mpd > 0 else len(slots)
+    # Iter77 (fix): repartir los horarios entre las `mpd` jornadas del día SIN descartar
+    # ninguno cuando la cantidad no es múltiplo exacto (antes `len(slots) // mpd` truncaba
+    # y algún horario ingresado nunca se usaba). El primer grupo(s) recibe el sobrante.
+    n_slots = len(slots)
+    base_chunk, extra = divmod(n_slots, mpd)
+    slot_chunks = []
+    _off = 0
+    for g in range(mpd):
+        size = base_chunk + (1 if g < extra else 0)
+        slot_chunks.append(slots[_off:_off + size] if size else [])
+        _off += size
+    n_venues = max(1, len(venues))
     for r_idx, pairs in enumerate(rounds_data):
         if use_legacy_gap:
             calendar_day_offset = r_idx * payload.days_between_rounds
@@ -1966,7 +1977,7 @@ async def generate_fixture(payload: FixtureGenerateIn, _: dict = Depends(require
             slot_group = r_idx % mpd
         round_date = start + timedelta(days=calendar_day_offset)
         # Horarios de ESTA jornada (subconjunto de todos los slots)
-        md_slots = slots[slot_group * slots_per_md:(slot_group + 1) * slots_per_md] or slots
+        md_slots = slot_chunks[slot_group] or slots
         for i, (home_id, away_id) in enumerate(pairs):
             is_bye = (home_id == "__BYE__" or away_id == "__BYE__")
             if is_bye:
@@ -1974,8 +1985,26 @@ async def generate_fixture(payload: FixtureGenerateIn, _: dict = Depends(require
                 match_dt = round_date.replace(hour=0, minute=0, second=0, microsecond=0)
                 venue = ""
             else:
-                slot = md_slots[i % len(md_slots)]
-                venue = venues[i % len(venues)] if venues else ""
+                # Iter77 (fix): antes cancha y horario avanzaban con el mismo índice `i`
+                # (venues[i % nv], slots[i % ns]), así que con N canchas = N horarios el
+                # patrón se repetía cada N partidos: dos partidos distintos terminaban con
+                # la MISMA cancha + MISMA hora (choque de horario), y cada cancha quedaba
+                # atada para siempre al mismo horario. Ahora se usa un recorrido tipo
+                # "cuadrado latino": la cancha se desplaza una posición extra cada vez que
+                # se completa una vuelta de horarios, cubriendo TODAS las combinaciones
+                # cancha×horario antes de repetir alguna.
+                n_md_slots = len(md_slots)
+                if n_md_slots <= 1:
+                    # Un solo horario disponible: no hay eje de tiempo que "desfasar",
+                    # así que las canchas simplemente rotan en orden simple.
+                    slot_idx = 0
+                    venue_idx = i % n_venues
+                else:
+                    lap = i // n_md_slots
+                    slot_idx = i % n_md_slots
+                    venue_idx = (i + lap) % n_venues
+                slot = md_slots[slot_idx]
+                venue = venues[venue_idx] if venues else ""
                 try:
                     hh, mm = slot.split(":")
                     match_dt = round_date.replace(hour=int(hh), minute=int(mm), second=0, microsecond=0)
