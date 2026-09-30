@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import api from "../lib/api";
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
@@ -10,7 +11,7 @@ import { Plus } from "lucide-react";
 export default function VenuePicker({ value, onChange, testId = "venue-picker", className = "" }) {
   const [venues, setVenues] = useState([]);
   const [creating, setCreating] = useState(false);
-  const [draft, setDraft] = useState({ name: "", city: "", address: "" });
+  const [draft, setDraft] = useState({ name: "", code: "", city: "", address: "" });
   const [saving, setSaving] = useState(false);
 
   const reload = () => api.get("/venues").then((r) => setVenues(r.data || []));
@@ -34,7 +35,7 @@ export default function VenuePicker({ value, onChange, testId = "venue-picker", 
       onChange(res.data.name);
       toast.success("Cancha creada");
       setCreating(false);
-      setDraft({ name: "", city: "", address: "" });
+      setDraft({ name: "", code: "", city: "", address: "" });
     } catch (err) {
       toast.error(err.response?.data?.detail || "No se pudo crear la cancha");
     } finally {
@@ -47,7 +48,7 @@ export default function VenuePicker({ value, onChange, testId = "venue-picker", 
       <select value={value || ""} onChange={handleSelect} className="w-full px-2 py-1.5 border border-slate-200 rounded text-sm" data-testid={`${testId}-select`}>
         <option value="">— Sin cancha —</option>
         {venues.map((v) => (
-          <option key={v.id} value={v.name}>{v.name}{v.city ? ` (${v.city})` : ""}</option>
+          <option key={v.id} value={v.name}>{v.code ? `${v.code} · ` : ""}{v.name}{v.city ? ` (${v.city})` : ""}</option>
         ))}
         {/* Conserva el valor manual si no está en el listado (legacy) */}
         {value && !venues.find((v) => v.name === value) && (
@@ -61,10 +62,16 @@ export default function VenuePicker({ value, onChange, testId = "venue-picker", 
           <div className="bg-white rounded-xl p-5 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
             <h3 className="font-display text-xl font-black uppercase tracking-tight mb-4">Crear cancha</h3>
             <div className="space-y-3">
-              <label className="block">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Nombre *</span>
-                <input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md text-sm" data-testid={`${testId}-new-name`} autoFocus />
-              </label>
+              <div className="grid grid-cols-3 gap-3">
+                <label className="block col-span-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Nombre *</span>
+                  <input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md text-sm" data-testid={`${testId}-new-name`} autoFocus />
+                </label>
+                <label className="block">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Código</span>
+                  <input value={draft.code} onChange={(e) => setDraft({ ...draft, code: e.target.value })} placeholder="C1" className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md text-sm" data-testid={`${testId}-new-code`} />
+                </label>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <label className="block">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Ciudad</span>
@@ -81,6 +88,9 @@ export default function VenuePicker({ value, onChange, testId = "venue-picker", 
                   <Plus size={14}/> {saving ? "..." : "Crear y usar"}
                 </button>
               </div>
+              <Link to="/admin/canchas" className="block text-center text-xs font-bold text-blue-700 hover:underline pt-1" data-testid={`${testId}-manage-link`}>
+                Gestionar todas las canchas (editar / eliminar) →
+              </Link>
             </div>
           </div>
         </div>

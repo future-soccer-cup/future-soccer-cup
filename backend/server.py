@@ -600,6 +600,7 @@ class UserOut(BaseModel):
 # -------- Venues (canchas / escenarios deportivos) --------
 class VenueIn(BaseModel):
     name: str = Field(min_length=1)
+    code: Optional[str] = ""  # Identificador corto (ej. "C1") para mostrar compacto en listas/PDFs.
     city: Optional[str] = ""
     address: Optional[str] = ""
     notes: Optional[str] = ""

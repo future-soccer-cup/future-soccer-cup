@@ -57,6 +57,7 @@ import AdminMessages from "./pages/admin/AdminMessages";
 import AdminCategories from "./pages/admin/AdminCategories";
 import AdminEventTypes from "./pages/admin/AdminEventTypes";
 import AdminClubsTree from "./pages/admin/AdminClubsTree";
+import AdminVenues from "./pages/admin/AdminVenues";
 
 function PublicLayout() {
   const loc = useLocation();
@@ -125,6 +126,7 @@ function App() {
             <Route path="clubes" element={<AdminClubsTree />} />
             <Route path="jugadores" element={<AdminPlayers />} />
             <Route path="partidos" element={<AdminMatches />} />
+            <Route path="canchas" element={<AdminVenues />} />
             <Route path="generador-fixture" element={<AdminFixtureGenerator />} />
             <Route path="bracket" element={<AdminBracketGenerator />} />
             <Route path="torneos" element={<AdminTournaments />} />
