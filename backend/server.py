@@ -2114,6 +2114,49 @@ async def generate_fixture(payload: FixtureGenerateIn, _: dict = Depends(require
                 )
             )
 
+    # Iter79: bloquear el fixture (incluso en vista previa) si alguno de los partidos
+    # generados choca en cancha+hora con un partido YA EXISTENTE del mismo evento
+    # (otro grupo, un partido intergrupos, uno programado a mano, etc.) o con otro
+    # partido dentro del mismo lote recién generado.
+    existing_occupied = set()
+    existing_docs = await db.matches.find(
+        {"tournament_id": tournament_id, "status": {"$ne": "cancelado"}},
+        {"_id": 0, "venue": 1, "match_date": 1},
+    ).to_list(5000)
+    for e in existing_docs:
+        v = (e.get("venue") or "").strip().lower()
+        if not v:
+            continue
+        try:
+            existing_occupied.add((v, _naive_dt(_parse_iso_flexible(e["match_date"]))))
+        except Exception:
+            continue
+    conflicts = []
+    seen_new = set()
+    for d in generated:
+        if d.get("is_bye"):
+            continue
+        v = (d.get("venue") or "").strip().lower()
+        if not v:
+            continue
+        try:
+            dt = _naive_dt(_parse_iso_flexible(d["match_date"]))
+        except Exception:
+            continue
+        key = (v, dt)
+        if key in existing_occupied or key in seen_new:
+            conflicts.append(f"{d['venue']} el {dt.strftime('%d/%m/%Y %H:%M')}")
+        seen_new.add(key)
+    if conflicts:
+        sample = "; ".join(sorted(set(conflicts))[:5])
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"El fixture generado choca con partidos ya programados en la misma cancha y hora: {sample}. "
+                "Ajusta las canchas, los horarios o la fecha de inicio."
+            ),
+        )
+
     fixture_id = None
     if not payload.preview:
         if generated:

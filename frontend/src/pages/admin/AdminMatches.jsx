@@ -10,6 +10,8 @@ import { usePagedSearch, SearchBar, Pagination } from "../../components/PagedTab
 // Cuando un partido no tiene jornada (matchday) asignada — típico de partidos
 // eliminatorios creados a mano — se muestra la fase en vez de "FECHA ?".
 const STAGE_LABEL_SHORT = { octavos: "Octavos", cuartos: "Cuartos", semis: "Semifinal", final: "Final" };
+// Orden de fases para partidos sin jornada, al final de la tabla de Partidos.
+const STAGE_ORDER = { grupos: 0, octavos: 1, cuartos: 2, semis: 3, final: 4 };
 
 // Convierte ISO con zona a "YYYY-MM-DDTHH:MM" para inputs datetime-local sin desplazar horas.
 const toLocalInput = (iso) => {
@@ -99,6 +101,19 @@ export default function AdminMatches() {
       if (!refTeam || refTeam.category !== filterCat) return false;
     }
     return true;
+  });
+  // Iter79: ordenar la lista por FECHA (jornada) 1, 2, 3... en vez de solo por
+  // match_date — así partidos de distintos grupos/fases no quedan intercalados
+  // de forma confusa cuando comparten fecha calendario. Los partidos sin jornada
+  // (semifinal/final creados a mano) van al final, ordenados por fase y luego fecha.
+  const sortedMatches = [...filteredMatches].sort((a, b) => {
+    const amd = a.matchday ?? Infinity;
+    const bmd = b.matchday ?? Infinity;
+    if (amd !== bmd) return amd - bmd;
+    const aso = STAGE_ORDER[a.stage] ?? 99;
+    const bso = STAGE_ORDER[b.stage] ?? 99;
+    if (aso !== bso) return aso - bso;
+    return (a.match_date || "").localeCompare(b.match_date || "");
   });
 
   const submitResult = async (e) => {
@@ -197,7 +212,7 @@ export default function AdminMatches() {
 
       {tab === "partidos" && (
         <MatchesTable
-          matches={filteredMatches}
+          matches={sortedMatches}
           onEdit={(m) => setManualEdit({ ...m, match_date: toLocalInput(m.match_date) })}
           onScore={(m) => setScoring({ ...m, scorers: m.scorers || [] })}
           onRemove={remove}
