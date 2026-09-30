@@ -416,6 +416,14 @@ function GroupStatsView({ tournamentId, categoryValue, groupName, showBackToGrou
   const pending = useMemo(() => matches.filter((m) => m.status !== "finalizado" && m.status !== "descansa"), [matches]);
   const empty = !loading && standings.length === 0 && matches.length === 0 && scorers.length === 0;
 
+  // Reconocimientos: Valla Menos Vencida (menos goles en contra) y Juego Limpio (mayor
+  // puntaje J.L) se calculan sobre `standings`, que ya incluye TODOS los partidos
+  // finalizados del grupo (grupos, intergrupos, semifinal y final).
+  const playedRows = standings.filter((r) => r.played > 0);
+  const bestDefense = playedRows.length ? playedRows.reduce((best, r) => (r.ga < best.ga ? r : best)) : null;
+  const fairPlayWinner = playedRows.length ? playedRows.reduce((best, r) => (r.fair_play > best.fair_play ? r : best)) : null;
+  const topScorer = scorers.length ? scorers[0] : null;
+
   return (
     <div className="space-y-8" data-testid="stats-group-view">
       {showBackToGroups && (
@@ -441,6 +449,40 @@ function GroupStatsView({ tournamentId, categoryValue, groupName, showBackToGrou
             </h3>
             {standings.length ? <StandingsTable rows={standings} /> : <p className="text-slate-400 italic text-base">Sin datos aún.</p>}
           </div>
+
+          {(bestDefense || fairPlayWinner || topScorer) && (
+            <div>
+              <h3 className="text-lg md:text-xl font-black uppercase tracking-widest mb-4" style={{ color: BLUE }}>
+                Reconocimientos
+              </h3>
+              <div className="grid sm:grid-cols-3 gap-3">
+                {bestDefense && (
+                  <div className="bg-slate-50 rounded-lg p-4 text-center" data-testid="stats-award-defense">
+                    <div className="text-3xl">🧤</div>
+                    <div className="text-[11px] font-black uppercase tracking-widest text-slate-500 mt-1">Valla Menos Vencida</div>
+                    <div className="font-black text-lg mt-1 truncate" style={{ color: BLUE }}>{bestDefense.team_name}</div>
+                    <div className="text-xs text-slate-400">{bestDefense.ga} gol{bestDefense.ga === 1 ? "" : "es"} en contra</div>
+                  </div>
+                )}
+                {fairPlayWinner && (
+                  <div className="bg-slate-50 rounded-lg p-4 text-center" data-testid="stats-award-fairplay">
+                    <div className="text-3xl">🤝</div>
+                    <div className="text-[11px] font-black uppercase tracking-widest text-slate-500 mt-1">Juego Limpio</div>
+                    <div className="font-black text-lg mt-1 truncate" style={{ color: BLUE }}>{fairPlayWinner.team_name}</div>
+                    <div className="text-xs text-slate-400">{fairPlayWinner.fair_play} pts J.L</div>
+                  </div>
+                )}
+                {topScorer && (
+                  <div className="bg-slate-50 rounded-lg p-4 text-center" data-testid="stats-award-scorer">
+                    <div className="text-3xl">⚽</div>
+                    <div className="text-[11px] font-black uppercase tracking-widest text-slate-500 mt-1">Goleador</div>
+                    <div className="font-black text-lg mt-1 truncate" style={{ color: BLUE }}>{topScorer.name}</div>
+                    <div className="text-xs text-slate-400">{topScorer.goals} gol{topScorer.goals === 1 ? "" : "es"} · {topScorer.team_name}</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           <div>
             <div className="flex gap-2 mb-4">
