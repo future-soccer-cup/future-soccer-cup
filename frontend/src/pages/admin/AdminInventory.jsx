@@ -156,20 +156,73 @@ function buildBody(row) {
 }
 
 function LodgingTab({ rows, onChange, onSave, onDelete, saving, onAdd }) {
+  const [filterClass, setFilterClass] = useState("");
+  const [filterAcc, setFilterAcc] = useState("");
+
+  const sorted = useMemo(
+    () => [...rows].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)),
+    [rows]
+  );
+  const classesPresent = useMemo(() => {
+    const seen = [];
+    sorted.forEach((r) => {
+      const c = (r.classification || "").toUpperCase() || "SIN CLASIFICAR";
+      if (!seen.includes(c)) seen.push(c);
+    });
+    return seen;
+  }, [sorted]);
+
+  const filtered = sorted.filter((r) => {
+    const c = (r.classification || "").toUpperCase() || "SIN CLASIFICAR";
+    if (filterClass && c !== filterClass) return false;
+    if (filterAcc && (r.accommodation_type || "") !== filterAcc) return false;
+    return true;
+  });
+
+  const groups = [];
+  filtered.forEach((r) => {
+    const key = (r.classification || "").toUpperCase() || "SIN CLASIFICAR";
+    let g = groups.find((g) => g.key === key);
+    if (!g) { g = { key, items: [] }; groups.push(g); }
+    g.items.push(r);
+  });
+
   return (
     <div>
-      <div className="flex justify-between items-center mb-3">
+      <div className="flex justify-between items-center mb-3 flex-wrap gap-2">
         <p className="text-xs text-slate-500">Precio <span className="font-bold">por persona</span>: valor del paquete + valor por noche adicional.</p>
         <button onClick={onAdd} className="fsc-btn-red px-3 py-1.5 rounded-md text-xs flex items-center gap-2" data-testid="inv-add-lodging"><Plus size={12}/> Nuevo paquete</button>
       </div>
-      <div className="grid lg:grid-cols-2 gap-3" data-testid="inv-lodging-list">
-        {rows.map((r) => {
+      <div className="flex gap-2 mb-4 flex-wrap">
+        <select value={filterClass} onChange={(e) => setFilterClass(e.target.value)} className="px-3 py-1.5 border border-slate-200 rounded-md text-xs font-bold uppercase tracking-wide" data-testid="inv-lodging-filter-class">
+          <option value="">Todas las clasificaciones</option>
+          {classesPresent.map((c) => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <select value={filterAcc} onChange={(e) => setFilterAcc(e.target.value)} className="px-3 py-1.5 border border-slate-200 rounded-md text-xs font-bold uppercase tracking-wide" data-testid="inv-lodging-filter-acc">
+          <option value="">Todas las acomodaciones</option>
+          {ACCOMMODATION_TYPES.map((a) => <option key={a} value={a}>{a}</option>)}
+        </select>
+        {(filterClass || filterAcc) && (
+          <button onClick={() => { setFilterClass(""); setFilterAcc(""); }} className="px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-slate-500 hover:text-fsc-rojo">Limpiar filtros</button>
+        )}
+      </div>
+      {groups.length === 0 && (
+        <div className="text-center text-slate-400 py-8 bg-white border border-slate-200 rounded-xl">Ningún paquete coincide con los filtros.</div>
+      )}
+      {groups.map((g) => (
+        <div key={g.key} className="mb-6">
+          <h3 className="font-display text-sm font-black uppercase tracking-widest text-slate-400 mb-2 border-b border-slate-200 pb-1">{g.key}</h3>
+          <div className="grid lg:grid-cols-2 gap-3" data-testid={`inv-lodging-group-${g.key}`}>
+            {g.items.map((r) => {
           const isSaving = saving === `lodging:${r.id}`;
           return (
             <div key={r.id} className="bg-white border border-slate-200 rounded-xl p-4" data-testid={`inv-lodging-${r.id}`}>
               <div className="flex items-center justify-between mb-2">
-                <div className="font-display text-xl font-black uppercase tracking-tight text-fsc-azul" data-testid={`inv-lodging-title-${r.id}`}>
-                  {(r.classification || "").toUpperCase() || r.name || "—"}
+                <div>
+                  <div className="font-display text-xl font-black uppercase tracking-tight text-fsc-azul" data-testid={`inv-lodging-title-${r.id}`}>
+                    {(r.classification || "").toUpperCase() || r.name || "—"}
+                  </div>
+                  <div className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-400">{r.accommodation_type || (r.no_lodging ? "Sin hospedaje" : "Sin acomodación")}</div>
                 </div>
                 <div className="flex gap-1">
                   <button onClick={() => onSave(r)} disabled={isSaving} className="text-fsc-azul disabled:opacity-50 p-1" data-testid={`inv-save-lodging-${r.id}`}><Save size={14}/></button>
@@ -227,8 +280,10 @@ function LodgingTab({ rows, onChange, onSave, onDelete, saving, onAdd }) {
               </div>
             </div>
           );
-        })}
-      </div>
+            })}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
