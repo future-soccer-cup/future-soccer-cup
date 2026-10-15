@@ -4,7 +4,6 @@ import api, { formatApiError, imgSrc } from "../../lib/api";
 import { toast, Toaster } from "sonner";
 import { Plus, X, Eye, Save, Trophy, Trash2, Edit2 } from "lucide-react";
 import { formatDateTime } from "../../lib/dateFormat";
-import CategorySelect from "../../components/CategorySelect";
 import VenuePicker from "../../components/VenuePicker";
 import ConfirmDeleteDialog from "../../components/ConfirmDeleteDialog";
 import { usePagedSearch, Pagination } from "../../components/PagedTable";
@@ -232,7 +231,19 @@ export default function AdminBracketGenerator() {
               {tournaments.map((t) => <option key={t.id} value={t.id}>{t.name} · {t.season}</option>)}
             </select>
           </label>
-          <CategorySelect value={form.category} onChange={(v) => { setForm({ ...form, category: v }); setSeeds([]); }} allowed={form.tournament_id ? allowedCats : null} />
+          <label className="block">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Categoría (por edad)</span>
+            <select
+              value={form.category}
+              onChange={(e) => { setForm({ ...form, category: e.target.value }); setSeeds([]); }}
+              disabled={!form.tournament_id}
+              className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md bg-white disabled:bg-slate-50"
+              data-testid="category-select"
+            >
+              <option value="">Seleccionar...</option>
+              {allowedCats.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </label>
           <label className="block">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Tamaño del bracket</span>
             <select value={form.size} onChange={(e) => { setForm({ ...form, size: Number(e.target.value) }); setSeeds([]); }} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md bg-white" data-testid="bracket-size-select">
