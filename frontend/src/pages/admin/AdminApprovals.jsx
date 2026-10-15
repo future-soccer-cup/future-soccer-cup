@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import api, { imgSrc } from "../../lib/api";
 import { toast, Toaster } from "sonner";
 import { Check, X, Clock, Shirt, Users, Building2, ChevronDown, ChevronRight, Mail } from "lucide-react";
@@ -15,7 +15,11 @@ export default function AdminApprovals() {
   const [tab, setTab] = useState("teams");
   const [items, setItems] = useState([]);
   const [teams, setTeams] = useState([]);
+  const [clubs, setClubs] = useState([]);
   const [statusFilter, setStatusFilter] = useState("pendiente");
+  // Filtros adicionales (solo aplican a la pestaña Jugadores)
+  const [filterClub, setFilterClub] = useState("");
+  const [filterCategory, setFilterCategory] = useState("");
 
   const load = useCallback(async () => {
     if (tab === "clubs") {
@@ -25,18 +29,34 @@ export default function AdminApprovals() {
       const r = await api.get(`/teams?status=${statusFilter}`);
       setItems(r.data);
     } else {
-      const [pr, tr] = await Promise.all([
+      const [pr, tr, cr] = await Promise.all([
         api.get(`/players?status=${statusFilter}`),
         api.get("/teams"),
+        api.get("/clubs").catch(() => ({ data: [] })),
       ]);
       setItems(pr.data);
       setTeams(tr.data);
+      setClubs(cr.data);
     }
   }, [tab, statusFilter]);
 
   useEffect(() => { load(); }, [load]);
 
   const tmap = Object.fromEntries(teams.map((t) => [t.id, t]));
+
+  const categoriesAvail = useMemo(
+    () => Array.from(new Set(teams.map((t) => t.category).filter(Boolean))).sort(),
+    [teams]
+  );
+  const playersFiltered = useMemo(() => {
+    if (tab !== "players") return items;
+    return items.filter((p) => {
+      const t = tmap[p.team_id];
+      if (filterClub && (!t || t.club_id !== filterClub)) return false;
+      if (filterCategory && (!t || t.category !== filterCategory)) return false;
+      return true;
+    });
+  }, [tab, items, tmap, filterClub, filterCategory]);
 
   const matchFn = useCallback((it, q) => {
     if (tab === "clubs") {
@@ -62,7 +82,7 @@ export default function AdminApprovals() {
   }, [tab, tmap]);
 
   const { query, setQuery, page, setPage, totalPages, pageItems, filtered, filteredCount, totalCount } =
-    usePagedSearch(items, matchFn, 10);
+    usePagedSearch(tab === "players" ? playersFiltered : items, matchFn, 10);
 
   const exportColumns = tab === "clubs" ? [
     { key: "name", label: "Club" },
@@ -120,6 +140,22 @@ export default function AdminApprovals() {
           </button>
         ))}
       </div>
+
+      {tab === "players" && (
+        <div className="mb-3 grid grid-cols-1 sm:grid-cols-3 gap-2 max-w-2xl" data-testid="approvals-players-filters-bar">
+          <select value={filterClub} onChange={(e) => setFilterClub(e.target.value)} className="px-3 py-2 border border-slate-200 rounded-md text-sm" data-testid="approvals-players-filter-club">
+            <option value="">Todos los clubes</option>
+            {clubs.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)} className="px-3 py-2 border border-slate-200 rounded-md text-sm" data-testid="approvals-players-filter-category">
+            <option value="">Todas las categorías</option>
+            {categoriesAvail.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+          {(filterClub || filterCategory) && (
+            <button onClick={() => { setFilterClub(""); setFilterCategory(""); }} className="px-3 py-2 border-2 border-slate-200 rounded-md text-xs font-bold uppercase tracking-wide hover:bg-slate-50" data-testid="approvals-players-filters-clear">Limpiar filtros</button>
+          )}
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-2 mb-6">
         {["pendiente", "aprobado", "rechazado"].map((s) => (
