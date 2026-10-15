@@ -280,24 +280,6 @@ export default function AdminMatches() {
                 <VenuePicker value={manualEdit.venue || ""} onChange={(v) => setManualEdit({ ...manualEdit, venue: v })} testId="manual-edit-venue" />
               </label>
               <label className="block">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Jornada</span>
-                <input
-                  type="number"
-                  min="1"
-                  value={manualEdit.matchday ?? ""}
-                  onChange={(e) => setManualEdit({ ...manualEdit, matchday: e.target.value })}
-                  className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md"
-                  data-testid="manual-edit-matchday"
-                />
-              </label>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <Field
-                label="Grupo"
-                value={manualEdit.group_name || ""}
-                onChange={(v) => setManualEdit({ ...manualEdit, group_name: v })}
-              />
-              <label className="block">
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Fase</span>
                 <select
                   value={manualEdit.stage || "grupos"}
@@ -312,6 +294,29 @@ export default function AdminMatches() {
                 </select>
               </label>
             </div>
+            {/* Iter87: Jornada y Grupo solo aplican a partidos de fase de grupos (los
+                creados por "Generar Fixture"). Para octavos..final (creados por
+                "Programar") no tienen sentido y confundían al mostrarse siempre. */}
+            {(manualEdit.stage || "grupos") === "grupos" && (
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Jornada</span>
+                  <input
+                    type="number"
+                    min="1"
+                    value={manualEdit.matchday ?? ""}
+                    onChange={(e) => setManualEdit({ ...manualEdit, matchday: e.target.value })}
+                    className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md"
+                    data-testid="manual-edit-matchday"
+                  />
+                </label>
+                <Field
+                  label="Grupo"
+                  value={manualEdit.group_name || ""}
+                  onChange={(v) => setManualEdit({ ...manualEdit, group_name: v })}
+                />
+              </div>
+            )}
             <button className="fsc-btn-primary w-full py-2 rounded-md" data-testid="manual-edit-save">Guardar cambios</button>
           </form>
         </Modal>
