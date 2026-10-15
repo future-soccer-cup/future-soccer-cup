@@ -2024,6 +2024,14 @@ async def generate_fixture(payload: FixtureGenerateIn, _: dict = Depends(require
         slot_chunks.append(slots[_off:_off + size] if size else [])
         _off += size
     n_venues = max(1, len(venues))
+    # Iter80 (fix): ocupación GLOBAL por día calendario (cancha, horario) -> ya usado.
+    # Antes cada jornada elegía su horario/cancha con una fórmula aislada, sin saber qué
+    # horarios ya usaban OTRAS jornadas del mismo día — así, con "Fechas por día" > 1,
+    # dos jornadas distintas podían terminar asignando la MISMA cancha a la MISMA hora
+    # del mismo día (el propio fixture se autogeneraba con un choque). Ahora se reserva
+    # cada combinación cancha+horario una sola vez por día, en todas las jornadas que
+    # comparten ese día.
+    day_used: Dict[int, set] = {}
     for r_idx, pairs in enumerate(rounds_data):
         if use_legacy_gap:
             calendar_day_offset = r_idx * payload.days_between_rounds
@@ -2032,8 +2040,11 @@ async def generate_fixture(payload: FixtureGenerateIn, _: dict = Depends(require
             calendar_day_offset = r_idx // mpd
             slot_group = r_idx % mpd
         round_date = start + timedelta(days=calendar_day_offset)
-        # Horarios de ESTA jornada (subconjunto de todos los slots)
-        md_slots = slot_chunks[slot_group] or slots
+        # Horarios propios de ESTA jornada primero; si no alcanzan (o ya los tomó otra
+        # jornada del mismo día), se completa con el resto de horarios del día.
+        own_chunk = slot_chunks[slot_group] or slots
+        ordered_slots = own_chunk + [s for s in slots if s not in own_chunk]
+        used_today = day_used.setdefault(calendar_day_offset, set())
         for i, (home_id, away_id) in enumerate(pairs):
             is_bye = (home_id == "__BYE__" or away_id == "__BYE__")
             if is_bye:
@@ -2041,26 +2052,22 @@ async def generate_fixture(payload: FixtureGenerateIn, _: dict = Depends(require
                 match_dt = round_date.replace(hour=0, minute=0, second=0, microsecond=0)
                 venue = ""
             else:
-                # Iter77 (fix): antes cancha y horario avanzaban con el mismo índice `i`
-                # (venues[i % nv], slots[i % ns]), así que con N canchas = N horarios el
-                # patrón se repetía cada N partidos: dos partidos distintos terminaban con
-                # la MISMA cancha + MISMA hora (choque de horario), y cada cancha quedaba
-                # atada para siempre al mismo horario. Ahora se usa un recorrido tipo
-                # "cuadrado latino": la cancha se desplaza una posición extra cada vez que
-                # se completa una vuelta de horarios, cubriendo TODAS las combinaciones
-                # cancha×horario antes de repetir alguna.
-                n_md_slots = len(md_slots)
-                if n_md_slots <= 1:
-                    # Un solo horario disponible: no hay eje de tiempo que "desfasar",
-                    # así que las canchas simplemente rotan en orden simple.
-                    slot_idx = 0
-                    venue_idx = i % n_venues
-                else:
-                    lap = i // n_md_slots
-                    slot_idx = i % n_md_slots
-                    venue_idx = (i + lap) % n_venues
-                slot = md_slots[slot_idx]
-                venue = venues[venue_idx] if venues else ""
+                chosen = None
+                for slot_candidate in ordered_slots:
+                    for venue_candidate in venues:
+                        if (venue_candidate, slot_candidate) not in used_today:
+                            chosen = (venue_candidate, slot_candidate)
+                            break
+                    if chosen:
+                        break
+                if not chosen:
+                    # Capacidad del día agotada (todas las combinaciones cancha×horario ya
+                    # se usaron): no hay forma de evitar el choque con los recursos dados.
+                    # Se deja visible (el bloqueo de abajo lo reportará con el detalle) en
+                    # vez de fallar silenciosamente.
+                    chosen = (venues[i % n_venues], ordered_slots[i % len(ordered_slots)] if ordered_slots else "10:00")
+                venue, slot = chosen
+                used_today.add(chosen)
                 try:
                     hh, mm = slot.split(":")
                     match_dt = round_date.replace(hour=int(hh), minute=int(mm), second=0, microsecond=0)
