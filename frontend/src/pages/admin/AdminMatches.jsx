@@ -232,7 +232,6 @@ export default function AdminMatches() {
         <NewMatchModal
           tournaments={tournaments}
           teams={teams}
-          fixtures={fixtures}
           onClose={() => setEditing(null)}
           onSaved={() => { setEditing(null); load(); }}
         />
@@ -334,12 +333,14 @@ export default function AdminMatches() {
   );
 }
 
-function NewMatchModal({ tournaments = [], teams = [], fixtures = [], onClose, onSaved }) {
+function NewMatchModal({ tournaments = [], teams = [], onClose, onSaved }) {
   const activeTournaments = (tournaments || []).filter((t) => !t.archived);
   const [tournamentId, setTournamentId] = useState(activeTournaments[0]?.id || "");
   const [category, setCategory] = useState("");
-  const [groupName, setGroupName] = useState("");
-  const [stage, setStage] = useState("grupos");
+  // Iter82: "Programar" es para partidos eliminatorios sueltos (octavos..final) —
+  // los partidos de fase de grupos se crean en bloque desde "Generar Fixture", así
+  // que aquí ya no se pide Grupo ni se ofrece la fase "Grupos".
+  const [stage, setStage] = useState("octavos");
   const [homeId, setHomeId] = useState("");
   const [awayId, setAwayId] = useState("");
   const [matchDate, setMatchDate] = useState("");
@@ -352,10 +353,6 @@ function NewMatchModal({ tournaments = [], teams = [], fixtures = [], onClose, o
   const declaredCats = tournament ? (tournament.categories || []).map((c) => c.name).filter(Boolean) : [];
   const teamCats = tournamentId ? Array.from(new Set(teams.filter((t) => t.tournament_id === tournamentId).map((t) => t.category).filter(Boolean))) : [];
   const cats = Array.from(new Set([...declaredCats, ...teamCats]));
-
-  const groupOptions = Array.from(new Set(
-    fixtures.filter((f) => f.tournament_id === tournamentId && f.category === category).map((f) => f.group_name || "").filter(Boolean)
-  )).sort();
 
   // Iter78 (fix): antes mostraba TODOS los equipos inscritos sin filtrar por categoría —
   // al programar una semifinal/final de 2015 aparecían equipos de todas las categorías.
@@ -376,7 +373,7 @@ function NewMatchModal({ tournaments = [], teams = [], fixtures = [], onClose, o
         away_team_id: awayId,
         match_date: matchDate,
         venue: venue || "",
-        group_name: groupName || "",
+        group_name: "",
         stage,
         status: "programado",
       });
@@ -392,12 +389,15 @@ function NewMatchModal({ tournaments = [], teams = [], fixtures = [], onClose, o
   return (
     <Modal onClose={onClose} title="Programar partido">
       <form onSubmit={submit} className="space-y-3">
+        <p className="text-xs text-slate-500 -mt-1">
+          Para partidos de fase eliminatoria (octavos a final). Los partidos de fase de grupos se generan en bloque desde "Generar Fixture".
+        </p>
         <label className="block">
           <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Evento</span>
           <select
             required
             value={tournamentId}
-            onChange={(e) => { setTournamentId(e.target.value); setCategory(""); setGroupName(""); setHomeId(""); setAwayId(""); }}
+            onChange={(e) => { setTournamentId(e.target.value); setCategory(""); setHomeId(""); setAwayId(""); }}
             className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md"
             data-testid="new-match-tournament"
           >
@@ -411,7 +411,7 @@ function NewMatchModal({ tournaments = [], teams = [], fixtures = [], onClose, o
             <select
               required
               value={category}
-              onChange={(e) => { setCategory(e.target.value); setGroupName(""); setHomeId(""); setAwayId(""); }}
+              onChange={(e) => { setCategory(e.target.value); setHomeId(""); setAwayId(""); }}
               disabled={!tournamentId}
               className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md disabled:bg-slate-50"
               data-testid="new-match-category"
@@ -421,25 +421,12 @@ function NewMatchModal({ tournaments = [], teams = [], fixtures = [], onClose, o
             </select>
           </label>
           <label className="block">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Grupo (fixture)</span>
-            <select
-              value={groupName}
-              onChange={(e) => setGroupName(e.target.value)}
-              disabled={!category}
-              className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md disabled:bg-slate-50"
-              data-testid="new-match-group"
-            >
-              <option value="">Sin grupo (fase eliminatoria)</option>
-              {groupOptions.map((g) => <option key={g} value={g}>{g}</option>)}
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Fase</span>
+            <select value={stage} onChange={(e) => setStage(e.target.value)} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="new-match-stage">
+              <option value="octavos">Octavos</option><option value="cuartos">Cuartos</option><option value="semis">Semifinal</option><option value="final">Final</option>
             </select>
           </label>
         </div>
-        <label className="block">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Fase</span>
-          <select value={stage} onChange={(e) => setStage(e.target.value)} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md">
-            <option value="grupos">Grupos</option><option value="octavos">Octavos</option><option value="cuartos">Cuartos</option><option value="semis">Semifinal</option><option value="final">Final</option>
-          </select>
-        </label>
         <div className="grid grid-cols-2 gap-3">
           <label className="block">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Local</span>
