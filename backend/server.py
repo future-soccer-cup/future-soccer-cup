@@ -1731,8 +1731,23 @@ async def list_matches(tournament_id: Optional[str] = None, status: Optional[str
         m["away_team_logo"] = at.get("logo_url", "")
     return items
 
+# Colombia no tiene horario de verano — desfase fijo todo el año. Las fechas de partido
+# SIN zona horaria (la inmensa mayoría: "Programar", Generar Fixture, Bracket) se asumen
+# directamente como hora de pared de Colombia, sin ninguna conversión.
+_COLOMBIA_TZ = timezone(timedelta(hours=-5))
+
+
 def _naive_dt(dt: datetime) -> datetime:
-    return dt.replace(tzinfo=None) if dt.tzinfo else dt
+    """Normaliza a un datetime NAIVE comparable con el resto de fechas de partido.
+    Iter88 (fix): antes simplemente le quitaba el tzinfo a una fecha con zona horaria
+    sin convertirla primero — así una fecha guardada como "13:00 UTC" (equivalente a las
+    08:00 en Colombia) se comparaba como "13:00" contra partidos guardados sin zona que
+    representan directamente las 08:00, y dos partidos a la MISMA hora real no se
+    detectaban como choque. Ahora toda fecha con zona horaria se convierte primero a la
+    hora de Colombia antes de quitarle el tzinfo."""
+    if dt.tzinfo:
+        return dt.astimezone(_COLOMBIA_TZ).replace(tzinfo=None)
+    return dt
 
 
 def _parse_iso_flexible(s: str) -> datetime:
@@ -2636,7 +2651,13 @@ async def create_bracket(payload: BracketIn, _: dict = Depends(require_admin)):
                 chosen = (venues[pos % n_venues], slots[pos % len(slots)])
             venue, time_slot = chosen
             used_today.add(chosen)
-            match_dt = datetime.combine(round_date, datetime.strptime(time_slot, "%H:%M").time(), tzinfo=timezone.utc)
+            # Iter88 (fix): naive (sin tzinfo), igual que /fixtures/generate y "Programar" —
+            # antes se etiquetaba como UTC explícito sin desplazar la hora, así que al
+            # mostrarse en el navegador (que SÍ interpreta el offset) la hora se corría
+            # varias horas, y además no coincidía con el resto de partidos para detectar
+            # choques de cancha/horario (dos partidos a la misma hora real quedaban con
+            # strings de fecha distintos).
+            match_dt = datetime.combine(round_date, datetime.strptime(time_slot, "%H:%M").time())
             all_matches.append({
                 "id": mid,
                 "tournament_id": payload.tournament_id or bid,
@@ -2696,7 +2717,7 @@ async def create_bracket(payload: BracketIn, _: dict = Depends(require_admin)):
             tp_chosen = (final_match["venue"], slots[0])
         tp_venue, tp_slot = tp_chosen
         used_final_day.add(tp_chosen)
-        tp_match_dt = datetime.combine(final_round_date, datetime.strptime(tp_slot, "%H:%M").time(), tzinfo=timezone.utc)
+        tp_match_dt = datetime.combine(final_round_date, datetime.strptime(tp_slot, "%H:%M").time())  # naive, ver Iter88
         all_matches.append({
             "id": third_place_id,
             "tournament_id": payload.tournament_id or bid,

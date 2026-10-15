@@ -511,7 +511,7 @@ function IntergroupMatchModal({ tournaments = [], fixtures = [], teams = [], tou
         tournament_id: tournamentId,
         home_team_id: teamAId,
         away_team_id: teamBId,
-        match_date: new Date(matchDate).toISOString(),
+        match_date: matchDate,
         venue: venue || "",
         group_name: `${groupA} vs ${groupB}`,
         matchday: matchday !== "" ? Number(matchday) : null,
