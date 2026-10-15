@@ -419,7 +419,10 @@ function GroupStatsView({ tournamentId, categoryValue, groupName, showBackToGrou
     return () => { cancelled = true; };
   }, [tournamentId, categoryValue, groupName]);
 
-  const results = useMemo(() => matches.filter((m) => m.status === "finalizado" || m.status === "descansa").slice().reverse(), [matches]);
+  // Iter86: siempre en orden cronológico ascendente (Fecha 1, 2, 3...), igual que
+  // "Próximos partidos" y que el módulo de Partidos — antes salía al revés (más
+  // reciente primero).
+  const results = useMemo(() => matches.filter((m) => m.status === "finalizado" || m.status === "descansa"), [matches]);
   const pending = useMemo(() => matches.filter((m) => m.status !== "finalizado" && m.status !== "descansa"), [matches]);
   const empty = !loading && standings.length === 0 && matches.length === 0 && scorers.length === 0;
 
