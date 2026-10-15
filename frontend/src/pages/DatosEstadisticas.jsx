@@ -357,7 +357,7 @@ function CategoryDataPanel({ category, eventLabel, onClose }) {
                     style={{ background: BLUE, ...PLANE_CRASH, fontSize: "clamp(0.9rem, 1.6vw, 1.2rem)", letterSpacing: "0.05em" }}
                     data-testid={`stats-group-btn-${it.name}`}
                   >
-                    {it.type === "bracket" && <Trophy size={16} />}
+                    {(it.type === "bracket" || it.type === "knockout") && <Trophy size={16} />}
                     {renderPlaneCrash(it.name)}
                   </button>
                 ))}
@@ -367,6 +367,13 @@ function CategoryDataPanel({ category, eventLabel, onClose }) {
             <BracketStatsView
               bracketId={selectedItem.id}
               bracketName={selectedItem.name}
+              showBackToGroups={showBackToGroups}
+              onBack={() => setSelectedItem(null)}
+            />
+          ) : selectedItem?.type === "knockout" ? (
+            <KnockoutStatsView
+              tournamentId={category.tournament_id}
+              categoryValue={category.category}
               showBackToGroups={showBackToGroups}
               onBack={() => setSelectedItem(null)}
             />
@@ -613,6 +620,100 @@ function BracketStatsView({ bracketId, bracketName, showBackToGroups, onBack }) 
                 <div key={stage}>
                   <div className="text-sm font-black uppercase tracking-widest mb-2 text-slate-500">{label}</div>
                   <MatchesList rows={visible} testPrefix={`stats-bracket-${matchesTab}-${stage}`} showDate={matchesTab === "pending"} />
+                </div>
+              );
+            })}
+            {stageOrder.every((stage) => byStage[stage].filter((m) => matchesTab === "results" ? (m.status === "finalizado" || m.status === "descansa") : (m.status !== "finalizado" && m.status !== "descansa")).length === 0) && (
+              <p className="text-slate-400 italic text-base">{matchesTab === "results" ? "Aún no hay resultados." : "No hay partidos pendientes."}</p>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// Partidos eliminatorios sueltos (octavos a final) creados desde "Programar" sin
+// grupo ni bracket — se muestran aparte para no mezclarse con el calendario de
+// un grupo todos-contra-todos (aunque sus equipos sí pertenezcan a algún grupo).
+function KnockoutStatsView({ tournamentId, categoryValue, showBackToGroups, onBack }) {
+  const [matches, setMatches] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [matchesTab, setMatchesTab] = useState("results"); // "results" | "pending"
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    api.get("/stats/matches", { params: { tournament_id: tournamentId, category: categoryValue, knockout: true } })
+      .then((r) => { if (!cancelled) setMatches(r.data || []); })
+      .catch(() => { if (!cancelled) setMatches([]); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [tournamentId, categoryValue]);
+
+  const byStage = useMemo(() => {
+    const map = {};
+    matches.forEach((m) => {
+      const key = m.stage || "otros";
+      (map[key] = map[key] || []).push(m);
+    });
+    return map;
+  }, [matches]);
+  const stageOrder = useMemo(() => {
+    const known = ["treintaidosavos", "octavos", "cuartos", "semis", "tercer_puesto", "final"];
+    return Object.keys(byStage).sort((a, b) => known.indexOf(a) - known.indexOf(b));
+  }, [byStage]);
+
+  return (
+    <div className="space-y-8" data-testid="stats-knockout-view">
+      {showBackToGroups && (
+        <button type="button" onClick={onBack} className="text-base md:text-lg font-bold" style={{ color: BLUE }} data-testid="stats-group-back">
+          ← Elegir otro grupo
+        </button>
+      )}
+      <div className="font-black uppercase tracking-wider text-base md:text-lg flex items-center gap-1.5" style={{ color: BLUE }}>
+        <Trophy size={16} /> Fase Final
+      </div>
+
+      {loading ? (
+        <div className="text-center py-6 text-slate-500 text-lg" style={AGENCY_FB}>Cargando...</div>
+      ) : matches.length === 0 ? (
+        <div className="text-center py-10">
+          <div className="text-slate-500 italic text-lg" style={AGENCY_FB}>Próximamente</div>
+        </div>
+      ) : (
+        <div>
+          <div className="flex gap-2 mb-4">
+            <button
+              type="button"
+              onClick={() => setMatchesTab("results")}
+              className="px-4 py-2 rounded-full text-xs md:text-sm font-black uppercase tracking-widest transition-colors"
+              style={matchesTab === "results" ? { background: BLUE, color: "#fff" } : { background: "#f1f5f9", color: BLUE }}
+              data-testid="stats-knockout-tab-results"
+            >
+              Resultados
+            </button>
+            <button
+              type="button"
+              onClick={() => setMatchesTab("pending")}
+              className="px-4 py-2 rounded-full text-xs md:text-sm font-black uppercase tracking-widest transition-colors"
+              style={matchesTab === "pending" ? { background: BLUE, color: "#fff" } : { background: "#f1f5f9", color: BLUE }}
+              data-testid="stats-knockout-tab-pending"
+            >
+              Próximos partidos
+            </button>
+          </div>
+          <div className="space-y-6">
+            {stageOrder.map((stage) => {
+              const rows = byStage[stage];
+              const label = STAGE_LABEL[stage] || stage;
+              const visible = rows.filter((m) => matchesTab === "results" ? (m.status === "finalizado" || m.status === "descansa") : (m.status !== "finalizado" && m.status !== "descansa"));
+              if (visible.length === 0) return null;
+              return (
+                <div key={stage}>
+                  <div className="text-sm font-black uppercase tracking-widest mb-2 text-slate-500">{label}</div>
+                  <MatchesList rows={visible} testPrefix={`stats-knockout-${matchesTab}-${stage}`} showDate={matchesTab === "pending"} />
                 </div>
               );
             })}

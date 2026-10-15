@@ -39,6 +39,11 @@ register_heif_opener()  # permite que Image.open() lea HEIC/HEIF (fotos por defe
 # -------------------- Categories --------------------
 CATEGORIES = ["2018", "2016", "2014", "2012", "2010", "2008"]
 
+# Fases de eliminación directa (usado para distinguir partidos "sueltos" de fase
+# eliminatoria — creados a mano desde "Programar", sin grupo ni bracket — del
+# calendario propio de un grupo todos-contra-todos).
+KNOCKOUT_STAGES = ["treintaidosavos", "octavos", "cuartos", "semis", "tercer_puesto", "final"]
+
 # -------------------- Event Types & Lodging Tiers --------------------
 # Precios en COP (Pesos Colombianos)
 EVENT_TYPES = {
@@ -3040,6 +3045,21 @@ async def stats_groups(tournament_id: str, category: str):
     brackets = await db.brackets.find({"tournament_id": tournament_id, "category": category}, {"_id": 0, "id": 1, "name": 1}).sort("created_at", -1).to_list(50)
     out = [{"type": "group", "name": g} for g in groups]
     out += [{"type": "bracket", "id": b["id"], "name": b.get("name") or "Bracket"} for b in brackets]
+    # Iter83: partidos eliminatorios sueltos (creados a mano desde "Programar", sin
+    # grupo ni bracket) — si existen, se ofrecen como un ítem aparte "Fase Final" en
+    # vez de quedar escondidos dentro del calendario de un grupo cualquiera.
+    cat_teams = await db.teams.find({"category": category}, {"_id": 0, "id": 1}).to_list(2000)
+    cat_team_ids = [t["id"] for t in cat_teams]
+    if cat_team_ids:
+        knockout_match = await db.matches.find_one({
+            "tournament_id": tournament_id,
+            "stage": {"$in": KNOCKOUT_STAGES},
+            "bracket_id": {"$in": [None, ""]},
+            "group_name": {"$in": [None, ""]},
+            "$or": [{"home_team_id": {"$in": cat_team_ids}}, {"away_team_id": {"$in": cat_team_ids}}],
+        }, {"_id": 0, "id": 1})
+        if knockout_match:
+            out.append({"type": "knockout", "name": "Fase Final"})
     return out
 
 
@@ -3055,11 +3075,26 @@ def _enrich_match_teams(items, tmap):
 
 
 @api.get("/stats/matches")
-async def stats_matches(tournament_id: Optional[str] = None, category: Optional[str] = None, group_name: Optional[str] = None, bracket_id: Optional[str] = None):
+async def stats_matches(tournament_id: Optional[str] = None, category: Optional[str] = None, group_name: Optional[str] = None, bracket_id: Optional[str] = None, knockout: bool = False):
     """Partidos (resultados + pendientes) de un torneo × categoría, ya sea de un grupo
-    todos-contra-todos (+ grupo opcional) o de un bracket puntual, para estadísticas públicas."""
+    todos-contra-todos (+ grupo opcional), un bracket puntual, o la Fase Final suelta
+    (knockout=true), para estadísticas públicas."""
     if bracket_id:
         items = await db.matches.find({"bracket_id": bracket_id}, {"_id": 0}).sort([("bracket_round", 1), ("match_date", 1)]).to_list(500)
+    elif knockout:
+        if not tournament_id or not category:
+            return []
+        cat_teams = await db.teams.find({"category": category}, {"_id": 0, "id": 1}).to_list(2000)
+        team_ids = [t["id"] for t in cat_teams]
+        if not team_ids:
+            return []
+        items = await db.matches.find({
+            "tournament_id": tournament_id,
+            "stage": {"$in": KNOCKOUT_STAGES},
+            "bracket_id": {"$in": [None, ""]},
+            "group_name": {"$in": [None, ""]},
+            "$or": [{"home_team_id": {"$in": team_ids}}, {"away_team_id": {"$in": team_ids}}],
+        }, {"_id": 0}).sort("match_date", 1).to_list(2000)
     else:
         if not tournament_id or not category:
             return []
@@ -3084,6 +3119,14 @@ async def stats_matches(tournament_id: Optional[str] = None, category: Optional[
             "tournament_id": tournament_id,
             "$or": [{"home_team_id": {"$in": list(team_ids)}}, {"away_team_id": {"$in": list(team_ids)}}],
         }, {"_id": 0}).sort("match_date", 1).to_list(2000)
+        # Iter83: los partidos eliminatorios sueltos (sin grupo ni bracket) se muestran
+        # aparte en "Fase Final" — no deben aparecer también mezclados en el calendario
+        # de un grupo solo porque uno de sus equipos pertenece a ese grupo (siguen
+        # contando para la tabla de posiciones vía /stats/standings, que no usa esto).
+        items = [
+            m for m in items
+            if not (m.get("stage") in KNOCKOUT_STAGES and not m.get("bracket_id") and not (m.get("group_name") or "").strip())
+        ]
     all_team_ids = list({m["home_team_id"] for m in items if m.get("home_team_id")} | {m["away_team_id"] for m in items if m.get("away_team_id")})
     teams = await db.teams.find({"id": {"$in": all_team_ids}}, {"_id": 0}).to_list(1000)
     tmap = {t["id"]: t for t in teams}
