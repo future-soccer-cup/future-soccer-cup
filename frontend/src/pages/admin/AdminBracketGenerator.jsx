@@ -43,7 +43,15 @@ export default function AdminBracketGenerator() {
 
   const bracketsPaged = usePagedSearch(brackets, () => true, 10);
 
-  const filteredTeams = teams.filter((t) => t.category === form.category && !seeds.includes(t.id));
+  // Iter85 (fix): antes CategorySelect mostraba TODAS las categorías del catálogo global,
+  // sin filtrar por el Evento elegido. Igual que en "Programar", se restringe a las
+  // categorías declaradas en el torneo + las realmente usadas por sus equipos inscritos.
+  const selectedTournament = tournaments.find((t) => t.id === form.tournament_id);
+  const declaredCats = selectedTournament ? (selectedTournament.categories || []).map((c) => c.name).filter(Boolean) : [];
+  const teamCatsForTournament = form.tournament_id ? Array.from(new Set(teams.filter((t) => t.tournament_id === form.tournament_id).map((t) => t.category).filter(Boolean))) : [];
+  const allowedCats = Array.from(new Set([...declaredCats, ...teamCatsForTournament]));
+
+  const filteredTeams = teams.filter((t) => t.category === form.category && (!form.tournament_id || t.tournament_id === form.tournament_id) && !seeds.includes(t.id));
 
   const addSeed = (id) => {
     if (seeds.length >= form.size) { toast.error(`Solo ${form.size} equipos en este bracket`); return; }
@@ -219,12 +227,12 @@ export default function AdminBracketGenerator() {
           </label>
           <label className="block">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Evento (torneo)</span>
-            <select value={form.tournament_id} onChange={(e) => setForm({ ...form, tournament_id: e.target.value })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md bg-white" data-testid="bracket-tournament-select">
+            <select value={form.tournament_id} onChange={(e) => { setForm({ ...form, tournament_id: e.target.value, category: "" }); setSeeds([]); }} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md bg-white" data-testid="bracket-tournament-select">
               <option value="">Seleccionar evento...</option>
               {tournaments.map((t) => <option key={t.id} value={t.id}>{t.name} · {t.season}</option>)}
             </select>
           </label>
-          <CategorySelect value={form.category} onChange={(v) => { setForm({ ...form, category: v }); setSeeds([]); }} />
+          <CategorySelect value={form.category} onChange={(v) => { setForm({ ...form, category: v }); setSeeds([]); }} allowed={form.tournament_id ? allowedCats : null} />
           <label className="block">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Tamaño del bracket</span>
             <select value={form.size} onChange={(e) => { setForm({ ...form, size: Number(e.target.value) }); setSeeds([]); }} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md bg-white" data-testid="bracket-size-select">

@@ -2599,22 +2599,43 @@ async def create_bracket(payload: BracketIn, _: dict = Depends(require_admin)):
 
     venues = payload.venues or [""]
     slots = payload.time_slots or ["10:00"]
+    n_venues = max(1, len(venues))
 
     # Build matches per round. Round r (1-indexed) has size / 2^r matches.
     # match_ids[(round, position)] = id  — to wire next_match references
+    # Iter84 (fix): antes cancha y horario avanzaban con el mismo índice `pos`
+    # (venues[pos % nv], slots[pos % ns]), así que con N canchas = N horarios el
+    # patrón se repetía cada N partidos — dos partidos de la MISMA ronda (que caen
+    # el MISMO día) terminaban en la MISMA cancha a la MISMA hora. Ahora se reserva
+    # cada combinación cancha+horario una sola vez por día (todas las rondas que
+    # coincidan en fecha, ej. days_between_rounds=0), probando primero los horarios
+    # en el orden ingresado y sólo repitiendo una combinación si la capacidad del
+    # día (canchas × horarios) ya se agotó.
+    day_used: Dict[Any, set] = {}
     match_ids: dict = {}
     all_matches: List[dict] = []
     for r in range(1, total_rounds + 1):
         n_matches = payload.size // (2 ** r)
         round_date = start + timedelta(days=payload.days_between_rounds * (r - 1))
+        used_today = day_used.setdefault(round_date, set())
         for pos in range(n_matches):
             mid = str(uuid.uuid4())
             match_ids[(r, pos)] = mid
             home_team_id = slot_team[pos * 2] if r == 1 else None
             away_team_id = slot_team[pos * 2 + 1] if r == 1 else None
             stage = STAGE_BY_OFFSET.get(total_rounds - r, f"ronda_{r}")
-            time_slot = slots[pos % len(slots)]
-            venue = venues[pos % len(venues)]
+            chosen = None
+            for slot_candidate in slots:
+                for venue_candidate in venues:
+                    if (venue_candidate, slot_candidate) not in used_today:
+                        chosen = (venue_candidate, slot_candidate)
+                        break
+                if chosen:
+                    break
+            if not chosen:
+                chosen = (venues[pos % n_venues], slots[pos % len(slots)])
+            venue, time_slot = chosen
+            used_today.add(chosen)
             match_dt = datetime.combine(round_date, datetime.strptime(time_slot, "%H:%M").time(), tzinfo=timezone.utc)
             all_matches.append({
                 "id": mid,
@@ -2656,14 +2677,33 @@ async def create_bracket(payload: BracketIn, _: dict = Depends(require_admin)):
     if payload.include_third_place and total_rounds >= 2:
         third_place_id = str(uuid.uuid4())
         # third place plays the same day as final (or day before — keep same day)
-        final_match = next(m for m in all_matches if m["bracket_round"] == total_rounds)
+        final_match = next(m for m in all_matches if m["bracket_round"] == total_rounds and not m.get("is_third_place"))
+        final_round_date = start + timedelta(days=payload.days_between_rounds * (total_rounds - 1))
+        # Iter84 (fix): antes copiaba literalmente la cancha+hora de la final — dos
+        # partidos distintos el mismo día en el mismo lugar a la misma hora. Ahora
+        # se le asigna su propia combinación libre (misma fecha, distinta cancha u
+        # horario) usando la misma reserva de ocupación del día de la final.
+        used_final_day = day_used.setdefault(final_round_date, set())
+        tp_chosen = None
+        for slot_candidate in slots:
+            for venue_candidate in venues:
+                if (venue_candidate, slot_candidate) not in used_final_day:
+                    tp_chosen = (venue_candidate, slot_candidate)
+                    break
+            if tp_chosen:
+                break
+        if not tp_chosen:
+            tp_chosen = (final_match["venue"], slots[0])
+        tp_venue, tp_slot = tp_chosen
+        used_final_day.add(tp_chosen)
+        tp_match_dt = datetime.combine(final_round_date, datetime.strptime(tp_slot, "%H:%M").time(), tzinfo=timezone.utc)
         all_matches.append({
             "id": third_place_id,
             "tournament_id": payload.tournament_id or bid,
             "home_team_id": None,
             "away_team_id": None,
-            "match_date": final_match["match_date"],
-            "venue": final_match["venue"],
+            "match_date": tp_match_dt.isoformat(),
+            "venue": tp_venue,
             "group_name": "",
             "matchday": None,
             "stage": "tercer_puesto",
@@ -2697,6 +2737,44 @@ async def create_bracket(payload: BracketIn, _: dict = Depends(require_admin)):
         "status": "activo",
         "created_at": now,
     }
+
+    # Iter84: bloquear (incluso en vista previa) si el bracket choca en cancha+hora con
+    # un partido YA EXISTENTE del mismo evento (otro grupo, un intergrupos, uno
+    # programado a mano, etc.) — misma validación que /fixtures/generate.
+    real_tournament_id = payload.tournament_id or bid
+    existing_occupied = set()
+    existing_docs = await db.matches.find(
+        {"tournament_id": real_tournament_id, "status": {"$ne": "cancelado"}},
+        {"_id": 0, "venue": 1, "match_date": 1},
+    ).to_list(5000)
+    for e in existing_docs:
+        v = (e.get("venue") or "").strip().lower()
+        if not v:
+            continue
+        try:
+            existing_occupied.add((v, _naive_dt(_parse_iso_flexible(e["match_date"]))))
+        except Exception:
+            continue
+    conflicts = []
+    for m in all_matches:
+        v = (m.get("venue") or "").strip().lower()
+        if not v:
+            continue
+        try:
+            dt = _naive_dt(_parse_iso_flexible(m["match_date"]))
+        except Exception:
+            continue
+        if (v, dt) in existing_occupied:
+            conflicts.append(f"{m['venue']} el {dt.strftime('%d/%m/%Y %H:%M')}")
+    if conflicts:
+        sample = "; ".join(sorted(set(conflicts))[:5])
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"El bracket generado choca con partidos ya programados en la misma cancha y hora: {sample}. "
+                "Ajusta las canchas, los horarios o la fecha de inicio."
+            ),
+        )
 
     if payload.preview:
         return {**bracket_doc, "matches": [dict(m) for m in all_matches], "saved": False}
