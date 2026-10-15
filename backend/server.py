@@ -3071,6 +3071,13 @@ async def stats_matches(tournament_id: Optional[str] = None, category: Optional[
         for fx in fixtures_docs:
             for tid in (fx.get("team_ids") or []):
                 team_ids.add(tid)
+        if not team_ids and not group_name:
+            # Iter81: categoría sin fixture de grupos (ej. una categoría chica armada solo
+            # con partidos de octavos/cuartos/semis/final creados a mano desde "Programar",
+            # sin seleccionar grupo). Sin esto, esos partidos quedaban invisibles en
+            # Estadísticas porque no había ningún fixture del que sacar los team_ids.
+            cat_teams = await db.teams.find({"category": category}, {"_id": 0, "id": 1}).to_list(2000)
+            team_ids = {t["id"] for t in cat_teams}
         if not team_ids:
             return []
         items = await db.matches.find({
