@@ -11,7 +11,7 @@ const TYPES = [
   { id: "tour", label: "Tours", icon: Map },
 ];
 
-const CLASSIFICATIONS = ["ESMERALD", "SAPPHIRE", "DIAMOND", "GOLD", "SILVER", "BRONZE"];
+const CLASSIFICATIONS = ["ESMERALD", "SAPPHIRE", "DIAMOND", "GOLD", "SILVER", "BRONZE", "DOMICILIO"];
 const ACCOMMODATION_TYPES = ["Múltiple", "Triple", "Doble"];
 const MEAL_TYPES = ["DESAYUNO", "ALMUERZO", "CENA"];
 
