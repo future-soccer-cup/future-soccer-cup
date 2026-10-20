@@ -6087,6 +6087,23 @@ def _parse_uploaded(file: UploadFile, raw: bytes) -> List[dict]:
     else:
         raise HTTPException(status_code=400, detail="Formato no soportado. Usa .xlsx")
 
+async def _require_team_with_approved_club(team_id: str) -> dict:
+    """Resuelve el equipo y exige que su club esté aprobado antes de permitir cargar
+    jugadores o cuerpo técnico — primero se sube/aprueba el club, luego se diligencia
+    el roster del equipo."""
+    team = await db.teams.find_one({"id": team_id}, {"_id": 0})
+    if not team:
+        raise HTTPException(status_code=404, detail="Equipo no encontrado")
+    club_id = team.get("club_id")
+    if club_id:
+        club = await db.clubs.find_one({"id": club_id}, {"_id": 0, "status": 1, "name": 1})
+        if club and (club.get("status") or "pendiente") != "aprobado":
+            raise HTTPException(
+                status_code=400,
+                detail=f"El club '{club.get('name', '')}' está en estado '{club.get('status', 'pendiente')}'. Apruébalo en /admin/clubes antes de cargar jugadores o cuerpo técnico para sus equipos.",
+            )
+    return team
+
 @api.get("/import/template/{kind}")
 async def download_template(kind: str, team_id: Optional[str] = None, _: dict = Depends(require_admin)):
     # Categorías activas del catálogo (para dropdown). Si está vacío, fallback a CATEGORIES.
@@ -6126,30 +6143,25 @@ async def download_template(kind: str, team_id: Optional[str] = None, _: dict = 
         }
         content = _build_styled_template("Equipos", TEAM_HEADERS_ES, TEAM_SAMPLE_ES, brand_color="1D4ED8", instructions=base_instr, validations=vals)
     elif kind == "players":
+        if not team_id:
+            raise HTTPException(status_code=400, detail="Debes seleccionar un equipo para descargar la plantilla de Jugadores")
+        team = await _require_team_with_approved_club(team_id)
         headers = [h[0] for h in PLAYER_HEADERS_ES]
         vals = {
             headers.index("position") + 1: POSITIONS_LIST,
             headers.index("gender") + 1: ["M", "F"],
         }
-        prefill_rows, prefill_values, skip_sample = 0, None, False
-        if team_id:
-            team = await db.teams.find_one({"id": team_id}, {"_id": 0, "name": 1})
-            if not team:
-                raise HTTPException(status_code=404, detail="Equipo no encontrado")
-            prefill_rows = 25
-            prefill_values = {headers.index("team_name") + 1: team["name"]}
-            skip_sample = True
-            base_instr = [
-                f"• Plantilla pre-diligenciada para el equipo '{team['name']}' — la columna 'Equipo' ya viene llena en {prefill_rows} filas, solo completa los datos de cada jugador.",
-                "• Las filas que dejes sin diligenciar (solo con 'Equipo') se ignoran automáticamente al cargar, no generan error.",
-            ] + [l for l in base_instr if "fila 2 es un ejemplo" not in l]
-        content = _build_styled_template("Jugadores", PLAYER_HEADERS_ES, PLAYER_SAMPLE_ES, brand_color="DC2626", instructions=base_instr, validations=vals, prefill_rows=prefill_rows, prefill_values=prefill_values, skip_sample=skip_sample)
+        prefill_rows = 25
+        prefill_values = {headers.index("team_name") + 1: team["name"]}
+        base_instr = [
+            f"• Plantilla pre-diligenciada para el equipo '{team['name']}' — la columna 'Equipo' ya viene llena en {prefill_rows} filas, solo completa los datos de cada jugador.",
+            "• Las filas que dejes sin diligenciar (solo con 'Equipo') se ignoran automáticamente al cargar, no generan error.",
+        ] + [l for l in base_instr if "fila 2 es un ejemplo" not in l]
+        content = _build_styled_template("Jugadores", PLAYER_HEADERS_ES, PLAYER_SAMPLE_ES, brand_color="DC2626", instructions=base_instr, validations=vals, prefill_rows=prefill_rows, prefill_values=prefill_values, skip_sample=True)
     elif kind == "staff":
         if not team_id:
             raise HTTPException(status_code=400, detail="Debes seleccionar un equipo para descargar la plantilla de Cuerpo Técnico")
-        team = await db.teams.find_one({"id": team_id}, {"_id": 0, "name": 1})
-        if not team:
-            raise HTTPException(status_code=404, detail="Equipo no encontrado")
+        team = await _require_team_with_approved_club(team_id)
         headers = [h[0] for h in STAFF_HEADERS_ES]
         vals = {headers.index("role") + 1: STAFF_ROLES}
         staff_instr = [
@@ -6310,8 +6322,10 @@ async def import_players(file: UploadFile = File(...), preview: bool = False, _:
     ]
     rows = [r for r in rows if any((r.get(k) or "").strip() for k in _player_data_keys)]
 
-    teams = await db.teams.find({}, {"_id": 0, "id": 1, "name": 1}).to_list(2000)
+    teams = await db.teams.find({}, {"_id": 0, "id": 1, "name": 1, "club_id": 1}).to_list(2000)
     name_to_id = {t["name"].lower(): t["id"] for t in teams}
+    team_club_id = {t["id"]: t.get("club_id") for t in teams}
+    clubs_status = {c["id"]: (c.get("status") or "pendiente", c.get("name", "")) for c in await db.clubs.find({}, {"_id": 0, "id": 1, "status": 1, "name": 1}).to_list(2000)}
 
     # Jugadores ya existentes (para no duplicar si el archivo se sube más de una vez):
     # mismo nombre en el mismo equipo se considera el mismo jugador.
@@ -6326,6 +6340,12 @@ async def import_players(file: UploadFile = File(...), preview: bool = False, _:
         if not team_id:
             errors.append({"row": idx, "error": f"Equipo no encontrado: '{r.get('team_name')}'"})
             continue
+        club_id = team_club_id.get(team_id)
+        if club_id and club_id in clubs_status:
+            club_status, club_name = clubs_status[club_id]
+            if club_status != "aprobado":
+                errors.append({"row": idx, "error": f"El club '{club_name}' está en estado '{club_status}'. Apruébalo en /admin/clubes antes de cargar jugadores."})
+                continue
         name = r.get("name") or r.get("nombre") or ""
         if not name:
             errors.append({"row": idx, "error": "Falta el nombre del jugador"})
@@ -6372,9 +6392,7 @@ async def import_players(file: UploadFile = File(...), preview: bool = False, _:
 @api.post("/import/staff")
 async def import_staff(team_id: str, file: UploadFile = File(...), preview: bool = False, _: dict = Depends(require_admin)):
     """Carga masiva de Cuerpo Técnico para UN equipo (se agrega al array cuerpo_tecnico existente)."""
-    team = await db.teams.find_one({"id": team_id}, {"_id": 0, "name": 1, "cuerpo_tecnico": 1})
-    if not team:
-        raise HTTPException(status_code=404, detail="Equipo no encontrado")
+    team = await _require_team_with_approved_club(team_id)
     raw = await file.read()
     if len(raw) > 5 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="Archivo > 5MB")

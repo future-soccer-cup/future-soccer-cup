@@ -5,8 +5,8 @@ import { Download, Upload, FileSpreadsheet, CheckCircle2, AlertTriangle } from "
 
 const TABS = [
   { key: "teams", label: "Equipos", endpoint: "teams", description: "Carga masiva de equipos vinculados a clubes. Incluye Club, Evento (nombre exacto del torneo activo), Categoría, DT, Presidente, Delegado y Color. La plantilla trae listas desplegables con las categorías y torneos vigentes. Si el club no existe se crea en estado 'pendiente'." },
-  { key: "players", label: "Jugadores", endpoint: "players", description: "Carga masiva de jugadores. Cada fila se vincula por 'Equipo' (nombre exacto). Incluye Dorsal, Posición (dropdown), Fecha de nacimiento, Documento, Número COMET, Apodo, Género (M/F), EPS y datos del acudiente (nombre, documento, parentesco, teléfono). Elige un Club y Equipo abajo para descargar la plantilla con esa columna ya diligenciada." },
-  { key: "staff", label: "Cuerpo técnico", endpoint: "staff", description: "Carga masiva del cuerpo técnico (DT, asistentes, fisioterapeuta, etc.) de UN equipo. Se agrega al cuerpo técnico existente del equipo, no lo reemplaza. Debes elegir Club y Equipo abajo antes de descargar la plantilla." },
+  { key: "players", label: "Jugadores", endpoint: "players", description: "Carga masiva de jugadores de UN equipo (de un club ya aprobado). Incluye Dorsal, Posición (dropdown), Fecha de nacimiento, Documento, Número COMET, Apodo, Género (M/F), EPS y datos del acudiente (nombre, documento, parentesco, teléfono). Debes elegir Club y Equipo abajo antes de descargar la plantilla." },
+  { key: "staff", label: "Cuerpo técnico", endpoint: "staff", description: "Carga masiva del cuerpo técnico (DT, asistentes, fisioterapeuta, etc.) de UN equipo (de un club ya aprobado). Se agrega al cuerpo técnico existente del equipo, no lo reemplaza. Debes elegir Club y Equipo abajo antes de descargar la plantilla." },
 ];
 
 export default function AdminBulkUpload() {
@@ -18,10 +18,10 @@ export default function AdminBulkUpload() {
   const t = TABS.find((x) => x.key === tab);
 
   // Selector Club + Equipo (pestañas Jugadores y Cuerpo técnico) para descargar la
-  // plantilla pre-diligenciada. En Cuerpo técnico el equipo es obligatorio (la plantilla
-  // se agrega al cuerpo_tecnico de ESE equipo, no hay columna "Equipo" por fila).
+  // plantilla pre-diligenciada. El equipo es obligatorio en ambas: primero se aprueba
+  // el club, y solo entonces se pueden cargar jugadores o cuerpo técnico para sus equipos.
   const isTeamScoped = tab === "players" || tab === "staff";
-  const teamRequired = tab === "staff";
+  const teamRequired = isTeamScoped;
   const [clubs, setClubs] = useState([]);
   const [teams, setTeams] = useState([]);
   const [pickClub, setPickClub] = useState("");
@@ -31,9 +31,12 @@ export default function AdminBulkUpload() {
     api.get("/clubs").then((r) => setClubs(r.data || [])).catch(() => {});
     api.get("/teams").then((r) => setTeams(r.data || [])).catch(() => {});
   }, [isTeamScoped]);
+  // Solo clubes ya aprobados: un equipo de un club pendiente no se puede diligenciar todavía.
+  const approvedClubs = useMemo(() => clubs.filter((c) => (c.status || "pendiente") === "aprobado"), [clubs]);
+  const approvedClubIds = useMemo(() => new Set(approvedClubs.map((c) => c.id)), [approvedClubs]);
   const teamsForClub = useMemo(
-    () => teams.filter((tm) => !pickClub || tm.club_id === pickClub),
-    [teams, pickClub]
+    () => teams.filter((tm) => approvedClubIds.has(tm.club_id) && (!pickClub || tm.club_id === pickClub)),
+    [teams, pickClub, approvedClubIds]
   );
 
   const downloadTemplate = async () => {
@@ -106,22 +109,23 @@ export default function AdminBulkUpload() {
           {isTeamScoped && (
             <div className="grid sm:grid-cols-2 gap-2 border border-slate-200 rounded-md p-3 bg-slate-50" data-testid="bulk-team-picker">
               <label className="block">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Club{teamRequired ? "" : " (opcional)"}</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Club *</span>
                 <select value={pickClub} onChange={(e) => { setPickClub(e.target.value); setPickTeam(""); }} className="mt-1 w-full px-2 py-1.5 border border-slate-200 rounded text-sm" data-testid="bulk-pick-club">
-                  <option value="">Todos los clubes</option>
-                  {clubs.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  <option value="">Todos los clubes aprobados</option>
+                  {approvedClubs.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </label>
               <label className="block">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Equipo{teamRequired ? " *" : " (opcional)"}</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Equipo *</span>
                 <select value={pickTeam} onChange={(e) => setPickTeam(e.target.value)} className="mt-1 w-full px-2 py-1.5 border border-slate-200 rounded text-sm" data-testid="bulk-pick-team">
-                  <option value="">{teamRequired ? "Selecciona un equipo..." : "Sin preseleccionar (escribir Equipo a mano)"}</option>
+                  <option value="">Selecciona un equipo...</option>
                   {teamsForClub.map((tm) => <option key={tm.id} value={tm.id}>{tm.name} · {tm.category}</option>)}
                 </select>
               </label>
               {pickTeam && tab === "players" && <p className="sm:col-span-2 text-[11px] text-emerald-700">La plantilla traerá la columna "Equipo" ya diligenciada con "{teams.find((tm) => tm.id === pickTeam)?.name}" en 25 filas.</p>}
               {pickTeam && tab === "staff" && <p className="sm:col-span-2 text-[11px] text-emerald-700">Se agregará al cuerpo técnico de "{teams.find((tm) => tm.id === pickTeam)?.name}".</p>}
-              {teamRequired && !pickTeam && <p className="sm:col-span-2 text-[11px] text-amber-600">Debes elegir un equipo antes de descargar la plantilla o subir el archivo.</p>}
+              {!pickTeam && <p className="sm:col-span-2 text-[11px] text-amber-600">Debes elegir un equipo (de un club ya aprobado) antes de descargar la plantilla o subir el archivo.</p>}
+              {approvedClubs.length === 0 && <p className="sm:col-span-2 text-[11px] text-red-600">No hay clubes aprobados todavía. Apruébalos en /admin/clubes.</p>}
             </div>
           )}
 
