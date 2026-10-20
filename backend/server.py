@@ -5817,9 +5817,8 @@ PLAYER_TEMPLATE_HEADERS = ["team_name", "name", "jersey_number", "position", "bi
 TEAM_HEADERS_ES = [
     ("club_name",       "Club"),
     ("name",            "Nombre del equipo"),
-    ("event_type",      "Evento"),
+    ("event_type",      "Evento (nombre exacto del torneo)"),
     ("category",        "Categoría"),
-    ("birth_year",      "Año de nacimiento"),
     ("designation",     "Designación (Único/A/B)"),
     ("group_name",      "Grupo (Grupo A, Grupo B…)"),
     ("coach",           "Director técnico"),
@@ -5829,7 +5828,7 @@ TEAM_HEADERS_ES = [
     ("delegate_phone",  "Teléfono delegado"),
     ("color",           "Color (HEX)"),
 ]
-TEAM_SAMPLE_ES = ["Leones FC", "Leones FC 2014 Único", "festival", "2014", 2014, "Único", "Grupo A", "Pedro Coach", "Bogotá", "Colombia", "María Pdta.", "+57 310 123 4567", "#1d4ed8"]
+TEAM_SAMPLE_ES = ["Leones FC", "Leones FC 2014 Único", "Premier Par - Diciembre 2025", "2014", "Único", "Grupo A", "Pedro Coach", "Bogotá", "Colombia", "María Pdta.", "+57 310 123 4567", "#1d4ed8"]
 
 PLAYER_HEADERS_ES = [
     ("team_name",         "Equipo"),
@@ -5926,7 +5925,7 @@ def _norm_key(h: str) -> str:
     return HEADER_ALIASES.get(k, k)
 
 
-def _build_styled_template(sheet_name: str, headers_es: list, sample: list, *, brand_color: str = "1D4ED8", instructions: list = None, validations: dict = None) -> bytes:
+def _build_styled_template(sheet_name: str, headers_es: list, sample: list, *, brand_color: str = "1D4ED8", instructions: list = None, validations: dict = None, prefill_rows: int = 0, prefill_values: dict = None) -> bytes:
     """Build a styled XLSX template with Spanish headers, bold colored header row, borders, and column widths.
     Optional instructions go into a separate 'Instrucciones' sheet so they aren't parsed as data.
 
@@ -5934,6 +5933,10 @@ def _build_styled_template(sheet_name: str, headers_es: list, sample: list, *, b
       validations: dict {col_index_1based: [allowed_values]} — se añaden Data Validation dropdowns
                    sobre las filas 2..1000 de la columna indicada. Las listas de allowed_values
                    también se copian a la hoja 'Listas' para que el usuario pueda verlas.
+      prefill_rows / prefill_values: si se dan, se agregan `prefill_rows` filas extra (después de la
+                   fila 2 de ejemplo) con las columnas de `prefill_values` (dict col_index_1based → valor)
+                   ya diligenciadas y el resto en blanco — útil para pre-cargar "Equipo" al exportar la
+                   plantilla de Jugadores de un equipo específico.
     """
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
     from openpyxl.worksheet.datavalidation import DataValidation
@@ -5970,6 +5973,17 @@ def _build_styled_template(sheet_name: str, headers_es: list, sample: list, *, b
 
     ws.row_dimensions[1].height = 30
     ws.freeze_panes = "A2"
+
+    if prefill_rows and prefill_values:
+        for _ in range(prefill_rows):
+            row_vals = ["" for _ in spanish]
+            for col_idx, val in prefill_values.items():
+                row_vals[col_idx - 1] = val
+            ws.append(row_vals)
+            for col_idx in range(1, len(spanish) + 1):
+                c = ws.cell(row=ws.max_row, column=col_idx)
+                c.border = border
+                c.alignment = left
 
     # Data validation dropdowns (listas desplegables).
     # openpyxl formula1 length limit is ~255 chars → si la lista es larga, la publicamos en la hoja 'Listas'
@@ -6042,14 +6056,17 @@ def _parse_uploaded(file: UploadFile, raw: bytes) -> List[dict]:
         raise HTTPException(status_code=400, detail="Formato no soportado. Usa .xlsx")
 
 @api.get("/import/template/{kind}")
-async def download_template(kind: str, _: dict = Depends(require_admin)):
+async def download_template(kind: str, team_id: Optional[str] = None, _: dict = Depends(require_admin)):
     # Categorías activas del catálogo (para dropdown). Si está vacío, fallback a CATEGORIES.
     cat_rows = await db.categories.find({}, {"_id": 0, "name": 1}).sort([("sort_order", 1), ("name", 1)]).to_list(200)
     cat_names = [r["name"] for r in cat_rows if r.get("name")] or list(CATEGORIES)
 
-    # Event types del catálogo (para dropdown de 'event_type'). Se envían las claves (festival, premier_par…)
-    ev_rows = await db.event_types.find({}, {"_id": 0, "id": 1, "name": 1}).sort([("sort_order", 1)]).to_list(50)
-    ev_keys = [r["id"] for r in ev_rows if r.get("id")] or list(EVENT_TYPES.keys())
+    # Torneos reales activos (no archivados) — el dropdown de 'Evento' debe reflejar
+    # los torneos que de verdad existen hoy (los mismos que se ven en Cotizar/Bracket/
+    # Estadísticas), no el catálogo viejo e independiente 'event_types'.
+    tournaments_active = await db.tournaments.find({"archived": {"$ne": True}}, {"_id": 0, "name": 1, "categories": 1}).to_list(200)
+    tournament_names = [t["name"] for t in tournaments_active if t.get("name")]
+    tournament_cat_names = sorted({c.get("name", "") for t in tournaments_active for c in (t.get("categories") or []) if c.get("name")}) or cat_names
 
     base_instr = [
         "• Conserva el orden de las columnas. Puedes traducir los encabezados, pero no los borres.",
@@ -6058,7 +6075,8 @@ async def download_template(kind: str, _: dict = Depends(require_admin)):
         f"• Categorías válidas ({len(cat_names)}): {', '.join(cat_names)}. Se administran en /admin/categorias.",
         "• Para Equipos:",
         "   - 'Club' debe coincidir con un club existente (si no existe, se crea automáticamente en estado 'pendiente').",
-        f"   - 'Evento' debe ser una de las claves: {', '.join(ev_keys)}. Se administran en /admin/tipos-de-evento.",
+        f"   - 'Evento' debe ser el nombre EXACTO de un torneo activo: {', '.join(tournament_names) or '(no hay torneos activos — créalos en /admin/torneos)'}.",
+        "   - La 'Categoría' debe ser una de las declaradas en ese torneo (se administran en /admin/torneos).",
         "   - 'Designación' es opcional: Único, A, B (usada para diferenciar equipos del mismo club/año).",
         "   - 'Grupo' es opcional: se llena si el fixture ya está definido.",
         "• Para Jugadores: 'Equipo' debe coincidir con el nombre exacto del equipo ya creado.",
@@ -6071,8 +6089,8 @@ async def download_template(kind: str, _: dict = Depends(require_admin)):
         # Índices 1-based de las columnas donde queremos dropdown
         headers = [h[0] for h in TEAM_HEADERS_ES]
         vals = {
-            headers.index("event_type") + 1: ev_keys,
-            headers.index("category") + 1: cat_names,
+            headers.index("event_type") + 1: tournament_names,
+            headers.index("category") + 1: tournament_cat_names,
             headers.index("designation") + 1: ["Único", "A", "B", "C"],
         }
         content = _build_styled_template("Equipos", TEAM_HEADERS_ES, TEAM_SAMPLE_ES, brand_color="1D4ED8", instructions=base_instr, validations=vals)
@@ -6082,7 +6100,15 @@ async def download_template(kind: str, _: dict = Depends(require_admin)):
             headers.index("position") + 1: POSITIONS_LIST,
             headers.index("gender") + 1: ["M", "F"],
         }
-        content = _build_styled_template("Jugadores", PLAYER_HEADERS_ES, PLAYER_SAMPLE_ES, brand_color="DC2626", instructions=base_instr, validations=vals)
+        prefill_rows, prefill_values = 0, None
+        if team_id:
+            team = await db.teams.find_one({"id": team_id}, {"_id": 0, "name": 1})
+            if not team:
+                raise HTTPException(status_code=404, detail="Equipo no encontrado")
+            prefill_rows = 25
+            prefill_values = {headers.index("team_name") + 1: team["name"]}
+            base_instr = [f"• Plantilla pre-diligenciada para el equipo '{team['name']}' — la columna 'Equipo' ya viene llena en {prefill_rows} filas, solo completa los datos de cada jugador."] + base_instr
+        content = _build_styled_template("Jugadores", PLAYER_HEADERS_ES, PLAYER_SAMPLE_ES, brand_color="DC2626", instructions=base_instr, validations=vals, prefill_rows=prefill_rows, prefill_values=prefill_values)
     else:
         raise HTTPException(status_code=400, detail="Tipo inválido (teams|players)")
     return FastAPIResponse(
@@ -6098,10 +6124,12 @@ async def import_teams(file: UploadFile = File(...), preview: bool = False, _: d
         raise HTTPException(status_code=400, detail="Archivo > 5MB")
     rows = _parse_uploaded(file, raw)
 
-    # Categorías vigentes (BD + fallback)
+    # Categorías vigentes (BD + fallback, usado solo si el torneo no declara categorías propias)
     cat_rows = await db.categories.find({}, {"_id": 0, "name": 1}).to_list(300)
     valid_cats = set(r["name"] for r in cat_rows if r.get("name")) or set(CATEGORIES)
-    valid_events = set(EVENT_TYPES.keys())
+    # Torneos reales activos — 'Evento' debe coincidir con el nombre EXACTO de uno de estos.
+    tournaments_active = await db.tournaments.find({"archived": {"$ne": True}}, {"_id": 0}).to_list(200)
+    tournament_map = {t["name"].strip().lower(): t for t in tournaments_active if t.get("name")}
     # Mapa club_name (lowercase) → club_id (existente)
     clubs_existing = await db.clubs.find({}, {"_id": 0, "id": 1, "name": 1}).to_list(2000)
     club_map = {c["name"].strip().lower(): c["id"] for c in clubs_existing}
@@ -6116,17 +6144,24 @@ async def import_teams(file: UploadFile = File(...), preview: bool = False, _: d
     for idx, r in enumerate(rows, start=2):
         name = r.get("name") or ""
         category = r.get("category") or ""
-        event_type = (r.get("event_type") or "").strip().lower()
+        event_input = (r.get("event_type") or "").strip()
         club_name = (r.get("club_name") or "").strip()
 
         if not name:
             errors.append({"row": idx, "error": "Falta el nombre del equipo"})
             continue
-        if category not in valid_cats:
-            errors.append({"row": idx, "error": f"Categoría '{category}' inválida. Válidas: {', '.join(sorted(valid_cats))}"})
+
+        tournament = tournament_map.get(event_input.lower()) if event_input else None
+        if event_input and not tournament:
+            valid_names = sorted(t["name"] for t in tournament_map.values())
+            errors.append({"row": idx, "error": f"Evento '{event_input}' no coincide con ningún torneo activo. Válidos: {', '.join(valid_names) or '(ninguno — créalos en /admin/torneos)'}"})
             continue
-        if event_type and event_type not in valid_events:
-            errors.append({"row": idx, "error": f"Evento '{event_type}' inválido. Válidos: {', '.join(sorted(valid_events))}"})
+
+        tournament_cats = {c.get("name", "") for c in (tournament.get("categories") or [])} if tournament else set()
+        allowed_cats = tournament_cats or valid_cats
+        if category not in allowed_cats:
+            event_suffix = f" para el evento '{tournament['name']}'" if tournament else ""
+            errors.append({"row": idx, "error": f"Categoría '{category}' inválida{event_suffix}. Válidas: {', '.join(sorted(allowed_cats))}"})
             continue
 
         # Resolver o crear club por nombre (opcional)
@@ -6161,11 +6196,10 @@ async def import_teams(file: UploadFile = File(...), preview: bool = False, _: d
             continue
         seen_team_keys.add(team_key)
 
-        try:
-            by_val = r.get("birth_year", "")
-            birth_year = int(by_val) if str(by_val).strip().isdigit() else None
-        except Exception:
-            birth_year = None
+        # Tarifa de inscripción: se toma de la categoría del torneo (igual que en el
+        # flujo de auto-registro de equipos), no se pide en la plantilla.
+        cat_match = next((c for c in (tournament.get("categories") or []) if c.get("name") == category), None) if tournament else None
+        fee = float((cat_match or {}).get("fee", 0) or 0)
 
         doc = {
             "id": str(uuid.uuid4()),
@@ -6173,9 +6207,10 @@ async def import_teams(file: UploadFile = File(...), preview: bool = False, _: d
             "club_id": club_id,
             "club_name": club_name or None,
             "category": category,
-            "event_type": event_type,
+            "tournament_id": tournament.get("id") if tournament else None,
+            "tournament_name": tournament.get("name") if tournament else None,
+            "event_type": (tournament.get("event_type") if tournament else "") or "festival",
             "designation": (r.get("designation") or "Único").strip() or "Único",
-            "birth_year": birth_year,
             "group_name": r.get("group_name", ""),
             "coach": r.get("coach", ""),
             "city": r.get("city", ""),
@@ -6186,6 +6221,8 @@ async def import_teams(file: UploadFile = File(...), preview: bool = False, _: d
             "logo_url": "",
             "cuerpo_tecnico": [],
             "status": "aprobado",
+            "registration_fee": fee,
+            "registration_payment_status": "pending",
             "created_at": datetime.now(timezone.utc).isoformat(),
         }
         created.append(doc)

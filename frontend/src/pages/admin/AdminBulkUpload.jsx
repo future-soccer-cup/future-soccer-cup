@@ -1,11 +1,11 @@
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import api, { API_BASE, formatApiError } from "../../lib/api";
 import { toast, Toaster } from "sonner";
 import { Download, Upload, FileSpreadsheet, CheckCircle2, AlertTriangle } from "lucide-react";
 
 const TABS = [
-  { key: "teams", label: "Equipos", endpoint: "teams", description: "Carga masiva de equipos vinculados a clubes. Incluye Club, Evento (Festival/Premier), Categoría, Año de nacimiento, Designación (Único/A/B), Grupo, DT, Presidente y Delegado. La plantilla trae listas desplegables con las categorías y eventos vigentes. Si el club no existe se crea en estado 'pendiente'." },
-  { key: "players", label: "Jugadores", endpoint: "players", description: "Carga masiva de jugadores. Cada fila se vincula por 'Equipo' (nombre exacto). Incluye Dorsal, Posición (dropdown), Fecha de nacimiento, Documento, Número COMET, Apodo, Género (M/F), EPS y datos del acudiente (nombre, documento, parentesco, teléfono)." },
+  { key: "teams", label: "Equipos", endpoint: "teams", description: "Carga masiva de equipos vinculados a clubes. Incluye Club, Evento (nombre exacto del torneo activo), Categoría, Designación (Único/A/B), Grupo, DT, Presidente y Delegado. La plantilla trae listas desplegables con las categorías y torneos vigentes. Si el club no existe se crea en estado 'pendiente'." },
+  { key: "players", label: "Jugadores", endpoint: "players", description: "Carga masiva de jugadores. Cada fila se vincula por 'Equipo' (nombre exacto). Incluye Dorsal, Posición (dropdown), Fecha de nacimiento, Documento, Número COMET, Apodo, Género (M/F), EPS y datos del acudiente (nombre, documento, parentesco, teléfono). Elige un Club y Equipo abajo para descargar la plantilla con esa columna ya diligenciada." },
 ];
 
 export default function AdminBulkUpload() {
@@ -16,9 +16,25 @@ export default function AdminBulkUpload() {
   const inputRef = useRef(null);
   const t = TABS.find((x) => x.key === tab);
 
+  // Selector Club + Equipo (solo pestaña Jugadores) para descargar la plantilla pre-diligenciada.
+  const [clubs, setClubs] = useState([]);
+  const [teams, setTeams] = useState([]);
+  const [pickClub, setPickClub] = useState("");
+  const [pickTeam, setPickTeam] = useState("");
+  useEffect(() => {
+    if (tab !== "players") return;
+    api.get("/clubs").then((r) => setClubs(r.data || [])).catch(() => {});
+    api.get("/teams").then((r) => setTeams(r.data || [])).catch(() => {});
+  }, [tab]);
+  const teamsForClub = useMemo(
+    () => teams.filter((tm) => !pickClub || tm.club_id === pickClub),
+    [teams, pickClub]
+  );
+
   const downloadTemplate = async () => {
     try {
-      const res = await api.get(`/import/template/${t.endpoint}`, { responseType: "blob" });
+      const params = tab === "players" && pickTeam ? { team_id: pickTeam } : {};
+      const res = await api.get(`/import/template/${t.endpoint}`, { params, responseType: "blob" });
       const url = URL.createObjectURL(res.data);
       const a = document.createElement("a");
       a.href = url;
@@ -77,6 +93,27 @@ export default function AdminBulkUpload() {
             </h3>
             <p className="text-sm text-slate-500 mt-1">{t.description}</p>
           </div>
+
+          {tab === "players" && (
+            <div className="grid sm:grid-cols-2 gap-2 border border-slate-200 rounded-md p-3 bg-slate-50" data-testid="bulk-players-team-picker">
+              <label className="block">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Club (opcional)</span>
+                <select value={pickClub} onChange={(e) => { setPickClub(e.target.value); setPickTeam(""); }} className="mt-1 w-full px-2 py-1.5 border border-slate-200 rounded text-sm" data-testid="bulk-players-pick-club">
+                  <option value="">Todos los clubes</option>
+                  {clubs.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </label>
+              <label className="block">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Equipo (opcional)</span>
+                <select value={pickTeam} onChange={(e) => setPickTeam(e.target.value)} className="mt-1 w-full px-2 py-1.5 border border-slate-200 rounded text-sm" data-testid="bulk-players-pick-team">
+                  <option value="">Sin preseleccionar (escribir Equipo a mano)</option>
+                  {teamsForClub.map((tm) => <option key={tm.id} value={tm.id}>{tm.name} · {tm.category}</option>)}
+                </select>
+              </label>
+              {pickTeam && <p className="sm:col-span-2 text-[11px] text-emerald-700">La plantilla traerá la columna "Equipo" ya diligenciada con "{teams.find((tm) => tm.id === pickTeam)?.name}" en 25 filas.</p>}
+            </div>
+          )}
+
           <button onClick={downloadTemplate} className="fsc-btn-primary px-4 py-2 rounded-md text-sm flex items-center gap-2" data-testid="download-template-btn">
             <Download size={16}/> Descargar plantilla XLSX
           </button>
