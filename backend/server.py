@@ -5889,6 +5889,7 @@ HEADER_ALIASES = {
     "equipo": "team_name", "team_name": "team_name",
     "club": "club_name", "club_name": "club_name", "nombre del club": "club_name",
     "evento": "event_type", "event_type": "event_type", "tipo de evento": "event_type",
+    "evento (nombre exacto del torneo)": "event_type",
     "designacion": "designation", "designación": "designation", "designation": "designation", "designacion (unico/a/b)": "designation", "designación (único/a/b)": "designation",
     "categoria": "category", "categoría": "category", "category": "category",
     "ano de nacimiento": "birth_year", "año de nacimiento": "birth_year", "birth_year": "birth_year",
