@@ -5819,16 +5819,42 @@ TEAM_HEADERS_ES = [
     ("name",            "Nombre del equipo"),
     ("event_type",      "Evento (nombre exacto del torneo)"),
     ("category",        "Categoría"),
-    ("designation",     "Designación (Único/A/B)"),
-    ("group_name",      "Grupo (Grupo A, Grupo B…)"),
     ("coach",           "Director técnico"),
     ("city",            "Ciudad"),
     ("country",         "País"),
     ("president",       "Presidente"),
     ("delegate_phone",  "Teléfono delegado"),
-    ("color",           "Color (HEX)"),
+    ("color",           "Color del equipo"),
 ]
-TEAM_SAMPLE_ES = ["Leones FC", "Leones FC 2014 Único", "Premier Par - Diciembre 2025", "2014", "Único", "Grupo A", "Pedro Coach", "Bogotá", "Colombia", "María Pdta.", "+57 310 123 4567", "#1d4ed8"]
+TEAM_SAMPLE_ES = ["Leones FC", "Leones FC 2014", "Premier Par - Diciembre 2025", "2014", "Pedro Coach", "Bogotá", "Colombia", "María Pdta.", "+57 310 123 4567", "Azul"]
+
+# Paleta de colores con nombre para el dropdown de la plantilla de Equipos — más fácil
+# de diligenciar para un usuario no técnico que escribir un código HEX de memoria.
+TEAM_COLOR_PALETTE = {
+    "Azul": "#1d4ed8",
+    "Rojo": "#dc2626",
+    "Verde": "#16a34a",
+    "Amarillo": "#eab308",
+    "Naranja": "#ea580c",
+    "Morado": "#9333ea",
+    "Celeste": "#0ea5e9",
+    "Negro": "#111827",
+    "Gris": "#6b7280",
+    "Rosa": "#db2777",
+    "Vinotinto": "#7f1d1d",
+    "Dorado": "#ca8a04",
+}
+
+def _resolve_team_color(raw: str) -> str:
+    s = (raw or "").strip()
+    if not s:
+        return "#1d4ed8"
+    for name, hexv in TEAM_COLOR_PALETTE.items():
+        if name.lower() == s.lower():
+            return hexv
+    if re.match(r"^#?[0-9a-fA-F]{6}$", s):
+        return s if s.startswith("#") else f"#{s}"
+    return "#1d4ed8"
 
 PLAYER_HEADERS_ES = [
     ("team_name",         "Equipo"),
@@ -6078,11 +6104,10 @@ async def download_template(kind: str, team_id: Optional[str] = None, _: dict = 
         "   - 'Club' debe coincidir con un club existente (si no existe, se crea automáticamente en estado 'pendiente').",
         f"   - 'Evento' debe ser el nombre EXACTO de un torneo activo: {', '.join(tournament_names) or '(no hay torneos activos — créalos en /admin/torneos)'}.",
         "   - La 'Categoría' debe ser una de las declaradas en ese torneo (se administran en /admin/torneos).",
-        "   - 'Designación' es opcional: Único, A, B (usada para diferenciar equipos del mismo club/año).",
-        "   - 'Grupo' es opcional: se llena si el fixture ya está definido.",
+        "   - El grupo del fixture NO se asigna aquí: primero se crea el equipo, y el grupo se define después al generar el fixture en /admin/fixtures.",
+        f"   - 'Color del equipo': elige uno de la lista ({', '.join(TEAM_COLOR_PALETTE.keys())}) o escribe un código HEX si lo prefieres.",
         "• Para Jugadores: 'Equipo' debe coincidir con el nombre exacto del equipo ya creado.",
         "• Género: solo M o F. Posición: usar la lista desplegable (Portero, Delantero, etc.).",
-        "• Color en formato HEX (ej. #1d4ed8). Si no lo sabes, déjalo en blanco.",
         "• 'Número COMET' es opcional (matrícula federativa del jugador).",
     ]
 
@@ -6092,7 +6117,7 @@ async def download_template(kind: str, team_id: Optional[str] = None, _: dict = 
         vals = {
             headers.index("event_type") + 1: tournament_names,
             headers.index("category") + 1: tournament_cat_names,
-            headers.index("designation") + 1: ["Único", "A", "B", "C"],
+            headers.index("color") + 1: list(TEAM_COLOR_PALETTE.keys()),
         }
         content = _build_styled_template("Equipos", TEAM_HEADERS_ES, TEAM_SAMPLE_ES, brand_color="1D4ED8", instructions=base_instr, validations=vals)
     elif kind == "players":
@@ -6211,14 +6236,14 @@ async def import_teams(file: UploadFile = File(...), preview: bool = False, _: d
             "tournament_id": tournament.get("id") if tournament else None,
             "tournament_name": tournament.get("name") if tournament else None,
             "event_type": (tournament.get("event_type") if tournament else "") or "festival",
-            "designation": (r.get("designation") or "Único").strip() or "Único",
-            "group_name": r.get("group_name", ""),
+            "designation": "Único",
+            "group_name": "",
             "coach": r.get("coach", ""),
             "city": r.get("city", ""),
             "country": r.get("country", ""),
             "president": r.get("president", ""),
             "delegate_phone": r.get("delegate_phone", ""),
-            "color": r.get("color") or "#1d4ed8",
+            "color": _resolve_team_color(r.get("color")),
             "logo_url": "",
             "cuerpo_tecnico": [],
             "status": "aprobado",
