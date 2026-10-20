@@ -5952,7 +5952,7 @@ def _norm_key(h: str) -> str:
     return HEADER_ALIASES.get(k, k)
 
 
-def _build_styled_template(sheet_name: str, headers_es: list, sample: list, *, brand_color: str = "1D4ED8", instructions: list = None, validations: dict = None, prefill_rows: int = 0, prefill_values: dict = None) -> bytes:
+def _build_styled_template(sheet_name: str, headers_es: list, sample: list, *, brand_color: str = "1D4ED8", instructions: list = None, validations: dict = None, prefill_rows: int = 0, prefill_values: dict = None, skip_sample: bool = False) -> bytes:
     """Build a styled XLSX template with Spanish headers, bold colored header row, borders, and column widths.
     Optional instructions go into a separate 'Instrucciones' sheet so they aren't parsed as data.
 
@@ -5964,6 +5964,9 @@ def _build_styled_template(sheet_name: str, headers_es: list, sample: list, *, b
                    fila 2 de ejemplo) con las columnas de `prefill_values` (dict col_index_1based → valor)
                    ya diligenciadas y el resto en blanco — útil para pre-cargar "Equipo" al exportar la
                    plantilla de Jugadores de un equipo específico.
+      skip_sample: si es True, no se agrega la fila 2 de ejemplo (en cursiva/gris) — se usa junto con
+                   prefill_rows para que todas las filas de datos (ya con "Equipo" diligenciado) tengan
+                   el mismo estilo, en vez de mezclar un ejemplo ficticio con datos reales.
     """
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
     from openpyxl.worksheet.datavalidation import DataValidation
@@ -5973,7 +5976,8 @@ def _build_styled_template(sheet_name: str, headers_es: list, sample: list, *, b
     ws.title = sheet_name
     spanish = [h[1] for h in headers_es]
     ws.append(spanish)
-    ws.append(sample)
+    if not skip_sample:
+        ws.append(sample)
 
     header_fill = PatternFill("solid", fgColor=brand_color)
     header_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
@@ -5993,10 +5997,11 @@ def _build_styled_template(sheet_name: str, headers_es: list, sample: list, *, b
         c.alignment = center
         c.border = border
         ws.column_dimensions[get_column_letter(col_idx)].width = max(20, len(spanish[col_idx - 1]) + 4)
-        s = ws.cell(row=2, column=col_idx)
-        s.alignment = left
-        s.border = border
-        s.font = Font(name="Calibri", size=10, italic=True, color="64748B")
+        if not skip_sample:
+            s = ws.cell(row=2, column=col_idx)
+            s.alignment = left
+            s.border = border
+            s.font = Font(name="Calibri", size=10, italic=True, color="64748B")
 
     ws.row_dimensions[1].height = 30
     ws.freeze_panes = "A2"
@@ -6126,17 +6131,36 @@ async def download_template(kind: str, team_id: Optional[str] = None, _: dict = 
             headers.index("position") + 1: POSITIONS_LIST,
             headers.index("gender") + 1: ["M", "F"],
         }
-        prefill_rows, prefill_values = 0, None
+        prefill_rows, prefill_values, skip_sample = 0, None, False
         if team_id:
             team = await db.teams.find_one({"id": team_id}, {"_id": 0, "name": 1})
             if not team:
                 raise HTTPException(status_code=404, detail="Equipo no encontrado")
             prefill_rows = 25
             prefill_values = {headers.index("team_name") + 1: team["name"]}
-            base_instr = [f"• Plantilla pre-diligenciada para el equipo '{team['name']}' — la columna 'Equipo' ya viene llena en {prefill_rows} filas, solo completa los datos de cada jugador."] + base_instr
-        content = _build_styled_template("Jugadores", PLAYER_HEADERS_ES, PLAYER_SAMPLE_ES, brand_color="DC2626", instructions=base_instr, validations=vals, prefill_rows=prefill_rows, prefill_values=prefill_values)
+            skip_sample = True
+            base_instr = [
+                f"• Plantilla pre-diligenciada para el equipo '{team['name']}' — la columna 'Equipo' ya viene llena en {prefill_rows} filas, solo completa los datos de cada jugador.",
+                "• Las filas que dejes sin diligenciar (solo con 'Equipo') se ignoran automáticamente al cargar, no generan error.",
+            ] + [l for l in base_instr if "fila 2 es un ejemplo" not in l]
+        content = _build_styled_template("Jugadores", PLAYER_HEADERS_ES, PLAYER_SAMPLE_ES, brand_color="DC2626", instructions=base_instr, validations=vals, prefill_rows=prefill_rows, prefill_values=prefill_values, skip_sample=skip_sample)
+    elif kind == "staff":
+        if not team_id:
+            raise HTTPException(status_code=400, detail="Debes seleccionar un equipo para descargar la plantilla de Cuerpo Técnico")
+        team = await db.teams.find_one({"id": team_id}, {"_id": 0, "name": 1})
+        if not team:
+            raise HTTPException(status_code=404, detail="Equipo no encontrado")
+        headers = [h[0] for h in STAFF_HEADERS_ES]
+        vals = {headers.index("role") + 1: STAFF_ROLES}
+        staff_instr = [
+            f"• Plantilla de Cuerpo Técnico para el equipo '{team['name']}'.",
+            "• La fila 2 es un ejemplo: bórrala antes de cargar tu información real.",
+            "• 'Rol / Cargo': usa la lista desplegable (Director técnico, Asistente técnico, Fisioterapeuta, etc.).",
+            "• Se agrega al cuerpo técnico existente del equipo (no lo reemplaza).",
+        ]
+        content = _build_styled_template("Cuerpo Tecnico", STAFF_HEADERS_ES, STAFF_SAMPLE_ES, brand_color="9333EA", instructions=staff_instr, validations=vals)
     else:
-        raise HTTPException(status_code=400, detail="Tipo inválido (teams|players)")
+        raise HTTPException(status_code=400, detail="Tipo inválido (teams|players|staff)")
     return FastAPIResponse(
         content=content,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -6275,6 +6299,17 @@ async def import_players(file: UploadFile = File(...), preview: bool = False, _:
         raise HTTPException(status_code=400, detail="Archivo > 5MB")
     rows = _parse_uploaded(file, raw)
 
+    # La plantilla puede venir con la columna 'Equipo' pre-diligenciada en varias filas
+    # (ver /import/template/players?team_id=...). Una fila que solo tiene 'Equipo' y nada
+    # más (el usuario no la usó) no debe contar como error "Falta el nombre del jugador":
+    # se ignora en silencio, igual que una fila totalmente vacía.
+    _player_data_keys = [
+        "name", "nombre", "jersey_number", "dorsal", "position", "birth_date",
+        "document_id", "comet_number", "nickname", "gender", "eps",
+        "guardian_name", "guardian_doc", "guardian_relation", "guardian_phone",
+    ]
+    rows = [r for r in rows if any((r.get(k) or "").strip() for k in _player_data_keys)]
+
     teams = await db.teams.find({}, {"_id": 0, "id": 1, "name": 1}).to_list(2000)
     name_to_id = {t["name"].lower(): t["id"] for t in teams}
 
@@ -6333,6 +6368,52 @@ async def import_players(file: UploadFile = File(...), preview: bool = False, _:
             d.pop("_id", None)
 
     return {"total_rows": len(rows), "ok": len(created), "errors": errors, "duplicates": duplicates, "saved": not preview, "created": [{"id": d["id"], "name": d["name"], "team_id": d["team_id"]} for d in created]}
+
+@api.post("/import/staff")
+async def import_staff(team_id: str, file: UploadFile = File(...), preview: bool = False, _: dict = Depends(require_admin)):
+    """Carga masiva de Cuerpo Técnico para UN equipo (se agrega al array cuerpo_tecnico existente)."""
+    team = await db.teams.find_one({"id": team_id}, {"_id": 0, "name": 1, "cuerpo_tecnico": 1})
+    if not team:
+        raise HTTPException(status_code=404, detail="Equipo no encontrado")
+    raw = await file.read()
+    if len(raw) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Archivo > 5MB")
+    rows = _parse_uploaded(file, raw)
+    rows = [r for r in rows if any((r.get(k) or "").strip() for k in ["name", "nombre", "role", "rol", "document", "documento", "phone", "telefono", "teléfono"])]
+
+    existing_staff_keys = {
+        (s.get("name", "").strip().lower(), (s.get("role") or "").strip().lower())
+        for s in (team.get("cuerpo_tecnico") or [])
+    }
+    seen_keys = set()
+
+    created, errors, duplicates = [], [], []
+    for idx, r in enumerate(rows, start=2):
+        name = r.get("name") or r.get("nombre") or ""
+        if not name:
+            errors.append({"row": idx, "error": "Falta el nombre completo"})
+            continue
+        role = (r.get("role") or r.get("rol") or "Director técnico").strip() or "Director técnico"
+        key = (name.strip().lower(), role.lower())
+        if key in existing_staff_keys or key in seen_keys:
+            duplicates.append({"row": idx, "name": name, "category": role})
+            continue
+        seen_keys.add(key)
+        created.append({
+            "name": name,
+            "role": role,
+            "document": r.get("document") or r.get("documento") or "",
+            "phone": r.get("phone") or r.get("telefono") or r.get("teléfono") or "",
+        })
+
+    if not preview and created:
+        current = list(team.get("cuerpo_tecnico") or [])
+        await db.teams.update_one({"id": team_id}, {"$set": {"cuerpo_tecnico": current + created}})
+
+    return {
+        "total_rows": len(rows), "ok": len(created), "errors": errors, "duplicates": duplicates, "saved": not preview,
+        "created": [{"id": c["name"], "name": c["name"], "category": c["role"]} for c in created],
+    }
 
 # -------------------- Bulk Import (Team Manager - Multi-sheet XLSX) --------------------
 

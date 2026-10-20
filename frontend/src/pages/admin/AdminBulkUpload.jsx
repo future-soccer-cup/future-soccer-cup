@@ -4,8 +4,9 @@ import { toast, Toaster } from "sonner";
 import { Download, Upload, FileSpreadsheet, CheckCircle2, AlertTriangle } from "lucide-react";
 
 const TABS = [
-  { key: "teams", label: "Equipos", endpoint: "teams", description: "Carga masiva de equipos vinculados a clubes. Incluye Club, Evento (nombre exacto del torneo activo), Categoría, Designación (Único/A/B), Grupo, DT, Presidente y Delegado. La plantilla trae listas desplegables con las categorías y torneos vigentes. Si el club no existe se crea en estado 'pendiente'." },
+  { key: "teams", label: "Equipos", endpoint: "teams", description: "Carga masiva de equipos vinculados a clubes. Incluye Club, Evento (nombre exacto del torneo activo), Categoría, DT, Presidente, Delegado y Color. La plantilla trae listas desplegables con las categorías y torneos vigentes. Si el club no existe se crea en estado 'pendiente'." },
   { key: "players", label: "Jugadores", endpoint: "players", description: "Carga masiva de jugadores. Cada fila se vincula por 'Equipo' (nombre exacto). Incluye Dorsal, Posición (dropdown), Fecha de nacimiento, Documento, Número COMET, Apodo, Género (M/F), EPS y datos del acudiente (nombre, documento, parentesco, teléfono). Elige un Club y Equipo abajo para descargar la plantilla con esa columna ya diligenciada." },
+  { key: "staff", label: "Cuerpo técnico", endpoint: "staff", description: "Carga masiva del cuerpo técnico (DT, asistentes, fisioterapeuta, etc.) de UN equipo. Se agrega al cuerpo técnico existente del equipo, no lo reemplaza. Debes elegir Club y Equipo abajo antes de descargar la plantilla." },
 ];
 
 export default function AdminBulkUpload() {
@@ -16,24 +17,29 @@ export default function AdminBulkUpload() {
   const inputRef = useRef(null);
   const t = TABS.find((x) => x.key === tab);
 
-  // Selector Club + Equipo (solo pestaña Jugadores) para descargar la plantilla pre-diligenciada.
+  // Selector Club + Equipo (pestañas Jugadores y Cuerpo técnico) para descargar la
+  // plantilla pre-diligenciada. En Cuerpo técnico el equipo es obligatorio (la plantilla
+  // se agrega al cuerpo_tecnico de ESE equipo, no hay columna "Equipo" por fila).
+  const isTeamScoped = tab === "players" || tab === "staff";
+  const teamRequired = tab === "staff";
   const [clubs, setClubs] = useState([]);
   const [teams, setTeams] = useState([]);
   const [pickClub, setPickClub] = useState("");
   const [pickTeam, setPickTeam] = useState("");
   useEffect(() => {
-    if (tab !== "players") return;
+    if (!isTeamScoped) return;
     api.get("/clubs").then((r) => setClubs(r.data || [])).catch(() => {});
     api.get("/teams").then((r) => setTeams(r.data || [])).catch(() => {});
-  }, [tab]);
+  }, [isTeamScoped]);
   const teamsForClub = useMemo(
     () => teams.filter((tm) => !pickClub || tm.club_id === pickClub),
     [teams, pickClub]
   );
 
   const downloadTemplate = async () => {
+    if (teamRequired && !pickTeam) { toast.error("Selecciona un equipo primero"); return; }
     try {
-      const params = tab === "players" && pickTeam ? { team_id: pickTeam } : {};
+      const params = isTeamScoped && pickTeam ? { team_id: pickTeam } : {};
       const res = await api.get(`/import/template/${t.endpoint}`, { params, responseType: "blob" });
       const url = URL.createObjectURL(res.data);
       const a = document.createElement("a");
@@ -43,17 +49,20 @@ export default function AdminBulkUpload() {
       URL.revokeObjectURL(url);
       toast.success("Plantilla descargada");
     } catch (err) {
-      toast.error("Error al descargar plantilla");
+      toast.error(formatApiError(err.response?.data?.detail) || "Error al descargar plantilla");
     }
   };
 
   const upload = async (saveIt) => {
     if (!file) { toast.error("Selecciona un archivo"); return; }
+    if (teamRequired && !pickTeam) { toast.error("Selecciona un equipo primero"); return; }
     setLoading(true);
     const fd = new FormData();
     fd.append("file", file);
     try {
-      const res = await api.post(`/import/${t.endpoint}?preview=${!saveIt}`, fd, {
+      const qs = new URLSearchParams({ preview: String(!saveIt) });
+      if (teamRequired) qs.set("team_id", pickTeam);
+      const res = await api.post(`/import/${t.endpoint}?${qs.toString()}`, fd, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setResult(res.data);
@@ -94,23 +103,25 @@ export default function AdminBulkUpload() {
             <p className="text-sm text-slate-500 mt-1">{t.description}</p>
           </div>
 
-          {tab === "players" && (
-            <div className="grid sm:grid-cols-2 gap-2 border border-slate-200 rounded-md p-3 bg-slate-50" data-testid="bulk-players-team-picker">
+          {isTeamScoped && (
+            <div className="grid sm:grid-cols-2 gap-2 border border-slate-200 rounded-md p-3 bg-slate-50" data-testid="bulk-team-picker">
               <label className="block">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Club (opcional)</span>
-                <select value={pickClub} onChange={(e) => { setPickClub(e.target.value); setPickTeam(""); }} className="mt-1 w-full px-2 py-1.5 border border-slate-200 rounded text-sm" data-testid="bulk-players-pick-club">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Club{teamRequired ? "" : " (opcional)"}</span>
+                <select value={pickClub} onChange={(e) => { setPickClub(e.target.value); setPickTeam(""); }} className="mt-1 w-full px-2 py-1.5 border border-slate-200 rounded text-sm" data-testid="bulk-pick-club">
                   <option value="">Todos los clubes</option>
                   {clubs.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </label>
               <label className="block">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Equipo (opcional)</span>
-                <select value={pickTeam} onChange={(e) => setPickTeam(e.target.value)} className="mt-1 w-full px-2 py-1.5 border border-slate-200 rounded text-sm" data-testid="bulk-players-pick-team">
-                  <option value="">Sin preseleccionar (escribir Equipo a mano)</option>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Equipo{teamRequired ? " *" : " (opcional)"}</span>
+                <select value={pickTeam} onChange={(e) => setPickTeam(e.target.value)} className="mt-1 w-full px-2 py-1.5 border border-slate-200 rounded text-sm" data-testid="bulk-pick-team">
+                  <option value="">{teamRequired ? "Selecciona un equipo..." : "Sin preseleccionar (escribir Equipo a mano)"}</option>
                   {teamsForClub.map((tm) => <option key={tm.id} value={tm.id}>{tm.name} · {tm.category}</option>)}
                 </select>
               </label>
-              {pickTeam && <p className="sm:col-span-2 text-[11px] text-emerald-700">La plantilla traerá la columna "Equipo" ya diligenciada con "{teams.find((tm) => tm.id === pickTeam)?.name}" en 25 filas.</p>}
+              {pickTeam && tab === "players" && <p className="sm:col-span-2 text-[11px] text-emerald-700">La plantilla traerá la columna "Equipo" ya diligenciada con "{teams.find((tm) => tm.id === pickTeam)?.name}" en 25 filas.</p>}
+              {pickTeam && tab === "staff" && <p className="sm:col-span-2 text-[11px] text-emerald-700">Se agregará al cuerpo técnico de "{teams.find((tm) => tm.id === pickTeam)?.name}".</p>}
+              {teamRequired && !pickTeam && <p className="sm:col-span-2 text-[11px] text-amber-600">Debes elegir un equipo antes de descargar la plantilla o subir el archivo.</p>}
             </div>
           )}
 
