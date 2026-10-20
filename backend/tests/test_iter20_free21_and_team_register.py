@@ -185,8 +185,10 @@ class TestQuoteFree21Math:
         )
         assert r.status_code == 200
         data = r.json()
-        assert data["free_lodging_units"] == 2
-        assert data["paying_pax_lodging"] == 38
+        # 40 personas = 1 grupo completo de 21 (la #21 es gratis) + 19 restantes sin
+        # completar un segundo grupo -> solo 1 cupo gratis, no 2.
+        assert data["free_lodging_units"] == 1
+        assert data["paying_pax_lodging"] == 39
 
     def test_pax_19_enabled(self, admin_session, paquete_1_state):
         p1, _ = paquete_1_state

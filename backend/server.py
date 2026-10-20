@@ -4207,10 +4207,12 @@ def _calc_lodging_block(tier: dict, pax: int, nights: int, extras: list, currenc
     extra_nights = max(0, int(nights or 0) - 5)
     rate_per_person = base_5 + add_night * extra_nights
 
-    # Promo 21 gratis (solo a pax principal).
+    # Promo 21 gratis (solo a pax principal): por cada 20 personas que pagan, la
+    # persona número 21 del grupo no paga. Con exactamente 20 nadie es gratis todavía
+    # (se necesita la 21 para activar el primer cupo gratis) -> free = pax // 21.
     free_21_enabled = bool((tier or {}).get("free_21st_enabled"))
     pax = max(0, int(pax or 0))
-    free_units = (pax // 20) if free_21_enabled else 0
+    free_units = (pax // 21) if free_21_enabled else 0
     paying_pax = max(0, pax - free_units)
     main_subtotal = rate_per_person * paying_pax
 
