@@ -5926,7 +5926,7 @@ HEADER_ALIASES = {
     "pais": "country", "país": "country", "country": "country",
     "presidente": "president", "president": "president",
     "telefono delegado": "delegate_phone", "teléfono delegado": "delegate_phone", "delegate_phone": "delegate_phone",
-    "color (hex)": "color", "color": "color",
+    "color (hex)": "color", "color": "color", "color del equipo": "color",
     # Jugadores
     "nombre del jugador": "name",
     "dorsal": "jersey_number", "numero": "jersey_number", "número": "jersey_number", "jersey_number": "jersey_number",
