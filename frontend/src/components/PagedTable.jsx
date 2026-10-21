@@ -20,19 +20,27 @@ export function usePagedSearch(items, matchFn, pageSize = 15, options = {}) {
   const pKey = paramPrefix ? `${paramPrefix}_page` : "page";
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const [query, setQueryState] = useState(() => (syncUrl ? (searchParams.get(qKey) || "") : ""));
+  const [query, setQuery] = useState(() => (syncUrl ? (searchParams.get(qKey) || "") : ""));
   const [page, setPageState] = useState(() => (syncUrl ? (parseInt(searchParams.get(pKey), 10) || 1) : 1));
 
-  const setQuery = (v) => {
-    setQueryState(v);
+  // `query` vive en estado local (responde al instante en cada tecla); escribir en la URL
+  // en cada tecla dispara una navegación de react-router por carácter, que en pantallas con
+  // muchos datos se siente como que "no deja escribir". Por eso la URL se sincroniza con un
+  // pequeño debounce después de que el usuario deja de escribir, no en cada pulsación.
+  useEffect(() => {
     if (!syncUrl) return;
-    setSearchParams((prev) => {
-      const next = new URLSearchParams(prev);
-      if (v) next.set(qKey, v); else next.delete(qKey);
-      next.delete(pKey);
-      return next;
-    }, { replace: true });
-  };
+    const t = setTimeout(() => {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        if (query) next.set(qKey, query); else next.delete(qKey);
+        next.delete(pKey);
+        return next;
+      }, { replace: true });
+    }, 400);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, syncUrl]);
+
   const setPage = (p) => {
     setPageState(p);
     if (!syncUrl) return;

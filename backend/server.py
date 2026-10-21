@@ -1260,6 +1260,7 @@ async def list_teams(category: Optional[str] = None, status: Optional[str] = Non
     elif not is_admin:
         q["$or"] = [{"status": "aprobado"}, {"status": {"$exists": False}}]
     items = await db.teams.find(q, {"_id": 0}).sort("name", 1).to_list(500)
+    await _overlay_club_logos(items)
     return items
 
 @api.get("/teams/{team_id}", response_model=TeamOut)
@@ -1267,6 +1268,7 @@ async def get_team(team_id: str):
     t = await db.teams.find_one({"id": team_id}, {"_id": 0})
     if not t:
         raise HTTPException(status_code=404, detail="Equipo no encontrado")
+    await _overlay_club_logos([t])
     return t
 
 @api.post("/teams", response_model=TeamOut)
@@ -4391,6 +4393,7 @@ async def add_team_to_club(cid: str, payload: TeamAddIn, user: dict = Depends(ge
 @api.get("/clubs/{cid}/teams")
 async def list_club_teams(cid: str, user: Optional[dict] = Depends(get_current_user_optional)):
     items = await db.teams.find({"club_id": cid}, {"_id": 0}).sort("birth_year", 1).to_list(500)
+    await _overlay_club_logos(items)
     # Endpoint público (usado también sin sesión) — solo se restringe cuando quien pregunta
     # es, específicamente, una cuenta de Cuerpo Técnico de ESTE club (ver item de visibilidad
     # por equipo): un Directivo, el admin o un visitante anónimo siguen viendo todo el club.
@@ -4516,6 +4519,8 @@ async def admin_clubs_tree(_: dict = Depends(require_admin)):
     for c in clubs:
         c_teams = teams_by_club.get(c["id"], [])
         for t in c_teams:
+            if c.get("logo_url"):
+                t["logo_url"] = c["logo_url"]
             t["players"] = players_by_team.get(t["id"], [])
         c["teams"] = c_teams
         result.append(c)

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useState, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import api, { formatApiError } from "../../lib/api";
 import { validatePlayerBirthVsTeam } from "../../lib/playerValidation";
@@ -48,9 +48,13 @@ export default function AdminClubsTree() {
   const [clubs, setClubs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState({});
-  // Búsqueda/filtro/página persistidos en la URL para no perderlos al recargar.
+  // Filtro/página persistidos en la URL para no perderlos al recargar. La búsqueda de
+  // texto vive en estado LOCAL (responde al instante en cada tecla) y se sincroniza a la
+  // URL con un pequeño debounce — escribirla en la URL en cada tecla dispara una
+  // navegación de react-router por carácter que, con ~1100 jugadores cargados, se siente
+  // como que "no deja escribir".
   const [searchParams, setSearchParams] = useSearchParams();
-  const query = searchParams.get("q") || "";
+  const [query, setQuery] = useState(() => searchParams.get("q") || "");
   const statusFilter = searchParams.get("status") || "";
   // updateParams cambia uno o varios params en una sola llamada — llamar setSearchParams
   // varias veces seguidas en el mismo handler pisa los cambios anteriores porque cada
@@ -62,8 +66,14 @@ export default function AdminClubsTree() {
     }
     return next;
   }, { replace: true });
-  const setQuery = (v) => updateParams({ q: v });
   const setStatusFilter = (v) => updateParams({ status: v });
+  const firstQueryRun = useRef(true);
+  useEffect(() => {
+    if (firstQueryRun.current) { firstQueryRun.current = false; return; }
+    const t = setTimeout(() => updateParams({ q: query, page: "" }), 400);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query]);
   const [clubUsers, setClubUsers] = useState({}); // {club_id: [users]}
   const [editingPlayer, setEditingPlayer] = useState(null); // {team_id, player|null}
   const [editingTeamName, setEditingTeamName] = useState(null); // {id, name, category, ...}
@@ -235,7 +245,7 @@ export default function AdminClubsTree() {
   const safePage = Math.min(page, totalPages);
   const pageItems = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
-  const setQueryReset = (v) => updateParams({ q: v, page: "" });
+  const setQueryReset = (v) => setQuery(v); // la URL + reset de página los maneja el debounce de arriba
   const setStatusFilterReset = (v) => updateParams({ status: v, page: "" });
 
   return (
