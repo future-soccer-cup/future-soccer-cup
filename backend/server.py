@@ -1957,6 +1957,23 @@ async def generate_fixture(payload: FixtureGenerateIn, _: dict = Depends(require
     if len(teams) != len(payload.team_ids):
         raise HTTPException(status_code=400, detail="Algunos equipos no existen")
 
+    # Regla universal (aplica a equipos creados por carga masiva y por el flujo normal
+    # de registro): primero se aprueba el club, luego el equipo, y solo entonces puede
+    # participar en un fixture.
+    not_approved_teams = sorted({t["name"] for t in teams if t.get("status") and t.get("status") != "aprobado"})
+    if not_approved_teams:
+        raise HTTPException(status_code=400, detail=f"Estos equipos aún no están aprobados: {', '.join(not_approved_teams)}. Apruébalos en /admin/aprobaciones antes de generar el fixture.")
+    club_ids = {t.get("club_id") for t in teams if t.get("club_id")}
+    if club_ids:
+        clubs_docs = await db.clubs.find({"id": {"$in": list(club_ids)}}, {"_id": 0, "id": 1, "status": 1, "name": 1}).to_list(500)
+        club_status_map = {c["id"]: c for c in clubs_docs}
+        not_approved_clubs = sorted({
+            club_status_map[cid]["name"] for cid in club_ids
+            if cid in club_status_map and (club_status_map[cid].get("status") or "pendiente") != "aprobado"
+        })
+        if not_approved_clubs:
+            raise HTTPException(status_code=400, detail=f"Estos clubes aún no están aprobados: {', '.join(not_approved_clubs)}. Apruébalos en /admin/clubes antes de generar el fixture.")
+
     tournament_id = payload.tournament_id
 
     # Iter45: si viene una matriz manual (matrix_matches) con posiciones asignadas
@@ -6282,7 +6299,9 @@ async def import_teams(file: UploadFile = File(...), preview: bool = False, _: d
             "color": _resolve_team_color(r.get("color")),
             "logo_url": "",
             "cuerpo_tecnico": [],
-            "status": "aprobado",
+            # Pendiente por defecto: primero se aprueba el club, luego el equipo (en
+            # /admin/aprobaciones) y solo entonces puede participar en un fixture.
+            "status": "pendiente",
             "registration_fee": fee,
             "registration_payment_status": "pending",
             "created_at": datetime.now(timezone.utc).isoformat(),

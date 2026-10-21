@@ -92,8 +92,11 @@ export default function AdminFixtureGenerator() {
   // seleccionado. Si tienen `tournament_id` explícito, debe coincidir con el elegido;
   // si NO tienen `tournament_id` (típico de la carga masiva), se muestran igual —
   // así los equipos importados vía XLSX no quedan invisibles en el generador.
+  // Solo equipos ya aprobados: primero se aprueba el club, luego el equipo (en
+  // Aprobaciones), y solo entonces puede participar en un fixture. Los equipos
+  // antiguos sin campo `status` se tratan como aprobados (compat).
   const filtered = (tournamentId && category)
-    ? teams.filter((t) => (t.category === category) && (!t.tournament_id || t.tournament_id === tournamentId))
+    ? teams.filter((t) => (t.category === category) && (!t.tournament_id || t.tournament_id === tournamentId) && (!t.status || t.status === "aprobado"))
     : [];
 
   const toggleTeam = (id) => {
