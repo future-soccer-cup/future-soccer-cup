@@ -423,6 +423,41 @@ async def require_admin_or_content(user: dict = Depends(get_current_user)) -> di
         raise HTTPException(status_code=403, detail="No autorizado")
     return user
 
+async def get_current_user_optional(request: Request) -> Optional[dict]:
+    """Igual que get_current_user pero devuelve None en vez de lanzar 401 — para endpoints
+    públicos que además quieren personalizar el resultado si hay sesión (ej. scoping de
+    equipos visibles para Cuerpo Técnico)."""
+    try:
+        return await get_current_user(request)
+    except HTTPException:
+        return None
+
+def _is_cuerpo_tecnico(user: dict) -> bool:
+    return (user.get("manager_role") or "").strip().lower() == "cuerpo técnico"
+
+async def _visible_team_ids_for_user(user: dict) -> Optional[List[str]]:
+    """None = sin restricción (admin ve todo). Un Directivo ve todos los equipos de su
+    club. Un Cuerpo Técnico solo ve los equipos que él creó o los que un Directivo/admin
+    le asignó explícitamente (team.assigned_staff_user_ids) — un club puede tener varios
+    Cuerpo Técnico y cada uno maneja 1 o varios equipos puntuales, no todo el club."""
+    if user.get("role") == "admin":
+        return None
+    club_id = user.get("club_id")
+    if not club_id:
+        return [user["team_id"]] if user.get("team_id") else []
+    if not _is_cuerpo_tecnico(user):
+        teams = await db.teams.find({"club_id": club_id}, {"_id": 0, "id": 1}).to_list(500)
+        return [t["id"] for t in teams]
+    uid = user.get("id")
+    teams = await db.teams.find(
+        {"club_id": club_id, "$or": [{"created_by_user_id": uid}, {"assigned_staff_user_ids": uid}]},
+        {"_id": 0, "id": 1},
+    ).to_list(500)
+    ids = [t["id"] for t in teams]
+    if user.get("team_id") and user["team_id"] not in ids:
+        ids.append(user["team_id"])
+    return ids
+
 class ConfigUserIn(BaseModel):
     name: str = Field(min_length=1)
     email: EmailStr
@@ -1071,6 +1106,8 @@ async def register_team(payload: TeamRegisterIn, response: Response):
             "logo_url": payload.logo_url or "",
             "color": payload.color or "#1d4ed8",
             "manager_user_id": user_id,
+            "created_by_user_id": user_id,
+            "assigned_staff_user_ids": [],
             "status": "pendiente",
             "event_type": payload.event_type,
             "registration_fee": fee,
@@ -1254,9 +1291,8 @@ async def team_roster_pdf(team_id: str, user: dict = Depends(get_current_user)):
     if user.get("role") != "admin":
         if user.get("role") != "team":
             raise HTTPException(status_code=403, detail="No autorizado")
-        same_team = user.get("team_id") == team_id
-        same_club = user.get("club_id") and team.get("club_id") == user.get("club_id")
-        if not (same_team or same_club):
+        visible_ids = await _visible_team_ids_for_user(user)
+        if visible_ids is not None and team_id not in visible_ids:
             raise HTTPException(status_code=403, detail="No autorizado")
 
     players = await db.players.find({"team_id": team_id}, {"_id": 0}).sort("jersey_number", 1).to_list(200)
@@ -1454,10 +1490,9 @@ async def update_team(team_id: str, payload: TeamIn, user: dict = Depends(get_cu
         target = await db.teams.find_one({"id": team_id}, {"_id": 0, "club_id": 1})
         if not target:
             raise HTTPException(status_code=404, detail="Equipo no encontrado")
-        same_team = user.get("team_id") == team_id
-        same_club = user.get("club_id") and target.get("club_id") == user["club_id"]
-        if not (same_team or same_club):
-            raise HTTPException(status_code=403, detail="Solo puedes editar equipos de tu club")
+        visible_ids = await _visible_team_ids_for_user(user)
+        if visible_ids is not None and team_id not in visible_ids:
+            raise HTTPException(status_code=403, detail="Solo puedes editar tus equipos")
     elif user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="No autorizado")
     if not (payload.category or '').strip():
@@ -1478,10 +1513,9 @@ async def update_team_name(team_id: str, payload: dict, user: dict = Depends(get
     if user.get("role") != "admin":
         if user.get("role") != "team":
             raise HTTPException(status_code=403, detail="No autorizado")
-        same_team = user.get("team_id") == team_id
-        same_club = user.get("club_id") and target.get("club_id") == user["club_id"]
-        if not (same_team or same_club):
-            raise HTTPException(status_code=403, detail="Solo puedes editar equipos de tu club")
+        visible_ids = await _visible_team_ids_for_user(user)
+        if visible_ids is not None and team_id not in visible_ids:
+            raise HTTPException(status_code=403, detail="Solo puedes editar tus equipos")
     new_name = (payload.get("name") or "").strip()
     if not new_name:
         raise HTTPException(status_code=400, detail="El nombre del equipo es obligatorio")
@@ -1498,10 +1532,9 @@ async def update_team_staff(team_id: str, payload: dict, user: dict = Depends(ge
     if user.get("role") != "admin":
         if user.get("role") != "team":
             raise HTTPException(status_code=403, detail="No autorizado")
-        same_team = user.get("team_id") == team_id
-        same_club = user.get("club_id") and target.get("club_id") == user["club_id"]
-        if not (same_team or same_club):
-            raise HTTPException(status_code=403, detail="Solo puedes editar equipos de tu club")
+        visible_ids = await _visible_team_ids_for_user(user)
+        if visible_ids is not None and team_id not in visible_ids:
+            raise HTTPException(status_code=403, detail="Solo puedes editar tus equipos")
     staff = payload.get("cuerpo_tecnico")
     if not isinstance(staff, list):
         raise HTTPException(status_code=400, detail="cuerpo_tecnico debe ser una lista")
@@ -1531,18 +1564,20 @@ async def list_players(team_id: Optional[str] = None, status: Optional[str] = No
     user_team_id = None
     user_club_id = None
     user_id = None
+    user_full = None
     try:
         token = request.cookies.get("access_token") if request else None
         if token:
             payload = jwt.decode(token, get_jwt_secret(), algorithms=[JWT_ALGORITHM])
             user_id = payload["sub"]
-            user_doc = await db.users.find_one({"id": user_id}, {"role": 1, "team_id": 1, "club_id": 1})
+            user_doc = await db.users.find_one({"id": user_id}, {"_id": 0, "id": 1, "role": 1, "team_id": 1, "club_id": 1, "manager_role": 1})
             if user_doc:
                 is_admin = user_doc.get("role") == "admin"
                 if user_doc.get("role") == "team":
                     is_team = True
                     user_team_id = user_doc.get("team_id")
                     user_club_id = user_doc.get("club_id")
+                    user_full = user_doc
     except Exception:
         pass
     # Admin: ve TODOS los jugadores (cualquier status). Si se pasa ?status=X, se filtra por ese status.
@@ -1550,21 +1585,21 @@ async def list_players(team_id: Optional[str] = None, status: Optional[str] = No
         if status:
             q["status"] = status
         # else: sin filtro → todos
-    # Team manager: ve jugadores PENDIENTES y APROBADOS de cualquier equipo de SU club.
-    # Si se filtra por team_id concreto, ese debe pertenecer a su club (o ser su propio team).
+    # Team manager: ve jugadores PENDIENTES y APROBADOS de los equipos que puede ver (un
+    # Directivo ve todo su club; un Cuerpo Técnico solo sus equipos — _visible_team_ids_for_user).
+    # Si se filtra por team_id concreto, ese debe estar entre los suyos.
     elif is_team:
         if team_id and team_id == user_team_id:
             pass  # acceso directo
         elif team_id and user_club_id:
-            # Verificar que team_id pertenece al club del usuario.
-            t_doc = await db.teams.find_one({"id": team_id}, {"_id": 0, "club_id": 1})
-            if not t_doc or t_doc.get("club_id") != user_club_id:
+            visible_ids = await _visible_team_ids_for_user(user_full)
+            if team_id not in (visible_ids or []):
                 q["$or"] = [{"status": "aprobado"}, {"status": {"$exists": False}}]
         elif not team_id and user_club_id:
-            # Sin team_id explícito: limitar a equipos del club del usuario.
-            team_ids_club = [t["id"] async for t in db.teams.find({"club_id": user_club_id}, {"_id": 0, "id": 1})]
-            if team_ids_club:
-                q["team_id"] = {"$in": team_ids_club}
+            # Sin team_id explícito: limitar a los equipos visibles para este usuario.
+            visible_ids = await _visible_team_ids_for_user(user_full)
+            if visible_ids:
+                q["team_id"] = {"$in": visible_ids}
             else:
                 q["$or"] = [{"status": "aprobado"}, {"status": {"$exists": False}}]
         elif not team_id:
@@ -1631,13 +1666,12 @@ async def create_player(payload: PlayerIn, user: dict = Depends(require_admin_or
     team = await db.teams.find_one({"id": payload.team_id})
     if not team:
         raise HTTPException(status_code=400, detail="Equipo inválido")
-    # Permite a cualquier usuario del CLUB (Directivo o Cuerpo Técnico) gestionar jugadores de cualquier
-    # equipo de su club. El check antiguo de team_id se mantiene como fallback.
+    # Un Directivo gestiona jugadores de cualquier equipo de su club; un Cuerpo Técnico
+    # solo de los equipos que creó o que le asignaron (ver _visible_team_ids_for_user).
     if user["role"] == "team":
-        same_club = user.get("club_id") and team.get("club_id") == user["club_id"]
-        same_team = user.get("team_id") and user["team_id"] == payload.team_id
-        if not (same_club or same_team):
-            raise HTTPException(status_code=403, detail="Solo puedes agregar jugadores a equipos de tu club")
+        visible_ids = await _visible_team_ids_for_user(user)
+        if visible_ids is not None and payload.team_id not in visible_ids:
+            raise HTTPException(status_code=403, detail="Solo puedes agregar jugadores a tus equipos")
     _validate_player_birth_vs_team(team, payload.birth_date)
     doc = payload.model_dump()
     doc["id"] = str(uuid.uuid4())
@@ -1656,10 +1690,9 @@ async def update_player(player_id: str, payload: PlayerIn, user: dict = Depends(
     if not new_team:
         raise HTTPException(status_code=400, detail="Equipo inválido")
     if user["role"] == "team":
-        cur_team = await db.teams.find_one({"id": existing["team_id"]}, {"_id": 0, "club_id": 1})
-        user_club = user.get("club_id")
-        if not (user_club and cur_team and new_team and cur_team.get("club_id") == user_club and new_team.get("club_id") == user_club):
-            raise HTTPException(status_code=403, detail="Solo puedes editar jugadores de equipos de tu club")
+        visible_ids = await _visible_team_ids_for_user(user)
+        if visible_ids is not None and (existing["team_id"] not in visible_ids or payload.team_id not in visible_ids):
+            raise HTTPException(status_code=403, detail="Solo puedes editar jugadores de tus equipos")
     _validate_player_birth_vs_team(new_team, payload.birth_date)
     await db.players.update_one({"id": player_id}, {"$set": payload.model_dump()})
     p = await db.players.find_one({"id": player_id}, {"_id": 0})
@@ -1671,9 +1704,9 @@ async def delete_player(player_id: str, user: dict = Depends(require_admin_or_te
     if not existing:
         raise HTTPException(status_code=404, detail="Jugador no encontrado")
     if user["role"] == "team":
-        t = await db.teams.find_one({"id": existing["team_id"]}, {"_id": 0, "club_id": 1})
-        if not (user.get("club_id") and t and t.get("club_id") == user["club_id"]):
-            raise HTTPException(status_code=403, detail="Solo puedes eliminar jugadores de equipos de tu club")
+        visible_ids = await _visible_team_ids_for_user(user)
+        if visible_ids is not None and existing["team_id"] not in visible_ids:
+            raise HTTPException(status_code=403, detail="Solo puedes eliminar jugadores de tus equipos")
     await db.players.delete_one({"id": player_id})
     return {"ok": True}
 
@@ -4275,6 +4308,8 @@ async def add_team_to_club(cid: str, payload: TeamAddIn, user: dict = Depends(ge
             "logo_url": club.get("logo_url", ""),
             "color": club.get("color", "#1d4ed8"),
             "manager_user_id": club.get("manager_user_id", ""),
+            "created_by_user_id": user["id"],
+            "assigned_staff_user_ids": [],
             "status": "pendiente",
             "registration_fee": fee,
             "registration_payment_status": "pending",
@@ -4316,6 +4351,8 @@ async def add_team_to_club(cid: str, payload: TeamAddIn, user: dict = Depends(ge
         "logo_url": club.get("logo_url", ""),
         "color": club.get("color", "#1d4ed8"),
         "manager_user_id": club.get("manager_user_id", ""),
+        "created_by_user_id": user["id"],
+        "assigned_staff_user_ids": [],
         "status": "pendiente",
         "event_type": payload.event_type,
         "registration_fee": fee,
@@ -4328,9 +4365,51 @@ async def add_team_to_club(cid: str, payload: TeamAddIn, user: dict = Depends(ge
     return team_doc
 
 @api.get("/clubs/{cid}/teams")
-async def list_club_teams(cid: str):
+async def list_club_teams(cid: str, user: Optional[dict] = Depends(get_current_user_optional)):
     items = await db.teams.find({"club_id": cid}, {"_id": 0}).sort("birth_year", 1).to_list(500)
+    # Endpoint público (usado también sin sesión) — solo se restringe cuando quien pregunta
+    # es, específicamente, una cuenta de Cuerpo Técnico de ESTE club (ver item de visibilidad
+    # por equipo): un Directivo, el admin o un visitante anónimo siguen viendo todo el club.
+    if user and user.get("role") == "team" and user.get("club_id") == cid and _is_cuerpo_tecnico(user):
+        visible_ids = set(await _visible_team_ids_for_user(user) or [])
+        items = [t for t in items if t.get("id") in visible_ids]
     return items
+
+@api.get("/clubs/{cid}/staff-users")
+async def list_club_staff_users(cid: str, user: dict = Depends(get_current_user)):
+    """Cuentas de Cuerpo Técnico del club — para que el Directivo (o admin) elija a quién
+    asignarle cada equipo puntual (ver PUT /teams/{id}/assigned-staff)."""
+    if user.get("role") != "admin" and user.get("club_id") != cid:
+        raise HTTPException(status_code=403, detail="No autorizado")
+    rows = await db.users.find(
+        {"club_id": cid, "role": "team"},
+        {"_id": 0, "id": 1, "name": 1, "email": 1, "manager_role": 1, "status": 1},
+    ).to_list(200)
+    return [r for r in rows if _is_cuerpo_tecnico(r)]
+
+@api.put("/teams/{team_id}/assigned-staff")
+async def set_team_assigned_staff(team_id: str, payload: dict, user: dict = Depends(get_current_user)):
+    """El Directivo del club (o el admin) decide qué cuentas de Cuerpo Técnico, además de
+    quien lo creó, pueden ver y gestionar este equipo puntual — un club puede tener varios
+    Cuerpo Técnico y cada uno maneja solo 1 o varios equipos, no todo el club."""
+    team = await db.teams.find_one({"id": team_id}, {"_id": 0})
+    if not team:
+        raise HTTPException(status_code=404, detail="Equipo no encontrado")
+    if user.get("role") != "admin":
+        if user.get("role") != "team" or _is_cuerpo_tecnico(user):
+            raise HTTPException(status_code=403, detail="Solo el Directivo del club o el admin pueden asignar Cuerpo Técnico a un equipo")
+        if (user.get("club_id") or "") != (team.get("club_id") or ""):
+            raise HTTPException(status_code=403, detail="No autorizado")
+    user_ids = payload.get("assigned_staff_user_ids")
+    if not isinstance(user_ids, list):
+        raise HTTPException(status_code=400, detail="assigned_staff_user_ids debe ser una lista")
+    valid = await db.users.find(
+        {"id": {"$in": user_ids}, "club_id": team.get("club_id"), "role": "team"}, {"_id": 0, "id": 1}
+    ).to_list(200)
+    valid_ids = [v["id"] for v in valid]
+    await db.teams.update_one({"id": team_id}, {"$set": {"assigned_staff_user_ids": valid_ids}})
+    t = await db.teams.find_one({"id": team_id}, {"_id": 0})
+    return t
 
 
 async def _require_club_approved(user: dict, *, action: str = "esta acción"):

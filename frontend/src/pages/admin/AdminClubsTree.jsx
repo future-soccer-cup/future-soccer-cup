@@ -54,6 +54,7 @@ export default function AdminClubsTree() {
   const [editingTeamName, setEditingTeamName] = useState(null); // {id, name, category, ...}
   const [editingClubName, setEditingClubName] = useState(null); // {id, name}
   const [editingStaff, setEditingStaff] = useState(null); // {team, idx, data}
+  const [assigningStaffTeam, setAssigningStaffTeam] = useState(null); // {team, clubUsers}
   const [pendingAssignments, setPendingAssignments] = useState([]);
 
   const load = useCallback(async () => {
@@ -280,6 +281,7 @@ export default function AdminClubsTree() {
             onDeletePlayer={deletePlayer}
             onEditPlayer={(team, player) => setEditingPlayer({ team, player })}
             onEditTeamName={(team) => setEditingTeamName(team)}
+            onAssignStaff={(team) => setAssigningStaffTeam({ team, clubUsers: clubUsers[c.id] || [] })}
             onEditClubName={() => setEditingClubName(c)}
             onEditStaff={(team, idx) => setEditingStaff({ team, idx, data: idx != null ? (team.cuerpo_tecnico || [])[idx] : { name: "", role: "Director técnico", document: "", phone: "", photo_url: "" } })}
             onDeleteStaff={deleteStaff}
@@ -322,6 +324,15 @@ export default function AdminClubsTree() {
           initial={editingStaff.data}
           onClose={() => setEditingStaff(null)}
           onSaved={() => { setEditingStaff(null); load(); }}
+        />
+      )}
+
+      {assigningStaffTeam && (
+        <TeamAssignStaffModal
+          team={assigningStaffTeam.team}
+          clubUsers={assigningStaffTeam.clubUsers}
+          onClose={() => setAssigningStaffTeam(null)}
+          onSaved={() => { setAssigningStaffTeam(null); load(); }}
         />
       )}
     </div>
@@ -368,7 +379,7 @@ function PendingAssignmentsPanel({ rows, clubs, onAssign }) {
   );
 }
 
-function ClubNode({ club, users, expanded, onToggle, onApprove, onReject, onPending, onDelete, onTeamStatus, onDeletePlayer, onEditPlayer, onEditTeamName, onEditClubName, onEditStaff, onDeleteStaff, onUserStatus }) {
+function ClubNode({ club, users, expanded, onToggle, onApprove, onReject, onPending, onDelete, onTeamStatus, onDeletePlayer, onEditPlayer, onEditTeamName, onAssignStaff, onEditClubName, onEditStaff, onDeleteStaff, onUserStatus }) {
   const teams = useMemo(() => club.teams || [], [club.teams]);
   // Group teams by (event_type, category)
   const byEvent = useMemo(() => {
@@ -504,7 +515,7 @@ function ClubNode({ club, users, expanded, onToggle, onApprove, onReject, onPend
                   <div className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">🏷 Categoría: {cat}</div>
                   <div className="ml-4 space-y-2">
                     {evTeams.map((t) => (
-                      <TeamNode key={t.id} team={t} onTeamStatus={onTeamStatus} onDeletePlayer={onDeletePlayer} onEditPlayer={onEditPlayer} onEditTeamName={onEditTeamName} onEditStaff={onEditStaff} onDeleteStaff={onDeleteStaff} />
+                      <TeamNode key={t.id} team={t} onTeamStatus={onTeamStatus} onDeletePlayer={onDeletePlayer} onEditPlayer={onEditPlayer} onEditTeamName={onEditTeamName} onAssignStaff={onAssignStaff} onEditStaff={onEditStaff} onDeleteStaff={onDeleteStaff} />
                     ))}
                   </div>
                 </div>
@@ -517,7 +528,7 @@ function ClubNode({ club, users, expanded, onToggle, onApprove, onReject, onPend
   );
 }
 
-function TeamNode({ team, onTeamStatus, onDeletePlayer, onEditPlayer, onEditTeamName, onEditStaff, onDeleteStaff }) {
+function TeamNode({ team, onTeamStatus, onDeletePlayer, onEditPlayer, onEditTeamName, onAssignStaff, onEditStaff, onDeleteStaff }) {
   const [open, setOpen] = useState(false);
   const status = team.status || "pendiente";
   const players = team.players || [];
@@ -539,6 +550,7 @@ function TeamNode({ team, onTeamStatus, onDeletePlayer, onEditPlayer, onEditTeam
           {status !== "rechazado" && <button onClick={() => onTeamStatus(team.id, "rechazado")} className="text-fsc-rojo hover:bg-red-50 p-1 rounded text-xs" title="Rechazar" data-testid={`team-reject-${team.id}`}><X size={14}/></button>}
           <button onClick={() => onEditPlayer(team, null)} className="text-fsc-azul hover:bg-blue-50 p-1 rounded text-xs flex items-center gap-1" title="Agregar jugador" data-testid={`team-add-player-${team.id}`}><Plus size={14}/> Jugador</button>
           <button onClick={() => onEditStaff(team, null)} className="text-emerald-600 hover:bg-emerald-50 p-1 rounded text-xs flex items-center gap-1" title="Agregar cuerpo técnico" data-testid={`team-add-staff-${team.id}`}><Plus size={14}/> Staff</button>
+          <button onClick={() => onAssignStaff(team)} className="text-fsc-azul hover:bg-blue-50 p-1 rounded text-xs flex items-center gap-1" title="Elegir qué cuentas de Cuerpo Técnico pueden ver y gestionar este equipo" data-testid={`team-assign-staff-${team.id}`}><Shield size={14}/> Acceso</button>
           <button
             onClick={async () => {
               try {
@@ -784,6 +796,66 @@ function TeamNameEditModal({ team, onClose, onSaved }) {
           </button>
         </div>
       </form>
+    </div>
+  );
+}
+
+// Elegir qué cuentas de Cuerpo Técnico del club, además de quien creó el equipo, pueden
+// verlo y gestionarlo — un club puede tener varios Cuerpo Técnico y cada uno maneja solo
+// 1 o varios equipos puntuales, no todo el club (ver PUT /teams/{id}/assigned-staff).
+function TeamAssignStaffModal({ team, clubUsers, onClose, onSaved }) {
+  const ctUsers = (clubUsers || []).filter((u) => (u.manager_role || "").trim().toLowerCase() === "cuerpo técnico");
+  const [picked, setPicked] = useState(new Set(team?.assigned_staff_user_ids || []));
+  const [saving, setSaving] = useState(false);
+
+  const toggle = (uid) => {
+    setPicked((prev) => {
+      const next = new Set(prev);
+      if (next.has(uid)) next.delete(uid); else next.add(uid);
+      return next;
+    });
+  };
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await api.put(`/teams/${team.id}/assigned-staff`, { assigned_staff_user_ids: Array.from(picked) });
+      toast.success("Acceso actualizado");
+      onSaved?.();
+    } catch (err) {
+      toast.error(formatApiError(err.response?.data?.detail) || "No se pudo actualizar el acceso");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4" onClick={() => !saving && onClose()} data-testid="team-assign-staff-modal">
+      <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl max-w-md w-full p-6 space-y-3">
+        <h3 className="font-display text-xl font-black uppercase tracking-tight">Acceso al equipo</h3>
+        <p className="text-xs text-slate-500">
+          <strong>{team?.name}</strong> — elige qué cuentas de Cuerpo Técnico del club pueden ver y gestionar este equipo
+          {team?.created_by_user_id ? " (además de quien lo creó)." : "."}
+        </p>
+        {ctUsers.length === 0 ? (
+          <p className="text-xs text-slate-400 italic py-4">Este club no tiene cuentas de Cuerpo Técnico registradas todavía.</p>
+        ) : (
+          <div className="space-y-1.5 max-h-72 overflow-y-auto">
+            {ctUsers.map((u) => (
+              <label key={u.id} className="flex items-center gap-2 text-sm px-2 py-1.5 rounded hover:bg-slate-50 cursor-pointer" data-testid={`assign-staff-option-${u.id}`}>
+                <input type="checkbox" checked={picked.has(u.id)} onChange={() => toggle(u.id)} />
+                <span className="truncate">{u.name} <span className="text-slate-400">· {u.email}</span></span>
+              </label>
+            ))}
+          </div>
+        )}
+        <div className="flex justify-end gap-2 pt-2">
+          <button type="button" onClick={onClose} disabled={saving} className="px-4 py-2 text-xs font-bold uppercase tracking-wide text-slate-600">Cancelar</button>
+          <button type="button" onClick={save} disabled={saving} className="fsc-btn-primary px-4 py-2 rounded-md text-xs disabled:opacity-50" data-testid="admin-save-team-staff-access-btn">
+            {saving ? "Guardando..." : "Guardar"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
