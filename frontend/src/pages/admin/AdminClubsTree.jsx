@@ -7,6 +7,7 @@ import { toast, Toaster } from "sonner";
 import { Pagination } from "../../components/PagedTable";
 import ImageUpload from "../../components/ImageUpload";
 import ConfirmDeleteDialog from "../../components/ConfirmDeleteDialog";
+import ExportCsvButton from "../../components/ExportCsvButton";
 
 const POSITIONS = [
   "Portero",
@@ -143,6 +144,38 @@ export default function AdminClubsTree() {
     });
   }, [clubs, query, statusFilter]);
 
+  // Listado plano club → equipo → jugador para exportar a Excel/CSV (respeta la
+  // búsqueda y el filtro de estado ya aplicados sobre los clubes).
+  const playerExportRows = useMemo(() => {
+    const rows = [];
+    for (const c of filtered) {
+      for (const t of (c.teams || [])) {
+        for (const p of (t.players || [])) {
+          rows.push({ club: c, team: t, player: p });
+        }
+      }
+    }
+    return rows;
+  }, [filtered]);
+  const playerExportColumns = [
+    { key: "club", label: "Club", accessor: (r) => r.club.name || "" },
+    { key: "team", label: "Equipo", accessor: (r) => r.team.name || "" },
+    { key: "category", label: "Categoría", accessor: (r) => r.team.category || "" },
+    { key: "jersey_number", label: "Dorsal", accessor: (r) => r.player.jersey_number ?? "" },
+    { key: "name", label: "Nombre", accessor: (r) => r.player.name || "" },
+    { key: "nickname", label: "Apodo", accessor: (r) => r.player.nickname || "" },
+    { key: "position", label: "Posición", accessor: (r) => r.player.position || "" },
+    { key: "birth_date", label: "Fecha nacimiento", accessor: (r) => r.player.birth_date || "" },
+    { key: "document_id", label: "Documento", accessor: (r) => r.player.document_id || "" },
+    { key: "gender", label: "Género", accessor: (r) => r.player.gender || "" },
+    { key: "eps", label: "EPS", accessor: (r) => r.player.eps || "" },
+    { key: "comet_number", label: "Número COMET", accessor: (r) => r.player.comet_number || "" },
+    { key: "guardian_name", label: "Acudiente", accessor: (r) => r.player.guardian_name || "" },
+    { key: "guardian_relation", label: "Parentesco", accessor: (r) => r.player.guardian_relation || "" },
+    { key: "guardian_phone", label: "Tel. acudiente", accessor: (r) => r.player.guardian_phone || "" },
+    { key: "status", label: "Estado", accessor: (r) => r.player.status || "" },
+  ];
+
   // Paginación: 10 clubes por página. Página se "clampa" automáticamente al cambiar filtros.
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 10;
@@ -161,9 +194,12 @@ export default function AdminClubsTree() {
           <h1 className="font-display text-4xl font-black uppercase tracking-tighter flex items-center gap-2"><Shield/> Clubes</h1>
           <p className="text-sm text-slate-500 mt-1">Vista jerárquica: Club → Eventos inscritos → Categorías → Equipos → Jugadores y cuerpo técnico.</p>
         </div>
-        <button onClick={load} className="text-xs font-bold uppercase tracking-wide px-3 py-2 border border-slate-200 rounded-md flex items-center gap-2 hover:bg-slate-50" data-testid="clubs-refresh">
-          <RefreshCw size={12}/> Recargar
-        </button>
+        <div className="flex items-center gap-2">
+          <ExportCsvButton rows={playerExportRows} columns={playerExportColumns} filename="jugadores_inscritos" label="Descargar niños inscritos" testId="clubs-export-players-csv" />
+          <button onClick={load} className="text-xs font-bold uppercase tracking-wide px-3 py-2 border border-slate-200 rounded-md flex items-center gap-2 hover:bg-slate-50" data-testid="clubs-refresh">
+            <RefreshCw size={12}/> Recargar
+          </button>
+        </div>
       </div>
 
       <div className="flex items-center gap-2 flex-wrap mb-4">
@@ -281,7 +317,7 @@ function ClubNode({ club, users, expanded, onToggle, onApprove, onReject, onPend
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="font-display text-xl font-black tracking-tight">{club.name}</h3>
-            <button onClick={onEditClubName} className="text-slate-400 hover:text-fsc-azul p-1 rounded" title={`Editar nombre del club "${club.name}"`} data-testid={`club-edit-name-${club.id}`}>
+            <button onClick={onEditClubName} className="text-slate-400 hover:text-fsc-azul p-1 rounded" title={`Editar nombre y logo del club "${club.name}"`} data-testid={`club-edit-name-${club.id}`}>
               <Edit3 size={14}/>
             </button>
             <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${STATUS_BADGE[status] || "bg-slate-100 text-slate-600"}`} data-testid={`club-status-${club.id}`}>{status}</span>
@@ -659,6 +695,7 @@ function TeamNameEditModal({ team, onClose, onSaved }) {
 
 function ClubNameEditModal({ club, onClose, onSaved }) {
   const [name, setName] = useState(club?.name || "");
+  const [logoUrl, setLogoUrl] = useState(club?.logo_url || "");
   const [saving, setSaving] = useState(false);
 
   const save = async (e) => {
@@ -667,8 +704,12 @@ function ClubNameEditModal({ club, onClose, onSaved }) {
     if (!trimmed) { toast.error("El nombre es obligatorio"); return; }
     setSaving(true);
     try {
-      await api.patch(`/clubs/${club.id}/name`, { name: trimmed });
-      toast.success("Nombre del club actualizado");
+      const tasks = [api.patch(`/clubs/${club.id}/name`, { name: trimmed })];
+      if ((logoUrl || "") !== (club?.logo_url || "")) {
+        tasks.push(api.patch(`/clubs/${club.id}/logo`, { logo_url: logoUrl || "" }));
+      }
+      await Promise.all(tasks);
+      toast.success("Club actualizado");
       onSaved?.();
     } catch (err) {
       toast.error(formatApiError(err.response?.data?.detail) || "No se pudo actualizar");
@@ -680,7 +721,7 @@ function ClubNameEditModal({ club, onClose, onSaved }) {
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4" onClick={() => !saving && onClose()} data-testid="club-name-edit-modal">
       <form onClick={(e) => e.stopPropagation()} onSubmit={save} className="bg-white rounded-2xl max-w-md w-full p-6 space-y-3">
-        <h3 className="font-display text-xl font-black uppercase tracking-tight">Editar nombre del club</h3>
+        <h3 className="font-display text-xl font-black uppercase tracking-tight">Editar club</h3>
         <label className="block">
           <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Nombre del club</span>
           <input
@@ -691,6 +732,7 @@ function ClubNameEditModal({ club, onClose, onSaved }) {
             data-testid="admin-club-name-input"
           />
         </label>
+        <ImageUpload value={logoUrl} onChange={setLogoUrl} label="Logo del club" hint="Recomendado: PNG con fondo transparente, cuadrado." testId="admin-club-logo-upload" />
         <div className="flex justify-end gap-2 pt-2">
           <button type="button" onClick={onClose} disabled={saving} className="px-4 py-2 text-xs font-bold uppercase tracking-wide text-slate-600">Cancelar</button>
           <button type="submit" disabled={saving} className="fsc-btn-primary px-4 py-2 rounded-md text-xs disabled:opacity-50" data-testid="admin-save-club-name-btn">

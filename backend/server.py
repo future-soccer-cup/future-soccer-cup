@@ -795,7 +795,7 @@ class MatchOut(MatchIn):
 class MatchResultIn(BaseModel):
     home_score: int
     away_score: int
-    scorers: Optional[List[dict]] = []  # [{player_id, team_id, minute}]
+    scorers: Optional[List[dict]] = []  # [{player_id, team_id, goals}] — una fila por jugador con su cantidad de goles
     cards: Optional[List[dict]] = []  # [{player_id, team_id, type: 'yellow'|'red', minute}]
     home_fair_play: Optional[int] = 0
     away_fair_play: Optional[int] = 0
@@ -1880,6 +1880,17 @@ async def update_match(mid: str, payload: MatchUpdateIn, _: dict = Depends(requi
 
 @api.put("/matches/{mid}/result")
 async def update_match_result(mid: str, payload: MatchResultIn, _: dict = Depends(require_admin)):
+    existing_match = await db.matches.find_one({"id": mid}, {"_id": 0, "home_team_id": 1, "away_team_id": 1})
+    if not existing_match:
+        raise HTTPException(status_code=404, detail="Partido no encontrado")
+    # Los goles de los goleadores no pueden superar el resultado del equipo (ni en total
+    # ni individualmente, ya que un solo jugador no puede anotar más goles que su equipo).
+    home_goals = sum(int(s.get("goals") or 0) for s in (payload.scorers or []) if s.get("team_id") == existing_match.get("home_team_id"))
+    away_goals = sum(int(s.get("goals") or 0) for s in (payload.scorers or []) if s.get("team_id") == existing_match.get("away_team_id"))
+    if home_goals > payload.home_score:
+        raise HTTPException(status_code=400, detail=f"Los goles registrados del equipo local ({home_goals}) superan el resultado ({payload.home_score})")
+    if away_goals > payload.away_score:
+        raise HTTPException(status_code=400, detail=f"Los goles registrados del equipo visitante ({away_goals}) superan el resultado ({payload.away_score})")
     res = await db.matches.update_one(
         {"id": mid},
         {"$set": {
@@ -3167,7 +3178,11 @@ async def top_scorers(category: Optional[str] = None, group_name: Optional[str] 
             pid = s.get("player_id")
             if not pid:
                 continue
-            counter[pid] = counter.get(pid, 0) + 1
+            # "goals" es el modelo actual (cantidad de goles del jugador en ese partido).
+            # Partidos antiguos guardaban una fila por gol con "minute" en vez de "goals" —
+            # para esos, cada fila sigue contando como 1 gol (comportamiento previo).
+            g = s.get("goals")
+            counter[pid] = counter.get(pid, 0) + (int(g) if g is not None else 1)
     if not counter:
         return []
     pids = list(counter.keys())

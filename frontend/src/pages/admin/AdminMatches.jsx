@@ -117,6 +117,19 @@ export default function AdminMatches() {
 
   const submitResult = async (e) => {
     e.preventDefault();
+    const homeScore = Number(scoring.home_score || 0);
+    const awayScore = Number(scoring.away_score || 0);
+    const scorers = scoring.scorers || [];
+    const homeGoals = scorers.filter((s) => s.team_id === scoring.home_team_id).reduce((sum, s) => sum + Number(s.goals || 0), 0);
+    const awayGoals = scorers.filter((s) => s.team_id === scoring.away_team_id).reduce((sum, s) => sum + Number(s.goals || 0), 0);
+    if (homeGoals > homeScore) {
+      toast.error(`Los goles de ${scoring.home_team_name} (${homeGoals}) no pueden ser más que el resultado (${homeScore})`);
+      return;
+    }
+    if (awayGoals > awayScore) {
+      toast.error(`Los goles de ${scoring.away_team_name} (${awayGoals}) no pueden ser más que el resultado (${awayScore})`);
+      return;
+    }
     try {
       await api.put(`/matches/${scoring.id}/result`, {
         home_score: Number(scoring.home_score),
@@ -502,7 +515,7 @@ function ScorersEditor({ scoring, setScoring, teams }) {
   ];
 
   const addScorer = () => {
-    setScoring((prev) => ({ ...prev, scorers: [...(prev.scorers || []), { _uid: crypto.randomUUID(), player_id: "", team_id: "", minute: 0 }] }));
+    setScoring((prev) => ({ ...prev, scorers: [...(prev.scorers || []), { _uid: crypto.randomUUID(), player_id: "", team_id: "", goals: 1 }] }));
   };
 
   const updateScorerByUid = (uid, patch) => {
@@ -513,6 +526,14 @@ function ScorersEditor({ scoring, setScoring, teams }) {
     setScoring((prev) => ({ ...prev, scorers: (prev.scorers || []).filter((s) => s._uid !== uid) }));
   };
 
+  const scorers = scoring.scorers || [];
+  const homeScore = Number(scoring.home_score || 0);
+  const awayScore = Number(scoring.away_score || 0);
+  const homeGoalsSum = scorers.filter((s) => s.team_id === scoring.home_team_id).reduce((sum, s) => sum + Number(s.goals || 0), 0);
+  const awayGoalsSum = scorers.filter((s) => s.team_id === scoring.away_team_id).reduce((sum, s) => sum + Number(s.goals || 0), 0);
+  const homeOver = homeGoalsSum > homeScore;
+  const awayOver = awayGoalsSum > awayScore;
+
   return (
     <div className="border border-slate-200 rounded-md p-3">
       <div className="flex items-center justify-between mb-2">
@@ -520,31 +541,49 @@ function ScorersEditor({ scoring, setScoring, teams }) {
         <button type="button" onClick={addScorer} className="text-xs font-bold text-blue-700">+ Agregar</button>
       </div>
       {(scoring.scorers || []).length === 0 && <p className="text-xs text-slate-400 py-1">Sin goleadores registrados</p>}
-      {(scoring.scorers || []).map((s, i) => (
-        <div key={s._uid || `scorer-${i}`} className="grid grid-cols-12 gap-2 mb-2 items-center" data-testid={`scorer-row-${i}`}>
-          <select
-            value={s.team_id || ""}
-            onChange={(e) => updateScorerByUid(s._uid, { team_id: e.target.value, player_id: "" })}
-            className="col-span-4 min-w-0 px-2 py-1 border border-slate-200 rounded text-sm"
-            data-testid={`scorer-team-${i}`}
-          >
-            <option value="">Equipo...</option>
-            {teamOptions.map((t) => t.id ? <option key={t.id} value={t.id}>{t.name}</option> : null)}
-          </select>
-          <select
-            value={s.player_id}
-            onChange={(e) => updateScorerByUid(s._uid, { player_id: e.target.value })}
-            disabled={!s.team_id}
-            className="col-span-4 min-w-0 px-2 py-1 border border-slate-200 rounded text-sm disabled:bg-slate-50"
-            data-testid={`scorer-player-${i}`}
-          >
-            <option value="">Jugador...</option>
-            {players.filter((p) => p.team_id === s.team_id).map((p) => <option key={p.id} value={p.id}>{p.name} (#{p.jersey_number})</option>)}
-          </select>
-          <input type="number" placeholder="Min" value={s.minute || ""} onChange={(e) => updateScorerByUid(s._uid, { minute: Number(e.target.value) })} className="col-span-3 px-2 py-1 border border-slate-200 rounded text-sm" />
-          <button type="button" onClick={() => removeScorerByUid(s._uid)} className="col-span-1 text-red-600" data-testid={`scorer-remove-${i}`}>✕</button>
-        </div>
-      ))}
+      {(scoring.scorers || []).map((s, i) => {
+        const playerMaxGoals = s.team_id === scoring.home_team_id ? homeScore : s.team_id === scoring.away_team_id ? awayScore : 99;
+        const rowOver = Number(s.goals || 0) > playerMaxGoals;
+        return (
+          <div key={s._uid || `scorer-${i}`} className="grid grid-cols-12 gap-2 mb-2 items-center" data-testid={`scorer-row-${i}`}>
+            <select
+              value={s.team_id || ""}
+              onChange={(e) => updateScorerByUid(s._uid, { team_id: e.target.value, player_id: "" })}
+              className="col-span-4 min-w-0 px-2 py-1 border border-slate-200 rounded text-sm"
+              data-testid={`scorer-team-${i}`}
+            >
+              <option value="">Equipo...</option>
+              {teamOptions.map((t) => t.id ? <option key={t.id} value={t.id}>{t.name}</option> : null)}
+            </select>
+            <select
+              value={s.player_id}
+              onChange={(e) => updateScorerByUid(s._uid, { player_id: e.target.value })}
+              disabled={!s.team_id}
+              className="col-span-4 min-w-0 px-2 py-1 border border-slate-200 rounded text-sm disabled:bg-slate-50"
+              data-testid={`scorer-player-${i}`}
+            >
+              <option value="">Jugador...</option>
+              {players.filter((p) => p.team_id === s.team_id).map((p) => <option key={p.id} value={p.id}>{p.name} (#{p.jersey_number})</option>)}
+            </select>
+            <input
+              type="number"
+              min="1"
+              placeholder="Goles"
+              value={s.goals ?? ""}
+              onChange={(e) => updateScorerByUid(s._uid, { goals: e.target.value === "" ? "" : Number(e.target.value) })}
+              className={`col-span-3 px-2 py-1 border rounded text-sm ${rowOver ? "border-red-500 bg-red-50" : "border-slate-200"}`}
+              data-testid={`scorer-goals-${i}`}
+            />
+            <button type="button" onClick={() => removeScorerByUid(s._uid)} className="col-span-1 text-red-600" data-testid={`scorer-remove-${i}`}>✕</button>
+          </div>
+        );
+      })}
+      {(homeOver || awayOver) && (
+        <p className="text-xs font-bold text-red-600 mt-1" data-testid="scorers-overflow-warning">
+          {homeOver && `${scoring.home_team_name}: ${homeGoalsSum} goles registrados, el resultado es ${homeScore}. `}
+          {awayOver && `${scoring.away_team_name}: ${awayGoalsSum} goles registrados, el resultado es ${awayScore}.`}
+        </p>
+      )}
     </div>
   );
 }
