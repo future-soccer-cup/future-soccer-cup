@@ -640,7 +640,7 @@ class TeamRegisterIn(BaseModel):
     password: str = Field(min_length=6)
     manager_name: str = Field(min_length=1)
     manager_phone: Optional[str] = ""
-    manager_role: Optional[str] = "Director técnico"
+    manager_role: Optional[str] = "Directivo"
     manager_document: Optional[str] = ""
     # Club info (created if doesn't exist) — solo para rol "Directivo"
     # Si el rol es "Cuerpo Técnico" se debe enviar existing_club_id (no club_name).
@@ -1121,7 +1121,7 @@ async def register_team(payload: TeamRegisterIn, response: Response):
         "name": payload.manager_name,
         "phone": payload.manager_phone or "",
         "role": "team",
-        "manager_role": payload.manager_role or "Director técnico",
+        "manager_role": payload.manager_role or "Directivo",
         "document": payload.manager_document or "",
         "team_id": team_id,
         "club_id": club_id,
@@ -1146,7 +1146,7 @@ async def register_team(payload: TeamRegisterIn, response: Response):
     return {
         "id": user_id, "email": email, "name": payload.manager_name,
         "role": "team", "team_id": team_id,
-        "manager_role": payload.manager_role or "",
+        "manager_role": payload.manager_role or "Directivo",
         "club_id": club_id,
     }
 
@@ -1776,6 +1776,20 @@ async def assign_user_club(user_id: str, club_id: str, user: dict = Depends(requ
     actor = await _record_audit("user", user_id, "assign_club", target.get("club_id"), club_id, user)
     await db.users.update_one({"id": user_id}, {"$set": {"club_id": club_id, "status": "aprobado", **actor}})
     return {"ok": True, "club_id": club_id}
+
+@api.post("/admin/normalize-manager-roles")
+async def normalize_manager_roles(_: dict = Depends(require_admin)):
+    """Uso único (migración de datos): normaliza cuentas viejas cuyo manager_role no es
+    ninguno de los 2 valores canónicos del sistema (Directivo / Cuerpo Técnico) — por
+    ejemplo "Director técnico", "Presidente" o vacío, de antes de que existiera esta
+    separación — a "Directivo", el equivalente con el que ya se comportaban (dependen del
+    estado del CLUB, no de aprobación individual). Nunca toca una cuenta que sí sea
+    Cuerpo Técnico."""
+    users = await db.users.find({"role": "team"}, {"_id": 0, "id": 1, "manager_role": 1}).to_list(5000)
+    to_fix = [u["id"] for u in users if not _is_cuerpo_tecnico(u) and (u.get("manager_role") or "").strip() != "Directivo"]
+    if to_fix:
+        await db.users.update_many({"id": {"$in": to_fix}}, {"$set": {"manager_role": "Directivo"}})
+    return {"normalized": len(to_fix), "ids": to_fix}
 
 # -------------------- Tournaments --------------------
 @api.get("/tournaments", response_model=List[TournamentOut])
@@ -4860,8 +4874,11 @@ async def calculate_quote(payload: QuoteIn):
 async def create_quote(payload: QuoteIn, user: dict = Depends(get_current_user)):
     if user.get("role") not in ("team", "admin"):
         raise HTTPException(status_code=403, detail="Solo los usuarios de club pueden enviar cotizaciones")
-    # Solo el Directivo del club puede cotizar — el Cuerpo Técnico no.
-    if user.get("role") == "team" and (user.get("manager_role") or "").strip().lower() not in ("directivo", "director técnico", "director tecnico", "presidente"):
+    # Solo el Directivo del club puede cotizar — el Cuerpo Técnico no. Se compara contra
+    # "es Cuerpo Técnico" (no contra una lista fija de variantes de "Directivo") para que
+    # cualquier etiqueta vieja o futura que no sea exactamente Cuerpo Técnico siga pudiendo
+    # cotizar, en vez de quedar bloqueada por no aparecer en una lista cerrada.
+    if user.get("role") == "team" and _is_cuerpo_tecnico(user):
         raise HTTPException(status_code=403, detail="Solo el Directivo del club puede realizar cotizaciones. El Cuerpo Técnico no tiene este permiso.")
     await _require_club_approved(user, action="cotizaciones")
     cat = await _load_catalog()
