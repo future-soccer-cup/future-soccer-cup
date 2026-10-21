@@ -47,7 +47,7 @@ export default function TeamRegister() {
   const [imgUrl, setImgUrl] = useState("");
   const [heroBgUrl, setHeroBgUrl] = useState("");
   const fileRef = useRef(null);
-  const { setUser } = useAuth();
+  const { setUser, logout } = useAuth();
   const nav = useNavigate();
   const { wrapRef: imgWrapRef, width: imgColWidth, onImgLoad } = useAutoFitSideImage({ maxWidthRatio: 0.42, minWidth: 260 });
 
@@ -99,7 +99,14 @@ export default function TeamRegister() {
     try {
       const payload = { ...form, existing_club_id: "" };
       const reg = await api.post("/auth/register-team", payload);
-      setUser(reg.data);
+      // El Cuerpo Técnico nace pendiente de aprobación — no lo dejamos "logueado" con una
+      // sesión que de todas formas no puede usar nada (todas las llamadas le darán 403).
+      // Mejor que vea de una vez el mensaje claro de pendiente al intentar iniciar sesión.
+      if (isCuerpoTecnico) {
+        logout().catch(() => {});
+      } else {
+        setUser(reg.data);
+      }
 
       if (logoFile && reg.data.team_id && isDirectivo) {
         try {

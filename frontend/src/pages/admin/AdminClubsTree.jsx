@@ -247,6 +247,8 @@ export default function AdminClubsTree() {
 
   const setQueryReset = (v) => setQuery(v); // la URL + reset de página los maneja el debounce de arriba
   const setStatusFilterReset = (v) => updateParams({ status: v, page: "" });
+  const mainTab = searchParams.get("view") || "clubs";
+  const setMainTab = (v) => updateParams({ view: v === "clubs" ? "" : v, page: "" });
 
   return (
     <div data-testid="admin-clubs-tree">
@@ -264,10 +266,28 @@ export default function AdminClubsTree() {
         </div>
       </div>
 
-      {pendingAssignments.length > 0 && (
-        <PendingAssignmentsPanel rows={pendingAssignments} clubs={clubs} onAssign={assignClub} />
-      )}
+      <div className="flex gap-1 mb-4 border-b border-slate-200" data-testid="clubs-main-tabs">
+        <button
+          onClick={() => setMainTab("clubs")}
+          className={`px-4 py-2.5 text-sm font-bold uppercase tracking-wide -mb-px border-b-2 ${mainTab === "clubs" ? "border-fsc-azul text-fsc-azul" : "border-transparent text-slate-500"}`}
+          data-testid="clubs-tab-clubs"
+        >
+          Clubes
+        </button>
+        <button
+          onClick={() => setMainTab("pending")}
+          className={`px-4 py-2.5 text-sm font-bold uppercase tracking-wide -mb-px border-b-2 flex items-center gap-1.5 ${mainTab === "pending" ? "border-fsc-azul text-fsc-azul" : "border-transparent text-slate-500"}`}
+          data-testid="clubs-tab-pending"
+        >
+          Cuerpo Técnico sin club asignado
+          {pendingAssignments.length > 0 && <span className="bg-amber-100 text-amber-800 rounded-full px-2 py-0.5 text-xs">{pendingAssignments.length}</span>}
+        </button>
+      </div>
 
+      {mainTab === "pending" ? (
+        <PendingAssignmentsTable rows={pendingAssignments} clubs={clubs} onAssign={assignClub} searchParams={searchParams} updateParams={updateParams} />
+      ) : (
+      <>
       <div className="flex items-center gap-2 flex-wrap mb-4">
         <input
           value={query}
@@ -317,6 +337,8 @@ export default function AdminClubsTree() {
       </div>
 
       <Pagination page={safePage} totalPages={totalPages} onPage={setPage} testIdPrefix="clubs" />
+      </>
+      )}
 
       {editingPlayer && (
         <PlayerEditModal
@@ -366,41 +388,91 @@ export default function AdminClubsTree() {
 }
 
 // Cuentas de Cuerpo Técnico que se registraron escribiendo el nombre del club como guía
-// (sin club confirmado todavía). El admin elige el club real de la lista y aprueba en un paso.
-function PendingAssignmentsPanel({ rows, clubs, onAssign }) {
+// (sin club confirmado todavía). El admin elige el club real de la lista y aprueba en un
+// paso. Tabla con búsqueda y paginación propia (puede crecer bastante con el tiempo).
+function PendingAssignmentsTable({ rows, clubs, onAssign, searchParams, updateParams }) {
   const [picked, setPicked] = useState({}); // {user_id: club_id}
+  const q = (searchParams.get("pq") || "").toLowerCase();
+  const setQ = (v) => updateParams({ pq: v, ppage: "" });
+  const page = parseInt(searchParams.get("ppage"), 10) || 1;
+  const setPage = (p) => updateParams({ ppage: p > 1 ? String(p) : "" });
+  const PAGE_SIZE = 10;
+
+  const filtered = useMemo(() => {
+    if (!q) return rows;
+    return rows.filter((u) =>
+      (u.name || "").toLowerCase().includes(q) ||
+      (u.email || "").toLowerCase().includes(q) ||
+      (u.requested_club_name || "").toLowerCase().includes(q)
+    );
+  }, [rows, q]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageItems = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
   return (
-    <div className="mb-4 border-2 border-amber-300 bg-amber-50 rounded-xl p-4" data-testid="pending-club-assignments">
-      <h3 className="font-display text-sm font-black uppercase tracking-wide text-amber-800 mb-1">
-        Cuerpo Técnico sin club asignado ({rows.length})
-      </h3>
-      <p className="text-xs text-amber-700 mb-3">Escribieron el nombre del club como guía al registrarse. Confirma a qué club pertenecen para aprobar su acceso.</p>
-      <div className="space-y-2">
-        {rows.map((u) => (
-          <div key={u.id} className="flex items-center gap-2 flex-wrap bg-white border border-amber-200 rounded-md p-2.5" data-testid={`pending-assignment-${u.id}`}>
-            <div className="min-w-0 flex-1">
-              <div className="text-sm font-bold truncate">{u.name} <span className="font-normal text-slate-400">· {u.email}</span></div>
-              <div className="text-xs text-slate-500">Club escrito: <strong>{u.requested_club_name || "—"}</strong></div>
-            </div>
-            <select
-              value={picked[u.id] || ""}
-              onChange={(e) => setPicked((p) => ({ ...p, [u.id]: e.target.value }))}
-              className="px-2 py-1.5 border border-slate-200 rounded-md text-xs min-w-[200px]"
-              data-testid={`pending-assignment-select-${u.id}`}
-            >
-              <option value="">— Elegir club real —</option>
-              {clubs.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-            <button
-              onClick={() => onAssign(u.id, picked[u.id])}
-              className="text-xs font-bold uppercase tracking-wide px-3 py-1.5 rounded-md bg-emerald-600 text-white hover:bg-emerald-700"
-              data-testid={`pending-assignment-confirm-${u.id}`}
-            >
-              Asignar y aprobar
-            </button>
-          </div>
-        ))}
+    <div data-testid="pending-club-assignments">
+      <p className="text-sm text-slate-500 mb-3">Escribieron el nombre del club como guía al registrarse. Confirma a qué club pertenecen para aprobar su acceso.</p>
+      <div className="flex items-center gap-2 flex-wrap mb-4">
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Buscar por nombre, email o club escrito..."
+          className="px-3 py-2 border border-slate-200 rounded-md text-sm flex-1 min-w-[240px]"
+          data-testid="pending-assignments-search"
+        />
+        <span className="text-xs text-slate-500 ml-auto" data-testid="pending-assignments-count">{filtered.length} / {rows.length}</span>
       </div>
+      {rows.length === 0 ? (
+        <div className="text-center py-12 text-slate-400">No hay cuentas de Cuerpo Técnico esperando asignación de club.</div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-12 text-slate-400">Sin resultados para la búsqueda.</div>
+      ) : (
+        <div className="overflow-x-auto border border-slate-200 rounded-lg">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wide">
+              <tr>
+                <th className="text-left px-3 py-2.5">Nombre</th>
+                <th className="text-left px-3 py-2.5">Email</th>
+                <th className="text-left px-3 py-2.5">Club escrito</th>
+                <th className="text-left px-3 py-2.5">Asignar club real</th>
+                <th className="text-left px-3 py-2.5"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {pageItems.map((u) => (
+                <tr key={u.id} className="border-t border-slate-100" data-testid={`pending-assignment-${u.id}`}>
+                  <td className="px-3 py-2.5 font-semibold">{u.name}</td>
+                  <td className="px-3 py-2.5 text-slate-500">{u.email}</td>
+                  <td className="px-3 py-2.5"><strong>{u.requested_club_name || "—"}</strong></td>
+                  <td className="px-3 py-2.5">
+                    <select
+                      value={picked[u.id] || ""}
+                      onChange={(e) => setPicked((p) => ({ ...p, [u.id]: e.target.value }))}
+                      className="px-2 py-1.5 border border-slate-200 rounded-md text-xs min-w-[200px]"
+                      data-testid={`pending-assignment-select-${u.id}`}
+                    >
+                      <option value="">— Elegir club real —</option>
+                      {clubs.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </td>
+                  <td className="px-3 py-2.5">
+                    <button
+                      onClick={() => onAssign(u.id, picked[u.id])}
+                      className="text-xs font-bold uppercase tracking-wide px-3 py-1.5 rounded-md bg-emerald-600 text-white hover:bg-emerald-700"
+                      data-testid={`pending-assignment-confirm-${u.id}`}
+                    >
+                      Asignar y aprobar
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <Pagination page={safePage} totalPages={totalPages} onPage={setPage} testIdPrefix="pending-assignments" />
     </div>
   );
 }

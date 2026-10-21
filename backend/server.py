@@ -406,6 +406,7 @@ async def get_current_user(request: Request) -> dict:
         user = await db.users.find_one({"id": payload["sub"]}, {"_id": 0, "password_hash": 0})
         if not user:
             raise HTTPException(status_code=401, detail="Usuario no encontrado")
+        _enforce_team_account_active(user)
         return user
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expirado")
@@ -434,6 +435,16 @@ async def get_current_user_optional(request: Request) -> Optional[dict]:
 
 def _is_cuerpo_tecnico(user: dict) -> bool:
     return (user.get("manager_role") or "").strip().lower() == "cuerpo técnico"
+
+def _enforce_team_account_active(user: dict) -> None:
+    """Bloquea CUALQUIER llamada autenticada (no solo /auth/login) de una cuenta de Cuerpo
+    Técnico que todavía no fue aprobada. Sin esto, el auto-login del registro le daba acceso
+    completo a la app de inmediato sin pasar nunca por la validación de /auth/login — el
+    Directivo no se bloquea aquí porque su gate depende del estado del CLUB, que se revisa
+    aparte en /auth/login y en las acciones sensibles (_require_club_approved)."""
+    if user.get("role") == "team" and _is_cuerpo_tecnico(user):
+        if "status" in user and user.get("status") != "aprobado":
+            raise HTTPException(status_code=403, detail="Tu cuenta de Cuerpo Técnico está pendiente de aprobación por el administrador.")
 
 async def _visible_team_ids_for_user(user: dict) -> Optional[List[str]]:
     """None = sin restricción (admin ve todo). Un Directivo ve todos los equipos de su
@@ -1185,11 +1196,8 @@ async def login(payload: LoginIn, request: Request, response: Response):
     # su propia aprobación individual. Cuentas sin el campo `status` (creadas antes de este
     # cambio) se tratan como ya aprobadas, para no bloquear a nadie retroactivamente.
     if user.get("role") == "team":
-        is_staff_role = (user.get("manager_role") or "").strip().lower() == "cuerpo técnico"
-        if is_staff_role:
-            if "status" in user and user.get("status") != "aprobado":
-                raise HTTPException(status_code=403, detail="Tu cuenta de Cuerpo Técnico está pendiente de aprobación por el administrador.")
-        elif "status" in user and user.get("club_id"):
+        _enforce_team_account_active(user)
+        if not _is_cuerpo_tecnico(user) and "status" in user and user.get("club_id"):
             club = await db.clubs.find_one({"id": user["club_id"]}, {"_id": 0, "status": 1})
             if club and (club.get("status") or "pendiente") != "aprobado":
                 raise HTTPException(status_code=403, detail="Tu club está pendiente de aprobación por el administrador. Te avisaremos apenas sea aprobado.")
