@@ -19,11 +19,16 @@ export default function AdminApprovals() {
   const statusFilter = searchParams.get("status") || "pendiente";
   const filterClub = searchParams.get("club") || "";
   const filterCategory = searchParams.get("cat") || "";
-  const makeSetter = (key) => (v) => setSearchParams((prev) => {
+  // updateParams cambia uno o varios a la vez — encadenar varias llamadas a setSearchParams
+  // en el mismo handler pisa los cambios anteriores (cada una lee la URL aún no actualizada).
+  const updateParams = (updates) => setSearchParams((prev) => {
     const next = new URLSearchParams(prev);
-    if (v) next.set(key, v); else next.delete(key);
+    for (const [k, v] of Object.entries(updates)) {
+      if (v) next.set(k, v); else next.delete(k);
+    }
     return next;
   }, { replace: true });
+  const makeSetter = (key) => (v) => updateParams({ [key]: v });
   const setTab = makeSetter("tab");
   const setStatusFilter = makeSetter("status");
   const setFilterClub = makeSetter("club");
@@ -163,7 +168,7 @@ export default function AdminApprovals() {
             {categoriesAvail.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
           {(filterClub || filterCategory) && (
-            <button onClick={() => { setFilterClub(""); setFilterCategory(""); }} className="px-3 py-2 border-2 border-slate-200 rounded-md text-xs font-bold uppercase tracking-wide hover:bg-slate-50" data-testid="approvals-players-filters-clear">Limpiar filtros</button>
+            <button onClick={() => updateParams({ club: "", cat: "" })} className="px-3 py-2 border-2 border-slate-200 rounded-md text-xs font-bold uppercase tracking-wide hover:bg-slate-50" data-testid="approvals-players-filters-clear">Limpiar filtros</button>
           )}
         </div>
       )}

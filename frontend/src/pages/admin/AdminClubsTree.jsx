@@ -52,16 +52,18 @@ export default function AdminClubsTree() {
   const [searchParams, setSearchParams] = useSearchParams();
   const query = searchParams.get("q") || "";
   const statusFilter = searchParams.get("status") || "";
-  const setQuery = (v) => setSearchParams((prev) => {
+  // updateParams cambia uno o varios params en una sola llamada — llamar setSearchParams
+  // varias veces seguidas en el mismo handler pisa los cambios anteriores porque cada
+  // llamada lee la URL todavía no actualizada por la anterior.
+  const updateParams = (updates) => setSearchParams((prev) => {
     const next = new URLSearchParams(prev);
-    if (v) next.set("q", v); else next.delete("q");
+    for (const [k, v] of Object.entries(updates)) {
+      if (v) next.set(k, v); else next.delete(k);
+    }
     return next;
   }, { replace: true });
-  const setStatusFilter = (v) => setSearchParams((prev) => {
-    const next = new URLSearchParams(prev);
-    if (v) next.set("status", v); else next.delete("status");
-    return next;
-  }, { replace: true });
+  const setQuery = (v) => updateParams({ q: v });
+  const setStatusFilter = (v) => updateParams({ status: v });
   const [clubUsers, setClubUsers] = useState({}); // {club_id: [users]}
   const [editingPlayer, setEditingPlayer] = useState(null); // {team_id, player|null}
   const [editingTeamName, setEditingTeamName] = useState(null); // {id, name, category, ...}
@@ -227,18 +229,14 @@ export default function AdminClubsTree() {
 
   // Paginación: 10 clubes por página. Página se "clampa" automáticamente al cambiar filtros.
   const page = parseInt(searchParams.get("page"), 10) || 1;
-  const setPage = (p) => setSearchParams((prev) => {
-    const next = new URLSearchParams(prev);
-    if (p > 1) next.set("page", String(p)); else next.delete("page");
-    return next;
-  }, { replace: true });
+  const setPage = (p) => updateParams({ page: p > 1 ? String(p) : "" });
   const PAGE_SIZE = 10;
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
   const pageItems = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
-  const setQueryReset = (v) => { setQuery(v); setPage(1); };
-  const setStatusFilterReset = (v) => { setStatusFilter(v); setPage(1); };
+  const setQueryReset = (v) => updateParams({ q: v, page: "" });
+  const setStatusFilterReset = (v) => updateParams({ status: v, page: "" });
 
   return (
     <div data-testid="admin-clubs-tree">

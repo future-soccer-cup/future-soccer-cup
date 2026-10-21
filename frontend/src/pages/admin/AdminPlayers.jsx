@@ -22,14 +22,16 @@ export default function AdminPlayers() {
   const filterClub = searchParams.get("club") || "";
   const filterTeam = searchParams.get("team") || "";
   const filterCategory = searchParams.get("cat") || "";
-  const makeSetter = (key) => (v) => setSearchParams((prev) => {
+  // updateParams cambia uno o varios a la vez — encadenar varias llamadas a setSearchParams
+  // en el mismo handler pisa los cambios anteriores (cada una lee la URL aún no actualizada).
+  const updateParams = (updates) => setSearchParams((prev) => {
     const next = new URLSearchParams(prev);
-    if (v) next.set(key, v); else next.delete(key);
+    for (const [k, v] of Object.entries(updates)) {
+      if (v) next.set(k, v); else next.delete(k);
+    }
     return next;
   }, { replace: true });
-  const setFilterClub = makeSetter("club");
-  const setFilterTeam = makeSetter("team");
-  const setFilterCategory = makeSetter("cat");
+  const setFilterTeam = (v) => updateParams({ team: v });
 
   const load = useCallback(() => Promise.all([
     api.get("/players"),
@@ -129,11 +131,11 @@ export default function AdminPlayers() {
       </div>
 
       <div className="mb-3 grid grid-cols-1 md:grid-cols-3 gap-2" data-testid="players-filters-bar">
-        <select value={filterClub} onChange={(e) => { setFilterClub(e.target.value); setFilterTeam(""); }} className="px-3 py-2 border border-slate-200 rounded-md text-sm" data-testid="players-filter-club">
+        <select value={filterClub} onChange={(e) => updateParams({ club: e.target.value, team: "" })} className="px-3 py-2 border border-slate-200 rounded-md text-sm" data-testid="players-filter-club">
           <option value="">Todos los clubes</option>
           {clubs.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
-        <select value={filterCategory} onChange={(e) => { setFilterCategory(e.target.value); setFilterTeam(""); }} className="px-3 py-2 border border-slate-200 rounded-md text-sm" data-testid="players-filter-category">
+        <select value={filterCategory} onChange={(e) => updateParams({ cat: e.target.value, team: "" })} className="px-3 py-2 border border-slate-200 rounded-md text-sm" data-testid="players-filter-category">
           <option value="">Todas las categorías</option>
           {categoriesAvail.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
@@ -155,7 +157,7 @@ export default function AdminPlayers() {
           />
         </div>
         {(filterClub || filterTeam || filterCategory) && (
-          <button onClick={() => { setFilterClub(""); setFilterTeam(""); setFilterCategory(""); }} className="px-3 py-2 border-2 border-slate-200 rounded-md text-xs font-bold uppercase tracking-wide hover:bg-slate-50" data-testid="players-filters-clear">Limpiar filtros</button>
+          <button onClick={() => updateParams({ club: "", team: "", cat: "" })} className="px-3 py-2 border-2 border-slate-200 rounded-md text-xs font-bold uppercase tracking-wide hover:bg-slate-50" data-testid="players-filters-clear">Limpiar filtros</button>
         )}
         <ExportCsvButton rows={filtered} columns={exportColumns} filename="jugadores" testId="players-export-csv" />
       </div>

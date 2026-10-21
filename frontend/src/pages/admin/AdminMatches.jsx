@@ -41,15 +41,18 @@ export default function AdminMatches() {
   const filterCat = searchParams.get("cat") || "";
   const filterGrp = searchParams.get("grp") || "";
   const tab = searchParams.get("tab") || "partidos"; // partidos | clasificacion | juego_limpio
-  const makeSetter = (key) => (v) => setSearchParams((prev) => {
+  // updateParams cambia uno o varios params en una sola llamada a setSearchParams — llamar
+  // setSearchParams varias veces seguidas en el mismo handler (ej. al cambiar de torneo,
+  // también limpiar categoría y grupo) pisa los cambios anteriores porque cada llamada lee
+  // la URL todavía no actualizada por la anterior.
+  const updateParams = (updates) => setSearchParams((prev) => {
     const next = new URLSearchParams(prev);
-    if (v) next.set(key, v); else next.delete(key);
+    for (const [k, v] of Object.entries(updates)) {
+      if (v) next.set(k, v); else next.delete(k);
+    }
     return next;
   }, { replace: true });
-  const setFilterTid = makeSetter("tid");
-  const setFilterCat = makeSetter("cat");
-  const setFilterGrp = makeSetter("grp");
-  const setTab = makeSetter("tab");
+  const setTab = (v) => updateParams({ tab: v });
   const [standings, setStandings] = useState([]);
   const [fixtures, setFixtures] = useState([]);
   const [brackets, setBrackets] = useState([]);
@@ -204,9 +207,8 @@ export default function AdminMatches() {
 
       <FilterAndExportBar
         tournaments={tournaments} teams={teams} fixtures={fixtures} brackets={brackets}
-        tid={filterTid} setTid={setFilterTid}
-        cat={filterCat} setCat={setFilterCat}
-        grp={filterGrp} setGrp={setFilterGrp}
+        tid={filterTid} cat={filterCat} grp={filterGrp}
+        onFilterChange={(updates) => updateParams({ tid: filterTid, cat: filterCat, grp: filterGrp, ...updates })}
       />
 
       <div className="flex gap-1 mb-4 border-b border-slate-200" data-testid="matches-tabs">
@@ -971,7 +973,7 @@ function hasFixtureForFilters(fixtures, tid, cat, grp) {
   });
 }
 
-function FilterAndExportBar({ tournaments, teams, fixtures = [], brackets = [], tid, setTid, cat, setCat, grp, setGrp }) {
+function FilterAndExportBar({ tournaments, teams, fixtures = [], brackets = [], tid, cat, grp, onFilterChange }) {
   const activeTournaments = (tournaments || []).filter((t) => !t.archived);
   const tournament = activeTournaments.find((t) => t.id === tid);
   const declaredCats = tournament
@@ -1010,21 +1012,21 @@ function FilterAndExportBar({ tournaments, teams, fixtures = [], brackets = [], 
     <div className="mb-4 bg-white border border-slate-200 rounded-lg p-3" data-testid="pdf-export-bar">
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-[10px] font-bold uppercase tracking-widest text-fsc-azul flex items-center gap-1"><FileDown size={12}/> Filtros + Exportar PDFs</span>
-        <select value={tid} onChange={(e) => { setTid(e.target.value); setCat(""); setGrp(""); }} className="px-2 py-1.5 border border-slate-200 rounded text-xs" data-testid="pdf-export-tournament">
+        <select value={tid} onChange={(e) => onFilterChange({ tid: e.target.value, cat: "", grp: "" })} className="px-2 py-1.5 border border-slate-200 rounded text-xs" data-testid="pdf-export-tournament">
           <option value="">Evento activo...</option>
           {activeTournaments.map((t) => <option key={t.id} value={t.id}>{t.name} · {t.season}</option>)}
         </select>
-        <select value={cat} onChange={(e) => { setCat(e.target.value); setGrp(""); }} className="px-2 py-1.5 border border-slate-200 rounded text-xs disabled:bg-slate-50" disabled={!tid} data-testid="pdf-export-category">
+        <select value={cat} onChange={(e) => onFilterChange({ cat: e.target.value, grp: "" })} className="px-2 py-1.5 border border-slate-200 rounded text-xs disabled:bg-slate-50" disabled={!tid} data-testid="pdf-export-category">
           <option value="">Todas las categorías</option>
           {cats.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
-        <select value={grp} onChange={(e) => setGrp(e.target.value)} className="px-2 py-1.5 border border-slate-200 rounded text-xs disabled:bg-slate-50" disabled={!tid || !cat} data-testid="pdf-export-group">
+        <select value={grp} onChange={(e) => onFilterChange({ grp: e.target.value })} className="px-2 py-1.5 border border-slate-200 rounded text-xs disabled:bg-slate-50" disabled={!tid || !cat} data-testid="pdf-export-group">
           <option value="">Todos los grupos</option>
           {groupsAvail.map((g) => <option key={g} value={g}>{g}</option>)}
           {bracketsAvail.map((b) => <option key={b.id} value={`bracket:${b.id}`}>🏆 {b.name}</option>)}
         </select>
         {(tid || cat || grp) && (
-          <button onClick={() => { setTid(""); setCat(""); setGrp(""); }} className="px-2 py-1.5 text-xs text-slate-500 hover:text-fsc-rojo" data-testid="pdf-export-clear">Limpiar</button>
+          <button onClick={() => onFilterChange({ tid: "", cat: "", grp: "" })} className="px-2 py-1.5 text-xs text-slate-500 hover:text-fsc-rojo" data-testid="pdf-export-clear">Limpiar</button>
         )}
         <div className="flex-1" />
         <button

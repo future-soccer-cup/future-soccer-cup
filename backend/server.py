@@ -1869,6 +1869,7 @@ async def list_matches(tournament_id: Optional[str] = None, status: Optional[str
     # enrich with team names
     team_ids = list({m["home_team_id"] for m in items} | {m["away_team_id"] for m in items})
     teams = await db.teams.find({"id": {"$in": team_ids}}, {"_id": 0}).to_list(1000)
+    await _overlay_club_logos(teams)
     tmap = {t["id"]: t for t in teams}
     for m in items:
         ht = tmap.get(m["home_team_id"], {})
@@ -2740,7 +2741,8 @@ async def get_bracket(bid: str):
     for m in matches:
         if m.get("home_team_id"): team_ids_flat.add(m["home_team_id"])
         if m.get("away_team_id"): team_ids_flat.add(m["away_team_id"])
-    teams = await db.teams.find({"id": {"$in": list(team_ids_flat)}}, {"_id": 0, "id": 1, "name": 1, "logo_url": 1, "color": 1}).to_list(500)
+    teams = await db.teams.find({"id": {"$in": list(team_ids_flat)}}, {"_id": 0, "id": 1, "name": 1, "logo_url": 1, "color": 1, "club_id": 1}).to_list(500)
+    await _overlay_club_logos(teams)
     tmap = {t["id"]: t for t in teams}
     for m in matches:
         if m.get("home_team_id"):
@@ -3086,6 +3088,7 @@ async def list_bonus_matches(tournament_id: Optional[str] = None, category: Opti
     # enrich con team_name
     tids = list({b["team_id"] for b in items})
     teams = await db.teams.find({"id": {"$in": tids}}, {"_id": 0}).to_list(500) if tids else []
+    await _overlay_club_logos(teams)
     tmap = {t["id"]: t for t in teams}
     for b in items:
         b["team_name"] = tmap.get(b["team_id"], {}).get("name", "—")
@@ -3168,6 +3171,7 @@ async def standings(category: Optional[str] = None, group_name: Optional[str] = 
     if group_name:
         q_team["group_name"] = {"$regex": f"^{re.escape(group_name)}$", "$options": "i"}
     teams = await db.teams.find(q_team, {"_id": 0}).to_list(500)
+    await _overlay_club_logos(teams)
     team_ids = [t["id"] for t in teams]
 
     # Iter75: no exigir que AMBOS equipos pertenezcan a este grupo — un partido
@@ -3297,6 +3301,7 @@ async def top_scorers(category: Optional[str] = None, group_name: Optional[str] 
     players = await db.players.find({"id": {"$in": pids}}, {"_id": 0}).to_list(2000)
     team_ids = list({p["team_id"] for p in players})
     teams = await db.teams.find({"id": {"$in": team_ids}}, {"_id": 0}).to_list(500)
+    await _overlay_club_logos(teams)
     tmap = {t["id"]: t for t in teams}
     rows = []
     for p in players:
@@ -3340,6 +3345,23 @@ async def stats_groups(tournament_id: str, category: str):
         if knockout_match:
             out.append({"type": "knockout", "name": "Fase Final"})
     return out
+
+
+async def _overlay_club_logos(teams) -> None:
+    """Sobrescribe en el momento el logo_url de cada equipo con el logo de SU CLUB (si el
+    club tiene uno cargado) — el logo del club es la fuente de verdad visual en todo lo
+    público (estadísticas, bracket, goleadores, partidos), no una copia por equipo que
+    puede quedar desactualizada cuando alguien actualiza el logo del club más tarde.
+    `teams` puede ser una lista o un dict_values de equipos; se mutan en el lugar."""
+    club_ids = {t.get("club_id") for t in teams if t.get("club_id")}
+    if not club_ids:
+        return
+    clubs = await db.clubs.find({"id": {"$in": list(club_ids)}}, {"_id": 0, "id": 1, "logo_url": 1}).to_list(500)
+    club_logo = {c["id"]: c.get("logo_url") for c in clubs if c.get("logo_url")}
+    for t in teams:
+        logo = club_logo.get(t.get("club_id"))
+        if logo:
+            t["logo_url"] = logo
 
 
 def _enrich_match_teams(items, tmap):
@@ -3408,6 +3430,7 @@ async def stats_matches(tournament_id: Optional[str] = None, category: Optional[
         ]
     all_team_ids = list({m["home_team_id"] for m in items if m.get("home_team_id")} | {m["away_team_id"] for m in items if m.get("away_team_id")})
     teams = await db.teams.find({"id": {"$in": all_team_ids}}, {"_id": 0}).to_list(1000)
+    await _overlay_club_logos(teams)
     tmap = {t["id"]: t for t in teams}
     return _enrich_match_teams(items, tmap)
 
@@ -3432,6 +3455,7 @@ async def discipline(category: Optional[str] = None, limit: int = 50):
     players = await db.players.find({"id": {"$in": pids}}, {"_id": 0}).to_list(2000)
     team_ids = list({p["team_id"] for p in players})
     teams = await db.teams.find({"id": {"$in": team_ids}}, {"_id": 0}).to_list(500)
+    await _overlay_club_logos(teams)
     tmap = {t["id"]: t for t in teams}
     rows = []
     for p in players:
