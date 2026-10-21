@@ -10,7 +10,7 @@
  * al backend existente (`/api/stats/standings`, `/api/stats/top-scorers`).
  */
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { X, Trophy } from "lucide-react";
 import api, { imgSrc } from "../lib/api";
 import { PLANE_CRASH, AGENCY_FB, CURSIVE, planeCrashSafe, renderPlaneCrash, toTitleCaseForScript } from "../lib/designSystem";
@@ -36,19 +36,42 @@ const FESTIVAL_LETTER_COLORS = [
 
 export default function DatosEstadisticas() {
   const [cfg, setCfg] = useState({});
-  const [activeKey, setActiveKey] = useState("");
-  const [selectedCat, setSelectedCat] = useState(null); // categoría abierta
+  // La selección de evento/categoría/grupo se guarda en la URL (?event=&cat=&group=)
+  // para que no se pierda al recargar la página — antes vivía solo en memoria y
+  // volvía a "Elegir evento" en cada F5.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeKey, setActiveKeyState] = useState(searchParams.get("event") || "");
+  const [selectedCatLabel, setSelectedCatLabel] = useState(searchParams.get("cat") || "");
 
   useEffect(() => {
     api.get("/home-settings").then((r) => {
       const d = r.data?.estadisticas || {};
       setCfg(d);
-      setActiveKey(d.active_event_key || (d.events?.[0]?.key || ""));
+      if (!searchParams.get("event")) {
+        setActiveKeyState(d.active_event_key || (d.events?.[0]?.key || ""));
+      }
     }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const events = useMemo(() => cfg.events || [], [cfg]);
   const activeEvent = events.find((e) => e.key === activeKey) || events[0] || {};
+  const selectedCat = (activeEvent.categories || []).find((c) => c.label === selectedCatLabel) || null;
+
+  const setActiveKey = (k) => {
+    setActiveKeyState(k);
+    setSelectedCatLabel("");
+    setSearchParams((prev) => { const p = new URLSearchParams(prev); p.set("event", k); p.delete("cat"); p.delete("group"); return p; }, { replace: true });
+  };
+  const setSelectedCat = (cat) => {
+    setSelectedCatLabel(cat?.label || "");
+    setSearchParams((prev) => {
+      const p = new URLSearchParams(prev);
+      if (cat?.label) p.set("cat", cat.label); else p.delete("cat");
+      p.delete("group");
+      return p;
+    }, { replace: true });
+  };
 
   return (
     <div data-testid="estadisticas-page" className="bg-white" style={AGENCY_FB}>
@@ -64,12 +87,12 @@ export default function DatosEstadisticas() {
         bottom={cfg.intro_bottom || "competencia!"}
         events={events}
         activeKey={activeEvent.key || activeKey}
-        onSelect={(k) => { setActiveKey(k); setSelectedCat(null); }}
+        onSelect={setActiveKey}
       />
 
       <CategoriesGrid
         event={activeEvent}
-        onSelectCat={(cat) => setSelectedCat(cat)}
+        onSelectCat={setSelectedCat}
       />
 
       {selectedCat && (
@@ -77,6 +100,8 @@ export default function DatosEstadisticas() {
           category={selectedCat}
           eventLabel={activeEvent.label || ""}
           onClose={() => setSelectedCat(null)}
+          searchParams={searchParams}
+          setSearchParams={setSearchParams}
         />
       )}
     </div>
@@ -271,17 +296,25 @@ function CategoriesGrid({ event, onSelectCat }) {
 }
 
 
-function CategoryDataPanel({ category, eventLabel, onClose }) {
+function CategoryDataPanel({ category, eventLabel, onClose, searchParams, setSearchParams }) {
   const noConfig = !category.tournament_id || !category.category;
   // null = aún sin resolver qué ver; { type: "group", name } o { type: "bracket", id, name } = ya elegido.
   const [availableItems, setAvailableItems] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null);
   const [groupsLoading, setGroupsLoading] = useState(true);
+  const itemKey = (it) => `${it.type}-${it.id || it.name}`;
+
+  // Elegir un grupo/bracket también se guarda en la URL (?group=) para no perderse al
+  // recargar; limpiar (volver a "Elegir grupo") quita el parámetro.
+  const selectItem = (it) => {
+    setSelectedItem(it);
+    setSearchParams?.((prev) => { const p = new URLSearchParams(prev); if (it) p.set("group", itemKey(it)); else p.delete("group"); return p; }, { replace: true });
+  };
 
   useEffect(() => {
-    setSelectedItem(null);
     setAvailableItems([]);
     if (noConfig) {
+      setSelectedItem(null);
       setGroupsLoading(false);
       return;
     }
@@ -295,13 +328,21 @@ function CategoryDataPanel({ category, eventLabel, onClose }) {
       return;
     }
     let cancelled = false;
+    setSelectedItem(null);
     setGroupsLoading(true);
+    const wantedKey = searchParams?.get("group") || "";
     api.get("/stats/groups", { params: { tournament_id: category.tournament_id, category: category.category } })
       .then((r) => {
         if (cancelled) return;
         const items = r.data || [];
         setAvailableItems(items);
-        if (items.length <= 1) setSelectedItem(items[0] || { type: "group", name: "" });
+        if (items.length <= 1) {
+          setSelectedItem(items[0] || { type: "group", name: "" });
+        } else if (wantedKey) {
+          // Restaura la selección de la URL si todavía es una opción válida.
+          const restored = items.find((it) => itemKey(it) === wantedKey);
+          if (restored) setSelectedItem(restored);
+        }
         setGroupsLoading(false);
       })
       .catch(() => {
@@ -311,11 +352,11 @@ function CategoryDataPanel({ category, eventLabel, onClose }) {
         setGroupsLoading(false);
       });
     return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [category, noConfig]);
 
   const showGroupPicker = !noConfig && !groupsLoading && selectedItem === null && availableItems.length > 1;
   const showBackToGroups = availableItems.length > 1 && !category.group_name;
-  const itemKey = (it) => `${it.type}-${it.id || it.name}`;
 
   return (
     <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-10" data-testid="stats-category-panel">
@@ -352,7 +393,7 @@ function CategoryDataPanel({ category, eventLabel, onClose }) {
                   <button
                     key={itemKey(it)}
                     type="button"
-                    onClick={() => setSelectedItem(it)}
+                    onClick={() => selectItem(it)}
                     className="rounded-full px-5 py-2.5 text-white transition-transform hover:scale-105 shadow-md flex items-center gap-1.5"
                     style={{ background: BLUE, ...PLANE_CRASH, fontSize: "clamp(0.9rem, 1.6vw, 1.2rem)", letterSpacing: "0.05em" }}
                     data-testid={`stats-group-btn-${it.name}`}
@@ -368,14 +409,14 @@ function CategoryDataPanel({ category, eventLabel, onClose }) {
               bracketId={selectedItem.id}
               bracketName={selectedItem.name}
               showBackToGroups={showBackToGroups}
-              onBack={() => setSelectedItem(null)}
+              onBack={() => selectItem(null)}
             />
           ) : selectedItem?.type === "knockout" ? (
             <KnockoutStatsView
               tournamentId={category.tournament_id}
               categoryValue={category.category}
               showBackToGroups={showBackToGroups}
-              onBack={() => setSelectedItem(null)}
+              onBack={() => selectItem(null)}
             />
           ) : (
             <GroupStatsView
@@ -383,7 +424,7 @@ function CategoryDataPanel({ category, eventLabel, onClose }) {
               categoryValue={category.category}
               groupName={selectedItem?.name || ""}
               showBackToGroups={showBackToGroups}
-              onBack={() => setSelectedItem(null)}
+              onBack={() => selectItem(null)}
             />
           )}
         </div>

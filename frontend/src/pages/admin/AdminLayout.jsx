@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, NavLink, Navigate, Outlet, useLocation } from "react-router-dom";
+import { Link, NavLink, Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Toaster, toast } from "sonner";
 import {
   LayoutDashboard,
@@ -85,6 +85,11 @@ export default function AdminLayout() {
   const { user, logout } = useAuth();
   const [navOpen, setNavOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  // A diferencia del navbar público, los botones de abajo solo llamaban a logout() sin
+  // navegar — en algunos módulos del admin eso dejaba la pantalla "pegada" en la misma
+  // ruta aunque la sesión ya se hubiera cerrado. Forzamos la salida a /login.
+  const handleLogout = async () => { await logout(); navigate("/login", { replace: true }); };
   const isContentAdmin = user?.role === "content_admin";
   // El rol Configuración solo ve Home y Galería en el menú; el Admin ve todo. El guard
   // de abajo además bloquea el acceso real si de algún modo llega a otra ruta (ej. bookmark viejo).
@@ -118,7 +123,7 @@ export default function AdminLayout() {
         <div className="p-3 border-t border-slate-800 text-xs">
           <div className="text-slate-400">Sesión</div>
           <div className="text-white truncate">{user?.email}</div>
-          <button onClick={logout} className="mt-2 text-red-400 hover:text-red-300 font-bold uppercase tracking-wide" data-testid="admin-logout">Cerrar sesión</button>
+          <button onClick={handleLogout} className="mt-2 text-red-400 hover:text-red-300 font-bold uppercase tracking-wide" data-testid="admin-logout">Cerrar sesión</button>
         </div>
       </aside>
 
@@ -148,7 +153,7 @@ export default function AdminLayout() {
                 <div className="p-3 border-t border-slate-800 text-xs">
                   <div className="text-slate-400">Sesión</div>
                   <div className="text-white truncate">{user?.email}</div>
-                  <button onClick={logout} className="mt-2 text-red-400 hover:text-red-300 font-bold uppercase tracking-wide" data-testid="admin-logout-mobile">Cerrar sesión</button>
+                  <button onClick={handleLogout} className="mt-2 text-red-400 hover:text-red-300 font-bold uppercase tracking-wide" data-testid="admin-logout-mobile">Cerrar sesión</button>
                 </div>
               </SheetContent>
             </Sheet>

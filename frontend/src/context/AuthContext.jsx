@@ -38,8 +38,16 @@ export function AuthProvider({ children }) {
   }, []);
 
   const logout = useCallback(async () => {
-    await api.post("/auth/logout");
-    setUser(false);
+    // Si la llamada al backend falla (sesión ya vencida, error de red, etc.) igual
+    // cerramos la sesión del lado del cliente — antes, un error acá dejaba el botón
+    // de "Cerrar sesión" sin hacer nada (ni limpiaba el usuario ni redirigía).
+    try {
+      await api.post("/auth/logout");
+    } catch (err) {
+      if (process.env.NODE_ENV !== "production") console.warn("[auth] logout request failed, clearing session locally anyway:", err?.message);
+    } finally {
+      setUser(false);
+    }
   }, []);
 
   // Memoize the context value to prevent unnecessary re-renders in consumers.
