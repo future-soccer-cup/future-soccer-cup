@@ -36,6 +36,16 @@ from PIL import Image, ImageSequence
 from pillow_heif import register_heif_opener
 register_heif_opener()  # permite que Image.open() lea HEIC/HEIF (fotos por defecto de iPhone)
 
+# -------------------- FSC brand palette (PDFs) --------------------
+# Debe coincidir con frontend/tailwind.config.js `theme.extend.colors.fsc`.
+# Centralizado para que todos los PDFs (cotizaciones, roster, fixture, clasificacion)
+# usen exactamente el mismo azul/negro de marca, en vez de aproximaciones sueltas.
+FSC_PDF_AZUL = "#0640c8"
+FSC_PDF_AZUL_OSCURO = "#042a87"
+FSC_PDF_ROJO = "#e31f27"
+FSC_PDF_NEGRO = "#1A1A1A"
+FSC_PDF_GRIS = "#9a9b9c"
+
 # -------------------- Categories --------------------
 CATEGORIES = ["2018", "2016", "2014", "2012", "2010", "2008"]
 
@@ -1208,8 +1218,8 @@ async def team_roster_pdf(team_id: str, user: dict = Depends(get_current_user)):
     from reportlab.platypus import BaseDocTemplate, PageTemplate, Frame, Paragraph, Spacer, Table, TableStyle
     from io import BytesIO
 
-    BRAND_BLUE = colors.HexColor("#0640c8")
-    BRAND_DARK = colors.HexColor("#0a1426")
+    BRAND_BLUE = colors.HexColor(FSC_PDF_AZUL)
+    BRAND_DARK = colors.HexColor(FSC_PDF_AZUL_OSCURO)
     LIGHT = colors.HexColor("#f5f8ff")
     BORDER = colors.HexColor("#cbd5e1")
     EMERALD = colors.HexColor("#059669")
@@ -3298,6 +3308,63 @@ def _pdf_header_logo(canvas_or_story, logo_bytes):
         return None
 
 
+def _fsc_pdf_header_footer(right_label: str, home: dict, logo_bytes):
+    """Devuelve un callback onPage(canvas, doc) con la banda de encabezado (azul oscuro FSC,
+    logo + "FUTURE SOCCER CUP" + etiqueta a la derecha) y pie de página (azul FSC, contacto
+    y redes) — misma identidad visual en todos los PDFs generados (cotización, roster,
+    fixture, clasificación, juego limpio)."""
+    contact_email = (home or {}).get("contact_email") or "info@futuresoccercup.com"
+    contact_phone = (home or {}).get("contact_phone") or "+57 (000) 000-0000"
+    instagram = (home or {}).get("instagram") or ""
+    facebook = (home or {}).get("facebook") or ""
+    youtube = (home or {}).get("youtube") or ""
+
+    def _hf(canvas, doc_):
+        from reportlab.lib.pagesizes import letter
+        from reportlab.lib import colors
+        from reportlab.lib.units import inch
+        canvas.saveState()
+        # === HEADER ===
+        canvas.setFillColor(colors.HexColor(FSC_PDF_AZUL_OSCURO))
+        canvas.rect(0, letter[1] - 1.1 * inch, letter[0], 1.1 * inch, fill=1, stroke=0)
+        if logo_bytes:
+            try:
+                from reportlab.lib.utils import ImageReader
+                from io import BytesIO as _BIO
+                canvas.drawImage(ImageReader(_BIO(logo_bytes)), 0.5 * inch, letter[1] - 1.0 * inch, width=0.9 * inch, height=0.9 * inch, preserveAspectRatio=True, mask='auto')
+            except Exception:
+                pass
+        canvas.setFillColor(colors.white)
+        canvas.setFont("Helvetica-Bold", 18)
+        canvas.drawString(1.55 * inch, letter[1] - 0.55 * inch, "FUTURE SOCCER CUP")
+        canvas.setFont("Helvetica-Oblique", 10)
+        canvas.setFillColor(colors.HexColor("#9bb6ff"))
+        canvas.drawString(1.55 * inch, letter[1] - 0.78 * inch, "Somos más que un torneo")
+        canvas.setFont("Helvetica-Bold", 9)
+        canvas.drawRightString(letter[0] - 0.5 * inch, letter[1] - 0.55 * inch, right_label)
+        canvas.setFillColor(colors.HexColor(FSC_PDF_AZUL))
+        canvas.rect(0, letter[1] - 1.13 * inch, letter[0], 0.03 * inch, fill=1, stroke=0)
+        # === FOOTER ===
+        canvas.setFillColor(colors.HexColor(FSC_PDF_AZUL))
+        canvas.rect(0, 0, letter[0], 0.55 * inch, fill=1, stroke=0)
+        canvas.setFillColor(colors.white)
+        canvas.setFont("Helvetica-Bold", 8)
+        canvas.drawString(0.5 * inch, 0.34 * inch, contact_email)
+        canvas.setFont("Helvetica", 8)
+        canvas.drawString(0.5 * inch, 0.18 * inch, contact_phone)
+        social_parts = []
+        if instagram: social_parts.append(f"IG: {instagram}")
+        if facebook: social_parts.append(f"FB: {facebook}")
+        if youtube: social_parts.append(f"YT: {youtube}")
+        if social_parts:
+            canvas.drawRightString(letter[0] - 0.5 * inch, 0.34 * inch, "  ·  ".join(social_parts))
+        canvas.setFont("Helvetica-Oblique", 7)
+        canvas.drawRightString(letter[0] - 0.5 * inch, 0.18 * inch, f"www.futuresoccercup.com  ·  FSC {datetime.now(timezone.utc).year}")
+        canvas.restoreState()
+
+    return _hf
+
+
 async def _build_fixture_pdf(tournament_id: str, category: Optional[str], group: Optional[str]):
     """Construye un PDF del fixture / calendario, agrupado por jornada, con resultados ya jugados."""
     from io import BytesIO
@@ -3306,7 +3373,7 @@ async def _build_fixture_pdf(tournament_id: str, category: Optional[str], group:
     from reportlab.lib.enums import TA_LEFT, TA_CENTER
     from reportlab.lib.units import inch
     from reportlab.lib import colors
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
+    from reportlab.platypus import BaseDocTemplate, PageTemplate, Frame, Paragraph, Spacer, Table, TableStyle, PageBreak
 
     tournament = await db.tournaments.find_one({"id": tournament_id}, {"_id": 0})
     if not tournament:
@@ -3321,14 +3388,16 @@ async def _build_fixture_pdf(tournament_id: str, category: Optional[str], group:
         q_match["$or"] = [{"home_team_id": {"$in": [t["id"] for t in teams]}}, {"away_team_id": {"$in": [t["id"] for t in teams]}}]
     if group: q_match["group_name"] = group
     matches = await db.matches.find(q_match, {"_id": 0}).sort("matchday", 1).to_list(2000)
+    home = await db.home_settings.find_one({"id": HOME_SETTINGS_ID}, {"_id": 0}) or {}
+    logo_bytes = _get_fsc_logo_bytes()
 
     buf = BytesIO()
-    doc = SimpleDocTemplate(buf, pagesize=letter, leftMargin=0.5 * inch, rightMargin=0.5 * inch, topMargin=0.5 * inch, bottomMargin=0.5 * inch, title="Fixture")
+    doc = BaseDocTemplate(buf, pagesize=letter, leftMargin=0.5 * inch, rightMargin=0.5 * inch, topMargin=1.25 * inch, bottomMargin=0.7 * inch, title="Fixture")
+    frame = Frame(doc.leftMargin, doc.bottomMargin, doc.width, doc.height, id="main")
+    doc.addPageTemplates([PageTemplate(id="default", frames=[frame], onPage=_fsc_pdf_header_footer("FIXTURE", home, logo_bytes))])
     styles = getSampleStyleSheet()
     N = styles["BodyText"]
-    H1 = ParagraphStyle("H1", parent=styles["Heading1"], fontSize=18, leading=22, textColor=colors.HexColor("#0f172a"), spaceAfter=4)
-    H2 = ParagraphStyle("H2", parent=styles["Heading2"], fontSize=11, leading=14, textColor=colors.HexColor("#1d4ed8"), spaceAfter=4)
-    SUB = ParagraphStyle("SUB", parent=N, fontSize=9, textColor=colors.HexColor("#475569"), leading=11)
+    H2 = ParagraphStyle("H2", parent=styles["Heading2"], fontSize=11, leading=14, textColor=colors.HexColor(FSC_PDF_AZUL), spaceAfter=4)
 
     from xml.sax.saxutils import escape as _esc
     CELL = ParagraphStyle("CELL", parent=N, fontSize=8, leading=9.5)
@@ -3337,17 +3406,22 @@ async def _build_fixture_pdf(tournament_id: str, category: Optional[str], group:
         return Paragraph(_esc(str(text if text is not None else "—")), CELL)
 
     story = []
-    logo_img = _pdf_header_logo(None, _get_fsc_logo_bytes())
-    head_cell = [Paragraph(f"<b>FIXTURE</b>", H1),
-                 Paragraph(f"<b>{tournament.get('name','—')}</b> · Temporada {tournament.get('season','—')}", H2),
-                 Paragraph(f"Categoría: {category or 'Todas'} · Grupo: {group or 'Todos'}", SUB)]
-    if logo_img:
-        header = Table([[logo_img, head_cell]], colWidths=[0.85 * inch, None])
-        header.setStyle(TableStyle([("VALIGN", (0,0), (-1,-1), "MIDDLE"), ("LEFTPADDING", (0,0), (-1,-1), 0)]))
-        story.append(header)
-    else:
-        for c in head_cell: story.append(c)
-    story.append(Spacer(1, 8))
+    BANNER_LABEL = ParagraphStyle("FXB_LABEL", parent=N, fontSize=8, textColor=colors.HexColor("#9bb6ff"), leading=10)
+    BANNER_TEXT = ParagraphStyle("FXB_TEXT", parent=N, fontSize=13, textColor=colors.white, fontName="Helvetica-Bold", leading=16)
+    info_cell = [
+        Paragraph("TORNEO", BANNER_LABEL),
+        Paragraph(f"{tournament.get('name','—')}", BANNER_TEXT),
+        Spacer(1, 2),
+        Paragraph(f"Categoría: {category or 'Todas'}  ·  Grupo: {group or 'Todos'}", BANNER_LABEL),
+    ]
+    info_banner = Table([[info_cell]], colWidths=[7.5 * inch])
+    info_banner.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor(FSC_PDF_AZUL_OSCURO)),
+        ("LEFTPADDING", (0, 0), (-1, -1), 12), ("RIGHTPADDING", (0, 0), (-1, -1), 12),
+        ("TOPPADDING", (0, 0), (-1, -1), 10), ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
+    ]))
+    story.append(info_banner)
+    story.append(Spacer(1, 10))
 
     by_md = {}
     for m in matches:
@@ -3379,7 +3453,7 @@ async def _build_fixture_pdf(tournament_id: str, category: Optional[str], group:
         col_widths = [1.05 * inch, 1.1 * inch, 1.6 * inch, 0.25 * inch, 1.6 * inch, 0.7 * inch, 0.7 * inch]
         t = Table(data, colWidths=col_widths, repeatRows=1)
         t.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1d4ed8")),
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor(FSC_PDF_AZUL)),
             ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
             ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
             ("FONTSIZE", (0, 0), (-1, -1), 8),
@@ -3406,20 +3480,23 @@ async def _build_standings_pdf(tournament_id: str, category: Optional[str], grou
     from reportlab.lib.enums import TA_LEFT
     from reportlab.lib.units import inch
     from reportlab.lib import colors
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+    from reportlab.platypus import BaseDocTemplate, PageTemplate, Frame, Paragraph, Spacer, Table, TableStyle
 
     tournament = await db.tournaments.find_one({"id": tournament_id}, {"_id": 0})
     if not tournament:
         raise HTTPException(404, "Evento no encontrado")
     # Re-usamos el endpoint standings (refactor mínimo)
     rows = await standings(category=category, group_name=group, tournament_id=tournament_id)
+    home = await db.home_settings.find_one({"id": HOME_SETTINGS_ID}, {"_id": 0}) or {}
+    logo_bytes = _get_fsc_logo_bytes()
 
     buf = BytesIO()
-    doc = SimpleDocTemplate(buf, pagesize=letter, leftMargin=0.5*inch, rightMargin=0.5*inch, topMargin=0.5*inch, bottomMargin=0.5*inch, title=("Juego Limpio" if fairplay_only else "Clasificación"))
+    right_label = "JUEGO LIMPIO" if fairplay_only else "CLASIFICACIÓN"
+    doc = BaseDocTemplate(buf, pagesize=letter, leftMargin=0.5*inch, rightMargin=0.5*inch, topMargin=1.25*inch, bottomMargin=0.7*inch, title=("Juego Limpio" if fairplay_only else "Clasificación"))
+    frame = Frame(doc.leftMargin, doc.bottomMargin, doc.width, doc.height, id="main")
+    doc.addPageTemplates([PageTemplate(id="default", frames=[frame], onPage=_fsc_pdf_header_footer(right_label, home, logo_bytes))])
     styles = getSampleStyleSheet()
     N = styles["BodyText"]
-    H1 = ParagraphStyle("H1", parent=styles["Heading1"], fontSize=18, leading=22, textColor=colors.HexColor("#0f172a"), spaceAfter=4)
-    H2 = ParagraphStyle("H2", parent=styles["Heading2"], fontSize=11, leading=14, textColor=colors.HexColor("#1d4ed8"), spaceAfter=4)
     SUB = ParagraphStyle("SUB", parent=N, fontSize=9, textColor=colors.HexColor("#475569"), leading=11)
 
     from xml.sax.saxutils import escape as _esc
@@ -3429,17 +3506,22 @@ async def _build_standings_pdf(tournament_id: str, category: Optional[str], grou
         return Paragraph(_esc(str(text if text is not None else "—")), CELL)
 
     story = []
-    logo_img = _pdf_header_logo(None, _get_fsc_logo_bytes())
     title_text = "REPORTE DE JUEGO LIMPIO" if fairplay_only else "TABLA DE CLASIFICACIÓN"
-    head_cell = [Paragraph(f"<b>{title_text}</b>", H1),
-                 Paragraph(f"<b>{tournament.get('name','—')}</b> · Temporada {tournament.get('season','—')}", H2),
-                 Paragraph(f"Categoría: {category or 'Todas'} · Grupo: {group or 'Todos'}", SUB)]
-    if logo_img:
-        header = Table([[logo_img, head_cell]], colWidths=[0.85 * inch, None])
-        header.setStyle(TableStyle([("VALIGN", (0,0), (-1,-1), "MIDDLE"), ("LEFTPADDING", (0,0), (-1,-1), 0)]))
-        story.append(header)
-    else:
-        for c in head_cell: story.append(c)
+    BANNER_LABEL = ParagraphStyle("STB_LABEL", parent=N, fontSize=8, textColor=colors.HexColor("#9bb6ff"), leading=10)
+    BANNER_TEXT = ParagraphStyle("STB_TEXT", parent=N, fontSize=13, textColor=colors.white, fontName="Helvetica-Bold", leading=16)
+    info_cell = [
+        Paragraph(title_text, BANNER_LABEL),
+        Paragraph(f"{tournament.get('name','—')}", BANNER_TEXT),
+        Spacer(1, 2),
+        Paragraph(f"Categoría: {category or 'Todas'}  ·  Grupo: {group or 'Todos'}", BANNER_LABEL),
+    ]
+    info_banner = Table([[info_cell]], colWidths=[7.5 * inch])
+    info_banner.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor(FSC_PDF_AZUL_OSCURO)),
+        ("LEFTPADDING", (0, 0), (-1, -1), 12), ("RIGHTPADDING", (0, 0), (-1, -1), 12),
+        ("TOPPADDING", (0, 0), (-1, -1), 10), ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
+    ]))
+    story.append(info_banner)
     story.append(Spacer(1, 10))
 
     if fairplay_only:
@@ -3457,7 +3539,7 @@ async def _build_standings_pdf(tournament_id: str, category: Optional[str], grou
 
     t = Table(data, colWidths=col_widths, repeatRows=1)
     t.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1d4ed8")),
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor(FSC_PDF_AZUL)),
         ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
         ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
         ("FONTSIZE", (0, 0), (-1, -1), 9),
@@ -4754,9 +4836,9 @@ async def quote_pdf(qid: str, user: dict = Depends(get_current_user)):
     )
     from io import BytesIO
 
-    BRAND_BLUE = colors.HexColor("#0640c8")
-    BRAND_DARK = colors.HexColor("#0a1426")
-    BRAND_RED = colors.HexColor("#e11d48")
+    BRAND_BLUE = colors.HexColor(FSC_PDF_AZUL)
+    BRAND_DARK = colors.HexColor(FSC_PDF_AZUL_OSCURO)
+    BRAND_RED = colors.HexColor(FSC_PDF_ROJO)
     LIGHT_BG = colors.HexColor("#f5f8ff")
     BORDER = colors.HexColor("#cbd5e1")
 
@@ -5029,7 +5111,7 @@ async def quote_pdf(qid: str, user: dict = Depends(get_current_user)):
         ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
         ("LEFTPADDING", (0, 0), (-1, -1), 14), ("RIGHTPADDING", (0, 0), (-1, -1), 14),
         ("TOPPADDING", (0, 0), (-1, -1), 12), ("BOTTOMPADDING", (0, 0), (-1, -1), 12),
-        ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#1d4ed8")),
+        ("BOX", (0, 0), (-1, -1), 0.5, BRAND_BLUE),
     ]))
     story.append(bank_tbl)
 

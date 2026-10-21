@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import api, { formatApiError, imgSrc } from "../../lib/api";
-import { Plus, Trash2, Edit3, CalendarClock, Shuffle, FileDown, FileText, ShieldCheck } from "lucide-react";
+import { Trash2, Edit3, CalendarClock, Shuffle, FileDown, FileText, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { formatDateTime } from "../../lib/dateFormat";
 import VenuePicker from "../../components/VenuePicker";
@@ -30,7 +30,6 @@ export default function AdminMatches() {
   const [matches, setMatches] = useState([]);
   const [teams, setTeams] = useState([]);
   const [tournaments, setTournaments] = useState([]);
-  const [editing, setEditing] = useState(null);
   const [scoring, setScoring] = useState(null);
   const [manualEdit, setManualEdit] = useState(null);
   const [intergroupOpen, setIntergroupOpen] = useState(false);
@@ -175,9 +174,6 @@ export default function AdminMatches() {
               <Shuffle size={16}/> Partidos Intergrupos
             </button>
           )}
-          <button onClick={() => setEditing(true)} className="fsc-btn-red px-4 py-2 rounded-md text-sm flex items-center gap-2" data-testid="add-match-btn">
-            <Plus size={16}/> Programar
-          </button>
         </div>
       </div>
 
@@ -226,15 +222,6 @@ export default function AdminMatches() {
       )}
       {tab === "tarjetas" && (
         <CardsReport matches={filteredMatches} teams={teams} />
-      )}
-
-      {editing && (
-        <NewMatchModal
-          tournaments={tournaments}
-          teams={teams}
-          onClose={() => setEditing(null)}
-          onSaved={() => { setEditing(null); load(); }}
-        />
       )}
 
       {scoring && (
@@ -335,141 +322,6 @@ export default function AdminMatches() {
         />
       )}
     </div>
-  );
-}
-
-function NewMatchModal({ tournaments = [], teams = [], onClose, onSaved }) {
-  const activeTournaments = (tournaments || []).filter((t) => !t.archived);
-  const [tournamentId, setTournamentId] = useState(activeTournaments[0]?.id || "");
-  const [category, setCategory] = useState("");
-  // Iter82: "Programar" es para partidos eliminatorios sueltos (octavos..final) —
-  // los partidos de fase de grupos se crean en bloque desde "Generar Fixture", así
-  // que aquí ya no se pide Grupo ni se ofrece la fase "Grupos".
-  const [stage, setStage] = useState("octavos");
-  const [homeId, setHomeId] = useState("");
-  const [awayId, setAwayId] = useState("");
-  const [matchDate, setMatchDate] = useState("");
-  const [venue, setVenue] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  const tournament = activeTournaments.find((t) => t.id === tournamentId);
-  // Iter78: igual que en la barra de filtros — categorías declaradas en el torneo +
-  // categorías reales de los equipos inscritos, para no dejar categorías huérfanas fuera.
-  const declaredCats = tournament ? (tournament.categories || []).map((c) => c.name).filter(Boolean) : [];
-  const teamCats = tournamentId ? Array.from(new Set(teams.filter((t) => t.tournament_id === tournamentId).map((t) => t.category).filter(Boolean))) : [];
-  const cats = Array.from(new Set([...declaredCats, ...teamCats]));
-
-  // Iter78 (fix): antes mostraba TODOS los equipos inscritos sin filtrar por categoría —
-  // al programar una semifinal/final de 2015 aparecían equipos de todas las categorías.
-  const teamOptions = teams.filter((t) => category && t.category === category && (t.status || "aprobado") === "aprobado");
-
-  const submit = async (e) => {
-    e.preventDefault();
-    if (!tournamentId) { toast.error("Selecciona el evento"); return; }
-    if (!category) { toast.error("Selecciona la categoría"); return; }
-    if (!homeId || !awayId) { toast.error("Selecciona los dos equipos"); return; }
-    if (homeId === awayId) { toast.error("Local y visitante deben ser distintos"); return; }
-    if (!matchDate) { toast.error("Selecciona fecha y hora"); return; }
-    setSaving(true);
-    try {
-      await api.post("/matches", {
-        tournament_id: tournamentId,
-        home_team_id: homeId,
-        away_team_id: awayId,
-        match_date: matchDate,
-        venue: venue || "",
-        group_name: "",
-        stage,
-        status: "programado",
-      });
-      toast.success("Partido programado");
-      onSaved();
-    } catch (err) {
-      toast.error(formatApiError(err.response?.data?.detail));
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <Modal onClose={onClose} title="Programar partido">
-      <form onSubmit={submit} className="space-y-3">
-        <p className="text-xs text-slate-500 -mt-1">
-          Para partidos de fase eliminatoria (octavos a final). Los partidos de fase de grupos se generan en bloque desde "Generar Fixture".
-        </p>
-        <label className="block">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Evento</span>
-          <select
-            required
-            value={tournamentId}
-            onChange={(e) => { setTournamentId(e.target.value); setCategory(""); setHomeId(""); setAwayId(""); }}
-            className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md"
-            data-testid="new-match-tournament"
-          >
-            <option value="">Seleccionar...</option>
-            {activeTournaments.map((t) => <option key={t.id} value={t.id}>{t.name} · {t.season}</option>)}
-          </select>
-        </label>
-        <div className="grid grid-cols-2 gap-3">
-          <label className="block">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Categoría</span>
-            <select
-              required
-              value={category}
-              onChange={(e) => { setCategory(e.target.value); setHomeId(""); setAwayId(""); }}
-              disabled={!tournamentId}
-              className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md disabled:bg-slate-50"
-              data-testid="new-match-category"
-            >
-              <option value="">Seleccionar...</option>
-              {cats.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </label>
-          <label className="block">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Fase</span>
-            <select value={stage} onChange={(e) => setStage(e.target.value)} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md" data-testid="new-match-stage">
-              <option value="octavos">Octavos</option><option value="cuartos">Cuartos</option><option value="semis">Semifinal</option><option value="final">Final</option>
-            </select>
-          </label>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <label className="block">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Local</span>
-            <select
-              required
-              value={homeId}
-              onChange={(e) => setHomeId(e.target.value)}
-              disabled={!category}
-              className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md disabled:bg-slate-50"
-              data-testid="new-match-home"
-            >
-              <option value="">Seleccionar...</option>
-              {teamOptions.map((t) => <option key={t.id} value={t.id} disabled={t.id === awayId}>{t.name}</option>)}
-            </select>
-          </label>
-          <label className="block">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Visitante</span>
-            <select
-              required
-              value={awayId}
-              onChange={(e) => setAwayId(e.target.value)}
-              disabled={!category}
-              className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-md disabled:bg-slate-50"
-              data-testid="new-match-away"
-            >
-              <option value="">Seleccionar...</option>
-              {teamOptions.map((t) => <option key={t.id} value={t.id} disabled={t.id === homeId}>{t.name}</option>)}
-            </select>
-          </label>
-        </div>
-        <Field label="Fecha y hora" type="datetime-local" required value={matchDate} onChange={setMatchDate} />
-        <label className="block">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Cancha</span>
-          <VenuePicker value={venue} onChange={setVenue} testId="new-match-venue" />
-        </label>
-        <button disabled={saving} className="fsc-btn-primary w-full py-2 rounded-md disabled:opacity-50">{saving ? "Guardando..." : "Guardar"}</button>
-      </form>
-    </Modal>
   );
 }
 
