@@ -145,7 +145,7 @@ export function Carnet({ player, team, qrValue, staffRole, clubLogoUrl, categori
         backgroundImage: `repeating-linear-gradient(45deg, rgba(255,255,255,0.18) 0 2px, transparent 2px 14px), repeating-linear-gradient(-45deg, rgba(0,0,0,0.18) 0 2px, transparent 2px 16px)`
       }} />
       <div className="relative px-5 pt-5 pb-4 flex items-center justify-between border-b border-white/15">
-        <img src={headerLogo} alt={clubLogoUrl ? "Club" : "FSC"} crossOrigin="anonymous" className="h-14 w-14 bg-white rounded object-contain p-0.5" data-testid="carnet-club-logo" />
+        <img src={headerLogo} alt={clubLogoUrl ? "Club" : "FSC"} crossOrigin="anonymous" className="h-16 w-16 object-contain drop-shadow-md" data-testid="carnet-club-logo" />
         <div className="text-right flex items-center gap-3">
           <div>
             <div className="font-display text-xs tracking-[0.25em] font-bold" style={{ color: p.accent }}>FUTURE SOCCER CUP</div>
@@ -194,17 +194,8 @@ export function Carnet({ player, team, qrValue, staffRole, clubLogoUrl, categori
           <div className="text-[10px] text-white/70" data-testid="carnet-comet">COMET: <span className="font-mono">{player.comet_number || "—"}</span></div>
           {!isStaff && <div className="text-[10px] text-white/70">NAC: {player.birth_date || "—"}</div>}
         </div>
-        <div className="flex items-center gap-2">
-          <img
-            src={resolvedFscLogo}
-            alt="Future Soccer Cup"
-            crossOrigin="anonymous"
-            className="h-16 w-16 object-contain drop-shadow-md"
-            data-testid="carnet-fsc-logo"
-          />
-          <div className="bg-white p-1.5 rounded">
-            <QRCodeSVG value={qrValue || player.id || player.document || player.name} size={64} />
-          </div>
+        <div className="bg-white p-1.5 rounded">
+          <QRCodeSVG value={qrValue || player.id || player.document || player.name} size={64} />
         </div>
       </div>
     </div>
