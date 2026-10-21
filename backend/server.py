@@ -307,22 +307,44 @@ MIME = {
 
 VIDEO_EXTS = {"mp4", "webm", "mov", "ogv"}
 
-# Logo en caché global para evitar descargar el archivo remoto en CADA generación de PDF (era el principal cuello de botella).
+# Logo histórico de FSC — solo como último respaldo si el admin no ha configurado
+# ningún logo propio en Home > Navbar (nav_shield_url / nav_logo_url) o si falla su carga.
 FSC_LOGO_URL = "https://customer-assets.emergentagent.com/job_dd2523b3-e20b-4cc5-9d6d-534c6d02a185/artifacts/y4ulg6l9_FUTRE%20SOCCER%20CUP%202025_Mesa%20de%20trabajo%201.png"
-_LOGO_CACHE = {"bytes": None, "tried": False}
+# Cacheado en memoria por URL/ruta de origen: si el admin cambia el logo en Home, la
+# clave cambia y se vuelve a cargar (antes se cacheaba para siempre, ignorando cambios).
+_LOGO_CACHE = {"bytes": None, "key": None}
 
-def _get_fsc_logo_bytes():
-    if _LOGO_CACHE["bytes"] is not None or _LOGO_CACHE["tried"]:
+def _get_fsc_logo_bytes(home: dict = None):
+    """Devuelve los bytes del logo configurado por el admin en Home > Navbar
+    (nav_shield_url tiene prioridad por ser el escudo cuadrado; si no está, se usa
+    nav_logo_url). Si no hay nada configurado o falla la carga, cae al logo histórico."""
+    logo_path = ((home or {}).get("nav_shield_url") or (home or {}).get("nav_logo_url") or "").strip()
+    cache_key = logo_path or "__default__"
+    if _LOGO_CACHE["key"] == cache_key and _LOGO_CACHE["bytes"] is not None:
         return _LOGO_CACHE["bytes"]
-    try:
-        import httpx
-        r = httpx.get(FSC_LOGO_URL, timeout=2.0)
-        if r.status_code == 200:
-            _LOGO_CACHE["bytes"] = r.content
-    except Exception:
-        pass
-    _LOGO_CACHE["tried"] = True
-    return _LOGO_CACHE["bytes"]
+    data = None
+    if logo_path:
+        try:
+            if logo_path.startswith("/api/files/"):
+                data, _ct = get_object(logo_path[len("/api/files/"):])
+            elif logo_path.startswith("http"):
+                import httpx
+                r = httpx.get(logo_path, timeout=5.0)
+                if r.status_code == 200:
+                    data = r.content
+        except Exception:
+            data = None
+    if data is None:
+        try:
+            import httpx
+            r = httpx.get(FSC_LOGO_URL, timeout=2.0)
+            if r.status_code == 200:
+                data = r.content
+        except Exception:
+            data = None
+    _LOGO_CACHE["bytes"] = data
+    _LOGO_CACHE["key"] = cache_key
+    return data
 
 
 # -------------------- Setup --------------------
@@ -1208,7 +1230,7 @@ async def team_roster_pdf(team_id: str, user: dict = Depends(get_current_user)):
     instagram = home.get("instagram") or ""
     facebook = home.get("facebook") or ""
 
-    logo_bytes = _get_fsc_logo_bytes()
+    logo_bytes = _get_fsc_logo_bytes(home)
 
     from reportlab.lib.pagesizes import letter
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -3389,7 +3411,7 @@ async def _build_fixture_pdf(tournament_id: str, category: Optional[str], group:
     if group: q_match["group_name"] = group
     matches = await db.matches.find(q_match, {"_id": 0}).sort("matchday", 1).to_list(2000)
     home = await db.home_settings.find_one({"id": HOME_SETTINGS_ID}, {"_id": 0}) or {}
-    logo_bytes = _get_fsc_logo_bytes()
+    logo_bytes = _get_fsc_logo_bytes(home)
 
     buf = BytesIO()
     doc = BaseDocTemplate(buf, pagesize=letter, leftMargin=0.5 * inch, rightMargin=0.5 * inch, topMargin=1.25 * inch, bottomMargin=0.7 * inch, title="Fixture")
@@ -3488,7 +3510,7 @@ async def _build_standings_pdf(tournament_id: str, category: Optional[str], grou
     # Re-usamos el endpoint standings (refactor mínimo)
     rows = await standings(category=category, group_name=group, tournament_id=tournament_id)
     home = await db.home_settings.find_one({"id": HOME_SETTINGS_ID}, {"_id": 0}) or {}
-    logo_bytes = _get_fsc_logo_bytes()
+    logo_bytes = _get_fsc_logo_bytes(home)
 
     buf = BytesIO()
     right_label = "JUEGO LIMPIO" if fairplay_only else "CLASIFICACIÓN"
@@ -4824,7 +4846,7 @@ async def quote_pdf(qid: str, user: dict = Depends(get_current_user)):
     youtube = home.get("youtube") or ""
 
     # Logo cacheado en memoria
-    logo_bytes = _get_fsc_logo_bytes()
+    logo_bytes = _get_fsc_logo_bytes(home)
 
     from reportlab.lib.pagesizes import letter
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle

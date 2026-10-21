@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { imgSrc } from "../lib/api";
+import api, { imgSrc } from "../lib/api";
 import { Carnet } from "../pages/PlayerDetail";
 import { Download, Search, FileText, Loader2, Users, ShieldUser, CheckSquare, Square, RefreshCw } from "lucide-react";
 import html2canvas from "html2canvas";
@@ -27,7 +27,14 @@ export default function CarnetSheet({ players, teams, clubs: clubsProp = null, t
   const [selected, setSelected] = useState(new Set());
   const [generating, setGenerating] = useState(false);
   const [individualBusy, setIndividualBusy] = useState(null);
+  const [fscLogoUrl, setFscLogoUrl] = useState("");
   const sheetRef = useRef(null);
+
+  useEffect(() => {
+    // Escudo de FSC configurado por el admin en Home > Navbar — logo de respaldo del
+    // carnet cuando el equipo no tiene escudo de club propio. Se carga una sola vez.
+    api.get("/home-settings").then((r) => setFscLogoUrl(r.data?.nav_shield_url || r.data?.nav_logo_url || "")).catch(() => {});
+  }, []);
 
   const effectiveTeamFilter = lockedTeamId || team;
   const tmap = useMemo(() => Object.fromEntries(teams.map((t) => [t.id, t])), [teams]);
@@ -381,6 +388,7 @@ export default function CarnetSheet({ players, teams, clubs: clubsProp = null, t
                 team={t}
                 clubLogoUrl={clubLogoUrl}
                 categories={categoriesProp}
+                fscLogoUrl={fscLogoUrl}
                 selected={selected.has(uid)}
                 onToggle={() => toggleOne(uid)}
                 busy={individualBusy === uid}
@@ -402,6 +410,7 @@ export default function CarnetSheet({ players, teams, clubs: clubsProp = null, t
                 team={t}
                 clubLogoUrl={clubLogoUrl}
                 categories={categoriesProp}
+                fscLogoUrl={fscLogoUrl}
                 staffRole={s.role}
                 selected={selected.has(uid)}
                 onToggle={() => toggleOne(uid)}
@@ -420,7 +429,7 @@ export default function CarnetSheet({ players, teams, clubs: clubsProp = null, t
   );
 }
 
-function CarnetItem({ player, team, staffRole, selected, onToggle, busy, onDownload, testIdPrefix, readonly = false, clubLogoUrl = "", categories = [] }) {
+function CarnetItem({ player, team, staffRole, selected, onToggle, busy, onDownload, testIdPrefix, readonly = false, clubLogoUrl = "", categories = [], fscLogoUrl = "" }) {
   const qrValue = staffRole
     ? `${window.location.origin}/staff/${team?.id}/${player.document || player.name}`
     : `${window.location.origin}/jugadores/${player.id}`;
@@ -445,7 +454,7 @@ function CarnetItem({ player, team, staffRole, selected, onToggle, busy, onDownl
         </button>
       )}
       <div data-carnet-card>
-        <Carnet player={merged} team={tmerged} qrValue={qrValue} staffRole={staffRole} clubLogoUrl={resolvedClubLogo} categories={categories} />
+        <Carnet player={merged} team={tmerged} qrValue={qrValue} staffRole={staffRole} clubLogoUrl={resolvedClubLogo} categories={categories} fscLogoUrl={fscLogoUrl} />
       </div>
       {!readonly && onDownload && (
         <button

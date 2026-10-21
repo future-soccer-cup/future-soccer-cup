@@ -10,6 +10,7 @@ export default function PlayerDetail() {
   const [team, setTeam] = useState(null);
   const [clubLogoUrl, setClubLogoUrl] = useState("");
   const [categories, setCategories] = useState([]);
+  const [fscLogoUrl, setFscLogoUrl] = useState("");
   const carnetRef = useRef(null);
 
   useEffect(() => {
@@ -24,6 +25,9 @@ export default function PlayerDetail() {
       });
     });
     api.get(`/categories`).then((r) => setCategories(r.data || [])).catch(() => {});
+    // Escudo de FSC configurado por el admin en Home > Navbar — se usa como logo de
+    // respaldo del carnet cuando el equipo no tiene escudo de club propio.
+    api.get(`/home-settings`).then((r) => setFscLogoUrl(r.data?.nav_shield_url || r.data?.nav_logo_url || "")).catch(() => {});
   }, [id]);
 
   if (!player) return <div className="p-12 text-center text-slate-500">Cargando...</div>;
@@ -76,7 +80,7 @@ export default function PlayerDetail() {
             </button>
           </div>
 
-          <Carnet ref={carnetRef} player={player} team={team} qrValue={carnetUrl} clubLogoUrl={clubLogoUrl} categories={categories} />
+          <Carnet ref={carnetRef} player={player} team={team} qrValue={carnetUrl} clubLogoUrl={clubLogoUrl} categories={categories} fscLogoUrl={fscLogoUrl} />
         </div>
       </div>
     </div>
@@ -125,10 +129,13 @@ function paletteFor(category, categories = []) {
  * Generic carnet (player OR staff). When `staffRole` is provided, the layout swaps
  * "Dorsal" → "Rol" and "Jugador" → "Cuerpo técnico".
  */
-export function Carnet({ player, team, qrValue, staffRole, clubLogoUrl, categories = [] }) {
+export function Carnet({ player, team, qrValue, staffRole, clubLogoUrl, categories = [], fscLogoUrl }) {
   const isStaff = !!staffRole;
   const p = paletteFor(team?.category, categories);
-  const headerLogo = clubLogoUrl ? imgSrc(clubLogoUrl) : FSC_LOGO;
+  // Escudo de FSC: usa el configurado por el admin en Home > Navbar; si no se pasó
+  // ninguno (caller viejo o sin cargar aún), cae al logo histórico como último respaldo.
+  const resolvedFscLogo = fscLogoUrl ? imgSrc(fscLogoUrl) : FSC_LOGO;
+  const headerLogo = clubLogoUrl ? imgSrc(clubLogoUrl) : resolvedFscLogo;
   return (
     <div className="carnet-print rounded-2xl border border-white/10 shadow-2xl overflow-hidden relative text-white"
          style={{ width: 380, maxWidth: "100%", background: `linear-gradient(135deg, ${p.from} 0%, ${p.to} 100%)` }}
@@ -189,7 +196,7 @@ export function Carnet({ player, team, qrValue, staffRole, clubLogoUrl, categori
         </div>
         <div className="flex items-center gap-2">
           <img
-            src={FSC_LOGO}
+            src={resolvedFscLogo}
             alt="Future Soccer Cup"
             crossOrigin="anonymous"
             className="h-16 w-16 object-contain drop-shadow-md"
