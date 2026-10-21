@@ -134,8 +134,10 @@ export function Carnet({ player, team, qrValue, staffRole, clubLogoUrl, categori
   const p = paletteFor(team?.category, categories);
   // Escudo de FSC: usa el configurado por el admin en Home > Navbar; si no se pasó
   // ninguno (caller viejo o sin cargar aún), cae al logo histórico como último respaldo.
+  // Va siempre arriba a la izquierda; el del club (si lo hay) va a la derecha — ya no se
+  // reemplazan entre sí, son dos logos distintos con su propio lugar fijo.
   const resolvedFscLogo = fscLogoUrl ? imgSrc(fscLogoUrl) : FSC_LOGO;
-  const headerLogo = clubLogoUrl ? imgSrc(clubLogoUrl) : resolvedFscLogo;
+  const resolvedClubLogo = clubLogoUrl ? imgSrc(clubLogoUrl) : "";
   return (
     <div className="carnet-print rounded-2xl border border-white/10 shadow-2xl overflow-hidden relative text-white"
          style={{ width: 380, maxWidth: "100%", background: `linear-gradient(135deg, ${p.from} 0%, ${p.to} 100%)` }}
@@ -145,12 +147,16 @@ export function Carnet({ player, team, qrValue, staffRole, clubLogoUrl, categori
         backgroundImage: `repeating-linear-gradient(45deg, rgba(255,255,255,0.18) 0 2px, transparent 2px 14px), repeating-linear-gradient(-45deg, rgba(0,0,0,0.18) 0 2px, transparent 2px 16px)`
       }} />
       <div className="relative px-5 pt-5 pb-4 flex items-center justify-between border-b border-white/15">
-        <div className="h-16 w-16 shrink-0" aria-hidden="true" />
+        <img src={resolvedFscLogo} alt="FSC" crossOrigin="anonymous" className="h-16 w-16 object-contain shrink-0" data-testid="carnet-fsc-logo" />
         <div className="text-center">
           <div className="font-display text-xs tracking-[0.25em] font-bold" style={{ color: p.accent }}>FUTURE SOCCER CUP</div>
           <div className="font-display text-[10px] tracking-[0.3em] text-white/70">CARNET OFICIAL · {team?.category || "FSC"}</div>
         </div>
-        <img src={headerLogo} alt={clubLogoUrl ? "Club" : "FSC"} crossOrigin="anonymous" className="h-16 w-16 object-contain drop-shadow-md shrink-0" data-testid="carnet-club-logo" />
+        {resolvedClubLogo ? (
+          <img src={resolvedClubLogo} alt="Club" crossOrigin="anonymous" className="h-16 w-16 object-contain shrink-0" data-testid="carnet-club-logo" />
+        ) : (
+          <div className="h-16 w-16 shrink-0" aria-hidden="true" />
+        )}
       </div>
 
       <div className="relative px-5 py-5 grid grid-cols-3 gap-4">
