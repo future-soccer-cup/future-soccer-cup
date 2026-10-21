@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import api, { formatApiError } from "../../lib/api";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -16,10 +17,19 @@ export default function AdminPlayers() {
   const [teams, setTeams] = useState([]);
   const [clubs, setClubs] = useState([]);
   const [editing, setEditing] = useState(null);
-  // Filtros adicionales
-  const [filterClub, setFilterClub] = useState("");
-  const [filterTeam, setFilterTeam] = useState("");
-  const [filterCategory, setFilterCategory] = useState("");
+  // Filtros adicionales — persistidos en la URL para no perderlos al recargar.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const filterClub = searchParams.get("club") || "";
+  const filterTeam = searchParams.get("team") || "";
+  const filterCategory = searchParams.get("cat") || "";
+  const makeSetter = (key) => (v) => setSearchParams((prev) => {
+    const next = new URLSearchParams(prev);
+    if (v) next.set(key, v); else next.delete(key);
+    return next;
+  }, { replace: true });
+  const setFilterClub = makeSetter("club");
+  const setFilterTeam = makeSetter("team");
+  const setFilterCategory = makeSetter("cat");
 
   const load = useCallback(() => Promise.all([
     api.get("/players"),
@@ -63,7 +73,7 @@ export default function AdminPlayers() {
   }, [tmap, cmap]);
 
   const { query, setQuery, page, setPage, totalPages, pageItems, filtered, filteredCount, totalCount } =
-    usePagedSearch(prefiltered, matchFn, 15);
+    usePagedSearch(prefiltered, matchFn, 15, { syncUrl: true });
 
   const exportColumns = [
     { key: "jersey_number", label: "Dorsal" },

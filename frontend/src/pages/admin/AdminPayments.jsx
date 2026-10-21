@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import api, { API_BASE, formatApiError } from "../../lib/api";
 import { toast, Toaster } from "sonner";
 import { CheckCircle2, XCircle, FileText, ImageIcon, ExternalLink, Trash2 } from "lucide-react";
@@ -29,8 +30,22 @@ const fileSrc = (u) => (u && u.startsWith("/api/") ? `${API_BASE.replace(/\/api$
 
 export default function AdminPayments() {
   const [items, setItems] = useState([]);
-  const [statusFilter, setStatusFilter] = useState("sin_verificar");
-  const [targetFilter, setTargetFilter] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+  // "all" es un valor explícito en la URL para "Todos" — distinto de "sin parámetro todavía"
+  // (primera visita), que sigue usando el default "sin_verificar".
+  const rawStatus = searchParams.get("status");
+  const statusFilter = rawStatus === null ? "sin_verificar" : rawStatus === "all" ? "" : rawStatus;
+  const targetFilter = searchParams.get("target") || "";
+  const setStatusFilter = (v) => setSearchParams((prev) => {
+    const next = new URLSearchParams(prev);
+    next.set("status", v || "all");
+    return next;
+  }, { replace: true });
+  const setTargetFilter = (v) => setSearchParams((prev) => {
+    const next = new URLSearchParams(prev);
+    if (v) next.set("target", v); else next.delete("target");
+    return next;
+  }, { replace: true });
   const [loading, setLoading] = useState(true);
   const [review, setReview] = useState(null); // payment row being reviewed
   const [adminNote, setAdminNote] = useState("");
@@ -63,7 +78,7 @@ export default function AdminPayments() {
   , []);
 
   const { query, setQuery, page, setPage, totalPages, pageItems, filtered, filteredCount, totalCount } =
-    usePagedSearch(items, matchFn, 10);
+    usePagedSearch(items, matchFn, 10, { syncUrl: true });
 
   const exportColumns = [
     { key: "payment_date", label: "Fecha pago", accessor: (p) => (p.payment_date || p.created_at) ? new Date(p.payment_date || p.created_at).toISOString().slice(0,10) : "" },

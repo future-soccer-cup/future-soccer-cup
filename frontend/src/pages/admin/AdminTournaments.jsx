@@ -134,7 +134,7 @@ export default function AdminTournaments() {
   , []);
 
   const { query, setQuery, page, setPage, totalPages, pageItems, filteredCount, totalCount } =
-    usePagedSearch(items, matchFn, 15);
+    usePagedSearch(items, matchFn, 15, { syncUrl: true });
 
   return (
     <div data-testid="admin-tournaments">

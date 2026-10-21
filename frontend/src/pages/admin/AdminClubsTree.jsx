@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import api, { formatApiError } from "../../lib/api";
 import { validatePlayerBirthVsTeam } from "../../lib/playerValidation";
 import BirthDateField from "../../components/BirthDateField";
@@ -47,8 +48,20 @@ export default function AdminClubsTree() {
   const [clubs, setClubs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState({});
-  const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  // Búsqueda/filtro/página persistidos en la URL para no perderlos al recargar.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const query = searchParams.get("q") || "";
+  const statusFilter = searchParams.get("status") || "";
+  const setQuery = (v) => setSearchParams((prev) => {
+    const next = new URLSearchParams(prev);
+    if (v) next.set("q", v); else next.delete("q");
+    return next;
+  }, { replace: true });
+  const setStatusFilter = (v) => setSearchParams((prev) => {
+    const next = new URLSearchParams(prev);
+    if (v) next.set("status", v); else next.delete("status");
+    return next;
+  }, { replace: true });
   const [clubUsers, setClubUsers] = useState({}); // {club_id: [users]}
   const [editingPlayer, setEditingPlayer] = useState(null); // {team_id, player|null}
   const [editingTeamName, setEditingTeamName] = useState(null); // {id, name, category, ...}
@@ -213,7 +226,12 @@ export default function AdminClubsTree() {
   ];
 
   // Paginación: 10 clubes por página. Página se "clampa" automáticamente al cambiar filtros.
-  const [page, setPage] = useState(1);
+  const page = parseInt(searchParams.get("page"), 10) || 1;
+  const setPage = (p) => setSearchParams((prev) => {
+    const next = new URLSearchParams(prev);
+    if (p > 1) next.set("page", String(p)); else next.delete("page");
+    return next;
+  }, { replace: true });
   const PAGE_SIZE = 10;
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import api from "../../lib/api";
 import { toast, Toaster } from "sonner";
 import { usePagedSearch, SearchBar, Pagination } from "../../components/PagedTable";
@@ -16,7 +17,13 @@ const fmt = fmtMoney; // wrapper kept for callers passing only amount (defaults 
 
 export default function AdminQuotes() {
   const [quotes, setQuotes] = useState([]);
-  const [filter, setFilter] = useState("");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const filter = searchParams.get("status") || "";
+  const setFilter = (v) => setSearchParams((prev) => {
+    const next = new URLSearchParams(prev);
+    if (v) next.set("status", v); else next.delete("status");
+    return next;
+  }, { replace: true });
   const [detail, setDetail] = useState(null);
 
   const load = useCallback(() => api.get("/quotes").then((r) => setQuotes(r.data)), []);
@@ -55,7 +62,7 @@ export default function AdminQuotes() {
   , []);
 
   const { query, setQuery, page, setPage, totalPages, pageItems, filtered, filteredCount, totalCount } =
-    usePagedSearch(filteredByStatus, matchFn, 15);
+    usePagedSearch(filteredByStatus, matchFn, 15, { syncUrl: true });
 
   const exportColumns = [
     { key: "user_name", label: "Cliente" },

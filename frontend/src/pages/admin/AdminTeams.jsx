@@ -25,7 +25,7 @@ export default function AdminTeams() {
   , []);
 
   const { query, setQuery, page, setPage, totalPages, pageItems, filtered, filteredCount, totalCount } =
-    usePagedSearch(teams, matchFn, 15);
+    usePagedSearch(teams, matchFn, 15, { syncUrl: true });
 
   const exportColumns = [
     { key: "name", label: "Nombre" },

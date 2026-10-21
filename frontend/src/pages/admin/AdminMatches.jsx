@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import api, { formatApiError, imgSrc } from "../../lib/api";
 import { Trash2, Edit3, CalendarClock, Shuffle, FileDown, FileText, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
@@ -33,11 +34,22 @@ export default function AdminMatches() {
   const [scoring, setScoring] = useState(null);
   const [manualEdit, setManualEdit] = useState(null);
   const [intergroupOpen, setIntergroupOpen] = useState(false);
-  // Filtros globales del módulo (aplican a la tabla, a clasificación y a J.L)
-  const [filterTid, setFilterTid] = useState("");
-  const [filterCat, setFilterCat] = useState("");
-  const [filterGrp, setFilterGrp] = useState("");
-  const [tab, setTab] = useState("partidos"); // partidos | clasificacion | juego_limpio
+  // Filtros globales del módulo (aplican a la tabla, a clasificación y a J.L) —
+  // persistidos en la URL para no perderlos al recargar la página.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const filterTid = searchParams.get("tid") || "";
+  const filterCat = searchParams.get("cat") || "";
+  const filterGrp = searchParams.get("grp") || "";
+  const tab = searchParams.get("tab") || "partidos"; // partidos | clasificacion | juego_limpio
+  const makeSetter = (key) => (v) => setSearchParams((prev) => {
+    const next = new URLSearchParams(prev);
+    if (v) next.set(key, v); else next.delete(key);
+    return next;
+  }, { replace: true });
+  const setFilterTid = makeSetter("tid");
+  const setFilterCat = makeSetter("cat");
+  const setFilterGrp = makeSetter("grp");
+  const setTab = makeSetter("tab");
   const [standings, setStandings] = useState([]);
   const [fixtures, setFixtures] = useState([]);
   const [brackets, setBrackets] = useState([]);
@@ -859,7 +871,7 @@ function MatchesTable({ matches, onEdit, onScore, onRemove }) {
   , []);
 
   const { query, setQuery, page, setPage, totalPages, pageItems, filteredCount, totalCount } =
-    usePagedSearch(matches, matchFn, 20);
+    usePagedSearch(matches, matchFn, 20, { syncUrl: true });
 
   return (
     <>

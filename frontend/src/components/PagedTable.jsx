@@ -1,4 +1,5 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Search } from "lucide-react";
 
 /**
@@ -7,12 +8,40 @@ import { ChevronLeft, ChevronRight, Search } from "lucide-react";
  * @param {Array}  items     full list (already loaded)
  * @param {Function} matchFn (item, queryLower) => boolean — return true to keep item
  * @param {number}  pageSize default 15
+ * @param {Object}  options  { syncUrl: bool, paramPrefix: string } — cuando syncUrl es true,
+ *   la búsqueda y la página se guardan en la URL (?q=...&page=...) para que no se pierdan
+ *   al recargar la pantalla. paramPrefix evita choques si una página usa el hook dos veces.
  *
  * Returns { query, setQuery, page, setPage, totalPages, pageItems, filteredCount, totalCount }
  */
-export function usePagedSearch(items, matchFn, pageSize = 15) {
-  const [query, setQuery] = useState("");
-  const [page, setPage] = useState(1);
+export function usePagedSearch(items, matchFn, pageSize = 15, options = {}) {
+  const { syncUrl = false, paramPrefix = "" } = options;
+  const qKey = paramPrefix ? `${paramPrefix}_q` : "q";
+  const pKey = paramPrefix ? `${paramPrefix}_page` : "page";
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const [query, setQueryState] = useState(() => (syncUrl ? (searchParams.get(qKey) || "") : ""));
+  const [page, setPageState] = useState(() => (syncUrl ? (parseInt(searchParams.get(pKey), 10) || 1) : 1));
+
+  const setQuery = (v) => {
+    setQueryState(v);
+    if (!syncUrl) return;
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (v) next.set(qKey, v); else next.delete(qKey);
+      next.delete(pKey);
+      return next;
+    }, { replace: true });
+  };
+  const setPage = (p) => {
+    setPageState(p);
+    if (!syncUrl) return;
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (p > 1) next.set(pKey, String(p)); else next.delete(pKey);
+      return next;
+    }, { replace: true });
+  };
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -27,10 +56,17 @@ export function usePagedSearch(items, matchFn, pageSize = 15) {
   // Clamp page when filters shrink the dataset.
   useEffect(() => {
     if (page > totalPages) setPage(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [totalPages, page]);
 
-  // Reset to first page when query changes.
-  useEffect(() => { setPage(1); }, [query]);
+  // Reset to first page when query changes — pero no en el montaje inicial, para no pisar
+  // la página restaurada desde la URL antes de que el usuario escriba algo nuevo.
+  const firstQueryRun = useRef(true);
+  useEffect(() => {
+    if (firstQueryRun.current) { firstQueryRun.current = false; return; }
+    setPage(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query]);
 
   const start = (page - 1) * pageSize;
   const pageItems = filtered.slice(start, start + pageSize);

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import api, { imgSrc } from "../../lib/api";
 import { toast, Toaster } from "sonner";
 import { Check, X, Clock, Shirt, Users, Building2, ChevronDown, ChevronRight, Mail } from "lucide-react";
@@ -12,14 +13,24 @@ const TABS = [
 ];
 
 export default function AdminApprovals() {
-  const [tab, setTab] = useState("teams");
+  // Pestaña + filtros persistidos en la URL para no perderlos al recargar.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab = searchParams.get("tab") || "teams";
+  const statusFilter = searchParams.get("status") || "pendiente";
+  const filterClub = searchParams.get("club") || "";
+  const filterCategory = searchParams.get("cat") || "";
+  const makeSetter = (key) => (v) => setSearchParams((prev) => {
+    const next = new URLSearchParams(prev);
+    if (v) next.set(key, v); else next.delete(key);
+    return next;
+  }, { replace: true });
+  const setTab = makeSetter("tab");
+  const setStatusFilter = makeSetter("status");
+  const setFilterClub = makeSetter("club");
+  const setFilterCategory = makeSetter("cat");
   const [items, setItems] = useState([]);
   const [teams, setTeams] = useState([]);
   const [clubs, setClubs] = useState([]);
-  const [statusFilter, setStatusFilter] = useState("pendiente");
-  // Filtros adicionales (solo aplican a la pestaña Jugadores)
-  const [filterClub, setFilterClub] = useState("");
-  const [filterCategory, setFilterCategory] = useState("");
 
   const load = useCallback(async () => {
     if (tab === "clubs") {
@@ -82,7 +93,7 @@ export default function AdminApprovals() {
   }, [tab, tmap]);
 
   const { query, setQuery, page, setPage, totalPages, pageItems, filtered, filteredCount, totalCount } =
-    usePagedSearch(tab === "players" ? playersFiltered : items, matchFn, 10);
+    usePagedSearch(tab === "players" ? playersFiltered : items, matchFn, 10, { syncUrl: true });
 
   const exportColumns = tab === "clubs" ? [
     { key: "name", label: "Club" },
