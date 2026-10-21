@@ -495,6 +495,45 @@ function GroupStatsView({ tournamentId, categoryValue, groupName, showBackToGrou
       ) : (
         <>
           <div>
+            <div className="flex gap-2 mb-4 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setMatchesTab("all")}
+                className="px-4 py-2 rounded-full text-xs md:text-sm font-black uppercase tracking-widest transition-colors"
+                style={matchesTab === "all" ? { background: BLUE, color: "#fff" } : { background: "#f1f5f9", color: BLUE }}
+                data-testid="stats-tab-all"
+              >
+                Programación {matches.length > 0 && `(${matches.length})`}
+              </button>
+              <button
+                type="button"
+                onClick={() => setMatchesTab("results")}
+                className="px-4 py-2 rounded-full text-xs md:text-sm font-black uppercase tracking-widest transition-colors"
+                style={matchesTab === "results" ? { background: BLUE, color: "#fff" } : { background: "#f1f5f9", color: BLUE }}
+                data-testid="stats-tab-results"
+              >
+                Resultados {results.length > 0 && `(${results.length})`}
+              </button>
+              <button
+                type="button"
+                onClick={() => setMatchesTab("pending")}
+                className="px-4 py-2 rounded-full text-xs md:text-sm font-black uppercase tracking-widest transition-colors"
+                style={matchesTab === "pending" ? { background: BLUE, color: "#fff" } : { background: "#f1f5f9", color: BLUE }}
+                data-testid="stats-tab-pending"
+              >
+                Próximos partidos {pending.length > 0 && `(${pending.length})`}
+              </button>
+            </div>
+            {matchesTab === "all" ? (
+              matches.length ? <MatchesList rows={matches} testPrefix="stats-all" /> : <p className="text-slate-400 italic text-base">Aún no hay partidos programados.</p>
+            ) : matchesTab === "results" ? (
+              results.length ? <MatchesList rows={results} testPrefix="stats-result" /> : <p className="text-slate-400 italic text-base">Aún no hay resultados.</p>
+            ) : (
+              pending.length ? <MatchesList rows={pending} testPrefix="stats-pending" /> : <p className="text-slate-400 italic text-base">No hay partidos pendientes.</p>
+            )}
+          </div>
+
+          <div>
             <h3 className="text-xl md:text-2xl font-black uppercase tracking-widest mb-4" style={{ color: BLUE }}>
               Tabla de posiciones
             </h3>
@@ -534,45 +573,6 @@ function GroupStatsView({ tournamentId, categoryValue, groupName, showBackToGrou
               </div>
             </div>
           )}
-
-          <div>
-            <div className="flex gap-2 mb-4 flex-wrap">
-              <button
-                type="button"
-                onClick={() => setMatchesTab("all")}
-                className="px-4 py-2 rounded-full text-xs md:text-sm font-black uppercase tracking-widest transition-colors"
-                style={matchesTab === "all" ? { background: BLUE, color: "#fff" } : { background: "#f1f5f9", color: BLUE }}
-                data-testid="stats-tab-all"
-              >
-                Programación {matches.length > 0 && `(${matches.length})`}
-              </button>
-              <button
-                type="button"
-                onClick={() => setMatchesTab("results")}
-                className="px-4 py-2 rounded-full text-xs md:text-sm font-black uppercase tracking-widest transition-colors"
-                style={matchesTab === "results" ? { background: BLUE, color: "#fff" } : { background: "#f1f5f9", color: BLUE }}
-                data-testid="stats-tab-results"
-              >
-                Resultados {results.length > 0 && `(${results.length})`}
-              </button>
-              <button
-                type="button"
-                onClick={() => setMatchesTab("pending")}
-                className="px-4 py-2 rounded-full text-xs md:text-sm font-black uppercase tracking-widest transition-colors"
-                style={matchesTab === "pending" ? { background: BLUE, color: "#fff" } : { background: "#f1f5f9", color: BLUE }}
-                data-testid="stats-tab-pending"
-              >
-                Próximos partidos {pending.length > 0 && `(${pending.length})`}
-              </button>
-            </div>
-            {matchesTab === "all" ? (
-              matches.length ? <MatchesList rows={matches} testPrefix="stats-all" /> : <p className="text-slate-400 italic text-base">Aún no hay partidos programados.</p>
-            ) : matchesTab === "results" ? (
-              results.length ? <MatchesList rows={results} testPrefix="stats-result" /> : <p className="text-slate-400 italic text-base">Aún no hay resultados.</p>
-            ) : (
-              pending.length ? <MatchesList rows={pending} testPrefix="stats-pending" /> : <p className="text-slate-400 italic text-base">No hay partidos pendientes.</p>
-            )}
-          </div>
 
           <div>
             <h3 className="text-lg md:text-xl font-black uppercase tracking-widest mb-4" style={{ color: BLUE }}>
@@ -794,6 +794,14 @@ function TeamLogo({ url, name }) {
   return <img src={imgSrc(url)} alt="" className="shrink-0 h-5 w-5 rounded-full object-cover bg-white" />;
 }
 
+// Jornada de grupo (matchday) o nombre de la fase eliminatoria (octavos, semis...),
+// igual a como lo muestra el módulo de Partidos del admin — más útil para el público
+// que solo la fecha de calendario, que además no siempre está asignada todavía.
+function matchRoundLabel(m) {
+  if (m.matchday) return `Fecha ${m.matchday}`;
+  return STAGE_LABEL[m.stage] || "";
+}
+
 function MatchesList({ rows, testPrefix, showDate }) {
   return (
     <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
@@ -812,7 +820,9 @@ function MatchesList({ rows, testPrefix, showDate }) {
               <span className="min-w-0 truncate font-semibold">{m.away_team_name}</span>
             </span>
           </div>
-          <div className="text-xs text-slate-400 mt-0.5 text-center">{formatDateTime(m.match_date)}{m.venue ? ` · ${m.venue}` : ""}</div>
+          <div className="text-xs text-slate-400 mt-0.5 text-center">
+            {[matchRoundLabel(m), formatDateTime(m.match_date), m.venue].filter(Boolean).join(" · ")}
+          </div>
           {m.match_type === "intergrupo" && (
             <div className="text-center mt-1">
               <span className="text-xs md:text-sm font-bold uppercase tracking-wider text-amber-700 bg-amber-100 rounded px-2 py-1">Partido intergrupos</span>
@@ -846,7 +856,12 @@ function StandingsTable({ rows }) {
           {rows.map((r, i) => (
             <tr key={r.team_id} className="border-t border-slate-100" data-testid={`stats-row-${i}`}>
               <td className="px-1.5 sm:px-3 py-2 sm:py-2.5 font-bold">{i + 1}</td>
-              <td className="px-1.5 sm:px-3 py-2 sm:py-2.5 max-w-[92px] sm:max-w-none truncate">{r.team_name}</td>
+              <td className="px-1.5 sm:px-3 py-2 sm:py-2.5 max-w-[92px] sm:max-w-none">
+                <span className="flex items-center gap-1.5 min-w-0">
+                  <TeamLogo url={r.team_logo} name={r.team_name} />
+                  <span className="truncate">{r.team_name}</span>
+                </span>
+              </td>
               <td className="text-center tabular-nums px-1 sm:px-3">{r.played}</td>
               <td className="text-center tabular-nums px-1 sm:px-3">{r.won}</td>
               <td className="text-center tabular-nums px-1 sm:px-3">{r.drawn}</td>
