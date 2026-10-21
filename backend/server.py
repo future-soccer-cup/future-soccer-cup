@@ -1080,6 +1080,10 @@ async def register_team(payload: TeamRegisterIn, response: Response):
         "data_consent": True,
         "consent_at": now,
         "created_at": now,
+        # Cuentas creadas a partir de ahora nacen pendientes. El Directivo queda activo
+        # cuando se aprueba su CLUB (se valida en /auth/login contra club.status); el
+        # Cuerpo Técnico necesita que el admin apruebe su cuenta individualmente.
+        "status": "pendiente",
     }
     if team_doc:
         await db.teams.insert_one(team_doc)
@@ -1124,6 +1128,21 @@ async def login(payload: LoginIn, request: Request, response: Response):
         raise HTTPException(status_code=401, detail="Credenciales inválidas")
 
     await db.login_attempts.delete_one({"identifier": identifier})
+
+    # Equipos (Directivo/Presidente/DT y Cuerpo Técnico): el Directivo depende del estado
+    # de su CLUB (se activa automáticamente al aprobar el club); el Cuerpo Técnico necesita
+    # su propia aprobación individual. Cuentas sin el campo `status` (creadas antes de este
+    # cambio) se tratan como ya aprobadas, para no bloquear a nadie retroactivamente.
+    if user.get("role") == "team":
+        is_staff_role = (user.get("manager_role") or "").strip().lower() == "cuerpo técnico"
+        if is_staff_role:
+            if "status" in user and user.get("status") != "aprobado":
+                raise HTTPException(status_code=403, detail="Tu cuenta de Cuerpo Técnico está pendiente de aprobación por el administrador.")
+        elif "status" in user and user.get("club_id"):
+            club = await db.clubs.find_one({"id": user["club_id"]}, {"_id": 0, "status": 1})
+            if club and (club.get("status") or "pendiente") != "aprobado":
+                raise HTTPException(status_code=403, detail="Tu club está pendiente de aprobación por el administrador. Te avisaremos apenas sea aprobado.")
+
     access = create_access_token(user["id"], user["email"], user["role"])
     refresh = create_refresh_token(user["id"])
     set_auth_cookies(response, access, refresh)
@@ -1665,6 +1684,21 @@ async def set_player_status(player_id: str, status: str, user: dict = Depends(re
         raise HTTPException(status_code=404, detail="Jugador no encontrado")
     actor = await _record_audit("player", player_id, "status_change", prev.get("status"), status, user)
     await db.players.update_one({"id": player_id}, {"$set": {"status": status, **actor}})
+    return {"ok": True}
+
+@api.put("/users/{user_id}/status")
+async def set_user_status(user_id: str, status: str, user: dict = Depends(require_admin)):
+    """Aprobar/rechazar una cuenta de Cuerpo Técnico (sin aprobar, no puede iniciar sesión).
+    Las cuentas Directivo no se gestionan aquí — su acceso depende del estado del club."""
+    if status not in {"pendiente", "aprobado", "rechazado"}:
+        raise HTTPException(status_code=400, detail="Estado inválido")
+    prev = await db.users.find_one({"id": user_id}, {"_id": 0, "status": 1, "role": 1})
+    if not prev:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    if prev.get("role") != "team":
+        raise HTTPException(status_code=400, detail="Solo se puede aprobar/rechazar cuentas de equipo (Cuerpo Técnico)")
+    actor = await _record_audit("user", user_id, "status_change", prev.get("status"), status, user)
+    await db.users.update_one({"id": user_id}, {"$set": {"status": status, **actor}})
     return {"ok": True}
 
 # -------------------- Tournaments --------------------
@@ -4306,8 +4340,10 @@ async def list_club_users(cid: str, _: dict = Depends(require_admin)):
         return []
     users = await db.users.find(
         {"id": {"$in": list(user_ids)}},
-        {"_id": 0, "id": 1, "name": 1, "email": 1, "role": 1, "team_id": 1, "manager_role": 1, "phone": 1, "created_at": 1}
+        {"_id": 0, "id": 1, "name": 1, "email": 1, "role": 1, "team_id": 1, "manager_role": 1, "phone": 1, "created_at": 1, "status": 1}
     ).to_list(200)
+    for u in users:
+        u.setdefault("status", "aprobado")  # cuentas creadas antes de este campo: ya estaban activas
     return users
 
 

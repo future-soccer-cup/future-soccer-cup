@@ -88,6 +88,18 @@ export default function AdminClubsTree() {
     }
   };
 
+  const setUserStatus = async (uid, status, cid) => {
+    try {
+      await api.put(`/users/${uid}/status?status=${status}`);
+      toast.success(`Cuenta ${status === "aprobado" ? "aprobada" : "rechazada"}`);
+      // Refresca solo la lista de usuarios de ese club (ya cacheada al expandirlo).
+      const r = await api.get(`/admin/clubs/${cid}/users`);
+      setClubUsers((cu) => ({ ...cu, [cid]: r.data || [] }));
+    } catch (err) {
+      toast.error(formatApiError(err.response?.data?.detail) || "Error actualizando la cuenta");
+    }
+  };
+
   const deleteClub = async (cid) => {
     try {
       const r = await api.delete(`/clubs/${cid}`);
@@ -244,6 +256,7 @@ export default function AdminClubsTree() {
             onEditClubName={() => setEditingClubName(c)}
             onEditStaff={(team, idx) => setEditingStaff({ team, idx, data: idx != null ? (team.cuerpo_tecnico || [])[idx] : { name: "", role: "Director técnico", document: "", phone: "", photo_url: "" } })}
             onDeleteStaff={deleteStaff}
+            onUserStatus={setUserStatus}
           />
         ))}
       </div>
@@ -288,7 +301,7 @@ export default function AdminClubsTree() {
   );
 }
 
-function ClubNode({ club, users, expanded, onToggle, onApprove, onReject, onPending, onDelete, onTeamStatus, onDeletePlayer, onEditPlayer, onEditTeamName, onEditClubName, onEditStaff, onDeleteStaff }) {
+function ClubNode({ club, users, expanded, onToggle, onApprove, onReject, onPending, onDelete, onTeamStatus, onDeletePlayer, onEditPlayer, onEditTeamName, onEditClubName, onEditStaff, onDeleteStaff, onUserStatus }) {
   const teams = useMemo(() => club.teams || [], [club.teams]);
   // Group teams by (event_type, category)
   const byEvent = useMemo(() => {
@@ -390,7 +403,22 @@ function ClubNode({ club, users, expanded, onToggle, onApprove, onReject, onPend
                         <div className="mt-1 flex items-center gap-1 flex-wrap">
                           <span className="text-[9px] uppercase tracking-wider text-slate-500 font-bold">{u.role}</span>
                           {mr && <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${badgeColor}`} data-testid={`user-manager-role-${u.id}`}>{mr}</span>}
+                          {isCT && (
+                            <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${u.status === "aprobado" ? "bg-green-100 text-green-700" : u.status === "rechazado" ? "bg-red-100 text-red-700" : "bg-yellow-100 text-yellow-800"}`} data-testid={`user-status-${u.id}`}>
+                              {u.status || "aprobado"}
+                            </span>
+                          )}
                         </div>
+                        {isCT && onUserStatus && (
+                          <div className="mt-1.5 flex gap-1">
+                            {u.status !== "aprobado" && (
+                              <button onClick={() => onUserStatus(u.id, "aprobado", club.id)} className="text-[10px] font-bold uppercase tracking-wide bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded" data-testid={`approve-user-${u.id}`}>Aprobar</button>
+                            )}
+                            {u.status !== "rechazado" && (
+                              <button onClick={() => onUserStatus(u.id, "rechazado", club.id)} className="text-[10px] font-bold uppercase tracking-wide bg-slate-100 hover:bg-red-50 text-red-600 px-2 py-1 rounded" data-testid={`reject-user-${u.id}`}>Rechazar</button>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
