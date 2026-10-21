@@ -54,6 +54,7 @@ export default function AdminClubsTree() {
   const [editingTeamName, setEditingTeamName] = useState(null); // {id, name, category, ...}
   const [editingClubName, setEditingClubName] = useState(null); // {id, name}
   const [editingStaff, setEditingStaff] = useState(null); // {team, idx, data}
+  const [pendingAssignments, setPendingAssignments] = useState([]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -65,6 +66,28 @@ export default function AdminClubsTree() {
     } finally { setLoading(false); }
   }, []);
   useEffect(() => { load(); }, [load]);
+
+  const loadPending = useCallback(async () => {
+    try {
+      const r = await api.get("/admin/users/pending-club-assignment");
+      setPendingAssignments(r.data || []);
+    } catch (err) {
+      if (process.env.NODE_ENV === "development") console.warn("Pending club assignment load failed:", err?.message);
+    }
+  }, []);
+  useEffect(() => { loadPending(); }, [loadPending]);
+
+  const assignClub = async (uid, clubId) => {
+    if (!clubId) return toast.error("Selecciona un club");
+    try {
+      await api.put(`/users/${uid}/assign-club?club_id=${clubId}`);
+      toast.success("Club asignado y cuenta aprobada");
+      loadPending();
+      setClubUsers((cu) => ({ ...cu, [clubId]: undefined }));
+    } catch (err) {
+      toast.error(formatApiError(err.response?.data?.detail) || "Error asignando el club");
+    }
+  };
 
   const toggle = async (cid) => {
     setExpanded((e) => ({ ...e, [cid]: !e[cid] }));
@@ -214,6 +237,10 @@ export default function AdminClubsTree() {
         </div>
       </div>
 
+      {pendingAssignments.length > 0 && (
+        <PendingAssignmentsPanel rows={pendingAssignments} clubs={clubs} onAssign={assignClub} />
+      )}
+
       <div className="flex items-center gap-2 flex-wrap mb-4">
         <input
           value={query}
@@ -297,6 +324,46 @@ export default function AdminClubsTree() {
           onSaved={() => { setEditingStaff(null); load(); }}
         />
       )}
+    </div>
+  );
+}
+
+// Cuentas de Cuerpo Técnico que se registraron escribiendo el nombre del club como guía
+// (sin club confirmado todavía). El admin elige el club real de la lista y aprueba en un paso.
+function PendingAssignmentsPanel({ rows, clubs, onAssign }) {
+  const [picked, setPicked] = useState({}); // {user_id: club_id}
+  return (
+    <div className="mb-4 border-2 border-amber-300 bg-amber-50 rounded-xl p-4" data-testid="pending-club-assignments">
+      <h3 className="font-display text-sm font-black uppercase tracking-wide text-amber-800 mb-1">
+        Cuerpo Técnico sin club asignado ({rows.length})
+      </h3>
+      <p className="text-xs text-amber-700 mb-3">Escribieron el nombre del club como guía al registrarse. Confirma a qué club pertenecen para aprobar su acceso.</p>
+      <div className="space-y-2">
+        {rows.map((u) => (
+          <div key={u.id} className="flex items-center gap-2 flex-wrap bg-white border border-amber-200 rounded-md p-2.5" data-testid={`pending-assignment-${u.id}`}>
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-bold truncate">{u.name} <span className="font-normal text-slate-400">· {u.email}</span></div>
+              <div className="text-xs text-slate-500">Club escrito: <strong>{u.requested_club_name || "—"}</strong></div>
+            </div>
+            <select
+              value={picked[u.id] || ""}
+              onChange={(e) => setPicked((p) => ({ ...p, [u.id]: e.target.value }))}
+              className="px-2 py-1.5 border border-slate-200 rounded-md text-xs min-w-[200px]"
+              data-testid={`pending-assignment-select-${u.id}`}
+            >
+              <option value="">— Elegir club real —</option>
+              {clubs.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+            <button
+              onClick={() => onAssign(u.id, picked[u.id])}
+              className="text-xs font-bold uppercase tracking-wide px-3 py-1.5 rounded-md bg-emerald-600 text-white hover:bg-emerald-700"
+              data-testid={`pending-assignment-confirm-${u.id}`}
+            >
+              Asignar y aprobar
+            </button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

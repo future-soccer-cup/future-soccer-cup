@@ -42,7 +42,6 @@ export default function TeamRegister() {
   const [form, setForm] = useState(EMPTY);
   const [loading, setLoading] = useState(false);
   const [logoFile, setLogoFile] = useState(null);
-  const [clubs, setClubs] = useState([]);
   const [step, setStep] = useState(1);
   const [showPw, setShowPw] = useState(false);
   const [imgUrl, setImgUrl] = useState("");
@@ -52,12 +51,8 @@ export default function TeamRegister() {
   const nav = useNavigate();
   const { wrapRef: imgWrapRef, width: imgColWidth, onImgLoad } = useAutoFitSideImage({ maxWidthRatio: 0.42, minWidth: 260 });
 
-  // Cargar clubes aprobados + imágenes CMS.
+  // Cargar imágenes CMS.
   useEffect(() => {
-    api.get("/clubs").then((r) => {
-      const list = (r.data || []).filter((c) => (c.status || "pendiente") === "aprobado");
-      setClubs(list);
-    }).catch(() => {});
     api.get("/home-settings").then((r) => {
       const d = r.data || {};
       setImgUrl(d.auth_register_image_url || "");
@@ -77,7 +72,7 @@ export default function TeamRegister() {
       if (!form.manager_name.trim()) return "Ingresa tu nombre completo";
       if (!form.email.trim()) return "Ingresa tu correo electrónico";
       if ((form.password || "").length < 6) return "La contraseña debe tener mínimo 6 caracteres";
-      if (isCuerpoTecnico && !form.existing_club_id) return "Selecciona el club al que perteneces";
+      if (isCuerpoTecnico && !form.club_name.trim()) return "Indica el nombre del club al que perteneces";
       return null;
     }
     if (step === 2 && isDirectivo) {
@@ -99,19 +94,10 @@ export default function TeamRegister() {
   const submit = async (e) => {
     e?.preventDefault?.();
     if (!form.data_consent) return toast.error("Debes aceptar la política de datos");
-    if (isCuerpoTecnico && !form.existing_club_id) return toast.error("Selecciona el club al que perteneces");
-    if (isDirectivo && !(form.club_name || "").trim()) return toast.error("Indica el nombre del club");
+    if (!(form.club_name || "").trim()) return toast.error(isCuerpoTecnico ? "Indica el nombre del club al que perteneces" : "Indica el nombre del club");
     setLoading(true);
     try {
-      const payload = { ...form };
-      if (isCuerpoTecnico) {
-        const sel = clubs.find((c) => c.id === form.existing_club_id);
-        payload.club_name = sel?.name || "";
-        payload.club_city = sel?.city || payload.club_city || "";
-        payload.club_country = sel?.country || payload.club_country || "Colombia";
-      } else {
-        payload.existing_club_id = "";
-      }
+      const payload = { ...form, existing_club_id: "" };
       const reg = await api.post("/auth/register-team", payload);
       setUser(reg.data);
 
@@ -128,7 +114,7 @@ export default function TeamRegister() {
       }
 
       toast.success(isCuerpoTecnico
-        ? "Cuenta creada. Acceso disponible cuando el Directivo apruebe el club."
+        ? "Cuenta creada. El administrador confirmará tu club y aprobará el acceso."
         : "Club registrado. Espera la aprobación del administrador para acceder al panel.");
       nav(reg.data.team_id ? "/mi-equipo" : "/");
     } catch (err) {
@@ -176,7 +162,6 @@ export default function TeamRegister() {
                 showPw={showPw}
                 setShowPw={setShowPw}
                 isCuerpoTecnico={isCuerpoTecnico}
-                clubs={clubs}
               />
             )}
             {step === 2 && isDirectivo && (
@@ -276,7 +261,7 @@ function Stepper({ current, total }) {
   );
 }
 
-function StepPersonal({ form, upd, showPw, setShowPw, isCuerpoTecnico, clubs }) {
+function StepPersonal({ form, upd, showPw, setShowPw, isCuerpoTecnico }) {
   return (
     <div data-testid="section-personal" className="space-y-5">
       <div className="grid sm:grid-cols-2 gap-5">
@@ -318,25 +303,8 @@ function StepPersonal({ form, upd, showPw, setShowPw, isCuerpoTecnico, clubs }) 
 
       {isCuerpoTecnico && (
         <div className="mt-3 p-5 rounded-md" style={{ background: "rgba(255,255,255,0.1)", borderLeft: `4px solid ${RED}` }}>
-          <p className="text-sm text-white/90 mb-3">Como <strong>Cuerpo Técnico</strong> debes pertenecer a un club ya registrado. Selecciónalo:</p>
-          <label className="block">
-            <LabelDark text="Club al que perteneces" required />
-            <select
-              required
-              value={form.existing_club_id}
-              onChange={(e) => upd("existing_club_id", e.target.value)}
-              className="mt-2 w-full px-4 py-2.5 sm:py-3 md:py-4 rounded-md text-white text-base sm:text-lg md:text-2xl font-semibold focus:outline-none focus:ring-2 focus:ring-white"
-              style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.35)" }}
-              data-testid="tr-existing-club"
-            >
-              <option value="" style={{ color: "#000" }}>— Selecciona tu club —</option>
-              {clubs.length === 0 && <option disabled style={{ color: "#000" }}>No hay clubes aprobados todavía</option>}
-              {clubs.map((c) => (
-                <option key={c.id} value={c.id} style={{ color: "#000" }}>{c.name} {c.city ? `· ${c.city}` : ""}</option>
-              ))}
-            </select>
-            <span className="text-xs text-white/60 mt-2 block">Solo se muestran clubes ya aprobados por el administrador.</span>
-          </label>
+          <p className="text-sm text-white/90 mb-3">Como <strong>Cuerpo Técnico</strong>, escribe el nombre del club al que perteneces. Es solo una guía: el administrador confirmará y te asignará el club oficial antes de aprobar tu cuenta.</p>
+          <FieldDark label="Nombre del club" required value={form.club_name} onChange={(v) => upd("club_name", v)} testId="tr-club-name-guide" />
         </div>
       )}
     </div>

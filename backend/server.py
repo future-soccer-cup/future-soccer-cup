@@ -1002,15 +1002,21 @@ async def register_team(payload: TeamRegisterIn, response: Response):
     now = datetime.now(timezone.utc).isoformat()
 
     # 1) Find or create Club
-    # - Si existing_club_id viene: el user (Cuerpo Técnico) se vincula a ese club; NO se crea uno nuevo.
-    # - Si NO: el rol es Directivo y se crea/encuentra el club por nombre.
+    # - Si existing_club_id viene (clientes antiguos): el user se vincula directo a ese club.
+    # - Si el rol es Directivo: se crea/encuentra el club por nombre y el user queda como manager.
+    # - Si el rol es Cuerpo Técnico (sin existing_club_id): el nombre escrito es solo una GUÍA
+    #   para el admin — no crea ni vincula ningún club todavía. El admin confirma y asigna el
+    #   club real via PUT /users/{id}/assign-club (ver más abajo), lo que también aprueba la cuenta.
+    role_norm = (payload.manager_role or "Directivo").strip()
+    is_directivo = role_norm == "Directivo"
+    requested_club_name = ""
     if payload.existing_club_id:
         club = await db.clubs.find_one({"id": payload.existing_club_id}, {"_id": 0})
         if not club:
             raise HTTPException(status_code=400, detail="El club seleccionado no existe")
         club_id = club["id"]
         club_name_norm = club["name"]
-    else:
+    elif is_directivo:
         if not payload.club_name or not payload.club_name.strip():
             raise HTTPException(status_code=400, detail="El nombre del club es obligatorio para registrar como Directivo")
         club_name_norm = payload.club_name.strip()
@@ -1035,6 +1041,12 @@ async def register_team(payload: TeamRegisterIn, response: Response):
             club.pop("_id", None)
         else:
             club_id = club["id"]
+    else:
+        if not payload.club_name or not payload.club_name.strip():
+            raise HTTPException(status_code=400, detail="Indica el nombre del club al que perteneces")
+        requested_club_name = payload.club_name.strip()
+        club_id = None
+        club_name_norm = requested_club_name
 
     # 2) Compute registration fee from event + birth_year (solo si hay evento)
     fee = 0.0
@@ -1076,13 +1088,15 @@ async def register_team(payload: TeamRegisterIn, response: Response):
         "document": payload.manager_document or "",
         "team_id": team_id,
         "club_id": club_id,
+        "requested_club_name": requested_club_name,
         "password_hash": hash_password(payload.password),
         "data_consent": True,
         "consent_at": now,
         "created_at": now,
         # Cuentas creadas a partir de ahora nacen pendientes. El Directivo queda activo
         # cuando se aprueba su CLUB (se valida en /auth/login contra club.status); el
-        # Cuerpo Técnico necesita que el admin apruebe su cuenta individualmente.
+        # Cuerpo Técnico necesita que el admin apruebe su cuenta individualmente y le asigne
+        # el club real (PUT /users/{id}/assign-club) ya que club_id nace vacío.
         "status": "pendiente",
     }
     if team_doc:
@@ -1700,6 +1714,33 @@ async def set_user_status(user_id: str, status: str, user: dict = Depends(requir
     actor = await _record_audit("user", user_id, "status_change", prev.get("status"), status, user)
     await db.users.update_one({"id": user_id}, {"$set": {"status": status, **actor}})
     return {"ok": True}
+
+@api.get("/admin/users/pending-club-assignment")
+async def list_pending_club_assignment(user: dict = Depends(require_admin)):
+    """Cuentas de Cuerpo Técnico que se registraron escribiendo el nombre del club como guía
+    (sin club_id todavía) y esperan a que el admin les confirme/asigne el club real."""
+    rows = await db.users.find(
+        {"role": "team", "club_id": {"$in": [None, ""]}},
+        {"_id": 0, "id": 1, "name": 1, "email": 1, "phone": 1, "manager_role": 1, "requested_club_name": 1, "status": 1, "created_at": 1},
+    ).sort("created_at", -1).to_list(500)
+    return rows
+
+@api.put("/users/{user_id}/assign-club")
+async def assign_user_club(user_id: str, club_id: str, user: dict = Depends(require_admin)):
+    """Confirma a qué club pertenece una cuenta de Cuerpo Técnico registrada con nombre de
+    club como guía, y aprueba la cuenta en el mismo paso (ya no tiene sentido mantenerla
+    pendiente una vez el admin decidió a qué club pertenece)."""
+    target = await db.users.find_one({"id": user_id}, {"_id": 0, "role": 1, "club_id": 1})
+    if not target:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    if target.get("role") != "team":
+        raise HTTPException(status_code=400, detail="Solo aplica a cuentas de equipo")
+    club = await db.clubs.find_one({"id": club_id}, {"_id": 0, "id": 1})
+    if not club:
+        raise HTTPException(status_code=404, detail="Club no encontrado")
+    actor = await _record_audit("user", user_id, "assign_club", target.get("club_id"), club_id, user)
+    await db.users.update_one({"id": user_id}, {"$set": {"club_id": club_id, "status": "aprobado", **actor}})
+    return {"ok": True, "club_id": club_id}
 
 # -------------------- Tournaments --------------------
 @api.get("/tournaments", response_model=List[TournamentOut])
