@@ -4,7 +4,7 @@ import { validatePlayerBirthVsTeam } from "../lib/playerValidation";
 import BirthDateField from "../components/BirthDateField";
 import { useAuth } from "../context/AuthContext";
 import { toast, Toaster } from "sonner";
-import { Plus, Pencil, Trash2, Users2, CreditCard, CheckCircle2, AlertCircle, FileUp, Download, Receipt as ReceiptIcon, ChevronDown, ChevronUp, Edit3 } from "lucide-react";
+import { Plus, Pencil, Trash2, Users2, CheckCircle2, AlertCircle, FileUp, Download, Receipt as ReceiptIcon, ChevronDown, ChevronUp, Edit3 } from "lucide-react";
 import { Link } from "react-router-dom";
 import ImageUpload from "../components/ImageUpload";
 import CategorySelect from "../components/CategorySelect";
@@ -46,7 +46,6 @@ export default function MyTeam() {
   const [teamForm, setTeamForm] = useState(null);
   const [editingPlayer, setEditingPlayer] = useState(null);
   const [editingStaff, setEditingStaff] = useState(null); // {idx?, data}
-  const [payingReg, setPayingReg] = useState(false);
   const [regPaymentsOpen, setRegPaymentsOpen] = useState(false);
   const [regPaymentsData, setRegPaymentsData] = useState(null);
   const [regShowForm, setRegShowForm] = useState(false);
@@ -547,20 +546,6 @@ export default function MyTeam() {
     }
   };
 
-  const payRegistration = async () => {
-    setPayingReg(true);
-    try {
-      const r = await api.post("/payments/registration/session", {
-        team_id: teamId,
-        origin_url: window.location.origin,
-      });
-      window.location.href = r.data.url;
-    } catch (err) {
-      toast.error(formatApiError(err.response?.data?.detail) || "No se pudo iniciar el pago");
-      setPayingReg(false);
-    }
-  };
-
   const downloadTemplate = async () => {
     try {
       const r = await api.get("/team-roster/template", { responseType: "blob" });
@@ -707,11 +692,6 @@ export default function MyTeam() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2 shrink-0">
-            {!regPaid && (
-              <button onClick={payRegistration} disabled={payingReg} className="fsc-btn-red px-5 py-3 rounded-md text-sm flex items-center gap-2 disabled:opacity-50" data-testid="pay-registration-btn">
-                <CreditCard size={16}/> {payingReg ? "Redirigiendo..." : "Pagar con Stripe"}
-              </button>
-            )}
             <button
               onClick={toggleRegPayments}
               className="px-4 py-3 rounded-md text-sm font-bold uppercase tracking-wide border-2 border-slate-900 text-slate-900 hover:bg-slate-900 hover:text-white flex items-center gap-2"

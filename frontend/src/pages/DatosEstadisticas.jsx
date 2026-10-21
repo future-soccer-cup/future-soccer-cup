@@ -398,7 +398,7 @@ function GroupStatsView({ tournamentId, categoryValue, groupName, showBackToGrou
   const [matches, setMatches] = useState([]);
   const [scorers, setScorers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [matchesTab, setMatchesTab] = useState("results"); // "results" | "pending"
+  const [matchesTab, setMatchesTab] = useState("all"); // "all" | "results" | "pending"
 
   useEffect(() => {
     let cancelled = false;
@@ -495,7 +495,16 @@ function GroupStatsView({ tournamentId, categoryValue, groupName, showBackToGrou
           )}
 
           <div>
-            <div className="flex gap-2 mb-4">
+            <div className="flex gap-2 mb-4 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setMatchesTab("all")}
+                className="px-4 py-2 rounded-full text-xs md:text-sm font-black uppercase tracking-widest transition-colors"
+                style={matchesTab === "all" ? { background: BLUE, color: "#fff" } : { background: "#f1f5f9", color: BLUE }}
+                data-testid="stats-tab-all"
+              >
+                Programación {matches.length > 0 && `(${matches.length})`}
+              </button>
               <button
                 type="button"
                 onClick={() => setMatchesTab("results")}
@@ -515,10 +524,12 @@ function GroupStatsView({ tournamentId, categoryValue, groupName, showBackToGrou
                 Próximos partidos {pending.length > 0 && `(${pending.length})`}
               </button>
             </div>
-            {matchesTab === "results" ? (
+            {matchesTab === "all" ? (
+              matches.length ? <MatchesList rows={matches} testPrefix="stats-all" /> : <p className="text-slate-400 italic text-base">Aún no hay partidos programados.</p>
+            ) : matchesTab === "results" ? (
               results.length ? <MatchesList rows={results} testPrefix="stats-result" /> : <p className="text-slate-400 italic text-base">Aún no hay resultados.</p>
             ) : (
-              pending.length ? <MatchesList rows={pending} testPrefix="stats-pending" showDate /> : <p className="text-slate-400 italic text-base">No hay partidos pendientes.</p>
+              pending.length ? <MatchesList rows={pending} testPrefix="stats-pending" /> : <p className="text-slate-400 italic text-base">No hay partidos pendientes.</p>
             )}
           </div>
 
@@ -731,21 +742,36 @@ function KnockoutStatsView({ tournamentId, categoryValue, showBackToGroups, onBa
 }
 
 
+function TeamLogo({ url, name }) {
+  if (!url) {
+    return (
+      <span className="shrink-0 h-5 w-5 rounded-full bg-slate-200 text-slate-500 text-[9px] font-black flex items-center justify-center" aria-hidden="true">
+        {(name || "?").trim().charAt(0).toUpperCase()}
+      </span>
+    );
+  }
+  return <img src={imgSrc(url)} alt="" className="shrink-0 h-5 w-5 rounded-full object-cover bg-white" />;
+}
+
 function MatchesList({ rows, testPrefix, showDate }) {
   return (
     <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
       {rows.map((m, i) => (
         <div key={m.id || i} className="bg-slate-50 rounded-md px-3 py-2 text-sm md:text-base" data-testid={`${testPrefix}-${i}`}>
           <div className="flex items-center gap-2">
-            <span className="flex-1 min-w-0 truncate font-semibold text-right">{m.home_team_name}</span>
+            <span className="flex-1 min-w-0 flex items-center justify-end gap-1.5">
+              <span className="min-w-0 truncate font-semibold text-right">{m.home_team_name}</span>
+              <TeamLogo url={m.home_team_logo} name={m.home_team_name} />
+            </span>
             <span className="tabular-nums font-black shrink-0 px-1" style={{ color: BLUE }}>
               {m.status === "finalizado" ? `${m.home_score ?? 0} - ${m.away_score ?? 0}` : m.status === "descansa" ? "—" : "vs"}
             </span>
-            <span className="flex-1 min-w-0 truncate font-semibold">{m.away_team_name}</span>
+            <span className="flex-1 min-w-0 flex items-center gap-1.5">
+              <TeamLogo url={m.away_team_logo} name={m.away_team_name} />
+              <span className="min-w-0 truncate font-semibold">{m.away_team_name}</span>
+            </span>
           </div>
-          {(showDate || m.status !== "finalizado") && (
-            <div className="text-xs text-slate-400 mt-0.5 text-center">{formatDateTime(m.match_date)}{m.venue ? ` · ${m.venue}` : ""}</div>
-          )}
+          <div className="text-xs text-slate-400 mt-0.5 text-center">{formatDateTime(m.match_date)}{m.venue ? ` · ${m.venue}` : ""}</div>
           {m.match_type === "intergrupo" && (
             <div className="text-center mt-1">
               <span className="text-xs md:text-sm font-bold uppercase tracking-wider text-amber-700 bg-amber-100 rounded px-2 py-1">Partido intergrupos</span>

@@ -26,7 +26,7 @@ from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
-from pydantic import BaseModel, Field, EmailStr
+from pydantic import BaseModel, Field, EmailStr, field_validator
 from openpyxl import load_workbook, Workbook
 try:
     from emergentintegrations.payments.stripe.checkout import StripeCheckout, CheckoutSessionRequest
@@ -720,6 +720,11 @@ class PlayerIn(BaseModel):
     guardian_doc: Optional[str] = ""
     guardian_relation: Optional[str] = ""
     guardian_phone: Optional[str] = ""
+
+    @field_validator("name")
+    @classmethod
+    def _upper_name(cls, v):
+        return (v or "").strip().upper()
 
 class PlayerOut(PlayerIn):
     id: str
@@ -1467,6 +1472,9 @@ async def update_team_staff(team_id: str, payload: dict, user: dict = Depends(ge
     staff = payload.get("cuerpo_tecnico")
     if not isinstance(staff, list):
         raise HTTPException(status_code=400, detail="cuerpo_tecnico debe ser una lista")
+    for s in staff:
+        if isinstance(s, dict) and s.get("name"):
+            s["name"] = str(s["name"]).strip().upper()
     await db.teams.update_one({"id": team_id}, {"$set": {"cuerpo_tecnico": staff}})
     t = await db.teams.find_one({"id": team_id}, {"_id": 0})
     return t
@@ -4658,12 +4666,24 @@ async def create_quote(payload: QuoteIn, user: dict = Depends(get_current_user))
     await _require_club_approved(user, action="cotizaciones")
     cat = await _load_catalog()
     breakdown = _calculate_quote(payload, cat)
+    # Nombre del club: se resuelve y se guarda FIJO al momento de crear (igual que los
+    # precios), para que la tabla de cotizaciones no dependa de una relectura dinámica
+    # usuario→equipo→club que puede quedar vacía si el usuario cambia de equipo o si
+    # quien cotiza es un admin sin team_id propio.
+    club_name = ""
+    if user.get("club_id"):
+        club_doc = await db.clubs.find_one({"id": user["club_id"]}, {"_id": 0, "name": 1})
+        club_name = (club_doc or {}).get("name", "")
+    if not club_name and user.get("team_id"):
+        team_doc = await db.teams.find_one({"id": user["team_id"]}, {"_id": 0, "club_name": 1, "name": 1})
+        club_name = (team_doc or {}).get("club_name") or (team_doc or {}).get("name") or ""
     doc = {
         "id": str(uuid.uuid4()),
         "user_id": user["id"],
         "user_name": user["name"],
         "user_email": user["email"],
         "team_id": user.get("team_id"),
+        "club_name": club_name,
         **payload.model_dump(),
         **breakdown,
         "status": "pendiente",  # pendiente, aprobada, rechazada, pagada
@@ -5197,6 +5217,11 @@ async def all_quotes(_: dict = Depends(require_admin)):
             teams = await db.teams.find({"id": {"$in": team_ids}}, {"_id": 0, "id": 1, "club_name": 1, "name": 1}).to_list(len(team_ids))
             team_to_club = {t["id"]: (t.get("club_name") or t.get("name") or "") for t in teams}
         for q in items:
+            # Solo rellena si la cotización no trae ya su club_name guardado (cotizaciones
+            # nuevas lo guardan fijo al crearse) — antes esto SOBRESCRIBÍA un valor ya
+            # correcto con "" cuando el usuario ya no tenía team_id (ej. lo cotizó un admin).
+            if q.get("club_name"):
+                continue
             uid = q.get("user_id")
             tid = user_to_team.get(uid)
             q["club_name"] = team_to_club.get(tid, "")
@@ -6469,7 +6494,7 @@ async def import_players(file: UploadFile = File(...), preview: bool = False, _:
             if club_status != "aprobado":
                 errors.append({"row": idx, "error": f"El club '{club_name}' está en estado '{club_status}'. Apruébalo en /admin/clubes antes de cargar jugadores."})
                 continue
-        name = r.get("name") or r.get("nombre") or ""
+        name = (r.get("name") or r.get("nombre") or "").strip().upper()
         if not name:
             errors.append({"row": idx, "error": "Falta el nombre del jugador"})
             continue
@@ -6530,7 +6555,7 @@ async def import_staff(team_id: str, file: UploadFile = File(...), preview: bool
 
     created, errors, duplicates = [], [], []
     for idx, r in enumerate(rows, start=2):
-        name = r.get("name") or r.get("nombre") or ""
+        name = (r.get("name") or r.get("nombre") or "").strip().upper()
         if not name:
             errors.append({"row": idx, "error": "Falta el nombre completo"})
             continue
@@ -6675,7 +6700,7 @@ async def import_team_roster(file: UploadFile = File(...), preview: bool = False
 
     players_created, player_errors, player_duplicates = [], [], []
     for idx, r in enumerate(sheets[players_sheet], start=2):
-        name = r.get("name") or r.get("nombre") or ""
+        name = (r.get("name") or r.get("nombre") or "").strip().upper()
         if not name:
             player_errors.append({"row": idx, "error": "Falta nombre"})
             continue
@@ -6719,7 +6744,7 @@ async def import_team_roster(file: UploadFile = File(...), preview: bool = False
     staff_created, staff_errors, staff_duplicates = [], [], []
     if staff_sheet:
         for idx, r in enumerate(sheets[staff_sheet], start=2):
-            nm = r.get("name") or r.get("nombre") or ""
+            nm = (r.get("name") or r.get("nombre") or "").strip().upper()
             if not nm:
                 staff_errors.append({"row": idx, "error": "Falta nombre"})
                 continue

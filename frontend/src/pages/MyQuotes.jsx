@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api, { formatApiError } from "../lib/api";
 import { toast, Toaster } from "sonner";
-import { CreditCard, ChevronDown, ChevronUp, Receipt as ReceiptIcon, Download, Lock } from "lucide-react";
+import { ChevronDown, ChevronUp, Receipt as ReceiptIcon, Download, Lock } from "lucide-react";
 import PaymentForm from "../components/PaymentForm";
 import PaymentsList from "../components/PaymentsList";
 import { formatDate } from "../lib/dateFormat";
@@ -23,7 +23,6 @@ export default function MyQuotes() {
   const { user } = useAuth();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [paying, setPaying] = useState(null);
   const [openId, setOpenId] = useState(null);
   const [showFormFor, setShowFormFor] = useState(null);
   const [payments, setPayments] = useState({}); // {quoteId: {items, balance}}
@@ -63,20 +62,6 @@ export default function MyQuotes() {
     await reload();
   };
 
-  const payQuote = async (qid) => {
-    setPaying(qid);
-    try {
-      const r = await api.post("/payments/checkout/session", {
-        quote_id: qid,
-        origin_url: window.location.origin,
-      });
-      window.location.href = r.data.url;
-    } catch (err) {
-      toast.error(formatApiError(err.response?.data?.detail) || "No se pudo iniciar el pago");
-      setPaying(null);
-    }
-  };
-
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12" data-testid="my-quotes-page">
       <Toaster position="top-right" />
@@ -103,7 +88,6 @@ export default function MyQuotes() {
       <div className="space-y-4">
         {items.map((q) => {
           const s = STATUS[q.status] || STATUS.pendiente;
-          const canStripe = q.status === "aprobada" && q.payment_status !== "paid";
           const canPayManual = q.status === "aprobada" && q.payment_status !== "paid";
           const isOpen = openId === q.id;
           const data = payments[q.id];
@@ -230,12 +214,7 @@ export default function MyQuotes() {
                           <ReceiptIcon size={14}/> Registrar abono (comprobante)
                         </button>
                       )}
-                      {canStripe && (
-                        <button onClick={() => payQuote(q.id)} disabled={paying === q.id} className="fsc-btn-red px-4 py-2 rounded-md text-xs flex items-center gap-2 disabled:opacity-50" data-testid={`pay-quote-btn-${q.id}`}>
-                          <CreditCard size={14}/> {paying === q.id ? "Redirigiendo..." : "Pagar saldo con Stripe"}
-                        </button>
-                      )}
-                      {!canPayManual && !canStripe && (
+                      {!canPayManual && (
                         <p className="text-xs text-slate-500 italic">No hay acciones de pago disponibles para esta cotización.</p>
                       )}
                     </div>

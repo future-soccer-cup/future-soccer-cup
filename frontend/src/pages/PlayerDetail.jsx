@@ -145,16 +145,12 @@ export function Carnet({ player, team, qrValue, staffRole, clubLogoUrl, categori
         backgroundImage: `repeating-linear-gradient(45deg, rgba(255,255,255,0.18) 0 2px, transparent 2px 14px), repeating-linear-gradient(-45deg, rgba(0,0,0,0.18) 0 2px, transparent 2px 16px)`
       }} />
       <div className="relative px-5 pt-5 pb-4 flex items-center justify-between border-b border-white/15">
-        <img src={headerLogo} alt={clubLogoUrl ? "Club" : "FSC"} crossOrigin="anonymous" className="h-16 w-16 object-contain drop-shadow-md" data-testid="carnet-club-logo" />
-        <div className="text-right flex items-center gap-3">
-          <div>
-            <div className="font-display text-xs tracking-[0.25em] font-bold" style={{ color: p.accent }}>FUTURE SOCCER CUP</div>
-            <div className="font-display text-[10px] tracking-[0.3em] text-white/70">CARNET OFICIAL · {team?.category || "FSC"}</div>
-          </div>
-          {team?.logo_url && (
-            <img src={imgSrc(team.logo_url)} alt={team.name} crossOrigin="anonymous" className="h-12 w-12 bg-white rounded object-contain p-0.5" />
-          )}
+        <div className="h-16 w-16 shrink-0" aria-hidden="true" />
+        <div className="text-center">
+          <div className="font-display text-xs tracking-[0.25em] font-bold" style={{ color: p.accent }}>FUTURE SOCCER CUP</div>
+          <div className="font-display text-[10px] tracking-[0.3em] text-white/70">CARNET OFICIAL · {team?.category || "FSC"}</div>
         </div>
+        <img src={headerLogo} alt={clubLogoUrl ? "Club" : "FSC"} crossOrigin="anonymous" className="h-16 w-16 object-contain drop-shadow-md shrink-0" data-testid="carnet-club-logo" />
       </div>
 
       <div className="relative px-5 py-5 grid grid-cols-3 gap-4">
@@ -188,8 +184,14 @@ export function Carnet({ player, team, qrValue, staffRole, clubLogoUrl, categori
 
       <div className="relative px-5 pb-5 pt-3 border-t border-white/15 flex items-center justify-between gap-4">
         <div className="min-w-0">
-          <div className="text-[10px] uppercase tracking-widest text-white/60">Equipo</div>
-          <div className="font-display text-lg font-black uppercase truncate">{team?.name || "—"}</div>
+          {team?.club_name && (
+            <>
+              <div className="text-[10px] uppercase tracking-widest text-white/60">Club</div>
+              <div className="font-display text-sm font-black uppercase leading-tight line-clamp-2" data-testid="carnet-club-name">{team.club_name}</div>
+            </>
+          )}
+          <div className="text-[10px] uppercase tracking-widest text-white/60 mt-1">Equipo</div>
+          <div className="font-display text-base font-black uppercase leading-tight line-clamp-2" data-testid="carnet-team-name">{team?.name || "—"}</div>
           <div className="text-[10px] text-white/70 mt-1">DOC: {player.document_id || player.document || "—"}</div>
           <div className="text-[10px] text-white/70" data-testid="carnet-comet">COMET: <span className="font-mono">{player.comet_number || "—"}</span></div>
           {!isStaff && <div className="text-[10px] text-white/70">NAC: {player.birth_date || "—"}</div>}

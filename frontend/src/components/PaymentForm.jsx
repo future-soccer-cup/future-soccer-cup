@@ -2,6 +2,7 @@ import { useState } from "react";
 import api, { formatApiError } from "../lib/api";
 import { toast } from "sonner";
 import FileUpload from "./FileUpload";
+import CurrencyInput from "./CurrencyInput";
 
 const METHODS = [
   { v: "transferencia", l: "Transferencia bancaria" },
@@ -82,16 +83,13 @@ export default function PaymentForm({ targetType, targetId, suggestedAmount = ""
       <div className="grid sm:grid-cols-2 gap-3">
         <label className="block">
           <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Monto del abono ({currency})</span>
-          <input
-            type="number"
-            min="0.01"
-            step={isUSD ? "0.01" : "1"}
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
+          <CurrencyInput
+            value={amount === "" ? 0 : Number(amount)}
+            onChange={(n) => setAmount(n === 0 ? "" : String(n))}
+            decimals={isUSD ? 2 : 0}
             placeholder={isUSD ? "Ej. 150.00" : "Ej. 500000"}
-            className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-md text-sm tabular-nums"
+            className="w-full text-sm"
             data-testid="payment-amount-input"
-            required
           />
           {amount && <p className="text-[11px] text-slate-500 mt-1">{fmtCur(amount, currency)}</p>}
         </label>

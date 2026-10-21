@@ -9,9 +9,9 @@ import { usePagedSearch, SearchBar, Pagination } from "../../components/PagedTab
 
 // Cuando un partido no tiene jornada (matchday) asignada — típico de partidos
 // eliminatorios creados a mano — se muestra la fase en vez de "FECHA ?".
-const STAGE_LABEL_SHORT = { octavos: "Octavos", cuartos: "Cuartos", semis: "Semifinal", final: "Final" };
+const STAGE_LABEL_SHORT = { octavos: "Octavos", cuartos: "Cuartos", semis: "Semifinal", final: "Final", tercer_puesto: "3er Puesto" };
 // Orden de fases para partidos sin jornada, al final de la tabla de Partidos.
-const STAGE_ORDER = { grupos: 0, octavos: 1, cuartos: 2, semis: 3, final: 4 };
+const STAGE_ORDER = { grupos: 0, octavos: 1, cuartos: 2, semis: 3, tercer_puesto: 4, final: 5 };
 
 // Convierte ISO con zona a "YYYY-MM-DDTHH:MM" para inputs datetime-local sin desplazar horas.
 const toLocalInput = (iso) => {
