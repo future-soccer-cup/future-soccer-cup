@@ -7,7 +7,9 @@ import {
 } from "lucide-react";
 
 const fmtCOP = (n) => `$${Number(n || 0).toLocaleString("es-CO")}`;
+const fmtUSD = (n) => `US$${Number(n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const fmtNum = (n) => Number(n || 0).toLocaleString("es-CO");
+const isUSD = (x) => (x.currency || "COP") === "USD";
 
 function startOfMonth() {
   const d = new Date();
@@ -67,11 +69,20 @@ export default function AdminDashboard() {
 
   const paymentsPorRevisar = d.payments.filter((p) => p.status === "sin_verificar").length;
   const paymentsAprobados = d.payments.filter((p) => p.status === "aprobado");
-  const ingresoTotalCOP = paymentsAprobados.reduce((s, p) => s + Number(p.amount || 0), 0);
-  const ingresoMesCOP = paymentsAprobados
+  // Ojo: los abonos y cotizaciones pueden estar en COP o USD (campo `currency`) — sumarlos
+  // todos juntos como si fueran la misma moneda daba un total sin sentido. Se separan.
+  const paymentsAprobadosCOP = paymentsAprobados.filter((p) => !isUSD(p));
+  const paymentsAprobadosUSD = paymentsAprobados.filter(isUSD);
+  const ingresoTotalCOP = paymentsAprobadosCOP.reduce((s, p) => s + Number(p.amount || 0), 0);
+  const ingresoTotalUSD = paymentsAprobadosUSD.reduce((s, p) => s + Number(p.amount || 0), 0);
+  const ingresoMesCOP = paymentsAprobadosCOP
     .filter((p) => (p.payment_date || p.created_at) >= SOM)
     .reduce((s, p) => s + Number(p.amount || 0), 0);
-  const ingresoQuotesTotal = quotesPagadas.reduce((s, q) => s + Number(q.total_amount || 0), 0);
+  const ingresoMesUSD = paymentsAprobadosUSD
+    .filter((p) => (p.payment_date || p.created_at) >= SOM)
+    .reduce((s, p) => s + Number(p.amount || 0), 0);
+  const ingresoQuotesTotalCOP = quotesPagadas.filter((q) => !isUSD(q)).reduce((s, q) => s + Number(q.total_amount || 0), 0);
+  const ingresoQuotesTotalUSD = quotesPagadas.filter(isUSD).reduce((s, q) => s + Number(q.total_amount || 0), 0);
 
   const aprobacionesPendientes = teamsPending + playersPending + clubsPending;
 
@@ -108,14 +119,14 @@ export default function AdminDashboard() {
           testid="kpi-ingresos-total"
           icon={Wallet} label="Ingresos COP totales"
           value={fmtCOP(ingresoTotalCOP)}
-          sub={`${paymentsAprobados.length} abonos aprobados`}
+          sub={`${paymentsAprobadosCOP.length} abonos aprobados` + (ingresoTotalUSD > 0 ? ` · + ${fmtUSD(ingresoTotalUSD)} (${paymentsAprobadosUSD.length} en USD)` : "")}
           accent="text-green-700"
         />
         <StatCard
           testid="kpi-ingresos-mes"
           icon={TrendingUp} label="Ingresos COP del mes"
           value={fmtCOP(ingresoMesCOP)}
-          sub={`${quotesPagadasMes.length} cotizaciones pagadas este mes`}
+          sub={`${quotesPagadasMes.length} cotizaciones pagadas este mes` + (ingresoMesUSD > 0 ? ` · + ${fmtUSD(ingresoMesUSD)} USD` : "")}
           accent="text-blue-700"
         />
         <StatCard
@@ -130,7 +141,7 @@ export default function AdminDashboard() {
           testid="kpi-cotizaciones-pagadas"
           icon={CheckCircle2} label="Cotizaciones pagadas"
           value={fmtNum(quotesPagadas.length)}
-          sub={`Facturado: ${fmtCOP(ingresoQuotesTotal)}`}
+          sub={`Facturado: ${fmtCOP(ingresoQuotesTotalCOP)}` + (ingresoQuotesTotalUSD > 0 ? ` + ${fmtUSD(ingresoQuotesTotalUSD)}` : "")}
           accent="text-emerald-700"
         />
       </div>
